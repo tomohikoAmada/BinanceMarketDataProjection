@@ -60,8 +60,8 @@ TEST_F(OrderBookBasicTest, InsertBidIncreasesCountAndSetsBest) {
     static_cast<void>(book_.apply_level(bmd::BookSide::Bid, bmd_test::price_units(100),
                                         bmd_test::quantity_units(5)));
     EXPECT_EQ(book_.level_count(bmd::BookSide::Bid), 1);
-    EXPECT_EQ(book_.best_bid()->price, bmd_test::price_units(100));
-    EXPECT_EQ(book_.best_bid()->quantity, bmd_test::quantity_units(5));
+    EXPECT_EQ(book_.best_bid().value().price, bmd_test::price_units(100));
+    EXPECT_EQ(book_.best_bid().value().quantity, bmd_test::quantity_units(5));
     EXPECT_EQ(book_.quantity_at(bmd::BookSide::Bid, bmd_test::price_units(100))->value(), 5);
 }
 
@@ -69,8 +69,8 @@ TEST_F(OrderBookBasicTest, InsertAskIncreasesCountAndSetsBest) {
     static_cast<void>(book_.apply_level(bmd::BookSide::Ask, bmd_test::price_units(101),
                                         bmd_test::quantity_units(7)));
     EXPECT_EQ(book_.level_count(bmd::BookSide::Ask), 1);
-    EXPECT_EQ(book_.best_ask()->price, bmd_test::price_units(101));
-    EXPECT_EQ(book_.best_ask()->quantity, bmd_test::quantity_units(7));
+    EXPECT_EQ(book_.best_ask().value().price, bmd_test::price_units(101));
+    EXPECT_EQ(book_.best_ask().value().quantity, bmd_test::quantity_units(7));
 }
 
 TEST_F(OrderBookBasicTest, UpdateExistingBidReturnsUpdated) {
@@ -112,7 +112,7 @@ TEST_F(OrderBookBasicTest, OrderBookMoveConstructPreservesState) {
                                         bmd_test::quantity_units(5)));
     bmd::OrderBook moved{std::move(book_)};
     EXPECT_EQ(moved.level_count(bmd::BookSide::Bid), 1);
-    EXPECT_EQ(moved.best_bid()->price, bmd_test::price_units(100));
+    EXPECT_EQ(moved.best_bid().value().price, bmd_test::price_units(100));
 }
 
 TEST_F(OrderBookBasicTest, MoveAssignPreservesState) {
@@ -120,7 +120,7 @@ TEST_F(OrderBookBasicTest, MoveAssignPreservesState) {
     static_cast<void>(other.apply_level(bmd::BookSide::Bid, bmd_test::price_units(200),
                                         bmd_test::quantity_units(10)));
     book_ = std::move(other);
-    EXPECT_EQ(book_.best_bid()->price, bmd_test::price_units(200));
+    EXPECT_EQ(book_.best_bid().value().price, bmd_test::price_units(200));
 }
 
 TEST_F(OrderBookBasicTest, ZeroInsertDoesNotStore) {
@@ -139,7 +139,7 @@ TEST_F(OrderBookBasicTest, BoundaryValues) {
         book_.apply_level(bmd::BookSide::Bid, max_price, bmd_test::quantity_units(1)));
     static_cast<void>(book_.apply_level(bmd::BookSide::Bid, min_price, max_qty));
     EXPECT_EQ(book_.level_count(bmd::BookSide::Bid), 2);
-    EXPECT_EQ(book_.best_bid()->price, max_price);
+    EXPECT_EQ(book_.best_bid().value().price, max_price);
 }
 
 TEST_F(OrderBookBasicTest, ToStringReturnsExpectedLevelChanges) {

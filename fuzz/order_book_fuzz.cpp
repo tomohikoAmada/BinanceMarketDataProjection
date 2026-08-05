@@ -158,7 +158,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
 
     std::size_t offset = 4;
     for (std::size_t i = 0; i < op_count; ++i) {
-        if (offset + 3 > size)
+        if (offset + 4 > size)
             break;
 
         const auto op_type = data[offset] % 12;

@@ -44,8 +44,8 @@ TEST_F(OrderBookDeterminismTest, IdenticalTranscriptsProduceIdenticalResults) {
     EXPECT_EQ(book1.all_levels(bmd::BookSide::Bid), book2.all_levels(bmd::BookSide::Bid));
     EXPECT_EQ(book1.all_levels(bmd::BookSide::Ask), book2.all_levels(bmd::BookSide::Ask));
     EXPECT_EQ(book1.level_count(bmd::BookSide::Bid), book2.level_count(bmd::BookSide::Bid));
-    EXPECT_EQ(book1.best_bid(), book2.best_bid());
-    EXPECT_EQ(book1.best_ask(), book2.best_ask());
+    EXPECT_EQ(book1.best_bid().value(), book2.best_bid().value());
+    EXPECT_EQ(book1.best_ask().value(), book2.best_ask().value());
 }
 
 TEST_F(OrderBookDeterminismTest, CheckpointsAreIdentical) {

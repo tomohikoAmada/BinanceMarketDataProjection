@@ -129,8 +129,21 @@ void verify_consistency(const bmd::OrderBook& book, const bmd_test::ReferenceOrd
     EXPECT_EQ(book.level_count(bmd::BookSide::Bid), reference.level_count(bmd::BookSide::Bid));
     EXPECT_EQ(book.level_count(bmd::BookSide::Ask), reference.level_count(bmd::BookSide::Ask));
 
-    EXPECT_EQ(book.best_bid(), reference.best_bid());
-    EXPECT_EQ(book.best_ask(), reference.best_ask());
+    const auto prod_best_bid = book.best_bid();
+    const auto ref_best_bid = reference.best_bid();
+    ASSERT_EQ(prod_best_bid.has_value(), ref_best_bid.has_value());
+    if (prod_best_bid.has_value()) {
+        EXPECT_EQ(prod_best_bid.value().price, ref_best_bid.value().price);
+        EXPECT_EQ(prod_best_bid.value().quantity, ref_best_bid.value().quantity);
+    }
+
+    const auto prod_best_ask = book.best_ask();
+    const auto ref_best_ask = reference.best_ask();
+    ASSERT_EQ(prod_best_ask.has_value(), ref_best_ask.has_value());
+    if (prod_best_ask.has_value()) {
+        EXPECT_EQ(prod_best_ask.value().price, ref_best_ask.value().price);
+        EXPECT_EQ(prod_best_ask.value().quantity, ref_best_ask.value().quantity);
+    }
 
     const auto prod_bids = book.all_levels(bmd::BookSide::Bid);
     const auto ref_bids = reference.all_levels(bmd::BookSide::Bid);

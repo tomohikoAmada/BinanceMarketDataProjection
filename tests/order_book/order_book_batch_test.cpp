@@ -28,7 +28,7 @@ TEST_F(OrderBookBatchTest, SingleUpdateWorks) {
     };
     book_.apply_updates(updates);
     EXPECT_EQ(book_.level_count(bmd::BookSide::Bid), 1);
-    EXPECT_EQ(book_.best_bid()->price.value(), 100);
+    EXPECT_EQ(book_.best_bid().value().price.value(), 100);
 }
 
 TEST_F(OrderBookBatchTest, MultiSideBatchUpdatesBothSides) {

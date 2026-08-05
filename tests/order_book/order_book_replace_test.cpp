@@ -32,8 +32,8 @@ TEST_F(OrderBookReplaceTest, ReplaceAllSetsNewState) {
 
     EXPECT_EQ(book_.level_count(bmd::BookSide::Bid), 1);
     EXPECT_EQ(book_.level_count(bmd::BookSide::Ask), 1);
-    EXPECT_EQ(book_.best_bid()->price, bmd_test::price_units(101));
-    EXPECT_EQ(book_.best_ask()->price, bmd_test::price_units(201));
+    EXPECT_EQ(book_.best_bid().value().price, bmd_test::price_units(101));
+    EXPECT_EQ(book_.best_ask().value().price, bmd_test::price_units(201));
 }
 
 TEST_F(OrderBookReplaceTest, ReplaceAllClearsWhenEmpty) {
@@ -122,10 +122,10 @@ TEST_F(OrderBookReplaceTest, SamePriceBothSidesPreserved) {
     };
     book_.replace_all(bids, asks);
 
-    EXPECT_EQ(book_.best_bid()->price, bmd_test::price_units(100));
-    EXPECT_EQ(book_.best_ask()->price, bmd_test::price_units(100));
-    EXPECT_EQ(book_.best_bid()->quantity.value(), 2);
-    EXPECT_EQ(book_.best_ask()->quantity.value(), 3);
+    EXPECT_EQ(book_.best_bid().value().price, bmd_test::price_units(100));
+    EXPECT_EQ(book_.best_ask().value().price, bmd_test::price_units(100));
+    EXPECT_EQ(book_.best_bid().value().quantity.value(), 2);
+    EXPECT_EQ(book_.best_ask().value().quantity.value(), 3);
 }
 
 TEST_F(OrderBookReplaceTest, NumericSpecUnchanged) {

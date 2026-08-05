@@ -46,26 +46,29 @@ int main() {
     if (!bid_price.has_value() || !bid_qty.has_value()) {
         return 7;
     }
-    book.apply_level(bmd::BookSide::Bid, *bid_price, *bid_qty);
+    static_cast<void>(book.apply_level(bmd::BookSide::Bid, *bid_price, *bid_qty));
 
     const auto ask_price = bmd::PriceUnits::create(101000000);
     const auto ask_qty = bmd::QuantityUnits::create(300000000);
     if (!ask_price.has_value() || !ask_qty.has_value()) {
         return 8;
     }
-    book.apply_level(bmd::BookSide::Ask, *ask_price, *ask_qty);
+    static_cast<void>(book.apply_level(bmd::BookSide::Ask, *ask_price, *ask_qty));
 
     const auto best_bid = book.best_bid();
-    if (!best_bid.has_value() || best_bid->price != *bid_price || best_bid->quantity != *bid_qty) {
+    if (!best_bid.has_value() || !(best_bid->price == *bid_price) ||
+        !(best_bid->quantity == *bid_qty)) {
         return 9;
     }
 
     const auto best_ask = book.best_ask();
-    if (!best_ask.has_value() || best_ask->price != *ask_price || best_ask->quantity != *ask_qty) {
+    if (!best_ask.has_value() || !(best_ask->price == *ask_price) ||
+        !(best_ask->quantity == *ask_qty)) {
         return 10;
     }
 
-    book.apply_level(bmd::BookSide::Bid, *bid_price, bmd::QuantityUnits::create(0).value());
+    static_cast<void>(book.apply_level(bmd::BookSide::Bid, *bid_price,
+                                       bmd::QuantityUnits::create(0).value()));
     if (book.best_bid().has_value()) {
         return 11;
     }
@@ -77,11 +80,12 @@ int main() {
 
     bmd::BookLevel crossed_bid{*bmd::PriceUnits::create(100000000),
                                *bmd::QuantityUnits::create(10)};
-    bmd::BookLevel crossed_ask{*bmd::PriceUnits::create(99000000), *bmd::QuantityUnits::create(20)};
+    bmd::BookLevel crossed_ask{*bmd::PriceUnits::create(99000000),
+                               *bmd::QuantityUnits::create(20)};
     const std::vector<bmd::BookLevel> crossed_bids{crossed_bid};
     const std::vector<bmd::BookLevel> crossed_asks{crossed_ask};
     book.replace_all(crossed_bids, crossed_asks);
-    if (book.best_bid()->price.value() <= book.best_ask()->price.value()) {
+    if (book.best_bid().value().price.value() <= book.best_ask().value().price.value()) {
         return 13;
     }
 

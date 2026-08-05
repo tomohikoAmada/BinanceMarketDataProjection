@@ -19,7 +19,7 @@ class OrderBookUpdateTest : public ::testing::Test {
         const auto change = book_.apply_level(side, price, quantity);
         EXPECT_EQ(change, expected_change);
         if (quantity_raw > 0) {
-            EXPECT_EQ(book_.quantity_at(side, price)->value(), quantity_raw);
+            EXPECT_EQ(book_.quantity_at(side, price).value().value(), quantity_raw);
         } else {
             EXPECT_FALSE(book_.quantity_at(side, price).has_value());
         }
@@ -57,38 +57,38 @@ TEST_F(OrderBookUpdateTest, AskOrderingAscending) {
 TEST_F(OrderBookUpdateTest, DeleteBestBidUpdatesBest) {
     apply_and_verify(bmd::BookSide::Bid, 100, 5, bmd::LevelChange::Inserted);
     apply_and_verify(bmd::BookSide::Bid, 101, 3, bmd::LevelChange::Inserted);
-    EXPECT_EQ(book_.best_bid()->price.value(), 101);
+    EXPECT_EQ(book_.best_bid().value().price.value(), 101);
 
     const auto change = book_.apply_level(bmd::BookSide::Bid, bmd_test::price_units(101),
                                           bmd_test::quantity_units(0));
     EXPECT_EQ(change, bmd::LevelChange::Removed);
-    EXPECT_EQ(book_.best_bid()->price.value(), 100);
+    EXPECT_EQ(book_.best_bid().value().price.value(), 100);
 }
 
 TEST_F(OrderBookUpdateTest, DeleteBestAskUpdatesBest) {
     apply_and_verify(bmd::BookSide::Ask, 100, 5, bmd::LevelChange::Inserted);
     apply_and_verify(bmd::BookSide::Ask, 99, 3, bmd::LevelChange::Inserted);
-    EXPECT_EQ(book_.best_ask()->price.value(), 99);
+    EXPECT_EQ(book_.best_ask().value().price.value(), 99);
 
     static_cast<void>(book_.apply_level(bmd::BookSide::Ask, bmd_test::price_units(99),
                                         bmd_test::quantity_units(0)));
-    EXPECT_EQ(book_.best_ask()->price.value(), 100);
+    EXPECT_EQ(book_.best_ask().value().price.value(), 100);
 }
 
 TEST_F(OrderBookUpdateTest, UpdateNonBestDoesNotAffectBest) {
     apply_and_verify(bmd::BookSide::Bid, 100, 5, bmd::LevelChange::Inserted);
     apply_and_verify(bmd::BookSide::Bid, 101, 3, bmd::LevelChange::Inserted);
-    EXPECT_EQ(book_.best_bid()->price.value(), 101);
+    EXPECT_EQ(book_.best_bid().value().price.value(), 101);
 
     apply_and_verify(bmd::BookSide::Bid, 100, 10, bmd::LevelChange::Updated);
-    EXPECT_EQ(book_.best_bid()->price.value(), 101);
+    EXPECT_EQ(book_.best_bid().value().price.value(), 101);
 }
 
 TEST_F(OrderBookUpdateTest, InsertBetterPriceChangesBest) {
     apply_and_verify(bmd::BookSide::Bid, 100, 5, bmd::LevelChange::Inserted);
-    EXPECT_EQ(book_.best_bid()->price.value(), 100);
+    EXPECT_EQ(book_.best_bid().value().price.value(), 100);
     apply_and_verify(bmd::BookSide::Bid, 102, 3, bmd::LevelChange::Inserted);
-    EXPECT_EQ(book_.best_bid()->price.value(), 102);
+    EXPECT_EQ(book_.best_bid().value().price.value(), 102);
 }
 
 TEST_F(OrderBookUpdateTest, QuantityAtReturnsNulloptForMissingPrice) {
