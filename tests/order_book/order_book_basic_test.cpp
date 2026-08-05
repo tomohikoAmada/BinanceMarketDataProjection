@@ -25,9 +25,10 @@ static_assert(std::is_move_constructible_v<bmd::OrderBook>);
 static_assert(std::is_move_assignable_v<bmd::OrderBook>);
 
 class OrderBookBasicTest : public ::testing::Test {
-    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
   protected:
+    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
     bmd::NumericSpec spec_{bmd_test::scale(8), bmd_test::scale(8)};
+    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
     bmd::OrderBook book_{spec_};
 };
 

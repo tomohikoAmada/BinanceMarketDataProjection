@@ -13,20 +13,29 @@
 namespace bmd = binance_market_data::projection::v1;
 
 class OrderBookDeterminismTest : public ::testing::Test {
-    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
   protected:
+    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
     bmd::NumericSpec spec_{bmd_test::scale(8), bmd_test::scale(8)};
 
     using Transcript = std::vector<bmd::LevelUpdate>;
 
+    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
     Transcript build_transcript() {
+        // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
         return {
+            // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
             {bmd::BookSide::Bid, bmd_test::price_units(100), bmd_test::quantity_units(5)},
+            // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
             {bmd::BookSide::Bid, bmd_test::price_units(102), bmd_test::quantity_units(3)},
+            // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
             {bmd::BookSide::Ask, bmd_test::price_units(200), bmd_test::quantity_units(7)},
+            // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
             {bmd::BookSide::Bid, bmd_test::price_units(99), bmd_test::quantity_units(1)},
+            // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
             {bmd::BookSide::Ask, bmd_test::price_units(201), bmd_test::quantity_units(2)},
+            // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
             {bmd::BookSide::Bid, bmd_test::price_units(102), bmd_test::quantity_units(0)},
+            // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
             {bmd::BookSide::Bid, bmd_test::price_units(100), bmd_test::quantity_units(8)},
         };
     }
