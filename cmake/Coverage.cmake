@@ -1,0 +1,12 @@
+function(bmd_projection_enable_coverage target)
+    if(NOT BMD_PROJECTION_ENABLE_COVERAGE)
+        return()
+    endif()
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(${target} PRIVATE --coverage -O0 -g)
+        target_link_options(${target} PRIVATE --coverage)
+    else()
+        message(FATAL_ERROR "Coverage instrumentation requires GCC, Clang, or AppleClang")
+    endif()
+endfunction()

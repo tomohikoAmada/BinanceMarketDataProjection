@@ -1,0 +1,132 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CONAN_HOME: ${{ github.workspace }}/.cache/conan2
+  PIP_CACHE_DIR: ${{ github.workspace }}/.cache/pip
+
+jobs:
+  quality:
+    name: quality (Ubuntu Clang)
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bootstrap repository-local Conan
+        run: bash scripts/bootstrap.sh
+      - name: Check formatting
+        run: |
+          find include src tests benchmarks -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
+            | xargs -0 clang-format --dry-run --Werror
+      - name: Configure with clang-tidy and warnings-as-errors
+        run: >-
+          bash scripts/configure.sh debug
+          -DBMD_PROJECTION_ENABLE_CLANG_TIDY=ON
+          -DBMD_PROJECTION_ENABLE_WERROR=ON
+      - name: Build
+        run: bash scripts/build.sh debug
+      - name: Test
+        run: bash scripts/test.sh debug
+      - name: Staged install consumer
+        run: bash scripts/install-consumer-test.sh
+
+  build-matrix:
+    name: release (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu GCC
+            os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+          - name: Ubuntu Clang
+            os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+          - name: macOS AppleClang
+            os: macos-latest
+            cc: clang
+            cxx: clang++
+    runs-on: ${{ matrix.os }}
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bootstrap repository-local Conan
+        run: bash scripts/bootstrap.sh
+      - name: Configure
+        run: bash scripts/configure.sh release -DBMD_PROJECTION_ENABLE_WERROR=ON
+      - name: Build
+        run: bash scripts/build.sh release
+      - name: Test
+        run: bash scripts/test.sh release
+      - name: Staged install consumer
+        run: bash scripts/install-consumer-test.sh
+
+  sanitizers:
+    name: ${{ matrix.label }} (Ubuntu Clang)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - preset: asan
+            label: ASan
+          - preset: ubsan
+            label: UBSan
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bootstrap repository-local Conan
+        run: bash scripts/bootstrap.sh
+      - name: Configure
+        run: bash scripts/configure.sh ${{ matrix.preset }} -DBMD_PROJECTION_ENABLE_WERROR=ON
+      - name: Build
+        run: bash scripts/build.sh ${{ matrix.preset }}
+      - name: Test
+        run: bash scripts/test.sh ${{ matrix.preset }}
+
+  benchmark-smoke:
+    name: benchmark smoke (Ubuntu Clang)
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bootstrap repository-local Conan
+        run: bash scripts/bootstrap.sh
+      - name: Configure
+        run: bash scripts/configure.sh benchmark -DBMD_PROJECTION_ENABLE_WERROR=ON
+      - name: Build
+        run: bash scripts/build.sh benchmark
+      - name: Run infrastructure benchmark
+        run: >-
+          build/benchmark/cmake/benchmarks/bmd_projection_benchmarks
+          --benchmark_format=json
+          --benchmark_out=build/benchmark/foundation-benchmark.json
