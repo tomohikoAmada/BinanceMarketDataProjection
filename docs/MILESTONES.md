@@ -1,6 +1,6 @@
 # Milestones
 
-## M0 Repository Foundation — IN PROGRESS
+## M0 Repository Foundation — COMPLETE
 
 ### Scope
 
