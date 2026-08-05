@@ -43,11 +43,40 @@ required CI is green, a Draft PR targets the bootstrap-only `main`, and this sta
 Local clang-tidy may be skipped when the host toolchain lacks it; CI clang-tidy is the mandatory
 gate. The version header is generated from CMake; no hand-maintained duplicate version string exists.
 
+## M1 Numeric and Domain Primitives — COMPLETE
+
+### Goal
+
+Establish the exact, deterministic numeric boundary used by future projection behavior without
+implementing order-book or market-state logic.
+
+### Outputs
+
+- Explicit decimal scales from 0 through 18 and distinct signed 64-bit price and quantity units.
+- Strict Contracts-compatible parsing for prices, quantities, and positive quantities.
+- Exact rescaling and deterministic formatting with retained source fractional digit counts.
+- Stable error codes and prechecked arithmetic that never relies on signed overflow or rounding.
+- Boundary, roundtrip, public-header, and 20,000-case deterministic property validation.
+- Clang-only libFuzzer harness, seed corpus, blocking CI smoke job, and staged-install consumer use.
+- M1 numeric semantics documentation and accepted fixed-point representation decision.
+
+### Acceptance status
+
+Implementation, required local checks, and external code review are complete. External code review
+concluded with no blocking correctness findings. M1 is approved for merge and is marked complete.
+
+### Non-goals
+
+No order book, price-level map, snapshots, diff application, sequencing, gap/resync policy,
+market-state calculations, Protobuf adapter, networking, host runtime, Python binding, symbol
+filters, signed decimals, persistence, threading, logging, strategy, or trading behavior.
+
 ## Development map
 
 1. **M0 Repository Foundation** — Build, test, installation, CI, and governance baseline.
-2. **M1 Numeric and Domain Primitives** — Fixed-point types, quantity/price representation, decimal
-   parsing.
+2. **M1 Numeric and Domain Primitives — COMPLETE** — Fixed-point
+   types, quantity/price representation, decimal parsing, exact formatting, property tests, and fuzz
+   validation.
 3. **M2 Order Book Core** — Deterministic book storage, level management, depth operations.
 4. **M3 Sequence and Projection State** — Market-specific sequencing, gap detection, reset logic.
 5. **M4 Snapshots and Protobuf Boundary** — Wire-format adapter outside Core; snapshot production.

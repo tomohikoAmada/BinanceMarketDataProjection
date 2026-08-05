@@ -130,3 +130,20 @@ jobs:
           build/benchmark/cmake/benchmarks/bmd_projection_benchmarks
           --benchmark_format=json
           --benchmark_out=build/benchmark/foundation-benchmark.json
+
+  fuzz-smoke:
+    name: fuzz smoke (Ubuntu Clang)
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+      BMD_PROJECTION_REQUIRE_FUZZERS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bootstrap repository-local Conan
+        run: bash scripts/bootstrap.sh
+      - name: Build and run decimal parser fuzz smoke
+        run: bash scripts/fuzz-smoke.sh

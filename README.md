@@ -1,14 +1,15 @@
 # BinanceMarketDataProjection
 
-`BinanceMarketDataProjection` is a C++20 library foundation for a future deterministic,
-strategy-independent Binance market-data projection core. The current state is **M0 Foundation / No
-Projection Logic Yet**. The library exposes only stable project/version metadata.
+`BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
+market-data projection core. The current state is **M1 Numeric and Domain Primitives — COMPLETE**. The library exposes stable project/version metadata and exact numeric
+primitives; it does not yet implement projection state.
 
 This is an unofficial project and is not affiliated with, endorsed by, or sponsored by Binance.
 This module does not connect to Binance, use API keys, place orders, or contain trading strategies.
 
-> M0 does not implement decimal parsing, order-book reconstruction, sequence validation,
-> market-state projection, protobuf adapters, networking, persistence, or trading.
+> M1 implements strict decimal parsing, strongly typed signed 64-bit units, exact rescaling, and
+> deterministic formatting. It does not implement an order book, sequence validation, market-state
+> projection, protobuf adapters, networking, persistence, or trading.
 
 ## Architecture boundary
 
@@ -61,9 +62,19 @@ bash scripts/build.sh release
 bash scripts/test.sh release
 ```
 
-The configured CMake targets are `bmd_projection_core`, `bmd_projection_tests`, and (when enabled)
-`bmd_projection_benchmarks`. Build-tree and installed consumers link the alias
+The configured CMake targets are `bmd_projection_core`, `bmd_projection_tests`, and, when enabled,
+`bmd_projection_benchmarks` or `bmd_projection_decimal_parser_fuzz`. Build-tree and installed
+consumers link the alias
 `BinanceMarketDataProjection::Core`.
+
+## Exact numeric API
+
+Contracts-compatible public decimal text is parsed into `PriceUnits` or `QuantityUnits`, backed by
+`std::int64_t`, using an explicit caller-supplied scale from 0 through 18. Conversion is exact or
+rejected and never rounds. Successful parse results retain the source fractional digit count so a
+formatter can reconstruct trailing zeroes. See
+[M1 numeric semantics](docs/M1_NUMERIC_SEMANTICS.md) and
+[ADR-0002](docs/adr/ADR-0002-fixed-point-internal-representation.md).
 
 ## Sanitizers and coverage
 
@@ -76,8 +87,18 @@ done
 ```
 
 ASan and TSan are mutually exclusive. Sanitizer and coverage options are target-local and are not
-exported to installed consumers. TSan availability depends on the compiler/runtime/platform; M0 CI
+exported to installed consumers. TSan availability depends on the compiler/runtime/platform; CI
 requires ASan and UBSan and retains TSan as an explicit independently testable configuration.
+
+## Parser fuzz smoke
+
+```bash
+bash scripts/fuzz-smoke.sh
+```
+
+The fuzz target is built with upstream Clang and libFuzzer plus AddressSanitizer and
+UndefinedBehaviorSanitizer. Unsupported local toolchains report an explicit skip; the Ubuntu Clang
+CI job requires support and runs a fixed 10,000-input smoke test from the checked-in seed corpus.
 
 ## Benchmark smoke test
 
@@ -89,7 +110,8 @@ build/benchmark/cmake/benchmarks/bmd_projection_benchmarks \
   --benchmark_out=build/benchmark/foundation-benchmark.json
 ```
 
-M0 Benchmark 只是基础设施 Smoke Test，不代表 Order Book 或 Projection 性能。
+The benchmark remains an infrastructure smoke test; it does not represent order-book or projection
+performance.
 
 ## Install and downstream consumer
 
@@ -134,16 +156,18 @@ docs/          Milestones, open questions, and ADRs
 
 ## Milestone status
 
-M0 Repository Foundation is tracked in [docs/MILESTONES.md](docs/MILESTONES.md). No later milestone
-is implemented by this branch. The Contracts reference baseline is
+M1 Numeric and Domain Primitives is complete. External code review completed with no blocking
+correctness findings. M1 is approved for merge. No M2 or later behavior is implemented by this
+branch. The Contracts reference baseline is
 `01d76a41929f36d89573159f5f458f9f1e378ada`.
 
 ## Known limitations
 
-- There is no projection/domain behavior in M0.
+- There is no order book, sequencing, snapshot application, or market-state projection yet.
+- Tick-size, step-size, signed-decimal, and symbol-metadata validation are outside M1.
 - TSan support varies by host platform and toolchain.
 - Dedicated Ubuntu ARM64/RK3588 CI is not part of the initial hosted matrix.
-- The API surface is intentionally limited to version metadata.
+- No M2 or later milestone implementation is present.
 
 ## License status
 

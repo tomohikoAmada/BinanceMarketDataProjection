@@ -23,6 +23,7 @@ include(CMakePackageConfigHelpers)
 
 option(BMD_PROJECTION_BUILD_TESTS "Build projection foundation tests" ${PROJECT_IS_TOP_LEVEL})
 option(BMD_PROJECTION_BUILD_BENCHMARKS "Build projection foundation benchmarks" OFF)
+option(BMD_PROJECTION_BUILD_FUZZERS "Build Clang libFuzzer targets" OFF)
 option(BMD_PROJECTION_ENABLE_WARNINGS "Enable strict warnings for project targets" ON)
 option(BMD_PROJECTION_ENABLE_WERROR "Treat project warnings as errors" OFF)
 option(BMD_PROJECTION_ENABLE_CLANG_TIDY "Run clang-tidy on project targets" OFF)
@@ -48,7 +49,12 @@ function(bmd_projection_apply_project_options target)
     bmd_projection_enable_coverage(${target})
 endfunction()
 
-add_library(bmd_projection_core src/version.cpp)
+add_library(
+    bmd_projection_core
+    src/numeric/decimal_format.cpp
+    src/numeric/decimal_parse.cpp
+    src/version.cpp
+)
 add_library(BinanceMarketDataProjection::Core ALIAS bmd_projection_core)
 
 set_target_properties(
@@ -74,6 +80,16 @@ target_compile_features(bmd_projection_core PUBLIC cxx_std_20)
 
 bmd_projection_apply_project_options(bmd_projection_core)
 
+if(BMD_PROJECTION_BUILD_FUZZERS)
+    if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        message(FATAL_ERROR "BMD_PROJECTION_BUILD_FUZZERS requires upstream Clang")
+    endif()
+    target_compile_options(
+        bmd_projection_core
+        PRIVATE -fsanitize=fuzzer-no-link,address,undefined -fno-omit-frame-pointer
+    )
+endif()
+
 if(BMD_PROJECTION_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
@@ -81,6 +97,10 @@ endif()
 
 if(BMD_PROJECTION_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
+endif()
+
+if(BMD_PROJECTION_BUILD_FUZZERS)
+    add_subdirectory(fuzz)
 endif()
 
 install(

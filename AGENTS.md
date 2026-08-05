@@ -7,11 +7,12 @@ relevant files under `docs/adr/`.
   and CMake files belong under ignored build/cache directories.
 - Do not add networking, storage, threads, system-time reads, logging, or host runtime concerns to
   Core.
-- Do not implement a later milestone early. M0 contains no projection business logic.
+- Do not implement a later milestone early. M1 contains numeric and domain primitives only; it has
+  no order-book or projection-state logic.
 - Every public API change requires tests and documentation.
 - Never represent price or quantity with floating-point types.
 - Do not copy Contracts protobuf definitions into this repository.
-- Do not add a Protobuf adapter before M5.
+- Do not add a Protobuf adapter before M4.
 - Run `scripts/verify.sh` for every PR; do not disable checks to make CI green.
 - Do not modify the Contracts or Recorder repositories from this workspace.
 - Do not use system-global package installation. Keep virtual environments, caches, and builds in
