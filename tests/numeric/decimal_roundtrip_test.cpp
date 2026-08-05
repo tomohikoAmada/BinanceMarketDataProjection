@@ -45,7 +45,7 @@ TEST(DecimalRoundtripTest, FixedFormatThenParsePreservesQuantityUnits) {
         for (const std::uint32_t scale_value : {0U, 1U, 8U, 18U}) {
             SCOPED_TRACE(testing::Message() << units << '@' << scale_value);
             const auto scale = bmd_test::scale(scale_value);
-            const auto value = *bmd::QuantityUnits::create(units);
+            const auto value = bmd_test::quantity_units(units);
             const auto formatted = bmd::format_quantity_fixed(value, scale);
             ASSERT_TRUE(std::holds_alternative<std::string>(formatted));
             const auto parsed = bmd::parse_quantity(std::get<std::string>(formatted), scale);
@@ -59,7 +59,7 @@ TEST(DecimalRoundtripTest, FixedFormatThenParsePreservesPriceUnits) {
     for (const std::int64_t units :
          {std::int64_t{1}, std::int64_t{123}, std::numeric_limits<std::int64_t>::max()}) {
         const auto scale = bmd_test::scale(18);
-        const auto value = *bmd::PriceUnits::create(units);
+        const auto value = bmd_test::price_units(units);
         const auto formatted = bmd::format_price_fixed(value, scale);
         ASSERT_TRUE(std::holds_alternative<std::string>(formatted));
         const auto parsed = bmd::parse_price(std::get<std::string>(formatted), scale);

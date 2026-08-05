@@ -40,7 +40,7 @@ constexpr std::array<std::int64_t, 19> kPowersOfTen{
 
     if (output_fraction_digits < storage_fraction_digits) {
         const auto scale_difference = storage_fraction_digits - output_fraction_digits;
-        const auto divisor = kPowersOfTen[scale_difference];
+        const auto divisor = kPowersOfTen.at(scale_difference);
         if (rendered_units % divisor != 0) {
             return DecimalError{DecimalErrorCode::InexactScale, kNoErrorOffset};
         }

@@ -78,7 +78,7 @@ TEST(DecimalPropertyTest, ExactFormatsRoundtripForTenThousandDeterministicCases)
 
         auto units = random_nonnegative_units(generator);
         if (output_value < storage_value) {
-            const auto divisor = kPowersOfTen[storage_value - output_value];
+            const auto divisor = kPowersOfTen.at(storage_value - output_value);
             units = (units / divisor) * divisor;
         }
 
@@ -86,12 +86,12 @@ TEST(DecimalPropertyTest, ExactFormatsRoundtripForTenThousandDeterministicCases)
         if (test_price && units == 0) {
             units = 1;
             if (output_value < storage_value) {
-                units = kPowersOfTen[storage_value - output_value];
+                units = kPowersOfTen.at(storage_value - output_value);
             }
         }
 
         if (test_price) {
-            const auto value = *bmd::PriceUnits::create(units);
+            const auto value = bmd_test::price_units(units);
             const auto formatted = bmd::format_price(value, storage_scale, output_value);
             ASSERT_TRUE(std::holds_alternative<std::string>(formatted));
             const auto& text = std::get<std::string>(formatted);
@@ -105,7 +105,7 @@ TEST(DecimalPropertyTest, ExactFormatsRoundtripForTenThousandDeterministicCases)
             ASSERT_TRUE(std::holds_alternative<std::string>(reconstructed));
             EXPECT_EQ(std::get<std::string>(reconstructed), text);
         } else {
-            const auto value = *bmd::QuantityUnits::create(units);
+            const auto value = bmd_test::quantity_units(units);
             const auto formatted = bmd::format_quantity(value, storage_scale, output_value);
             ASSERT_TRUE(std::holds_alternative<std::string>(formatted));
             const auto& text = std::get<std::string>(formatted);
@@ -133,8 +133,7 @@ TEST(DecimalPropertyTest, MutationsAndOverflowBoundariesRejectTenThousandCases) 
             const auto scale_value = static_cast<std::uint32_t>(generator.bounded(19));
             const auto scale = bmd_test::scale(scale_value);
             const auto units = random_nonnegative_units(generator);
-            const auto valid =
-                bmd::format_quantity_fixed(*bmd::QuantityUnits::create(units), scale);
+            const auto valid = bmd::format_quantity_fixed(bmd_test::quantity_units(units), scale);
             ASSERT_TRUE(std::holds_alternative<std::string>(valid));
             auto mutated = std::get<std::string>(valid);
             const auto invalid_offset = static_cast<std::size_t>(generator.bounded(mutated.size()));

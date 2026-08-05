@@ -1,3 +1,5 @@
+#include "test_helpers.hpp"
+
 #include <binance_market_data/projection/v1/numeric/price_units.hpp>
 #include <binance_market_data/projection/v1/numeric/quantity_units.hpp>
 
@@ -25,32 +27,30 @@ static_assert(!std::is_convertible_v<bmd::QuantityUnits, std::int64_t>);
 TEST(PriceUnitsTest, RequiresStrictlyPositiveValue) {
     EXPECT_FALSE(bmd::PriceUnits::create(-1).has_value());
     EXPECT_FALSE(bmd::PriceUnits::create(0).has_value());
-    EXPECT_EQ(bmd::PriceUnits::create(1)->value(), 1);
+    EXPECT_EQ(bmd_test::price_units(1).value(), 1);
 }
 
 TEST(PriceUnitsTest, AcceptsInt64Maximum) {
-    const auto value = bmd::PriceUnits::create(std::numeric_limits<std::int64_t>::max());
-    ASSERT_TRUE(value.has_value());
-    EXPECT_EQ(value->value(), std::numeric_limits<std::int64_t>::max());
+    const auto value = bmd_test::price_units(std::numeric_limits<std::int64_t>::max());
+    EXPECT_EQ(value.value(), std::numeric_limits<std::int64_t>::max());
 }
 
 TEST(PriceUnitsTest, ComparesByUnits) {
-    EXPECT_LT(*bmd::PriceUnits::create(10), *bmd::PriceUnits::create(11));
-    EXPECT_EQ(*bmd::PriceUnits::create(11), *bmd::PriceUnits::create(11));
+    EXPECT_LT(bmd_test::price_units(10), bmd_test::price_units(11));
+    EXPECT_EQ(bmd_test::price_units(11), bmd_test::price_units(11));
 }
 
 TEST(QuantityUnitsTest, AllowsZeroAndRejectsNegativeValue) {
     EXPECT_FALSE(bmd::QuantityUnits::create(-1).has_value());
-    EXPECT_EQ(bmd::QuantityUnits::create(0)->value(), 0);
+    EXPECT_EQ(bmd_test::quantity_units(0).value(), 0);
 }
 
 TEST(QuantityUnitsTest, AcceptsInt64Maximum) {
-    const auto value = bmd::QuantityUnits::create(std::numeric_limits<std::int64_t>::max());
-    ASSERT_TRUE(value.has_value());
-    EXPECT_EQ(value->value(), std::numeric_limits<std::int64_t>::max());
+    const auto value = bmd_test::quantity_units(std::numeric_limits<std::int64_t>::max());
+    EXPECT_EQ(value.value(), std::numeric_limits<std::int64_t>::max());
 }
 
 TEST(QuantityUnitsTest, ComparesByUnits) {
-    EXPECT_LT(*bmd::QuantityUnits::create(0), *bmd::QuantityUnits::create(1));
-    EXPECT_EQ(*bmd::QuantityUnits::create(1), *bmd::QuantityUnits::create(1));
+    EXPECT_LT(bmd_test::quantity_units(0), bmd_test::quantity_units(1));
+    EXPECT_EQ(bmd_test::quantity_units(1), bmd_test::quantity_units(1));
 }

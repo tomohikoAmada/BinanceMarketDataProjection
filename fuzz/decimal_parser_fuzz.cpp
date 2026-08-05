@@ -91,7 +91,11 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
 
     const auto mode = decode_mode(data[0]);
     const auto scale_value = decode_scale(data[1]);
-    const auto scale = *bmd::DecimalScale::create(scale_value);
+    const auto scale_result = bmd::DecimalScale::create(scale_value);
+    if (!scale_result.has_value()) {
+        std::abort();
+    }
+    const auto scale = scale_result.value();
     const std::string_view text{reinterpret_cast<const char*>(data + 2), size - 2};
 
     switch (mode) {
