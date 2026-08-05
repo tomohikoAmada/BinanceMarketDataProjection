@@ -62,6 +62,11 @@ implementing order-book or market-state logic.
 
 ### Acceptance status
 
+Implementation, unit tests, property tests, and fuzzing are complete. M2 deliberately remains
+**IN PROGRESS — IMPLEMENTED, REVIEW PENDING** until the Draft PR receives external code review
+and the normal merge process finishes. It must not be marked complete from the implementation
+branch.
+
 Implementation, required local checks, and external code review are complete. External code review
 concluded with no blocking correctness findings. M1 is approved for merge and is marked complete.
 
@@ -71,7 +76,7 @@ No order book, price-level map, snapshots, diff application, sequencing, gap/res
 market-state calculations, Protobuf adapter, networking, host runtime, Python binding, symbol
 filters, signed decimals, persistence, threading, logging, strategy, or trading behavior.
 
-## M2 Order Book Core — IN PROGRESS
+## M2 Order Book Core — IN PROGRESS — IMPLEMENTED, REVIEW PENDING
 
 ### Goal
 
@@ -104,7 +109,7 @@ persistence, or trading behavior.
 2. **M1 Numeric and Domain Primitives — COMPLETE** — Fixed-point
    types, quantity/price representation, decimal parsing, exact formatting, property tests, and fuzz
    validation.
-3. **M2 Order Book Core — IN PROGRESS** — Deterministic book storage, level management, depth operations.
+3. **M2 Order Book Core — IN PROGRESS — IMPLEMENTED, REVIEW PENDING** — Deterministic book storage, level management, depth operations.
 4. **M3 Sequence and Projection State** — Market-specific sequencing, gap detection, reset logic.
 5. **M4 Snapshots and Protobuf Boundary** — Wire-format adapter outside Core; snapshot production.
 6. **M5 Differential Validation and Performance** — Replay/differential/fuzz validation; benchmark

@@ -1,7 +1,7 @@
 # BinanceMarketDataProjection
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
-market-data projection core. The current state is **M1 Numeric and Domain Primitives — COMPLETE, M2 Order Book Core — IN PROGRESS**. The library exposes stable project/version metadata and exact numeric
+market-data projection core. The current state is **M1 Numeric and Domain Primitives — COMPLETE, M2 Order Book Core — IN PROGRESS — IMPLEMENTED, REVIEW PENDING**. The library exposes stable project/version metadata and exact numeric
 primitives; it does not yet implement projection state.
 
 This is an unofficial project and is not affiliated with, endorsed by, or sponsored by Binance.
