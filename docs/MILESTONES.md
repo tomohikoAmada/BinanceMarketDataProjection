@@ -43,7 +43,7 @@ required CI is green, a Draft PR targets the bootstrap-only `main`, and this sta
 Local clang-tidy may be skipped when the host toolchain lacks it; CI clang-tidy is the mandatory
 gate. The version header is generated from CMake; no hand-maintained duplicate version string exists.
 
-## M1 Numeric and Domain Primitives — IN PROGRESS — IMPLEMENTED, REVIEW PENDING
+## M1 Numeric and Domain Primitives — COMPLETE
 
 ### Goal
 
@@ -62,9 +62,8 @@ implementing order-book or market-state logic.
 
 ### Acceptance status
 
-Implementation and required local checks are complete. M1 deliberately remains **IN PROGRESS —
-IMPLEMENTED, REVIEW PENDING** until the Draft PR receives external code review and the normal merge
-process finishes. It must not be marked complete from the implementation branch.
+Implementation, required local checks, and external code review are complete. External code review
+concluded with no blocking correctness findings. M1 is approved for merge and is marked complete.
 
 ### Non-goals
 
@@ -75,7 +74,7 @@ filters, signed decimals, persistence, threading, logging, strategy, or trading 
 ## Development map
 
 1. **M0 Repository Foundation** — Build, test, installation, CI, and governance baseline.
-2. **M1 Numeric and Domain Primitives — IN PROGRESS — IMPLEMENTED, REVIEW PENDING** — Fixed-point
+2. **M1 Numeric and Domain Primitives — COMPLETE** — Fixed-point
    types, quantity/price representation, decimal parsing, exact formatting, property tests, and fuzz
    validation.
 3. **M2 Order Book Core** — Deterministic book storage, level management, depth operations.
