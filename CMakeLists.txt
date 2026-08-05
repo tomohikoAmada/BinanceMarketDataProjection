@@ -48,7 +48,12 @@ function(bmd_projection_apply_project_options target)
     bmd_projection_enable_coverage(${target})
 endfunction()
 
-add_library(bmd_projection_core src/version.cpp)
+add_library(
+    bmd_projection_core
+    src/numeric/decimal_format.cpp
+    src/numeric/decimal_parse.cpp
+    src/version.cpp
+)
 add_library(BinanceMarketDataProjection::Core ALIAS bmd_projection_core)
 
 set_target_properties(
