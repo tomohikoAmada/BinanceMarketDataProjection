@@ -69,7 +69,9 @@ class ReferenceOrderBook final {
         if (limit == 0)
             return {};
         const auto& src = (side == bmd::BookSide::Bid) ? bids_ : asks_;
-        return std::vector<bmd::BookLevel>(src.begin(), src.begin() + std::min(limit, src.size()));
+        return std::vector<bmd::BookLevel>(
+            src.begin(),
+            src.begin() + static_cast<LevelVec::difference_type>(std::min(limit, src.size())));
     }
 
   private:
