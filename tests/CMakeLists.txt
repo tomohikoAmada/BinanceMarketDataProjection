@@ -2,8 +2,16 @@ find_package(GTest CONFIG REQUIRED)
 
 add_executable(
     bmd_projection_tests
-    version_test.cpp
+    numeric/decimal_format_test.cpp
+    numeric/decimal_overflow_test.cpp
+    numeric/decimal_parse_invalid_test.cpp
+    numeric/decimal_parse_valid_test.cpp
+    numeric/decimal_property_test.cpp
+    numeric/decimal_roundtrip_test.cpp
+    numeric/decimal_scale_test.cpp
+    numeric/units_test.cpp
     public_header_test.cpp
+    version_test.cpp
 )
 
 target_link_libraries(
@@ -27,6 +35,13 @@ add_library(
     bmd_projection_public_header_self_containment
     OBJECT
     public_header_compile_test.cpp
+    public_headers/numeric/decimal_error_compile_test.cpp
+    public_headers/numeric/decimal_format_compile_test.cpp
+    public_headers/numeric/decimal_parse_compile_test.cpp
+    public_headers/numeric/decimal_scale_compile_test.cpp
+    public_headers/numeric/numeric_spec_compile_test.cpp
+    public_headers/numeric/price_units_compile_test.cpp
+    public_headers/numeric/quantity_units_compile_test.cpp
 )
 target_link_libraries(
     bmd_projection_public_header_self_containment
