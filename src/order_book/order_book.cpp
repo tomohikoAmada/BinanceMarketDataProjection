@@ -1,6 +1,7 @@
 #include <binance_market_data/projection/v1/order_book/order_book.hpp>
 
 #include <functional>
+#include <limits>
 #include <map>
 
 namespace binance_market_data::projection::v1 {
