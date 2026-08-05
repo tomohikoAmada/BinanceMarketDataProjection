@@ -1,6 +1,6 @@
 # ADR-0002: Fixed-Point Internal Representation
 
-- Status: PROPOSED
+- Status: ACCEPTED
 - Date: 2026-08-05
 
 ## Context
@@ -9,7 +9,7 @@ Contract boundaries represent decimal prices and quantities as strings. Projecti
 keys must be exact and deterministic across live and replay environments. Contracts preserve
 trailing zeroes and do not impose Projection's internal scale or range limits.
 
-## Proposed direction
+## Decision
 
 Translate validated decimal strings at the boundary into distinct, strongly typed signed 64-bit
 `PriceUnits` and `QuantityUnits`. Keep price and quantity scales in an explicit, caller-supplied
@@ -58,8 +58,9 @@ filter contract, and inventing one would expand the milestone. A future scale-ra
 accepted inputs, storage compatibility, and downstream assumptions and therefore cannot be made
 silently.
 
-## Acceptance condition
+## Verification
 
-This ADR remains PROPOSED until the M1 implementation, boundary tests, property tests, fuzz smoke,
-and installed-consumer verification pass. It becomes ACCEPTED only in the final documentation
-commit; M1 itself remains in progress pending external review.
+The M1 implementation, boundary and roundtrip tests, 20,000 deterministic property cases, sanitizer
+configurations, fuzz harness and blocking smoke job, and installed-consumer verification implement
+this decision. The ADR is accepted; the M1 milestone itself remains in progress pending external
+review.

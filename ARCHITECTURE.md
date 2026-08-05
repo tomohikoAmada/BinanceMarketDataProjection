@@ -4,7 +4,7 @@
 
 BinanceMarketDataProjection is intended to be a strategy-independent, deterministic, replayable,
 single-writer, embedded C++20 library. Live ingestion and historical replay will invoke the same
-core logic. M0 contains only repository infrastructure and version metadata.
+core logic. M1 adds exact numeric and domain primitives but no order book or projection state.
 
 ## Explicit non-responsibilities
 
@@ -22,7 +22,7 @@ Projection Domain Types
 Projection Core
 ```
 
-The adapter is planned for M4 and does not exist in M0.
+The adapter is planned for M4 and does not exist in M1.
 
 ## Runtime context
 
@@ -31,12 +31,12 @@ Gateway → Projection Core → Snapshot
 History → Projection Core → Snapshot
 ```
 
-The arrows describe future data flow, not M0 implementations.
+The arrows describe future data flow, not M1 implementations.
 
 ## Dependency direction
 
-Core does not depend on Gateway, Recorder, History, Health, View, Control, a Protobuf runtime in M0,
-a logger, or a network library. Its public headers use only the C++ standard library. Test and
+Core does not depend on Gateway, Recorder, History, Health, View, Control, a Protobuf runtime, a
+logger, or a network library. Its public headers use only the C++ standard library. Test and
 benchmark frameworks remain private development dependencies.
 
 ## Thread model
