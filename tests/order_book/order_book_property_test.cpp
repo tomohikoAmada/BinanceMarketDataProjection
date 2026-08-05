@@ -39,7 +39,8 @@ class PseudoRandomGenerator final {
     [[nodiscard]] Quantity next_quantity() { return static_cast<Quantity>(next() % 4097); }
 
     [[nodiscard]] std::size_t next_size_t(std::size_t limit) {
-        if (limit == 0) return 0;
+        if (limit == 0)
+            return 0;
         return static_cast<std::size_t>(next() % limit);
     }
 
@@ -93,8 +94,8 @@ const char* op_name(OpType type) {
 }
 
 [[nodiscard]] std::string failure_context(const std::string& seed, std::size_t transcript_idx,
-                                           std::size_t op_idx, OpType type, bmd::BookSide side,
-                                           Price price, Quantity quantity) {
+                                          std::size_t op_idx, OpType type, bmd::BookSide side,
+                                          Price price, Quantity quantity) {
     std::ostringstream oss;
     oss << "seed=" << seed << " transcript=" << transcript_idx << " op=" << op_idx
         << " type=" << op_name(type) << " side=" << to_string(side) << " price=" << price
@@ -124,8 +125,7 @@ void verify_no_duplicates(const std::vector<bmd::BookLevel>& levels) {
     }
 }
 
-void verify_consistency(const bmd::OrderBook& book,
-                        const bmd_test::ReferenceOrderBook& reference) {
+void verify_consistency(const bmd::OrderBook& book, const bmd_test::ReferenceOrderBook& reference) {
     EXPECT_EQ(book.level_count(bmd::BookSide::Bid), reference.level_count(bmd::BookSide::Bid));
     EXPECT_EQ(book.level_count(bmd::BookSide::Ask), reference.level_count(bmd::BookSide::Ask));
 
@@ -183,8 +183,8 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
         for (std::size_t op_idx = 0; op_idx < op_count; ++op_idx) {
             const auto op = static_cast<OpType>(rng.next_size_t(12));
 
-            SCOPED_TRACE(failure_context(seed_str, transcript_idx, op_idx, op, bmd::BookSide::Bid,
-                                         0, 0));
+            SCOPED_TRACE(
+                failure_context(seed_str, transcript_idx, op_idx, op, bmd::BookSide::Bid, 0, 0));
 
             switch (op) {
             case OpType::BidInsert: {

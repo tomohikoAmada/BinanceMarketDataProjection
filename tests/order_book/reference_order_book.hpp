@@ -1,9 +1,9 @@
 #pragma once
 
-#include <binance_market_data/projection/v1/order_book/book_level.hpp>
-#include <binance_market_data/projection/v1/order_book/book_side.hpp>
 #include <binance_market_data/projection/v1/numeric/price_units.hpp>
 #include <binance_market_data/projection/v1/numeric/quantity_units.hpp>
+#include <binance_market_data/projection/v1/order_book/book_level.hpp>
+#include <binance_market_data/projection/v1/order_book/book_side.hpp>
 
 #include <algorithm>
 #include <functional>
@@ -51,7 +51,7 @@ class ReferenceOrderBook final {
     [[nodiscard]] std::size_t
     level_count(binance_market_data::projection::v1::BookSide side) const noexcept {
         return side == binance_market_data::projection::v1::BookSide::Bid ? bids_.size()
-                                                                           : asks_.size();
+                                                                          : asks_.size();
     }
 
     [[nodiscard]] std::optional<binance_market_data::projection::v1::BookLevel>
@@ -73,9 +73,8 @@ class ReferenceOrderBook final {
     [[nodiscard]] std::optional<binance_market_data::projection::v1::QuantityUnits>
     quantity_at(binance_market_data::projection::v1::BookSide side,
                 const binance_market_data::projection::v1::PriceUnits price) const {
-        const auto& levels = side == binance_market_data::projection::v1::BookSide::Bid
-                                 ? bids_
-                                 : asks_;
+        const auto& levels =
+            side == binance_market_data::projection::v1::BookSide::Bid ? bids_ : asks_;
         const auto it = find_level(levels, price);
         if (it == levels.end()) {
             return std::nullopt;
@@ -97,14 +96,13 @@ class ReferenceOrderBook final {
     using PriceUnits = binance_market_data::projection::v1::PriceUnits;
     using LevelVector = std::vector<BookLevel>;
 
-    [[nodiscard]] LevelVector::iterator find_level(LevelVector& levels,
-                                                    const PriceUnits price) {
+    [[nodiscard]] LevelVector::iterator find_level(LevelVector& levels, const PriceUnits price) {
         return std::find_if(levels.begin(), levels.end(),
                             [&](const BookLevel& level) { return level.price == price; });
     }
 
     [[nodiscard]] LevelVector::const_iterator find_level(const LevelVector& levels,
-                                                          const PriceUnits price) const {
+                                                         const PriceUnits price) const {
         return std::find_if(levels.begin(), levels.end(),
                             [&](const BookLevel& level) { return level.price == price; });
     }
@@ -113,14 +111,10 @@ class ReferenceOrderBook final {
         auto& levels = side == BookSide::Bid ? bids_ : asks_;
         if (side == BookSide::Bid) {
             std::sort(levels.begin(), levels.end(),
-                      [](const BookLevel& a, const BookLevel& b) {
-                          return b.price < a.price;
-                      });
+                      [](const BookLevel& a, const BookLevel& b) { return b.price < a.price; });
         } else {
             std::sort(levels.begin(), levels.end(),
-                      [](const BookLevel& a, const BookLevel& b) {
-                          return a.price < b.price;
-                      });
+                      [](const BookLevel& a, const BookLevel& b) { return a.price < b.price; });
         }
     }
 

@@ -47,7 +47,7 @@ class OrderBook::Impl final {
     }
 
     [[nodiscard]] std::optional<QuantityUnits> quantity_at(BookSide side,
-                                                            PriceUnits price) const noexcept {
+                                                           PriceUnits price) const noexcept {
         if (side == BookSide::Bid) {
             const auto it = bids_.find(price);
             if (it != bids_.end()) {
@@ -142,7 +142,7 @@ class OrderBook::Impl final {
     }
 
     [[nodiscard]] LevelChange apply_insert_or_update(BookSide side, PriceUnits price,
-                                                      QuantityUnits quantity) {
+                                                     QuantityUnits quantity) {
         if (side == BookSide::Bid) {
             const auto it = bids_.find(price);
             if (it == bids_.end()) {
@@ -191,8 +191,7 @@ class OrderBook::Impl final {
     AskMap asks_;
 };
 
-OrderBook::OrderBook(NumericSpec numeric_spec)
-    : impl_(std::make_unique<Impl>(numeric_spec)) {}
+OrderBook::OrderBook(NumericSpec numeric_spec) : impl_(std::make_unique<Impl>(numeric_spec)) {}
 
 OrderBook::~OrderBook() = default;
 
@@ -214,7 +213,7 @@ std::optional<BookLevel> OrderBook::best_bid() const noexcept { return impl_->be
 std::optional<BookLevel> OrderBook::best_ask() const noexcept { return impl_->best_ask(); }
 
 std::optional<QuantityUnits> OrderBook::quantity_at(BookSide side,
-                                                     PriceUnits price) const noexcept {
+                                                    PriceUnits price) const noexcept {
     return impl_->quantity_at(side, price);
 }
 
@@ -238,6 +237,8 @@ std::vector<BookLevel> OrderBook::top_levels(BookSide side, std::size_t limit) c
     return impl_->top_levels(side, limit);
 }
 
-std::vector<BookLevel> OrderBook::all_levels(BookSide side) const { return impl_->all_levels(side); }
+std::vector<BookLevel> OrderBook::all_levels(BookSide side) const {
+    return impl_->all_levels(side);
+}
 
 } // namespace binance_market_data::projection::v1

@@ -61,8 +61,7 @@ int main() {
     }
 
     const auto best_ask = book.best_ask();
-    if (!best_ask.has_value() || best_ask->price != *ask_price ||
-        best_ask->quantity != *ask_qty) {
+    if (!best_ask.has_value() || best_ask->price != *ask_price || best_ask->quantity != *ask_qty) {
         return 10;
     }
 
@@ -78,8 +77,7 @@ int main() {
 
     bmd::BookLevel crossed_bid{*bmd::PriceUnits::create(100000000),
                                *bmd::QuantityUnits::create(10)};
-    bmd::BookLevel crossed_ask{*bmd::PriceUnits::create(99000000),
-                               *bmd::QuantityUnits::create(20)};
+    bmd::BookLevel crossed_ask{*bmd::PriceUnits::create(99000000), *bmd::QuantityUnits::create(20)};
     const std::vector<bmd::BookLevel> crossed_bids{crossed_bid};
     const std::vector<bmd::BookLevel> crossed_asks{crossed_ask};
     book.replace_all(crossed_bids, crossed_asks);

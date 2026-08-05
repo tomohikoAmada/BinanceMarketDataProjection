@@ -62,8 +62,8 @@ class OrderBook final {
 
     [[nodiscard]] std::optional<BookLevel> best_ask() const noexcept;
 
-    [[nodiscard]] std::optional<QuantityUnits>
-    quantity_at(BookSide side, PriceUnits price) const noexcept;
+    [[nodiscard]] std::optional<QuantityUnits> quantity_at(BookSide side,
+                                                           PriceUnits price) const noexcept;
 
     [[nodiscard]] LevelChange apply_level(BookSide side, PriceUnits price, QuantityUnits quantity);
 
