@@ -7,8 +7,8 @@ relevant files under `docs/adr/`.
   and CMake files belong under ignored build/cache directories.
 - Do not add networking, storage, threads, system-time reads, logging, or host runtime concerns to
   Core.
-- Do not implement a later milestone early. M1 contains numeric and domain primitives only; it has
-  no order-book or projection-state logic.
+- Do not implement a later milestone early. M2 implements the order book core only; it has no
+  sequencing, snapshot, protobuf, or projection-state logic.
 - Every public API change requires tests and documentation.
 - Never represent price or quantity with floating-point types.
 - Do not copy Contracts protobuf definitions into this repository.
