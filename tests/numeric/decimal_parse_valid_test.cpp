@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -24,6 +25,47 @@ struct ValidCase final {
     std::size_t source_fraction_digits;
 };
 
+void expect_valid_price(const ValidCase& test_case) {
+    const auto scale = bmd_test::scale(test_case.scale);
+    const auto result = bmd::parse_price(test_case.text, scale);
+    const auto* parsed = std::get_if<bmd::ParsedDecimal<bmd::PriceUnits>>(&result);
+    if (parsed == nullptr) {
+        ADD_FAILURE() << "price parse failed";
+        return;
+    }
+
+    EXPECT_EQ(parsed->value.value(), test_case.units);
+    EXPECT_EQ(parsed->source_fraction_digits, test_case.source_fraction_digits);
+    const auto formatted = bmd::format_price(parsed->value, scale, parsed->source_fraction_digits);
+    const auto* text = std::get_if<std::string>(&formatted);
+    if (text == nullptr) {
+        ADD_FAILURE() << "price format failed";
+        return;
+    }
+    EXPECT_EQ(*text, test_case.text);
+}
+
+void expect_valid_quantity(const ValidCase& test_case) {
+    const auto scale = bmd_test::scale(test_case.scale);
+    const auto result = bmd::parse_quantity(test_case.text, scale);
+    const auto* parsed = std::get_if<bmd::ParsedDecimal<bmd::QuantityUnits>>(&result);
+    if (parsed == nullptr) {
+        ADD_FAILURE() << "quantity parse failed";
+        return;
+    }
+
+    EXPECT_EQ(parsed->value.value(), test_case.units);
+    EXPECT_EQ(parsed->source_fraction_digits, test_case.source_fraction_digits);
+    const auto formatted =
+        bmd::format_quantity(parsed->value, scale, parsed->source_fraction_digits);
+    const auto* text = std::get_if<std::string>(&formatted);
+    if (text == nullptr) {
+        ADD_FAILURE() << "quantity format failed";
+        return;
+    }
+    EXPECT_EQ(*text, test_case.text);
+}
+
 } // namespace
 
 static_assert(
@@ -34,50 +76,30 @@ static_assert(std::is_nothrow_invocable_v<decltype(&bmd::parse_positive_quantity
                                           bmd::DecimalScale>);
 
 TEST(DecimalParseValidTest, ParsesRequiredPriceBoundaryCasesAndReconstructsSource) {
-    constexpr ValidCase cases[]{
-        {"1", 0, 1, 0},
-        {"1", 8, 100'000'000, 0},
-        {"1.0", 8, 100'000'000, 1},
-        {"1.2300", 2, 123, 4},
-        {"0.00000001", 8, 1, 8},
-        {"9223372036854775807", 0, std::numeric_limits<std::int64_t>::max(), 0},
-        {"9.223372036854775807", 18, std::numeric_limits<std::int64_t>::max(), 18}};
+    constexpr std::array cases{
+        ValidCase{"1", 0, 1, 0},
+        ValidCase{"1", 8, 100'000'000, 0},
+        ValidCase{"1.0", 8, 100'000'000, 1},
+        ValidCase{"1.2300", 2, 123, 4},
+        ValidCase{"0.00000001", 8, 1, 8},
+        ValidCase{"9223372036854775807", 0, std::numeric_limits<std::int64_t>::max(), 0},
+        ValidCase{"9.223372036854775807", 18, std::numeric_limits<std::int64_t>::max(), 18}};
 
     for (const auto& test_case : cases) {
         SCOPED_TRACE(test_case.text);
-        const auto scale = bmd_test::scale(test_case.scale);
-        const auto result = bmd::parse_price(test_case.text, scale);
-        ASSERT_TRUE(std::holds_alternative<bmd::ParsedDecimal<bmd::PriceUnits>>(result));
-        const auto parsed = std::get<bmd::ParsedDecimal<bmd::PriceUnits>>(result);
-        EXPECT_EQ(parsed.value.value(), test_case.units);
-        EXPECT_EQ(parsed.source_fraction_digits, test_case.source_fraction_digits);
-        const auto formatted =
-            bmd::format_price(parsed.value, scale, parsed.source_fraction_digits);
-        ASSERT_TRUE(std::holds_alternative<std::string>(formatted));
-        EXPECT_EQ(std::get<std::string>(formatted), test_case.text);
+        expect_valid_price(test_case);
     }
 }
 
 TEST(DecimalParseValidTest, ParsesRequiredQuantityBoundaryCasesAndReconstructsSource) {
-    constexpr ValidCase cases[]{
-        {"0", 0, 0, 0},
-        {"0", 8, 0, 0},
-        {"0.0000", 2, 0, 4},
-        {"1.2300", 2, 123, 4},
-        {"9223372036854775807", 0, std::numeric_limits<std::int64_t>::max(), 0}};
+    constexpr std::array cases{
+        ValidCase{"0", 0, 0, 0}, ValidCase{"0", 8, 0, 0}, ValidCase{"0.0000", 2, 0, 4},
+        ValidCase{"1.2300", 2, 123, 4},
+        ValidCase{"9223372036854775807", 0, std::numeric_limits<std::int64_t>::max(), 0}};
 
     for (const auto& test_case : cases) {
         SCOPED_TRACE(test_case.text);
-        const auto scale = bmd_test::scale(test_case.scale);
-        const auto result = bmd::parse_quantity(test_case.text, scale);
-        ASSERT_TRUE(std::holds_alternative<bmd::ParsedDecimal<bmd::QuantityUnits>>(result));
-        const auto parsed = std::get<bmd::ParsedDecimal<bmd::QuantityUnits>>(result);
-        EXPECT_EQ(parsed.value.value(), test_case.units);
-        EXPECT_EQ(parsed.source_fraction_digits, test_case.source_fraction_digits);
-        const auto formatted =
-            bmd::format_quantity(parsed.value, scale, parsed.source_fraction_digits);
-        ASSERT_TRUE(std::holds_alternative<std::string>(formatted));
-        EXPECT_EQ(std::get<std::string>(formatted), test_case.text);
+        expect_valid_quantity(test_case);
     }
 }
 

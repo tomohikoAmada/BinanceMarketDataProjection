@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -22,26 +23,26 @@ struct InvalidCase final {
 } // namespace
 
 TEST(DecimalParseInvalidTest, RejectsEveryExplicitContractsSyntaxExample) {
-    constexpr InvalidCase cases[]{{"", bmd::DecimalErrorCode::Empty, bmd::kNoErrorOffset},
-                                  {" ", bmd::DecimalErrorCode::InvalidSyntax, 0},
-                                  {" 1", bmd::DecimalErrorCode::InvalidSyntax, 0},
-                                  {"1 ", bmd::DecimalErrorCode::InvalidSyntax, 1},
-                                  {"+1", bmd::DecimalErrorCode::SignNotAllowed, 0},
-                                  {"-1", bmd::DecimalErrorCode::SignNotAllowed, 0},
-                                  {"-0", bmd::DecimalErrorCode::SignNotAllowed, 0},
-                                  {"-0.0", bmd::DecimalErrorCode::SignNotAllowed, 0},
-                                  {".5", bmd::DecimalErrorCode::InvalidSyntax, 0},
-                                  {"1.", bmd::DecimalErrorCode::MissingFractionDigits, 1},
-                                  {"01", bmd::DecimalErrorCode::LeadingZero, 1},
-                                  {"00.1", bmd::DecimalErrorCode::LeadingZero, 1},
-                                  {"0001.20", bmd::DecimalErrorCode::LeadingZero, 1},
-                                  {"1e3", bmd::DecimalErrorCode::InvalidSyntax, 1},
-                                  {"1E3", bmd::DecimalErrorCode::InvalidSyntax, 1},
-                                  {"NaN", bmd::DecimalErrorCode::InvalidSyntax, 0},
-                                  {"Infinity", bmd::DecimalErrorCode::InvalidSyntax, 0},
-                                  {"-Infinity", bmd::DecimalErrorCode::SignNotAllowed, 0},
-                                  {"1..0", bmd::DecimalErrorCode::InvalidSyntax, 2},
-                                  {"1,2", bmd::DecimalErrorCode::InvalidSyntax, 1}};
+    constexpr std::array cases{InvalidCase{"", bmd::DecimalErrorCode::Empty, bmd::kNoErrorOffset},
+                               InvalidCase{" ", bmd::DecimalErrorCode::InvalidSyntax, 0},
+                               InvalidCase{" 1", bmd::DecimalErrorCode::InvalidSyntax, 0},
+                               InvalidCase{"1 ", bmd::DecimalErrorCode::InvalidSyntax, 1},
+                               InvalidCase{"+1", bmd::DecimalErrorCode::SignNotAllowed, 0},
+                               InvalidCase{"-1", bmd::DecimalErrorCode::SignNotAllowed, 0},
+                               InvalidCase{"-0", bmd::DecimalErrorCode::SignNotAllowed, 0},
+                               InvalidCase{"-0.0", bmd::DecimalErrorCode::SignNotAllowed, 0},
+                               InvalidCase{".5", bmd::DecimalErrorCode::InvalidSyntax, 0},
+                               InvalidCase{"1.", bmd::DecimalErrorCode::MissingFractionDigits, 1},
+                               InvalidCase{"01", bmd::DecimalErrorCode::LeadingZero, 1},
+                               InvalidCase{"00.1", bmd::DecimalErrorCode::LeadingZero, 1},
+                               InvalidCase{"0001.20", bmd::DecimalErrorCode::LeadingZero, 1},
+                               InvalidCase{"1e3", bmd::DecimalErrorCode::InvalidSyntax, 1},
+                               InvalidCase{"1E3", bmd::DecimalErrorCode::InvalidSyntax, 1},
+                               InvalidCase{"NaN", bmd::DecimalErrorCode::InvalidSyntax, 0},
+                               InvalidCase{"Infinity", bmd::DecimalErrorCode::InvalidSyntax, 0},
+                               InvalidCase{"-Infinity", bmd::DecimalErrorCode::SignNotAllowed, 0},
+                               InvalidCase{"1..0", bmd::DecimalErrorCode::InvalidSyntax, 2},
+                               InvalidCase{"1,2", bmd::DecimalErrorCode::InvalidSyntax, 1}};
 
     for (const auto& test_case : cases) {
         SCOPED_TRACE(test_case.text);
