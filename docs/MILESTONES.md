@@ -46,8 +46,8 @@ gate. The version header is generated from CMake; no hand-maintained duplicate v
 ## Development map
 
 1. **M0 Repository Foundation** — Build, test, installation, CI, and governance baseline.
-2. **M1 Numeric and Domain Primitives** — Fixed-point types, quantity/price representation, decimal
-   parsing.
+2. **M1 Numeric and Domain Primitives — IN PROGRESS** — Fixed-point types, quantity/price
+   representation, decimal parsing, exact formatting, property tests, and fuzz validation.
 3. **M2 Order Book Core** — Deterministic book storage, level management, depth operations.
 4. **M3 Sequence and Projection State** — Market-specific sequencing, gap detection, reset logic.
 5. **M4 Snapshots and Protobuf Boundary** — Wire-format adapter outside Core; snapshot production.
