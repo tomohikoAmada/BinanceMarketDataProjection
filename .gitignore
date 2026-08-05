@@ -10,3 +10,5 @@ Testing/
 *.gcno
 coverage.info
 .DS_Store
+__pycache__/
+*.pyc
