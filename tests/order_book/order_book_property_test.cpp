@@ -40,8 +40,9 @@ class PseudoRandomGenerator final {
     [[nodiscard]] Quantity next_quantity() { return static_cast<Quantity>(next() % 4097); }
 
     [[nodiscard]] std::size_t next_size_t(std::size_t limit) {
-        if (limit == 0)
+        if (limit == 0) {
             return 0;
+        }
         return static_cast<std::size_t>(next() % limit);
     }
 
@@ -158,6 +159,7 @@ void verify_no_duplicates(const std::vector<bmd::BookLevel>& levels) {
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void verify_consistency(const bmd::OrderBook& book, const bmd_test::ReferenceOrderBook& reference) {
     EXPECT_EQ(book.level_count(bmd::BookSide::Bid), reference.level_count(bmd::BookSide::Bid));
     EXPECT_EQ(book.level_count(bmd::BookSide::Ask), reference.level_count(bmd::BookSide::Ask));

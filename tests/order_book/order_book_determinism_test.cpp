@@ -20,7 +20,7 @@ class OrderBookDeterminismTest : public ::testing::Test {
     using Transcript = std::vector<bmd::LevelUpdate>;
 
     // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
-    Transcript build_transcript() {
+    static Transcript build_transcript() {
         // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
         return {
             // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
