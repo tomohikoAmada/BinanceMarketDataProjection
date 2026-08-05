@@ -1,6 +1,6 @@
 # Milestones
 
-## M0 Repository Foundation — COMPLETE
+## M0 Repository Foundation — IN PROGRESS
 
 ### Scope
 
@@ -35,6 +35,10 @@ Python binding, persistence, Gateway/History runtime, strategy, risk, or trading
 All M0 deliverables are committed to `feat/m0-repository-foundation`, local mandatory checks pass,
 required CI is green, a Draft PR targets the bootstrap-only `main`, and this status is changed to
 `COMPLETE` in a separate final commit followed by another green CI run.
+
+Current acceptance note: required GitHub Actions checks pass, including clang-tidy. The repository's
+complete local `scripts/verify.sh` gate remains pending because the current macOS host has no
+`clang-tidy` executable and the M0 download policy forbids installing one from an additional source.
 
 ## Development map
 
