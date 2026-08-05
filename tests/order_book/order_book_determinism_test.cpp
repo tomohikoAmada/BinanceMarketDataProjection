@@ -9,9 +9,11 @@
 #include <cstdint>
 #include <vector>
 
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
 namespace bmd = binance_market_data::projection::v1;
 
 class OrderBookDeterminismTest : public ::testing::Test {
+    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
   protected:
     bmd::NumericSpec spec_{bmd_test::scale(8), bmd_test::scale(8)};
 
@@ -61,3 +63,5 @@ TEST_F(OrderBookDeterminismTest, CheckpointsAreIdentical) {
         EXPECT_EQ(book1.all_levels(bmd::BookSide::Ask), book2.all_levels(bmd::BookSide::Ask));
     }
 }
+
+// NOLINTEND(bugprone-unchecked-optional-access)

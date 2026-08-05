@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
 namespace bmd = binance_market_data::projection::v1;
 
 namespace {
@@ -453,3 +454,5 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
         }
     }
 }
+
+// NOLINTEND(bugprone-unchecked-optional-access)

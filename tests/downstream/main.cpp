@@ -8,6 +8,8 @@
 #include <string>
 #include <variant>
 
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
+
 int main() {
     namespace bmd = binance_market_data::projection::v1;
 
@@ -91,3 +93,5 @@ int main() {
     std::cout << "consumer-ok\n";
     return 0;
 }
+
+// NOLINTEND(bugprone-unchecked-optional-access)

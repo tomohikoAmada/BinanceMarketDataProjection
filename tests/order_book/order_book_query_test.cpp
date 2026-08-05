@@ -9,6 +9,7 @@
 namespace bmd = binance_market_data::projection::v1;
 
 class OrderBookQueryTest : public ::testing::Test {
+    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
   protected:
     bmd::NumericSpec spec_{bmd_test::scale(8), bmd_test::scale(8)};
     bmd::OrderBook book_{spec_};

@@ -5,13 +5,16 @@
 
 #include <gtest/gtest.h>
 
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
 namespace bmd = binance_market_data::projection::v1;
 
 class OrderBookUpdateTest : public ::testing::Test {
+    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
   protected:
     bmd::NumericSpec spec_{bmd_test::scale(8), bmd_test::scale(8)};
     bmd::OrderBook book_{spec_};
 
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     void apply_and_verify(bmd::BookSide side, std::int64_t price_raw, std::int64_t quantity_raw,
                           bmd::LevelChange expected_change) {
         const auto price = bmd_test::price_units(price_raw);
@@ -97,3 +100,5 @@ TEST_F(OrderBookUpdateTest, QuantityAtReturnsNulloptForMissingPrice) {
     EXPECT_EQ(book_.quantity_at(bmd::BookSide::Bid, bmd_test::price_units(100))->value(), 5);
     EXPECT_FALSE(book_.quantity_at(bmd::BookSide::Bid, bmd_test::price_units(200)).has_value());
 }
+
+// NOLINTEND(bugprone-unchecked-optional-access)

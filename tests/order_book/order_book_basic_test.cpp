@@ -11,6 +11,7 @@
 #include <limits>
 #include <type_traits>
 
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
 namespace bmd = binance_market_data::projection::v1;
 
 static_assert(std::is_trivially_copyable_v<bmd::BookLevel>);
@@ -24,6 +25,7 @@ static_assert(std::is_move_constructible_v<bmd::OrderBook>);
 static_assert(std::is_move_assignable_v<bmd::OrderBook>);
 
 class OrderBookBasicTest : public ::testing::Test {
+    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
   protected:
     bmd::NumericSpec spec_{bmd_test::scale(8), bmd_test::scale(8)};
     bmd::OrderBook book_{spec_};
@@ -158,3 +160,5 @@ TEST_F(OrderBookBasicTest, NumericSpec_0_And_18_Boundary) {
                                             bmd_test::quantity_units(1000)));
     EXPECT_EQ(wide_book.level_count(bmd::BookSide::Ask), 1);
 }
+
+// NOLINTEND(bugprone-unchecked-optional-access)

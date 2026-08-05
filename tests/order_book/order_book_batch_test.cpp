@@ -7,9 +7,11 @@
 #include <array>
 #include <cstdint>
 
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
 namespace bmd = binance_market_data::projection::v1;
 
 class OrderBookBatchTest : public ::testing::Test {
+    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
   protected:
     bmd::NumericSpec spec_{bmd_test::scale(8), bmd_test::scale(8)};
     bmd::OrderBook book_{spec_};
@@ -99,3 +101,5 @@ TEST_F(OrderBookBatchTest, BatchEquivalentToSequential) {
     EXPECT_EQ(book_.all_levels(bmd::BookSide::Bid), book2.all_levels(bmd::BookSide::Bid));
     EXPECT_EQ(book_.all_levels(bmd::BookSide::Ask), book2.all_levels(bmd::BookSide::Ask));
 }
+
+// NOLINTEND(bugprone-unchecked-optional-access)

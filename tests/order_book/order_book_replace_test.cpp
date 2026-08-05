@@ -8,9 +8,11 @@
 #include <cstdint>
 #include <vector>
 
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
 namespace bmd = binance_market_data::projection::v1;
 
 class OrderBookReplaceTest : public ::testing::Test {
+    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
   protected:
     bmd::NumericSpec spec_{bmd_test::scale(8), bmd_test::scale(8)};
     bmd::OrderBook book_{spec_};
@@ -137,3 +139,5 @@ TEST_F(OrderBookReplaceTest, NumericSpecUnchanged) {
     EXPECT_EQ(book_.numeric_spec().price_scale.value(), 8);
     EXPECT_EQ(book_.numeric_spec().quantity_scale.value(), 8);
 }
+
+// NOLINTEND(bugprone-unchecked-optional-access)

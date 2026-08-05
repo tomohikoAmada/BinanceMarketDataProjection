@@ -4,9 +4,11 @@
 
 #include <gtest/gtest.h>
 
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
 namespace bmd = binance_market_data::projection::v1;
 
 class OrderBookCrossedTest : public ::testing::Test {
+    // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
   protected:
     bmd::NumericSpec spec_{bmd_test::scale(8), bmd_test::scale(8)};
     bmd::OrderBook book_{spec_};
@@ -48,3 +50,5 @@ TEST_F(OrderBookCrossedTest, CrossedAfterUpdateIsAccepted) {
                                         bmd_test::quantity_units(2)));
     EXPECT_GT(book_.best_bid().value().price.value(), book_.best_ask().value().price.value());
 }
+
+// NOLINTEND(bugprone-unchecked-optional-access)

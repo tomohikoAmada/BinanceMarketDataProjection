@@ -94,11 +94,11 @@ class ReferenceOrderBook final {
     top_levels(binance_market_data::projection::v1::BookSide side, std::size_t limit) const {
         const auto& src =
             side == binance_market_data::projection::v1::BookSide::Bid ? bids_ : asks_;
-        if (limit == 0 || src.empty())
+        if (limit == 0 || src.empty()) {
             return {};
-        return std::vector<BookLevel>(
-            src.begin(),
-            src.begin() + static_cast<LevelVector::difference_type>(std::min(limit, src.size())));
+        }
+        return {src.begin(), src.begin() + static_cast<LevelVector::difference_type>(
+                                               std::min(limit, src.size()))};
     }
 
   private:
@@ -107,15 +107,16 @@ class ReferenceOrderBook final {
     using PriceUnits = binance_market_data::projection::v1::PriceUnits;
     using LevelVector = std::vector<BookLevel>;
 
-    [[nodiscard]] LevelVector::iterator find_level(LevelVector& levels, const PriceUnits price) {
+    [[nodiscard]] static LevelVector::iterator find_level(LevelVector& levels,
+                                                          const PriceUnits price) {
         return std::find_if(levels.begin(), levels.end(),
-                            [&](const BookLevel& level) { return level.price == price; });
+                            [&price](const BookLevel& level) { return level.price == price; });
     }
 
-    [[nodiscard]] LevelVector::const_iterator find_level(const LevelVector& levels,
-                                                         const PriceUnits price) const {
+    [[nodiscard]] static LevelVector::const_iterator find_level(const LevelVector& levels,
+                                                                const PriceUnits price) {
         return std::find_if(levels.begin(), levels.end(),
-                            [&](const BookLevel& level) { return level.price == price; });
+                            [&price](const BookLevel& level) { return level.price == price; });
     }
 
     void sort_side(BookSide side) {
