@@ -10,6 +10,15 @@ add_executable(
     numeric/decimal_roundtrip_test.cpp
     numeric/decimal_scale_test.cpp
     numeric/units_test.cpp
+    order_book/book_side_test.cpp
+    order_book/order_book_basic_test.cpp
+    order_book/order_book_update_test.cpp
+    order_book/order_book_batch_test.cpp
+    order_book/order_book_replace_test.cpp
+    order_book/order_book_query_test.cpp
+    order_book/order_book_crossed_test.cpp
+    order_book/order_book_determinism_test.cpp
+    order_book/order_book_property_test.cpp
     public_header_test.cpp
     version_test.cpp
 )
@@ -42,6 +51,10 @@ add_library(
     public_headers/numeric/numeric_spec_compile_test.cpp
     public_headers/numeric/price_units_compile_test.cpp
     public_headers/numeric/quantity_units_compile_test.cpp
+    public_headers/order_book/book_side_compile_test.cpp
+    public_headers/order_book/book_level_compile_test.cpp
+    public_headers/order_book/level_update_compile_test.cpp
+    public_headers/order_book/order_book_compile_test.cpp
 )
 target_link_libraries(
     bmd_projection_public_header_self_containment
