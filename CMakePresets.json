@@ -80,6 +80,17 @@
         "BMD_PROJECTION_BUILD_TESTS": "OFF",
         "BMD_PROJECTION_BUILD_BENCHMARKS": "ON"
       }
+    },
+    {
+      "name": "fuzz",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/fuzz/cmake",
+      "toolchainFile": "${sourceDir}/build/fuzz/build/Debug/generators/conan_toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BMD_PROJECTION_BUILD_TESTS": "OFF",
+        "BMD_PROJECTION_BUILD_FUZZERS": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -89,7 +100,8 @@
     { "name": "ubsan", "configurePreset": "ubsan" },
     { "name": "tsan", "configurePreset": "tsan" },
     { "name": "coverage", "configurePreset": "coverage" },
-    { "name": "benchmark", "configurePreset": "benchmark" }
+    { "name": "benchmark", "configurePreset": "benchmark" },
+    { "name": "fuzz", "configurePreset": "fuzz" }
   ],
   "testPresets": [
     { "name": "debug", "configurePreset": "debug", "output": { "outputOnFailure": true } },

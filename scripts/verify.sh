@@ -60,4 +60,5 @@ scripts/build.sh benchmark
     --benchmark_out="$repo_root/build/benchmark/foundation-benchmark.json"
 
 scripts/install-consumer-test.sh
+scripts/fuzz-smoke.sh
 git diff --check

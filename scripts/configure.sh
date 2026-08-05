@@ -6,7 +6,7 @@ export CONAN_HOME="$repo_root/.cache/conan2"
 export PIP_CACHE_DIR="$repo_root/.cache/pip"
 
 if [[ $# -lt 1 ]]; then
-    echo "usage: $0 {debug|release|asan|ubsan|tsan|coverage|benchmark} [cmake args...]" >&2
+    echo "usage: $0 {debug|release|asan|ubsan|tsan|coverage|benchmark|fuzz} [cmake args...]" >&2
     exit 2
 fi
 
@@ -14,7 +14,7 @@ preset="$1"
 shift
 
 case "$preset" in
-    debug|asan|ubsan|tsan|coverage)
+    debug|asan|ubsan|tsan|coverage|fuzz)
         build_type="Debug"
         ;;
     release|benchmark)
