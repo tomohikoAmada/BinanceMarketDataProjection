@@ -1,0 +1,12 @@
+.venv-tools/
+.cache/
+build/
+CMakeUserPresets.json
+compile_commands.json
+Testing/
+*.profraw
+*.profdata
+*.gcda
+*.gcno
+coverage.info
+.DS_Store

@@ -1,0 +1,18 @@
+---
+Checks: >
+  -*,
+  bugprone-*,
+  performance-*,
+  portability-*,
+  modernize-*,
+  readability-*,
+  cppcoreguidelines-*,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers,
+  -readability-identifier-length,
+  -modernize-use-trailing-return-type
+WarningsAsErrors: '*'
+HeaderFilterRegex: '(^|/)(include|src|tests|benchmarks)/'
+FormatStyle: file
+# Magic-number checks are deferred until the numeric domain exists; short identifiers and trailing
+# return types would add noise to this deliberately tiny foundation API.

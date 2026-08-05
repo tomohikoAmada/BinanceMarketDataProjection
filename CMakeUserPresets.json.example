@@ -1,0 +1,13 @@
+{
+  "version": 6,
+  "include": ["CMakePresets.json"],
+  "configurePresets": [
+    {
+      "name": "local-debug",
+      "inherits": "debug",
+      "cacheVariables": {
+        "BMD_PROJECTION_ENABLE_CLANG_TIDY": "ON"
+      }
+    }
+  ]
+}
