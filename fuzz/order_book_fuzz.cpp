@@ -1,10 +1,12 @@
 #include <binance_market_data/projection/v1/numeric/numeric_spec.hpp>
 #include <binance_market_data/projection/v1/order_book/order_book.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
+#include <optional>
 #include <vector>
 
 namespace bmd = binance_market_data::projection::v1;
@@ -41,9 +43,10 @@ class ReferenceOrderBook final {
         return (side == bmd::BookSide::Bid) ? bids_ : asks_;
     }
 
-    [[nodiscard]] bmd::BookLevel best(bmd::BookSide side) const {
+    [[nodiscard]] std::optional<bmd::BookLevel> best(bmd::BookSide side) const {
         const auto& levels = (side == bmd::BookSide::Bid) ? bids_ : asks_;
-        return levels.empty() ? bmd::BookLevel{} : levels.front();
+        if (levels.empty()) return std::nullopt;
+        return levels.front();
     }
 
   private:

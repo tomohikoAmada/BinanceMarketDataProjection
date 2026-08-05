@@ -6,8 +6,8 @@
 
 namespace binance_market_data::projection::v1 {
 
-using BidMap = std::map<PriceUnits, QuantityUnits, std::greater<PriceUnits>>;
-using AskMap = std::map<PriceUnits, QuantityUnits, std::less<PriceUnits>>;
+using BidMap = std::map<PriceUnits, QuantityUnits, std::greater<>>;
+using AskMap = std::map<PriceUnits, QuantityUnits, std::less<>>;
 
 class OrderBook::Impl final {
   public:
@@ -76,6 +76,7 @@ class OrderBook::Impl final {
         }
     }
 
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     void replace_all(std::span<const BookLevel> bids, std::span<const BookLevel> asks) {
         BidMap new_bids;
         AskMap new_asks;
