@@ -22,7 +22,7 @@ Projection Domain Types
 Projection Core
 ```
 
-The adapter is planned for M5 and does not exist in M0.
+The adapter is planned for M4 and does not exist in M0.
 
 ## Runtime context
 
