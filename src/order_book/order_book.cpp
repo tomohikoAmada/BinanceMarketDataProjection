@@ -3,11 +3,15 @@
 #include <functional>
 #include <limits>
 #include <map>
+#include <type_traits>
 
 namespace binance_market_data::projection::v1 {
 
 using BidMap = std::map<PriceUnits, QuantityUnits, std::greater<>>;
 using AskMap = std::map<PriceUnits, QuantityUnits, std::less<>>;
+
+static_assert(std::is_nothrow_move_assignable_v<BidMap>);
+static_assert(std::is_nothrow_move_assignable_v<AskMap>);
 
 class OrderBook::Impl final {
   public:

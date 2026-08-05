@@ -90,6 +90,17 @@ class ReferenceOrderBook final {
         return asks_;
     }
 
+    [[nodiscard]] std::vector<binance_market_data::projection::v1::BookLevel>
+    top_levels(binance_market_data::projection::v1::BookSide side, std::size_t limit) const {
+        const auto& src =
+            side == binance_market_data::projection::v1::BookSide::Bid ? bids_ : asks_;
+        if (limit == 0 || src.empty())
+            return {};
+        return std::vector<BookLevel>(
+            src.begin(),
+            src.begin() + static_cast<LevelVector::difference_type>(std::min(limit, src.size())));
+    }
+
   private:
     using BookLevel = binance_market_data::projection::v1::BookLevel;
     using BookSide = binance_market_data::projection::v1::BookSide;

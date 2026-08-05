@@ -48,7 +48,7 @@ TEST_F(OrderBookReplaceTest, ReplaceAllClearsWhenEmpty) {
     EXPECT_TRUE(book_.empty());
 }
 
-TEST_F(OrderBookReplaceTest, ReplaceBidOnlyPreservesAsk) {
+TEST_F(OrderBookReplaceTest, ReplaceAllWithEmptyAsksClearsExistingAsks) {
     static_cast<void>(book_.apply_level(bmd::BookSide::Ask, bmd_test::price_units(200),
                                         bmd_test::quantity_units(3)));
 

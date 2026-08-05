@@ -67,8 +67,8 @@ int main() {
         return 10;
     }
 
-    static_cast<void>(book.apply_level(bmd::BookSide::Bid, *bid_price,
-                                       bmd::QuantityUnits::create(0).value()));
+    static_cast<void>(
+        book.apply_level(bmd::BookSide::Bid, *bid_price, bmd::QuantityUnits::create(0).value()));
     if (book.best_bid().has_value()) {
         return 11;
     }
@@ -80,8 +80,7 @@ int main() {
 
     bmd::BookLevel crossed_bid{*bmd::PriceUnits::create(100000000),
                                *bmd::QuantityUnits::create(10)};
-    bmd::BookLevel crossed_ask{*bmd::PriceUnits::create(99000000),
-                               *bmd::QuantityUnits::create(20)};
+    bmd::BookLevel crossed_ask{*bmd::PriceUnits::create(99000000), *bmd::QuantityUnits::create(20)};
     const std::vector<bmd::BookLevel> crossed_bids{crossed_bid};
     const std::vector<bmd::BookLevel> crossed_asks{crossed_ask};
     book.replace_all(crossed_bids, crossed_asks);

@@ -93,14 +93,46 @@ const char* op_name(OpType type) {
     return "UNKNOWN";
 }
 
-[[nodiscard]] std::string failure_context(const std::string& seed, std::size_t transcript_idx,
-                                          std::size_t op_idx, OpType type, bmd::BookSide side,
-                                          Price price, Quantity quantity) {
+struct OperationContext {
+    std::string seed;
+    std::size_t transcript_idx;
+    std::size_t op_idx;
+    OpType type;
+    bmd::BookSide side{bmd::BookSide::Bid};
+    Price price{0};
+    Quantity quantity{0};
+    std::size_t extra1{0};
+    std::size_t extra2{0};
+};
+
+std::string format_failure_context(const OperationContext& ctx) {
     std::ostringstream oss;
-    oss << "seed=" << seed << " transcript=" << transcript_idx << " op=" << op_idx
-        << " type=" << op_name(type) << " side=" << to_string(side) << " price=" << price
-        << " quantity=" << quantity;
+    oss << "seed=" << ctx.seed << " transcript=" << ctx.transcript_idx << " op=" << ctx.op_idx
+        << " type=" << op_name(ctx.type) << " side=" << to_string(ctx.side)
+        << " price=" << ctx.price << " quantity=" << ctx.quantity;
+    if (ctx.extra1 > 0 || ctx.extra2 > 0) {
+        oss << " extra1=" << ctx.extra1 << " extra2=" << ctx.extra2;
+    }
     return oss.str();
+}
+
+bmd::PriceUnits find_missing_price(const bmd_test::ReferenceOrderBook& reference,
+                                   bmd::BookSide side, PseudoRandomGenerator& rng) {
+    constexpr std::int64_t kMaxAttempts = 100;
+    for (std::int64_t attempt = 0; attempt < kMaxAttempts; ++attempt) {
+        const auto candidate = rng.next_price();
+        if (!reference.quantity_at(side, bmd_test::price_units(candidate)).has_value()) {
+            return bmd_test::price_units(candidate);
+        }
+    }
+    // Fallback: search downward from INT64_MAX
+    for (std::int64_t val = std::numeric_limits<std::int64_t>::max(); val > 0; val /= 2) {
+        if (!reference.quantity_at(side, bmd_test::price_units(val)).has_value()) {
+            return bmd_test::price_units(val);
+        }
+    }
+    // Should never reach here with small test data
+    std::abort();
 }
 
 void verify_no_zero_quantities(const std::vector<bmd::BookLevel>& levels) {
@@ -161,6 +193,20 @@ void verify_consistency(const bmd::OrderBook& book, const bmd_test::ReferenceOrd
         EXPECT_EQ(prod_asks[i].quantity, ref_asks[i].quantity);
     }
 
+    for (const auto side : {bmd::BookSide::Bid, bmd::BookSide::Ask}) {
+        const auto count = book.level_count(side);
+        EXPECT_EQ(book.top_levels(side, 0), reference.top_levels(side, 0));
+        if (count > 0) {
+            EXPECT_EQ(book.top_levels(side, 1), reference.top_levels(side, 1));
+        }
+        const auto half = (count > 0) ? count / 2 : 0;
+        EXPECT_EQ(book.top_levels(side, half), reference.top_levels(side, half));
+        EXPECT_EQ(book.top_levels(side, count), reference.top_levels(side, count));
+        if (count < std::numeric_limits<std::size_t>::max()) {
+            EXPECT_EQ(book.top_levels(side, count + 1), reference.top_levels(side, count + 1));
+        }
+    }
+
     verify_no_zero_quantities(prod_bids);
     verify_no_zero_quantities(prod_asks);
 
@@ -196,20 +242,27 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
         for (std::size_t op_idx = 0; op_idx < op_count; ++op_idx) {
             const auto op = static_cast<OpType>(rng.next_size_t(12));
 
-            SCOPED_TRACE(
-                failure_context(seed_str, transcript_idx, op_idx, op, bmd::BookSide::Bid, 0, 0));
-
             switch (op) {
             case OpType::BidInsert: {
-                const auto price = bmd_test::price_units(rng.next_price());
-                const auto quantity = bmd_test::quantity_units(rng.next_quantity());
+                const auto price_val = rng.next_price();
+                const auto quantity_val = rng.next_quantity();
+                const auto price = bmd_test::price_units(price_val);
+                const auto quantity = bmd_test::quantity_units(quantity_val);
+                OperationContext ctx{seed_str,           transcript_idx, op_idx,      op,
+                                     bmd::BookSide::Bid, price_val,      quantity_val};
+                SCOPED_TRACE(format_failure_context(ctx));
                 static_cast<void>(book.apply_level(bmd::BookSide::Bid, price, quantity));
                 reference.apply_level(bmd::BookSide::Bid, price, quantity);
                 break;
             }
             case OpType::AskInsert: {
-                const auto price = bmd_test::price_units(rng.next_price());
-                const auto quantity = bmd_test::quantity_units(rng.next_quantity());
+                const auto price_val = rng.next_price();
+                const auto quantity_val = rng.next_quantity();
+                const auto price = bmd_test::price_units(price_val);
+                const auto quantity = bmd_test::quantity_units(quantity_val);
+                OperationContext ctx{seed_str,           transcript_idx, op_idx,      op,
+                                     bmd::BookSide::Ask, price_val,      quantity_val};
+                SCOPED_TRACE(format_failure_context(ctx));
                 static_cast<void>(book.apply_level(bmd::BookSide::Ask, price, quantity));
                 reference.apply_level(bmd::BookSide::Ask, price, quantity);
                 break;
@@ -220,8 +273,18 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                 if (!levels.empty()) {
                     const auto idx = rng.next_size_t(levels.size());
                     const auto price = levels[idx].price;
-                    const auto quantity = bmd_test::quantity_units(
-                        rng.next_quantity() == 0 ? 1 : rng.next_quantity());
+                    auto raw_quantity = rng.next_quantity();
+                    if (raw_quantity == 0) {
+                        raw_quantity = 1;
+                    }
+                    const auto existing_quantity = levels[idx].quantity.value();
+                    if (raw_quantity == existing_quantity) {
+                        raw_quantity = (raw_quantity == 1) ? 2 : raw_quantity - 1;
+                    }
+                    const auto quantity = bmd_test::quantity_units(raw_quantity);
+                    OperationContext ctx{seed_str, transcript_idx, op_idx,      op,
+                                         side,     price.value(),  raw_quantity};
+                    SCOPED_TRACE(format_failure_context(ctx));
                     static_cast<void>(book.apply_level(side, price, quantity));
                     reference.apply_level(side, price, quantity);
                 }
@@ -234,6 +297,9 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                     const auto idx = rng.next_size_t(levels.size());
                     const auto price = levels[idx].price;
                     const auto quantity = bmd_test::quantity_units(0);
+                    OperationContext ctx{seed_str, transcript_idx, op_idx, op,
+                                         side,     price.value(),  0};
+                    SCOPED_TRACE(format_failure_context(ctx));
                     static_cast<void>(book.apply_level(side, price, quantity));
                     reference.apply_level(side, price, quantity);
                 }
@@ -241,8 +307,10 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
             }
             case OpType::MissingDelete: {
                 const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
-                const auto price = bmd_test::price_units(rng.next_price());
+                const auto price = find_missing_price(reference, side, rng);
                 const auto quantity = bmd_test::quantity_units(0);
+                OperationContext ctx{seed_str, transcript_idx, op_idx, op, side, price.value(), 0};
+                SCOPED_TRACE(format_failure_context(ctx));
                 const auto change = book.apply_level(side, price, quantity);
                 reference.apply_level(side, price, quantity);
                 EXPECT_EQ(change, bmd::LevelChange::Unchanged);
@@ -255,6 +323,9 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                     const auto idx = rng.next_size_t(levels.size());
                     const auto price = levels[idx].price;
                     const auto quantity = levels[idx].quantity;
+                    OperationContext ctx{seed_str, transcript_idx, op_idx,          op,
+                                         side,     price.value(),  quantity.value()};
+                    SCOPED_TRACE(format_failure_context(ctx));
                     const auto change = book.apply_level(side, price, quantity);
                     EXPECT_EQ(change, bmd::LevelChange::Unchanged);
                     reference.apply_level(side, price, quantity);
@@ -270,6 +341,9 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                     const auto q = bmd_test::quantity_units(rng.next_quantity());
                     batch_updates.push_back({bs, p, q});
                 }
+                OperationContext ctx{seed_str, transcript_idx, op_idx, op};
+                ctx.extra1 = batch_size;
+                SCOPED_TRACE(format_failure_context(ctx));
                 book.apply_updates(batch_updates);
                 for (const auto& u : batch_updates) {
                     reference.apply_level(u.side, u.price, u.quantity);
@@ -278,11 +352,15 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
             }
             case OpType::ClearSide: {
                 const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
+                OperationContext ctx{seed_str, transcript_idx, op_idx, op, side};
+                SCOPED_TRACE(format_failure_context(ctx));
                 book.clear_side(side);
                 reference.clear_side(side);
                 break;
             }
             case OpType::ClearAll: {
+                OperationContext ctx{seed_str, transcript_idx, op_idx, op};
+                SCOPED_TRACE(format_failure_context(ctx));
                 book.clear();
                 reference.clear();
                 break;
@@ -302,6 +380,10 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                     const auto q = bmd_test::quantity_units(rng.next_quantity());
                     new_asks.push_back({p, q});
                 }
+                OperationContext ctx{seed_str, transcript_idx, op_idx, op};
+                ctx.extra1 = bid_count;
+                ctx.extra2 = ask_count;
+                SCOPED_TRACE(format_failure_context(ctx));
                 book.replace_all(new_bids, new_asks);
                 reference.clear();
                 for (const auto& level : new_bids) {
@@ -312,9 +394,59 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                 }
                 break;
             }
-            case OpType::TopNQuery:
-            case OpType::QuantityLookup:
+            case OpType::TopNQuery: {
+                const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
+                const auto count = reference.level_count(side);
+                const auto limit_choice = rng.next_size_t(5);
+                std::size_t limit = 0;
+                switch (limit_choice) {
+                case 0:
+                    limit = 0;
+                    break;
+                case 1:
+                    limit = 1;
+                    break;
+                case 2:
+                    limit = (count > 0) ? count / 2 : 0;
+                    break;
+                case 3:
+                    limit = count;
+                    break;
+                case 4:
+                    limit = (count < std::numeric_limits<std::size_t>::max()) ? count + 1 : count;
+                    break;
+                }
+                OperationContext ctx{seed_str, transcript_idx, op_idx, op, side};
+                ctx.extra1 = limit;
+                SCOPED_TRACE(format_failure_context(ctx));
+                const auto production = book.top_levels(side, limit);
+                const auto expected = reference.top_levels(side, limit);
+                EXPECT_EQ(production, expected);
                 break;
+            }
+            case OpType::QuantityLookup: {
+                const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
+                const auto use_existing = (rng.next() % 2 == 0);
+                const auto price = [&]() -> bmd::PriceUnits {
+                    if (use_existing) {
+                        const auto levels = reference.all_levels(side);
+                        if (!levels.empty()) {
+                            return levels[rng.next_size_t(levels.size())].price;
+                        }
+                        return bmd_test::price_units(rng.next_price());
+                    }
+                    return find_missing_price(reference, side, rng);
+                }();
+                OperationContext ctx{seed_str, transcript_idx, op_idx, op, side, price.value(), 0};
+                SCOPED_TRACE(format_failure_context(ctx));
+                const auto prod_qty = book.quantity_at(side, price);
+                const auto ref_qty = reference.quantity_at(side, price);
+                ASSERT_EQ(prod_qty.has_value(), ref_qty.has_value());
+                if (prod_qty.has_value()) {
+                    EXPECT_EQ(prod_qty.value().value(), ref_qty.value().value());
+                }
+                break;
+            }
             }
 
             verify_consistency(book, reference);

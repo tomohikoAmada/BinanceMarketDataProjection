@@ -43,10 +43,33 @@ class ReferenceOrderBook final {
         return (side == bmd::BookSide::Bid) ? bids_ : asks_;
     }
 
-    [[nodiscard]] std::optional<bmd::BookLevel> best(bmd::BookSide side) const {
+    [[nodiscard]] std::optional<bmd::BookLevel> best_bid() const noexcept {
+        if (bids_.empty())
+            return std::nullopt;
+        return bids_.front();
+    }
+    [[nodiscard]] std::optional<bmd::BookLevel> best_ask() const noexcept {
+        if (asks_.empty())
+            return std::nullopt;
+        return asks_.front();
+    }
+
+    [[nodiscard]] std::optional<bmd::QuantityUnits> quantity_at(bmd::BookSide side,
+                                                                bmd::PriceUnits price) const {
         const auto& levels = (side == bmd::BookSide::Bid) ? bids_ : asks_;
-        if (levels.empty()) return std::nullopt;
-        return levels.front();
+        for (const auto& l : levels) {
+            if (l.price == price)
+                return l.quantity;
+        }
+        return std::nullopt;
+    }
+
+    [[nodiscard]] std::vector<bmd::BookLevel> top_levels(bmd::BookSide side,
+                                                         std::size_t limit) const {
+        if (limit == 0)
+            return {};
+        const auto& src = (side == bmd::BookSide::Bid) ? bids_ : asks_;
+        return std::vector<bmd::BookLevel>(src.begin(), src.begin() + std::min(limit, src.size()));
     }
 
   private:
@@ -111,7 +134,26 @@ void verify_no_duplicates(const std::vector<bmd::BookLevel>& levels) {
     }
 }
 
-void check_consistency(const bmd::OrderBook& book, const ReferenceOrderBook& ref) {
+void check_consistency(const bmd::OrderBook& book, const ReferenceOrderBook& ref,
+                       bmd::BookSide current_side, bmd::PriceUnits current_price) {
+    // best bid/ask
+    if (book.best_bid().has_value() != ref.best_bid().has_value())
+        std::abort();
+    if (book.best_bid().has_value() && !(book.best_bid().value() == ref.best_bid().value()))
+        std::abort();
+    if (book.best_ask().has_value() != ref.best_ask().has_value())
+        std::abort();
+    if (book.best_ask().has_value() && !(book.best_ask().value() == ref.best_ask().value()))
+        std::abort();
+
+    // quantity_at for current price
+    auto prod_q = book.quantity_at(current_side, current_price);
+    auto ref_q = ref.quantity_at(current_side, current_price);
+    if (prod_q.has_value() != ref_q.has_value())
+        std::abort();
+    if (prod_q.has_value() && !(prod_q.value() == ref_q.value()))
+        std::abort();
+
     for (auto side : {bmd::BookSide::Bid, bmd::BookSide::Ask}) {
         if (book.level_count(side) != ref.level_count(side))
             std::abort();
@@ -129,6 +171,24 @@ void check_consistency(const bmd::OrderBook& book, const ReferenceOrderBook& ref
         const bool ascending = (side == bmd::BookSide::Ask);
         verify_strict_ordering(prod, ascending);
         verify_no_duplicates(prod);
+
+        // Top-N checks
+        const auto count = ref.level_count(side);
+        if (book.top_levels(side, 0) != ref.top_levels(side, 0))
+            std::abort();
+        if (count > 0) {
+            if (book.top_levels(side, 1) != ref.top_levels(side, 1))
+                std::abort();
+        }
+        const auto half = (count > 0) ? count / 2 : 0;
+        if (book.top_levels(side, half) != ref.top_levels(side, half))
+            std::abort();
+        if (book.top_levels(side, count) != ref.top_levels(side, count))
+            std::abort();
+        if (count < std::numeric_limits<std::size_t>::max()) {
+            if (book.top_levels(side, count + 1) != ref.top_levels(side, count + 1))
+                std::abort();
+        }
     }
 }
 
@@ -254,13 +314,33 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
                 ref.apply_level(bmd::BookSide::Ask, l.price, l.quantity);
             break;
         }
-        case 9:
-        case 10:
-        case 11:
+        case 9: {
+            const auto limit = static_cast<std::size_t>(data[offset - 1] % 10);
+            const auto prod_top = book.top_levels(side, limit);
+            const auto ref_top = ref.top_levels(side, limit);
+            if (prod_top != ref_top)
+                std::abort();
             break;
         }
+        case 10: {
+            auto prod_q = book.quantity_at(side, *p);
+            auto ref_q = ref.quantity_at(side, *p);
+            if (prod_q.has_value() != ref_q.has_value())
+                std::abort();
+            if (prod_q.has_value() && !(prod_q.value() == ref_q.value()))
+                std::abort();
+            break;
+        }
+        case 11: {
+            if (book.best_bid() != ref.best_bid())
+                std::abort();
+            if (book.best_ask() != ref.best_ask())
+                std::abort();
+            break;
+        }
+        }
 
-        check_consistency(book, ref);
+        check_consistency(book, ref, side, *p);
     }
 
     return 0;
