@@ -6,6 +6,18 @@ project(
     LANGUAGES CXX
 )
 
+set(BMD_PROJECTION_PRERELEASE "alpha.0")
+set(
+    BMD_PROJECTION_FULL_VERSION
+    "${PROJECT_VERSION}-${BMD_PROJECTION_PRERELEASE}"
+)
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/binance_market_data/projection/v1/version.hpp.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/binance_market_data/projection/v1/version.hpp"
+    @ONLY
+)
+
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
@@ -47,12 +59,15 @@ set_target_properties(
         CXX_EXTENSIONS NO
         POSITION_INDEPENDENT_CODE YES
         EXPORT_NAME Core
+        VERSION ${PROJECT_VERSION}
+        SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 
 target_include_directories(
     bmd_projection_core
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 target_compile_features(bmd_projection_core PUBLIC cxx_std_20)
@@ -80,6 +95,13 @@ install(
 install(
     DIRECTORY include/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    PATTERN "*.in" EXCLUDE
+)
+
+install(
+    FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/include/binance_market_data/projection/v1/version.hpp"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/binance_market_data/projection/v1"
 )
 
 set(BMD_PROJECTION_INSTALL_CMAKEDIR
@@ -95,7 +117,7 @@ configure_package_config_file(
 write_basic_package_version_file(
     "${CMAKE_CURRENT_BINARY_DIR}/BinanceMarketDataProjectionConfigVersion.cmake"
     VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion
+    COMPATIBILITY SameMinorVersion
 )
 
 install(

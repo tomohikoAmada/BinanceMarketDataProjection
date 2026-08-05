@@ -2,12 +2,16 @@
 
 ## M0 Repository Foundation — IN PROGRESS
 
-### Scope
+### Goal
 
 Create a private, repeatably buildable, testable, installable C++20 library baseline that future
 Gateway and History/Replay consumers can reuse.
 
-### Deliverables
+### Inputs
+
+None — this is the bootstrap milestone.
+
+### Outputs
 
 - CMake/Ninja presets and target-local warnings, sanitizers, clang-tidy, and coverage options.
 - Repository-local Conan 2 workflow locked to GoogleTest 1.17.0 and Google Benchmark 1.9.5.
@@ -17,7 +21,7 @@ Gateway and History/Replay consumers can reuse.
   jobs.
 - README, architecture boundaries, agent rules, milestones, open questions, and four ADRs.
 
-### Acceptance criteria
+### Acceptance gates
 
 Debug and Release builds/tests, ASan, UBSan, format, tidy, benchmark smoke, package installation, and
 the independent consumer must pass. Required GitHub Actions jobs must be green, the Draft PR must
@@ -36,22 +40,34 @@ All M0 deliverables are committed to `feat/m0-repository-foundation`, local mand
 required CI is green, a Draft PR targets the bootstrap-only `main`, and this status is changed to
 `COMPLETE` in a separate final commit followed by another green CI run.
 
-Current acceptance note: required GitHub Actions checks pass, including clang-tidy. The repository's
-complete local `scripts/verify.sh` gate remains pending because the current macOS host has no
-`clang-tidy` executable and the M0 download policy forbids installing one from an additional source.
+Local clang-tidy may be skipped when the host toolchain lacks it; CI clang-tidy is the mandatory
+gate. The version header is generated from CMake; no hand-maintained duplicate version string exists.
 
 ## Development map
 
 1. **M0 Repository Foundation** — Build, test, installation, CI, and governance baseline.
-2. **M1 Fixed-Point Numeric Core** — Validate and implement exact internal numeric representation.
-3. **M2 Order Book Core** — Deterministic book storage and operations.
-4. **M3 Sequence and State Machine** — Market-specific sequencing, gap, and resynchronization rules.
-5. **M4 Market State Projection** — Deterministic derived market-state values.
-6. **M5 Protobuf Contract Adapter** — Translate versioned wire contracts outside Core.
-7. **M6 Determinism and Differential Validation** — Replay/differential/fuzz validation.
-8. **M7 Container and Performance Decision** — Measure and choose containers with representative
-   workloads.
-9. **M8 Python Binding and History Integration** — Bind the stable Core for historical workflows.
-10. **M9 Gateway Embedding Interface** — Define the production host integration surface.
-11. **M10 Platform Hardening** — Harden supported architectures and toolchains.
-12. **M11 Acceptance Candidate** — End-to-end acceptance candidate and release readiness.
+2. **M1 Numeric and Domain Primitives** — Fixed-point types, quantity/price representation, decimal
+   parsing.
+3. **M2 Order Book Core** — Deterministic book storage, level management, depth operations.
+4. **M3 Sequence and Projection State** — Market-specific sequencing, gap detection, reset logic.
+5. **M4 Snapshots and Protobuf Boundary** — Wire-format adapter outside Core; snapshot production.
+6. **M5 Differential Validation and Performance** — Replay/differential/fuzz validation; benchmark
+   with representative workloads.
+7. **M6 Gateway Integration** — Production host embedding surface; live ingestion.
+8. **M7 Platform Hardening and Acceptance** — Harden architectures, toolchains; end-to-end acceptance.
+
+### Cross-cutting concerns
+
+- **Determinism, property tests, and fuzz** are required from M1 onward, not deferred wholesale.
+- **Python Binding** is an optional History Track; not a required milestone deliverable.
+- **Container choice** is a performance spike within M5; not a standalone milestone.
+- Detailed API design belongs in per-milestone documents written at the start of each phase.
+
+## Core architecture principles
+
+- C++20.
+- Deterministic — all inputs explicit; no system clock, random, or ambient state.
+- Single Writer — host preserves ordering per projection instance.
+- Core/Wire Separation — protobuf messages do not enter Core.
+- Live/Replay Same Core — identical ordered inputs produce identical outputs.
+- Strategy Independent — no trading, risk, or strategy logic.

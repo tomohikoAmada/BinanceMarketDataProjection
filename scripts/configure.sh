@@ -40,6 +40,7 @@ fi
     --output-folder="$repo_root/build/$preset" \
     --lockfile="$repo_root/conan.lock" \
     --build=missing \
-    -s build_type="$build_type"
+    -s build_type="$build_type" \
+    -s compiler.cppstd=20
 
 cmake --preset "$preset" "$@"

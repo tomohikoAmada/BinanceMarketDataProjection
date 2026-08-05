@@ -31,7 +31,9 @@ extensions.
 - Ninja.
 - Python 3 with `venv`.
 - A C++20 compiler.
-- `clang-format` and `clang-tidy` for the complete local quality gate.
+- `clang-format` for the local quality gate.
+- `clang-tidy` is mandatory in CI. Local hosts without clang-tidy may skip it explicitly; CI
+  clang-tidy remains the authoritative gate.
 
 Conan 2, GoogleTest 1.17.0, and Google Benchmark 1.9.5 are installed/resolved into repository-local
 directories. No global installation is performed.
@@ -112,8 +114,10 @@ uses `add_subdirectory` or source-tree include paths.
 bash scripts/verify.sh
 ```
 
-This runs formatting, clang-tidy, warnings-as-errors, Debug/Release tests, required sanitizers, the
-benchmark smoke test, the staged-install consumer, and `git diff --check`.
+This runs formatting, warnings-as-errors, Debug/Release tests, required sanitizers, the
+benchmark smoke test, the staged-install consumer, and `git diff --check`. When the host
+has clang-tidy the gate enables it automatically; otherwise it skips with a clear message.
+CI clang-tidy is mandatory regardless of local skip.
 
 ## Directory structure
 
