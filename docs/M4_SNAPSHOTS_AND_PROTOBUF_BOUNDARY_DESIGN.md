@@ -56,7 +56,7 @@ M4 applies evidence in this order:
 3. Accepted Contracts ADRs define cross-module architecture and wire/domain separation.
 4. Accepted Projection ADRs and the implemented M1/M2/M3 API define Core semantics.
 5. Projection `ARCHITECTURE.md` defines deterministic and dependency boundaries.
-6. Proposed ADR-0006 and this document decide M4 details left open by higher authorities.
+6. Accepted ADR-0006 and this document decide M4 details left open by higher authorities.
 7. Implementation convenience has the lowest priority.
 
 A lower source cannot silently weaken a higher one. M4 neither changes Contracts semantics nor
