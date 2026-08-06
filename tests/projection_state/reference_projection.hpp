@@ -7,6 +7,9 @@
 
 namespace bmd_projection_reference {
 
+// The model's state guards establish the optional-value preconditions independently of production.
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
+
 enum class Policy : std::uint8_t {
     Spot,
     UsdM,
@@ -40,6 +43,7 @@ enum class GapReason : std::uint8_t {
     FuturesPreviousFinalMismatch,
 };
 
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct RawLevel final {
     bool bid;
     std::int64_t price;
@@ -48,6 +52,7 @@ struct RawLevel final {
     friend bool operator==(const RawLevel&, const RawLevel&) = default;
 };
 
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct Gap final {
     std::uint64_t last;
     std::uint64_t first;
@@ -59,6 +64,7 @@ struct Gap final {
     friend bool operator==(const Gap&, const Gap&) = default;
 };
 
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct Result final {
     Disposition disposition;
     Status status;
@@ -68,6 +74,7 @@ struct Result final {
     friend bool operator==(const Result&, const Result&) = default;
 };
 
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct InstallResult final {
     InstallDisposition disposition;
     Status status;
@@ -202,12 +209,14 @@ class ReferenceProjection final {
         return {Disposition::GapDetected, status_, last_, evidence};
     }
 
-    const Policy policy_;
+    Policy policy_;
     Status status_{Status::AwaitingBaseline};
     std::optional<std::uint64_t> last_;
     std::optional<Gap> last_gap_;
     LevelVector bids_;
     LevelVector asks_;
 };
+
+// NOLINTEND(bugprone-unchecked-optional-access)
 
 } // namespace bmd_projection_reference

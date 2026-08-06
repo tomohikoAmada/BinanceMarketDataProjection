@@ -130,6 +130,8 @@ to_baseline_side(const std::vector<reference::RawLevel>& raw, bool bid) {
     return raw;
 }
 
+// GoogleTest assertion macros expand into control flow that inflates the measured score.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void verify_state(const bmd::BookProjection& production,
                   const reference::ReferenceProjection& model) {
     EXPECT_EQ(production.status(), production_status(model.status()));
@@ -160,6 +162,8 @@ void verify_state(const bmd::BookProjection& production,
     }
 }
 
+// GoogleTest assertion macros expand into control flow that inflates the measured score.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void verify_apply_result(const bmd::ApplyResult& production, const reference::Result& model) {
     EXPECT_EQ(production.disposition, production_disposition(model.disposition));
     EXPECT_EQ(production.status_after, production_status(model.status));
@@ -204,6 +208,8 @@ generate_range(Generator& generator, const reference::ReferenceProjection& model
     }
 }
 
+// The explicit operation dispatcher is intentionally independent of production classification.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void run_property(std::uint64_t seed, reference::Policy policy) {
     bmd::BookProjection production{helper::spec(), production_policy(policy)};
     reference::ReferenceProjection model{policy};

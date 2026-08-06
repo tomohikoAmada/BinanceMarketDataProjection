@@ -11,6 +11,9 @@ namespace bmd_projection_test {
 
 namespace bmd = binance_market_data::projection::v1;
 
+// Test factories use only literal values whose validity is asserted by their focused tests.
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
+
 [[nodiscard]] inline bmd::DecimalScale scale(std::uint32_t value = 8) {
     return bmd::DecimalScale::create(value).value();
 }
@@ -68,5 +71,7 @@ struct ProjectionCheckpoint final {
         projection.diagnostic_book().all_levels(bmd::BookSide::Ask),
     };
 }
+
+// NOLINTEND(bugprone-unchecked-optional-access)
 
 } // namespace bmd_projection_test

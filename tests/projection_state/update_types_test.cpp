@@ -9,6 +9,8 @@
 
 namespace bmd = binance_market_data::projection::v1;
 
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
+
 static_assert(!std::is_convertible_v<std::uint64_t, bmd::UpdateId>);
 static_assert(std::three_way_comparable<bmd::UpdateId>);
 static_assert(!std::is_aggregate_v<bmd::UpdateRange>);
@@ -63,3 +65,5 @@ TEST(UpdateRangeTest, ValidRangesExposeInclusiveEndpoints) {
 TEST(UpdateRangeTest, RejectsDescendingEndpoints) {
     EXPECT_FALSE(bmd::UpdateRange::try_create(bmd::UpdateId{9}, bmd::UpdateId{4}).has_value());
 }
+
+// NOLINTEND(bugprone-unchecked-optional-access)

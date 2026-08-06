@@ -13,9 +13,12 @@
 
 namespace allocation_control {
 
+// These thread-local controls are confined to the dedicated single-threaded test executable.
+// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
 thread_local bool enabled = false;
 thread_local std::size_t count = 0;
 thread_local std::size_t fail_at = std::numeric_limits<std::size_t>::max();
+// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables)
 
 class Scope final {
   public:
@@ -195,6 +198,8 @@ class PreparedScenario final {
     std::vector<bmd::LevelUpdate> updates_;
 };
 
+// GoogleTest assertion macros inside the allocation sweep inflate the measured score.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void verify_strong_guarantee(Scenario scenario) {
     PreparedScenario counting{scenario};
     std::size_t allocation_count = 0;

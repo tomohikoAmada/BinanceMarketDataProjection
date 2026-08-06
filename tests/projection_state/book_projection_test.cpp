@@ -57,6 +57,8 @@ void expect_ignored(const bmd::ApplyResult& result, bmd::ApplyDisposition dispos
     EXPECT_FALSE(result.gap.has_value());
 }
 
+// GoogleTest assertion macros expand into control flow that inflates this helper's measured score.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void expect_gap(const bmd::BookProjection& projection, const bmd::ApplyResult& result,
                 bmd::GapReason reason, bmd::SequencePolicyKind policy, std::uint64_t current,
                 std::uint64_t first, std::uint64_t final,
@@ -409,6 +411,8 @@ TEST(BookProjectionLifecycleTest, RebaselineAndBridgeRetainHistoricalGapUntilRes
     EXPECT_EQ(projection.numeric_spec(), helper::spec());
 }
 
+// GoogleTest assertion macros inside the state loop inflate the measured score.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST(BookProjectionLifecycleTest, ResetWorksFromEveryState) {
     std::vector<bmd::BookProjection> projections;
     projections.emplace_back(helper::spec(), bmd::SequencePolicyKind::Spot);
