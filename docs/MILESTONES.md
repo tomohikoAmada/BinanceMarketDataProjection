@@ -158,6 +158,43 @@ History storage. M4 owns Protobuf/wire adaptation and snapshot contract producti
 runtime integration. Derived market prices, matching, orders, strategy, risk, and trading remain out
 of scope.
 
+## M4 Snapshots and Protobuf Boundary — DESIGN PROPOSED; IMPLEMENTATION NOT STARTED
+
+Implementation status: **NOT STARTED**
+
+### Goal
+
+Define an optional Protobuf adapter boundary that converts pinned Contracts wire messages into
+owning M1/M2/M3 inputs and converts `BookProjection` plus explicit Host context into deterministic
+`LocalOrderBookSnapshot` messages without introducing Protobuf into Core.
+
+### Design deliverables
+
+- Separate optional adapter target and one-way dependency direction into Core.
+- Audited Contracts C++ artifact acquisition and version-pinning strategy.
+- Explicit inbound `ExchangeDepthSnapshot` and `DepthUpdate` conversion.
+- Owning wrappers that safely produce M3's span-based synchronous views.
+- Typed, deterministic validation errors for normal malformed-wire failures.
+- Explicit Host-owned identity, producer, time, depth-limit, gap, and quality context.
+- State-specific `LocalOrderBookSnapshot` eligibility and visibility rules.
+- Deterministic `GapInfo` to `GapDescriptor` mapping and historical-gap policy.
+- Compatibility, packaging/install, downstream-consumer, test, property, and fuzz plans.
+- Proposed ADR-0006 for the separate Core/Protobuf adapter boundary.
+
+### Design status
+
+The M4 architecture and ADR are proposed for independent external review. The fixed Contracts
+baseline does not provide an installable C++ Protobuf package or exported CMake target, so M4
+implementation is blocked on a separate Contracts artifact/distribution prerequisite. No M4
+production implementation, dependency, build target, test, or generated code exists in this
+repository.
+
+### Non-goals
+
+No M4 implementation, Contracts change, gRPC runtime, Gateway lifecycle, network ownership,
+system-time read, generated-code copy, or M5/M6 work is included. `MarketStateSnapshot` generation
+and derived market calculations remain deferred unless separately designed and approved.
+
 ## Development map
 
 1. **M0 Repository Foundation** — Build, test, installation, CI, and governance baseline.
@@ -168,7 +205,8 @@ of scope.
 4. **M3 Sequence and Projection State — COMPLETE** —
    Market-specific sequencing, bootstrap validation, gap detection, reset logic, and synchronized
    projection lifecycle.
-5. **M4 Snapshots and Protobuf Boundary** — Wire-format adapter outside Core; snapshot production.
+5. **M4 Snapshots and Protobuf Boundary — DESIGN PROPOSED; IMPLEMENTATION NOT STARTED** — Optional
+   wire-format adapter outside Core; snapshot production boundary.
 6. **M5 Differential Validation and Performance** — Replay/differential/fuzz validation; benchmark
    with representative workloads.
 7. **M6 Gateway Integration** — Production host embedding surface; live ingestion.
