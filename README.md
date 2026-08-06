@@ -1,15 +1,17 @@
 # BinanceMarketDataProjection
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
-market-data projection core. The current state is **M1 Numeric and Domain Primitives — COMPLETE, M2 Order Book Core — COMPLETE**. The library exposes stable project/version metadata and exact numeric
-primitives; it does not yet implement projection state.
+market-data projection core. The current state is **M1 Numeric and Domain Primitives — COMPLETE, M2 Order Book Core — COMPLETE**. The library exposes stable project/version metadata, exact numeric
+primitives, and a deterministic order book core; it does not yet implement sequence-aware projection
+state.
 
 This is an unofficial project and is not affiliated with, endorsed by, or sponsored by Binance.
 This module does not connect to Binance, use API keys, place orders, or contain trading strategies.
 
-> M1 implements strict decimal parsing, strongly typed signed 64-bit units, exact rescaling, and
-> deterministic formatting. It does not implement an order book, sequence validation, market-state
-> projection, protobuf adapters, networking, persistence, or trading.
+> M1 introduced strict decimal parsing, strongly typed signed 64-bit units, exact rescaling, and
+> deterministic formatting. M2 subsequently added the deterministic order book core. Sequence
+> validation, market-state projection, protobuf adapters, networking, persistence, and trading
+> remain unimplemented.
 
 ## Architecture boundary
 
@@ -63,7 +65,8 @@ bash scripts/test.sh release
 ```
 
 The configured CMake targets are `bmd_projection_core`, `bmd_projection_tests`, and, when enabled,
-`bmd_projection_benchmarks` or `bmd_projection_decimal_parser_fuzz`. Build-tree and installed
+`bmd_projection_benchmarks`, `bmd_projection_decimal_parser_fuzz`, or
+`bmd_projection_order_book_fuzz`. Build-tree and installed
 consumers link the alias
 `BinanceMarketDataProjection::Core`.
 
@@ -75,6 +78,18 @@ rejected and never rounds. Successful parse results retain the source fractional
 formatter can reconstruct trailing zeroes. See
 [M1 numeric semantics](docs/M1_NUMERIC_SEMANTICS.md) and
 [ADR-0002](docs/adr/ADR-0002-fixed-point-internal-representation.md).
+
+## Order book core
+
+The order book is deterministic and single-writer, and implements L2 market-by-price semantics.
+Bids are ordered descending and asks ascending. Quantities are absolute values; zero quantity
+deletes a level. Single-level, batch, and `replace_all` updates are supported, along with best,
+quantity-at-price, top-N, and full ordered-level queries. Crossed and locked books are accepted;
+the core does not match orders. Each `OrderBook` is bound to one `NumericSpec`.
+
+Sequence validation, gap detection, snapshot contracts, and networking are not part of the core.
+See [M2 order book semantics](docs/M2_ORDER_BOOK_SEMANTICS.md) and
+[ADR-0003](docs/adr/ADR-0003-single-writer-order-book.md).
 
 ## Sanitizers and coverage
 
@@ -90,15 +105,16 @@ ASan and TSan are mutually exclusive. Sanitizer and coverage options are target-
 exported to installed consumers. TSan availability depends on the compiler/runtime/platform; CI
 requires ASan and UBSan and retains TSan as an explicit independently testable configuration.
 
-## Parser fuzz smoke
+## Fuzz smoke
 
 ```bash
 bash scripts/fuzz-smoke.sh
 ```
 
-The fuzz target is built with upstream Clang and libFuzzer plus AddressSanitizer and
-UndefinedBehaviorSanitizer. Unsupported local toolchains report an explicit skip; the Ubuntu Clang
-CI job requires support and runs a fixed 10,000-input smoke test from the checked-in seed corpus.
+The decimal parser fuzz harness and the order book model-based fuzz harness are built with upstream
+Clang and libFuzzer plus AddressSanitizer and UndefinedBehaviorSanitizer. Unsupported local
+toolchains report an explicit skip; the Ubuntu Clang CI job requires support and runs each harness
+for a fixed 10,000-input smoke test from its checked-in seed corpus.
 
 ## Benchmark smoke test
 
@@ -151,22 +167,27 @@ benchmarks/    Google Benchmark infrastructure smoke test
 cmake/         Target-local quality and package-export helpers
 scripts/       Repository-local development workflows
 docs/          Milestones, open questions, and ADRs
+fuzz/          libFuzzer harnesses and checked-in seed corpus
 .github/       CI workflows
 ```
 
 ## Milestone status
 
-M1 Numeric and Domain Primitives was externally reviewed and merged. M2 Order Book Core is in
-progress. The Contracts reference baseline is
+M1 Numeric and Domain Primitives and M2 Order Book Core were externally reviewed and merged. M3
+Sequence and Projection State has not started. The Contracts reference baseline is
 `01d76a41929f36d89573159f5f458f9f1e378ada`.
 
 ## Known limitations
 
-- There is no order book, sequencing, snapshot application, or market-state projection yet.
-- Tick-size, step-size, signed-decimal, and symbol-metadata validation are outside M2.
+- The repository now includes numeric primitives and a deterministic L2 market-by-price order book.
+  It does not yet implement sequence validation, gap detection, resynchronization, snapshot
+  contracts, protobuf adapters, networking, persistence, Gateway runtime, History runtime, strategy,
+  or trading behavior.
+- Tick-size, step-size, signed-decimal, and symbol-metadata validation remain outside the implemented
+  M1/M2 scope.
 - TSan support varies by host platform and toolchain.
 - Dedicated Ubuntu ARM64/RK3588 CI is not part of the initial hosted matrix.
-- No M2 or later milestone implementation is present.
+- M3 Sequence and Projection State and all later milestones remain unimplemented.
 
 ## License status
 
