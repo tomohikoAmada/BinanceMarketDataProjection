@@ -2,17 +2,17 @@
 
 ## Status
 
-- Design status: **PROPOSED**
+- Design status: **APPROVED**
 - Implementation status: **NOT STARTED**
-- ADR status: **PROPOSED**
-- External architecture review: **ROUND 1 CHANGES REQUESTED; ROUND 2 PENDING**
+- ADR status: **ACCEPTED**
+- External architecture review: **APPROVED**
 - Date: 2026-08-06
 - Projection base: `27279fe3e61c092d5dcc50cb35b0483b32ed428b`
 - Contracts baseline: `01d76a41929f36d89573159f5f458f9f1e378ada`
 
-This document is an architecture proposal, not an implementation claim. Every API and CMake
-declaration below is **Proposed, not implemented, and subject to external review**. M4 implementation
-must not start until this design is accepted and all implementation blockers are closed.
+This document records the accepted M4 architecture, not an implementation claim. Every API and CMake
+declaration below remains **Proposed, not implemented**. M4 implementation must not start until all
+implementation blockers are closed.
 
 ## External architecture review record
 
@@ -28,11 +28,23 @@ must not start until this design is accepted and all implementation blockers are
 
 ### Round 2
 
-- Status: **PENDING**
-- Revision head: pending commit
+- Reviewed head: `44e8f0fe8a8449cf895767c24e79921b5dc14456`
+- Result: **APPROVED**
+- Blocking architecture findings: **0**
+- P1-1: **CLOSED**
+- P1-2: **CLOSED**
+- P1-3: **CLOSED**
 
-This design revision addresses the Round 1 findings and awaits independent Round 2 review. It does
-not claim that any finding has been closed by external review.
+The Round 2 review approved the M4 architecture after verifying:
+
+- separation of schema identity from package identity;
+- checked `NumericSpec` and sequence-policy binding;
+- private call-local span views;
+- separation of Host-observed, Core-derived, and inbound-wire quality domains; and
+- consistency of the ADR, public API sketch, tests, fuzz strategy, and acceptance gates.
+
+This approval authorizes recording and merging the design. It does not authorize M4 implementation
+while C-M4-001 remains open.
 
 ## Source-of-truth order
 
@@ -215,15 +227,16 @@ closure. A Core-only consumer remains unaware that the optional component exists
 
 ## Decision summary
 
-Every detailed decision below is Proposed and subject to external review.
+Every detailed decision below is accepted for implementation planning; the APIs and build targets
+remain proposed and not implemented.
 
 | ID | Decision | Rationale | Rejected alternatives | Compatibility impact | Implementation consequence | Required tests | Blocking status |
 |---|---|---|---|---|---|---|---|
 | D1 | Separate optional `ProtoAdapter` target | Preserves accepted Core/wire boundary | Core linkage; monolithic target | Core ABI unaffected | Component-aware exports/config | Core-only and adapter consumers | Closed |
-| D2 | Separate schema fingerprint from package revision/version in a Contracts-owned C++ package | Schema semantics can remain fixed while build/distribution commits change | Historical repository commit as both identities; source checkout; copied artifacts | Dependency lock and approved schema identity are checked independently | C-M4-001 exports both identity domains | Canonical fingerprint, package lock, runtime, and symbol tests | **IMPLEMENTATION BLOCKER; P1-1 addressed, Round 2 pending** |
+| D2 | Separate schema fingerprint from package revision/version in a Contracts-owned C++ package | Schema semantics can remain fixed while build/distribution commits change | Historical repository commit as both identities; source checkout; copied artifacts | Dependency lock and approved schema identity are checked independently | C-M4-001 exports both identity domains | Canonical fingerprint, package lock, runtime, and symbol tests | **APPROVED; P1-1 CLOSED; implementation blocker C-M4-001 remains** |
 | D3 | Strict inbound snapshot conversion | Wire objects can bypass Pydantic validation | Trust generated setters | Rejects malformed or future unsupported values | Validate before owner return | Field/order/decimal tests | Closed |
 | D4 | Strict inbound depth conversion without sequencing | Separation between adaptation and M3 policy | Adapter repairs or classifies IDs | Preserves M3 semantics | Produce owner; never call projection | Range/presence/order tests | Closed |
-| D5 | Adapted owners bind `NumericSpec` and policy and expose only checked M3 invocation | Prevents dangling spans and cross-projection scale/policy misuse | Public naked views; Host-only call discipline; stored spans | Adds binding metadata and typed mismatch results | Private call-local view inside `install_into`/`apply_to` | Binding, result propagation, move, and lifetime tests | **P1-2 addressed, Round 2 pending** |
+| D5 | Adapted owners bind `NumericSpec` and policy and expose only checked M3 invocation | Prevents dangling spans and cross-projection scale/policy misuse | Public naked views; Host-only call discipline; stored spans | Adds binding metadata and typed mismatch results | Private call-local view inside `install_into`/`apply_to` | Binding, result propagation, move, and lifetime tests | **APPROVED; P1-2 CLOSED** |
 | D6 | `std::variant<T, AdapterError>` | Matches C++20/repository style | Exceptions, optional plus out error, callbacks | Stable typed error API | Validation returns values | Taxonomy/precedence tests | Closed |
 | D7 | Explicit closed enum maps | Enum numbers are wire authority, not Core identity | Casts/numeric alignment | Unknown enum fails closed | One mapping switch per enum | Every value, zero, unknown tests | Closed |
 | D8 | Owning Host snapshot context | Core lacks runtime fields and adapter cannot read ambient state | Clocks, globals, string views | Context/API versioned separately | Caller constructs complete context | Lifetime/identity tests | Closed |
@@ -231,13 +244,13 @@ Every detailed decision below is Proposed and subject to external review.
 | D10 | Generic Contracts gap reason plus preserved sequence endpoints | Current wire lacks M3-specific reason | Schema copy/change in this PR | Detailed reason is intentionally lost | Explicit five-to-one map | Five-reason mapping tests | Closed; non-blocking loss |
 | D11 | Positive `DepthLimit`; absence means unlimited | Mirrors Pydantic and safe `int32` | Zero sentinel/raw signed input | Presence remains exact | Valid-by-construction wrapper | Boundaries/top-N tests | Closed |
 | D12 | Fixed `NumericSpec` decimal output | Deterministic new snapshot, no input-spelling promise | Float/source precision heuristics | Canonical fixed scale | Use M1 fixed formatters | Formatting/locale tests | Closed |
-| D13 | Separate Host-observed and Core-derived quality domains; own mapped inbound Host facts in a sidecar | Makes three Core facts impossible for Host to inject | One full-range `QualityFact`; implicit inference; discard all metadata | Host enum evolves only by reviewed ownership decision | Derive Core facts, map Host facts, then rank/deduplicate | Compile-time domain, sidecar, contradiction, rank tests | **P1-3 addressed, Round 2 pending** |
+| D13 | Separate Host-observed and Core-derived quality domains; own mapped inbound Host facts in a sidecar | Makes three Core facts impossible for Host to inject | One full-range `QualityFact`; implicit inference; discard all metadata | Host enum evolves only by reviewed ownership decision | Derive Core facts, map Host facts, then rank/deduplicate | Compile-time domain, sidecar, contradiction, rank tests | **APPROVED; P1-3 CLOSED** |
 | D14 | Defer `MarketStateSnapshot` | Core lacks approved derived/full state | Partial adapter computation | No output promise in M4 | No MarketState builder | Absence/boundary review | Closed |
 | D15 | M6 owns `ConsumerGapNotice` and `StreamStatus` | They are subscription runtime messages | M4 Gateway state machine | M4 only maps snapshot gap descriptor | No subscription API in adapter | Dependency tests | Closed |
 | D16 | M6 owns gRPC | M4 is a message adapter | Server/client in adapter | No gRPC dependency in M4 | Depend on message target only | Link/package tests | Closed |
 | D17 | Stateless deterministic candidate construction | Live/replay equivalence and strong isolation | Ambient config/partial output | Semantic output stable | Build local candidate then return | Replay/allocation tests | Closed |
 | D18 | No adapter synchronization or Arena in baseline | Host already owns single-writer lifetime | Locks/atomics/Arena API | Simple value ownership | Stateless free functions | Thread-boundary/lifetime tests | Closed |
-| D19 | Dependency lock plus canonical schema fingerprint and generator/runtime metadata | Wire schema strings do not identify package or build ABI | Schema string alone; per-message descriptor hashing | Harmless package revisions remain distinct from schema identity | Configure-time checks; optional one-time defensive integrity probe | Missing/mismatched metadata and reproducibility tests | Part of D2 blocker |
+| D19 | Dependency lock plus canonical schema fingerprint and generator/runtime metadata | Wire schema strings do not identify package or build ABI | Schema string alone; per-message descriptor hashing | Harmless package revisions remain distinct from schema identity | Configure-time checks; optional one-time defensive integrity probe | Missing/mismatched metadata and reproducibility tests | **APPROVED; implementation prerequisite remains C-M4-001** |
 
 ## Target layout
 
@@ -1400,12 +1413,15 @@ that generated symbols occur once and all public dependencies propagate correctl
 
 ## Open decisions
 
-All M4 semantic decisions in this proposal have recommended answers. One external artifact decision
-remains an implementation blocker:
+All M4 architecture decisions are approved. One external implementation prerequisite remains
+unresolved:
 
 | ID | Question | Recommended answer | Alternative | Impact | Blocks implementation? | Evidence needed to close |
 |---|---|---|---|---|---:|---|
 | OD-M4-001 | What exact installable C++ target and package revision provide Contracts messages? | Contracts-owned versioned CMake/Conan package exporting one message target, separate schema/package identities, and generator/runtime metadata | Arbitrary Host injection | Determines dependency, package config, include layout, lock, runtime version, and symbol ownership | **YES — IMPLEMENTATION BLOCKER** | Merged C-M4-001 plus reproducible schema fingerprint and successful clean install-consumer audit |
+
+OD-M4-001 status: **OPEN — IMPLEMENTATION BLOCKER**. Owner: BinanceMarketDataContracts prerequisite
+C-M4-001.
 
 ## Implementation blockers
 
@@ -1413,7 +1429,7 @@ Reviewed blocker candidates:
 
 | Candidate | Decision | Blocking? |
 |---|---|---:|
-| B1 Contracts C++ package | Absent; C-M4-001 required | **Yes** |
+| B1 Contracts C++ package | **OPEN / BLOCKING**; C-M4-001 required | **Yes** |
 | B2 Gap information loss | Generic `SEQUENCE_GAP_DETECTED` plus endpoints is truthful; exact reason stays Core-only | No |
 | B3 Historical `last_gap` | Emit only for current `NeedsResync` | No |
 | B4 MarketState owner/data | Deferred to separate future Core design | No |
@@ -1421,8 +1437,8 @@ Reviewed blocker candidates:
 
 Implementation blocker count: **1**.
 
-Architecture review blockers pending re-review: **3**. P1-1, P1-2, and P1-3 are addressed in this
-document revision but remain open until independent Round 2 verification.
+Architecture review blockers: **0**.
+Round 1 findings closed by Round 2: **3**.
 
 ## Contracts prerequisites
 
@@ -1435,6 +1451,8 @@ This design changes no Contracts file. The required separate work is:
 No Contracts schema enhancement is required for initial M4 gap output. A possible future optional
 field for exact Core gap reason is explicitly non-prerequisite and would require its own evidence and
 compatibility review.
+
+C-M4-001 status: **NOT STARTED**. It remains the sole implementation blocker.
 
 ## Rejected alternatives
 
@@ -1488,9 +1506,16 @@ No implementation branch is created by this design task.
 
 ## Acceptance gates
 
+Satisfied architecture prerequisite:
+
+- M4 design approved;
+- ADR-0006 accepted;
+- Round 2 external architecture review approved; and
+- architecture blocking findings: **0**.
+
 Future M4 implementation must pass:
 
-- accepted M4 design/ADR and closed C-M4-001 artifact blocker;
+- C-M4-001 merged and independently verified;
 - public-header self-containment for Core and adapter;
 - Core-only configure/build/install/consumer with Protobuf unavailable;
 - adapter configure/build/install/consumer with locked package identity, approved canonical schema
@@ -1538,5 +1563,5 @@ External M4 Architecture Review must challenge:
 - Host/Core/inbound quality-domain separation and contradiction rules; and
 - independence of the proposed reference model and executability of failpoint tests.
 
-The required next step after this docs-only revision is
-**External M4 Architecture Review — Round 2**.
+The required next step after this acceptance recording is
+**Final M4 Design Merge Readiness Review**.

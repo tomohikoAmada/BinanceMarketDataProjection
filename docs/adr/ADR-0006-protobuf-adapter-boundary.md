@@ -1,6 +1,6 @@
 # ADR-0006: Protobuf Adapter Boundary
 
-- Status: PROPOSED
+- Status: ACCEPTED
 - Date: 2026-08-06
 
 ## Context
@@ -23,8 +23,21 @@ descriptor set suitable for a Projection C++ build.
 
 External architecture review Round 1 requested changes at design head
 `62283fcefcf17aef50b189714c8ffcfd2a04db39`: separate schema/package identity, bind adapted inputs
-to their target projection, and prevent Host injection of Core-derived quality. This proposed ADR
-revision addresses those findings and remains pending independent Round 2 review.
+to their target projection, and prevent Host injection of Core-derived quality. Round 2 approved the
+revised architecture with all three findings closed.
+
+## Acceptance record
+
+- Round 1 reviewed head: `62283fcefcf17aef50b189714c8ffcfd2a04db39`
+- Round 1 result: **CHANGES REQUESTED**
+- Round 1 blocking findings: **3**
+- Round 2 reviewed head: `44e8f0fe8a8449cf895767c24e79921b5dc14456`
+- Round 2 result: **APPROVED**
+- Blocking architecture findings after Round 2: **0**
+- Accepted design: Separate optional Protobuf adapter boundary with checked owning inputs,
+  separate schema/package identity, and disjoint quality ownership.
+
+ADR acceptance does not close C-M4-001. M4 implementation remains **NOT STARTED**.
 
 ## Decision
 

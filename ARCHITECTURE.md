@@ -13,7 +13,7 @@ The module does not own Binance network connections, snapshot downloads, WebSock
 server, consumer queues, storage, history storage, strategy logic, or trading. Hosts own lifecycle,
 transport, scheduling, persistence, and external integration.
 
-## M4 boundary under design
+## Accepted M4 boundary
 
 ```text
 Gateway / History Host
@@ -29,10 +29,11 @@ Optional Protobuf Adapter Target
 Contracts-generated Protobuf snapshot
 ```
 
-The optional adapter is proposed for M4 and is not implemented. Core remains independently
+The optional adapter boundary is accepted for M4 but is not implemented. Core remains independently
 buildable, installable, and usable without Protobuf, generated Contracts code, or gRPC. The adapter
 maps messages and explicit context; it does not own networking, clocks, buffering, recovery, or
-Gateway lifecycle. Gateway/gRPC runtime remains M6 scope.
+Gateway lifecycle. Gateway/gRPC runtime remains M6 scope. C-M4-001 must be completed before M4
+implementation.
 
 Adapter owners are bound to the conversion `NumericSpec` and sequence policy and must check both
 against the target Core instance before mutation. Schema baseline/fingerprint identity is distinct
@@ -47,7 +48,7 @@ History Host → optional adapter → Projection Core → optional adapter → S
 ```
 
 The Host supplies identity, producer metadata, timestamps, depth policy, and runtime quality facts.
-The arrows describe the proposed M4 boundary, not an implemented adapter.
+The arrows describe the accepted M4 boundary, not an implemented adapter.
 
 ## Dependency direction
 
@@ -71,5 +72,5 @@ contexts.
 ## Core/wire boundary
 
 Wire schemas are contracts, not domain storage types. Protobuf messages do not enter the Core API.
-The proposed separate adapter target translates explicitly in both directions without changing
+The accepted separate adapter target translates explicitly in both directions without changing
 deterministic Core rules or making Core consumers link Protobuf.
