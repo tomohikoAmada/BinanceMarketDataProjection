@@ -112,6 +112,16 @@ struct OperationContext {
     bool skipped{false};
 };
 
+[[nodiscard]] OperationContext make_context(const std::string& seed, std::size_t transcript_idx,
+                                            std::size_t op_idx, OpType type) {
+    OperationContext ctx{};
+    ctx.seed = seed;
+    ctx.transcript_idx = transcript_idx;
+    ctx.op_idx = op_idx;
+    ctx.type = type;
+    return ctx;
+}
+
 std::string format_failure_context(const OperationContext& ctx) {
     std::ostringstream oss;
     oss << "seed=" << ctx.seed << " transcript=" << ctx.transcript_idx << " op=" << ctx.op_idx
@@ -275,15 +285,10 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                 const auto quantity_val = rng.next_quantity();
                 const auto price = bmd_test::price_units(price_val);
                 const auto quantity = bmd_test::quantity_units(quantity_val);
-                OperationContext ctx{
-                    .seed = seed_str,
-                    .transcript_idx = transcript_idx,
-                    .op_idx = op_idx,
-                    .type = op,
-                    .side = bmd::BookSide::Bid,
-                    .price = price_val,
-                    .quantity = quantity_val,
-                };
+                auto ctx = make_context(seed_str, transcript_idx, op_idx, op);
+                ctx.side = bmd::BookSide::Bid;
+                ctx.price = price_val;
+                ctx.quantity = quantity_val;
                 run_checked_operation(ctx, book, reference, [&] {
                     static_cast<void>(book.apply_level(bmd::BookSide::Bid, price, quantity));
                     reference.apply_level(bmd::BookSide::Bid, price, quantity);
@@ -295,15 +300,10 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                 const auto quantity_val = rng.next_quantity();
                 const auto price = bmd_test::price_units(price_val);
                 const auto quantity = bmd_test::quantity_units(quantity_val);
-                OperationContext ctx{
-                    .seed = seed_str,
-                    .transcript_idx = transcript_idx,
-                    .op_idx = op_idx,
-                    .type = op,
-                    .side = bmd::BookSide::Ask,
-                    .price = price_val,
-                    .quantity = quantity_val,
-                };
+                auto ctx = make_context(seed_str, transcript_idx, op_idx, op);
+                ctx.side = bmd::BookSide::Ask;
+                ctx.price = price_val;
+                ctx.quantity = quantity_val;
                 run_checked_operation(ctx, book, reference, [&] {
                     static_cast<void>(book.apply_level(bmd::BookSide::Ask, price, quantity));
                     reference.apply_level(bmd::BookSide::Ask, price, quantity);
@@ -313,13 +313,8 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
             case OpType::Update: {
                 const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
                 const auto levels = reference.all_levels(side);
-                OperationContext ctx{
-                    .seed = seed_str,
-                    .transcript_idx = transcript_idx,
-                    .op_idx = op_idx,
-                    .type = op,
-                    .side = side,
-                };
+                auto ctx = make_context(seed_str, transcript_idx, op_idx, op);
+                ctx.side = side;
                 if (levels.empty()) {
                     ctx.skipped = true;
                     run_checked_operation(ctx, book, reference, [] {});
@@ -347,13 +342,8 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
             case OpType::Delete: {
                 const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
                 const auto levels = reference.all_levels(side);
-                OperationContext ctx{
-                    .seed = seed_str,
-                    .transcript_idx = transcript_idx,
-                    .op_idx = op_idx,
-                    .type = op,
-                    .side = side,
-                };
+                auto ctx = make_context(seed_str, transcript_idx, op_idx, op);
+                ctx.side = side;
                 if (levels.empty()) {
                     ctx.skipped = true;
                     run_checked_operation(ctx, book, reference, [] {});
@@ -374,15 +364,10 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                 const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
                 const auto price = find_missing_price(reference, side, rng);
                 const auto quantity = bmd_test::quantity_units(0);
-                OperationContext ctx{
-                    .seed = seed_str,
-                    .transcript_idx = transcript_idx,
-                    .op_idx = op_idx,
-                    .type = op,
-                    .side = side,
-                    .price = price.value(),
-                    .quantity = 0,
-                };
+                auto ctx = make_context(seed_str, transcript_idx, op_idx, op);
+                ctx.side = side;
+                ctx.price = price.value();
+                ctx.quantity = 0;
                 run_checked_operation(ctx, book, reference, [&] {
                     const auto change = book.apply_level(side, price, quantity);
                     reference.apply_level(side, price, quantity);
@@ -393,13 +378,8 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
             case OpType::SameValue: {
                 const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
                 const auto levels = reference.all_levels(side);
-                OperationContext ctx{
-                    .seed = seed_str,
-                    .transcript_idx = transcript_idx,
-                    .op_idx = op_idx,
-                    .type = op,
-                    .side = side,
-                };
+                auto ctx = make_context(seed_str, transcript_idx, op_idx, op);
+                ctx.side = side;
                 if (levels.empty()) {
                     ctx.skipped = true;
                     run_checked_operation(ctx, book, reference, [] {});
@@ -426,12 +406,7 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                     const auto q = bmd_test::quantity_units(rng.next_quantity());
                     batch_updates.push_back({bs, p, q});
                 }
-                OperationContext ctx{
-                    .seed = seed_str,
-                    .transcript_idx = transcript_idx,
-                    .op_idx = op_idx,
-                    .type = op,
-                };
+                auto ctx = make_context(seed_str, transcript_idx, op_idx, op);
                 ctx.batch_size = batch_size;
                 if (!batch_updates.empty()) {
                     ctx.side = batch_updates[0].side;
@@ -450,13 +425,8 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
             }
             case OpType::ClearSide: {
                 const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
-                OperationContext ctx{
-                    .seed = seed_str,
-                    .transcript_idx = transcript_idx,
-                    .op_idx = op_idx,
-                    .type = op,
-                    .side = side,
-                };
+                auto ctx = make_context(seed_str, transcript_idx, op_idx, op);
+                ctx.side = side;
                 run_checked_operation(ctx, book, reference, [&] {
                     book.clear_side(side);
                     reference.clear_side(side);
@@ -464,12 +434,7 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                 break;
             }
             case OpType::ClearAll: {
-                OperationContext ctx{
-                    .seed = seed_str,
-                    .transcript_idx = transcript_idx,
-                    .op_idx = op_idx,
-                    .type = op,
-                };
+                auto ctx = make_context(seed_str, transcript_idx, op_idx, op);
                 run_checked_operation(ctx, book, reference, [&] {
                     book.clear();
                     reference.clear();
@@ -491,12 +456,7 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                     const auto q = bmd_test::quantity_units(rng.next_quantity());
                     new_asks.push_back({p, q});
                 }
-                OperationContext ctx{
-                    .seed = seed_str,
-                    .transcript_idx = transcript_idx,
-                    .op_idx = op_idx,
-                    .type = op,
-                };
+                auto ctx = make_context(seed_str, transcript_idx, op_idx, op);
                 ctx.bid_count = bid_count;
                 ctx.ask_count = ask_count;
                 if (!new_bids.empty()) {
@@ -544,13 +504,8 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                     limit = (count < std::numeric_limits<std::size_t>::max()) ? count + 1 : count;
                     break;
                 }
-                OperationContext ctx{
-                    .seed = seed_str,
-                    .transcript_idx = transcript_idx,
-                    .op_idx = op_idx,
-                    .type = op,
-                    .side = side,
-                };
+                auto ctx = make_context(seed_str, transcript_idx, op_idx, op);
+                ctx.side = side;
                 ctx.limit = limit;
                 run_checked_operation(ctx, book, reference, [&] {
                     const auto production = book.top_levels(side, limit);
@@ -572,15 +527,10 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                     }
                     return find_missing_price(reference, side, rng);
                 }();
-                OperationContext ctx{
-                    .seed = seed_str,
-                    .transcript_idx = transcript_idx,
-                    .op_idx = op_idx,
-                    .type = op,
-                    .side = side,
-                    .price = price.value(),
-                    .quantity = 0,
-                };
+                auto ctx = make_context(seed_str, transcript_idx, op_idx, op);
+                ctx.side = side;
+                ctx.price = price.value();
+                ctx.quantity = 0;
                 run_checked_operation(ctx, book, reference, [&] {
                     const auto prod_qty = book.quantity_at(side, price);
                     const auto ref_qty = reference.quantity_at(side, price);
