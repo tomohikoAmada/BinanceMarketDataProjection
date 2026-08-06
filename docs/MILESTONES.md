@@ -158,6 +158,60 @@ History storage. M4 owns Protobuf/wire adaptation and snapshot contract producti
 runtime integration. Derived market prices, matching, orders, strategy, risk, and trading remain out
 of scope.
 
+## M4 Snapshots and Protobuf Boundary — DESIGN APPROVED; IMPLEMENTATION BLOCKED
+
+Implementation status: **NOT STARTED**
+
+### Acceptance status
+
+Design status: **APPROVED**.
+
+ADR-0006: **ACCEPTED**.
+
+External architecture review: **APPROVED**. Round 1 findings: **3 CLOSED**. Architecture blockers:
+**0**.
+
+Implementation status: **NOT STARTED**. Implementation blockers: **1 — C-M4-001**.
+Implementation has not started. It is blocked only by C-M4-001.
+
+### Goal
+
+Define an optional Protobuf adapter boundary that converts pinned Contracts wire messages into
+owning M1/M2/M3 inputs and converts `BookProjection` plus explicit Host context into deterministic
+`LocalOrderBookSnapshot` messages without introducing Protobuf into Core.
+
+### Design deliverables
+
+- Separate optional adapter target and one-way dependency direction into Core.
+- Audited Contracts C++ artifact acquisition with separate schema fingerprint and package
+  revision/version identities.
+- Explicit inbound `ExchangeDepthSnapshot` and `DepthUpdate` conversion.
+- Owning wrappers bound to `NumericSpec` and sequence policy that expose checked M3 invocation and
+  keep span-based views private.
+- Typed, deterministic validation and projection-binding errors.
+- Explicit Host-owned identity, producer, time, depth-limit, gap, and quality context.
+- State-specific `LocalOrderBookSnapshot` eligibility and visibility rules.
+- Deterministic `GapInfo` to `GapDescriptor` mapping and historical-gap policy.
+- Separate Host/Core quality domains plus owning inbound wire-quality sidecars.
+- Compatibility, packaging/install, downstream-consumer, test, property, and fuzz plans.
+- Accepted ADR-0006 for the separate Core/Protobuf adapter boundary.
+
+### Design status
+
+External architecture review Round 2: **APPROVED**. Round 1 findings are **3 CLOSED** and
+architecture blocking findings are **0**.
+
+The fixed Contracts baseline does not provide an installable C++ Protobuf package or exported CMake
+target. The separate C-M4-001 Contracts C++ package prerequisite remains an **IMPLEMENTATION
+BLOCKER**. M4 Design is **APPROVED**, ADR-0006 is **ACCEPTED**, implementation remains **NOT STARTED**, and no
+M4 production implementation, dependency, build target, test, or generated code exists here.
+
+### Non-goals
+
+No M4 implementation, Contracts change, gRPC runtime, Gateway lifecycle, network ownership,
+system-time read, generated-code copy, or M5/M6 work is included. `MarketStateSnapshot` generation
+and derived market calculations remain deferred unless separately designed and approved.
+
 ## Development map
 
 1. **M0 Repository Foundation** — Build, test, installation, CI, and governance baseline.
@@ -168,7 +222,8 @@ of scope.
 4. **M3 Sequence and Projection State — COMPLETE** —
    Market-specific sequencing, bootstrap validation, gap detection, reset logic, and synchronized
    projection lifecycle.
-5. **M4 Snapshots and Protobuf Boundary** — Wire-format adapter outside Core; snapshot production.
+5. **M4 Snapshots and Protobuf Boundary — DESIGN APPROVED; IMPLEMENTATION BLOCKED** — Optional
+   wire-format adapter outside Core; snapshot production boundary.
 6. **M5 Differential Validation and Performance** — Replay/differential/fuzz validation; benchmark
    with representative workloads.
 7. **M6 Gateway Integration** — Production host embedding surface; live ingestion.
