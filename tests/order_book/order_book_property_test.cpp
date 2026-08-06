@@ -112,6 +112,7 @@ struct OperationContext {
     bool skipped{false};
 };
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] OperationContext make_context(const std::string& seed, std::size_t transcript_idx,
                                             std::size_t op_idx, OpType type) {
     OperationContext ctx{};
@@ -502,6 +503,8 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                     break;
                 case 4:
                     limit = (count < std::numeric_limits<std::size_t>::max()) ? count + 1 : count;
+                    break;
+                default:
                     break;
                 }
                 auto ctx = make_context(seed_str, transcript_idx, op_idx, op);
