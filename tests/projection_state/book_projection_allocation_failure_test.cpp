@@ -32,8 +32,10 @@ class Scope final {
 
     Scope(const Scope&) = delete;
     Scope& operator=(const Scope&) = delete;
+    Scope(Scope&&) = delete;
+    Scope& operator=(Scope&&) = delete;
 
-    [[nodiscard]] std::size_t allocations() const noexcept { return count; }
+    [[nodiscard]] static std::size_t allocations() noexcept { return count; }
 };
 
 [[nodiscard]] void* allocate(std::size_t size) {
@@ -57,7 +59,8 @@ void* operator new(std::size_t size) { return allocation_control::allocate(size)
 
 void* operator new[](std::size_t size) { return allocation_control::allocate(size); }
 
-void* operator new(std::size_t size, const std::nothrow_t&) noexcept {
+void* operator new(std::size_t size, const std::nothrow_t& nothrow_tag) noexcept {
+    static_cast<void>(nothrow_tag);
     try {
         return allocation_control::allocate(size);
     } catch (const std::bad_alloc&) {
@@ -65,7 +68,8 @@ void* operator new(std::size_t size, const std::nothrow_t&) noexcept {
     }
 }
 
-void* operator new[](std::size_t size, const std::nothrow_t&) noexcept {
+void* operator new[](std::size_t size, const std::nothrow_t& nothrow_tag) noexcept {
+    static_cast<void>(nothrow_tag);
     try {
         return allocation_control::allocate(size);
     } catch (const std::bad_alloc&) {
@@ -83,22 +87,26 @@ void operator delete[](void* memory) noexcept {
     std::free(memory);
 }
 
-void operator delete(void* memory, std::size_t) noexcept {
+void operator delete(void* memory, std::size_t size) noexcept {
+    static_cast<void>(size);
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
     std::free(memory);
 }
 
-void operator delete[](void* memory, std::size_t) noexcept {
+void operator delete[](void* memory, std::size_t size) noexcept {
+    static_cast<void>(size);
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
     std::free(memory);
 }
 
-void operator delete(void* memory, const std::nothrow_t&) noexcept {
+void operator delete(void* memory, const std::nothrow_t& nothrow_tag) noexcept {
+    static_cast<void>(nothrow_tag);
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
     std::free(memory);
 }
 
-void operator delete[](void* memory, const std::nothrow_t&) noexcept {
+void operator delete[](void* memory, const std::nothrow_t& nothrow_tag) noexcept {
+    static_cast<void>(nothrow_tag);
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
     std::free(memory);
 }
