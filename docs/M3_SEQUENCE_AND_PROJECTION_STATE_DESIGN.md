@@ -67,6 +67,7 @@ repository.
 
 The Contracts baseline establishes these relevant facts:
 
+- `Market` identifies only `SPOT` and `USD_M_PERPETUAL`; it cannot identify COIN-M input.
 - `DepthUpdate` carries non-negative `first_update_id`, `final_update_id`, optional
   `previous_final_update_id`, and absolute-quantity bid and ask updates.
 - `final_update_id >= first_update_id` is required.
@@ -93,13 +94,19 @@ official pages; it does not copy their text as a substitute for the sources.
 | Difference | Evidence | M3 interpretation | Reason and tests |
 |---|---|---|---|
 | Spot bootstrap uses `u <= L` as stale, while Spot live handling says ignore only `u < current`. | Current official Spot instructions. | During `AwaitingBridge`, `u < L` is `IgnoredStale` and `u == L` is `IgnoredDuplicate`; both remain unsynchronized. During live operation the same two outcomes remain distinct and equality is not reapplied. | The split preserves the official bootstrap discard set, avoids allowing same-ID/different-content input to rewrite accepted state while identity is TBD, and gives stable observability for equality. Tests lock both branches. |
-| Spot bootstrap text says the first surviving interval contains `L`, while the live gap rule permits an event beginning exactly at `L + 1`. | Current official Spot instructions; the fixed Contracts handoff also models snapshot 500 followed by update 501. | Spot accepts a bridge when `u > L` and the inclusive range covers the successor of `L`: `U <= L + 1 <= u`. This includes both overlap (`U <= L`) and exact-next (`U == L + 1`). | Exact-next is continuous under the official live rule and must not be manufactured into a gap. Tests separately lock overlapping and exact-next bridges. Arithmetic is guarded against overflow. |
-| Futures bootstrap uses `u < L` and `U <= L <= u`, not Spot's effective `u > L` successor rule. | Both official Futures pages. | Futures requires the first non-stale event to contain `L`. An event ending exactly at `L` may establish the bridge without mutating the baseline; an exact-next interval beginning at `L + 1` is not accepted as the Futures bootstrap bridge. | This follows the product-specific official bootstrap text instead of importing the Spot interpretation. Tests lock equality and the exact-next rejection. |
-| Spot live continuity uses an interval; Futures live continuity uses `pu`. | Official product pages. | Spot uses successor coverage. USD-M and COIN-M require a present `previous_final_update_id` equal to the last accepted `u`; no additional Spot interval-continuity rule is imposed on Futures live events. | `pu` is the product-specific continuity anchor for batched Futures intervals. Cross-policy tests ensure the rules cannot be accidentally unified. |
+| Spot bootstrap requires the first surviving interval to contain `L`, while Spot live continuity permits an event beginning exactly at `current + 1`. | Current official Spot instructions. The fixed Contracts handoff fixture records only one `update_id` field after snapshot 500 and cannot establish the original `U/u` interval; it is not evidence for an exact-next bootstrap bridge. | Bootstrap and live are separate rules. A Spot bridge requires `u > L` and `U <= L <= u`; an advancing bootstrap candidate with `U > L` is a gap. Once synchronized, an advancing range is accepted when `U` is no later than the overflow-safe successor of current. | This follows the official contains-`L` bootstrap rule without importing the distinct live predicate. Tests reject `[501,501]` and `[501,502]` against `L=500` during bootstrap, while accepting exact-next during live operation. |
+| A USD-M bridge may end exactly at `L`, and Binance snapshots have a finite depth limit. | Official USD-M bootstrap and absolute-quantity rules; the official pages warn that snapshot depth is limited. | A relevant USD-M event satisfying `U <= L == u` applies every absolute-quantity level transactionally, keeps the accepted ID at `L`, and enters `Synchronized` only after commit. | A bridge can carry a changed price outside the retained snapshot depth. Skipping its levels could omit valid state. Focused book-content and allocation-failure tests lock the equality case. |
+| Spot live continuity uses an interval; USD-M live continuity uses `pu`. | Official product pages. | Spot uses successor coverage. USD-M requires a present `previous_final_update_id` equal to the last accepted `u`; no additional Spot interval-continuity rule is imposed on USD-M live events. | `pu` is the product-specific continuity anchor for batched Futures intervals. Cross-policy tests ensure the rules cannot be accidentally unified. |
 
-If Binance changes a rule, a new explicit `SequencePolicyKind` behavior and focused conformance
-tests will be reviewed. Existing policy semantics will not be silently changed, and Contracts will
-not be modified to hide a source difference.
+The reviewed COIN-M documentation currently uses the same previous-final continuity pattern as
+USD-M. COIN-M is nevertheless not part of the M3 public surface because the frozen Contracts
+baseline cannot identify a COIN-M market. Adding it requires an accepted Contracts market
+identifier, an explicit adapter mapping, a reviewed public-enum extension, and independent
+conformance tests.
+
+If Binance changes a rule, an explicit policy behavior and focused conformance tests will be
+reviewed. Existing policy semantics will not be silently changed, and Contracts will not be
+modified to hide a source difference.
 
 ## Vocabulary
 
@@ -107,7 +114,7 @@ not be modified to hide a source difference.
 |---|---|
 | Baseline | A Core domain value containing the complete book levels supplied to M3 and the Binance update ID through which those levels are valid. It is not a wire snapshot. |
 | Snapshot Last Update ID | The Binance `lastUpdateId` from the exchange snapshot, represented in Core as the baseline `last_update_id`; abbreviated `L` only in algorithms. |
-| Update Range | The inclusive Binance interval `[first_update_id, final_update_id]`, also written `[U,u]`. It may cover multiple exchange update IDs. |
+| Update Range | A valid-by-construction inclusive Binance interval `[first_update_id, final_update_id]`, also written `[U,u]`, whose invariant is always `first <= final`. It may cover multiple exchange update IDs. |
 | First Update ID | `U`, the first Binance update ID represented by a depth batch. |
 | Final Update ID | `u`, the last Binance update ID represented by a depth batch. |
 | Previous Final Update ID | `pu`, the previous WebSocket event's `u` for Futures; optional at the Contracts boundary and required by the M3 Futures policy for a relevant candidate. |
@@ -115,7 +122,7 @@ not be modified to hide a source difference.
 | Bridge Update | The first non-stale batch accepted against an installed baseline. |
 | Live Update | A batch classified after the projection has entered `Synchronized`. |
 | Stale Update | A structurally valid batch with `u < current`; it cannot advance the projection. |
-| Duplicate Update | A structurally valid batch with `u == current`; this is sequence equality, not proof of content identity. |
+| Duplicate Update | A sequence-equality batch classified as `IgnoredDuplicate`; this is not proof of content identity. A relevant USD-M `u == L` candidate in `AwaitingBridge` is instead an equality bridge and is applied. |
 | Overlapping Update | A batch whose `U <= current` and whose `u > current`; Spot may accept it because its interval covers the next required ID. |
 | Gap | Evidence that a relevant incoming batch cannot continue the selected market policy. A gap invalidates synchronized visibility. |
 | Needs Resync | A lifecycle state in which the preserved book is diagnostic-only and normal apply calls are rejected until a new baseline is installed or the projection is reset. |
@@ -132,8 +139,8 @@ domains. M3 models only Binance update IDs. It neither consumes nor synthesizes 
 | Type | Responsibility and fields | Ownership / containers | Copy, move, equality, `noexcept` | Public API |
 |---|---|---|---|---|
 | `UpdateId` | Strong wrapper around one non-negative Binance ID; field: `uint64_t value` | Owns one scalar; no container | Trivially copyable/movable; total ordering and equality; constructor/accessor `noexcept` | Yes |
-| `UpdateRange` | Inclusive candidate interval; fields: `first`, `final`; semantic validity requires `first <= final` before policy evaluation | Owns values | Trivially copyable/movable/equality; validation `noexcept` | Yes |
-| `SequencePolicyKind` | Selects `Spot`, `UsdMPerpetual`, or `CoinMPerpetual` semantics | Scalar enum | Trivial/equality; all inspection `noexcept` | Yes |
+| `UpdateRange` | Valid inclusive interval; private fields: `first`, `final`; `try_create` is the only public construction path and enforces `first <= final` | Owns values; no container | Copyable/movable/equality; allocation-free `constexpr` factory and accessors are `noexcept` | Yes |
+| `SequencePolicyKind` | Selects `Spot` or `UsdMPerpetual` market semantics represented by the frozen Contracts baseline | Scalar enum | Trivial/equality; all inspection `noexcept` | Yes |
 | `ProjectionStatus` | `AwaitingBaseline`, `AwaitingBridge`, `Synchronized`, `NeedsResync` | Scalar enum | Trivial/equality; `noexcept` | Yes |
 | `ApplyDisposition` | Stable classification of one apply call | Scalar enum | Trivial/equality; `noexcept` | Yes |
 | `GapReason` | Stable reason for loss of policy continuity | Scalar enum | Trivial/equality; `noexcept` | Yes |
@@ -159,10 +166,13 @@ Every `uint64_t` value, including zero and `UINT64_MAX`, is a valid `UpdateId`. 
 conversion to or from integers is proposed. Algorithms compare wrapped values. They never rely on
 signed arithmetic and never evaluate `current + 1` until `current != UINT64_MAX` is proven.
 
-`UpdateRange` is an input aggregate so malformed `first > final` can be represented long enough to
-return `RejectedInvalidRange` deterministically. The projection validates it before inspecting
-state-specific continuity or levels. Valid ranges are inclusive and may cover many IDs; M3 does not
-assume that each event represents exactly one integer.
+`UpdateRange` is not an aggregate. `try_create(first, final)` returns `nullopt` when `first > final`
+and otherwise returns a value whose invariant cannot subsequently be broken. The factory compares
+only wrapped scalars, allocates nothing, throws nothing, and is usable in constant evaluation under
+C++20. It constructs the private value inside the class and then converts that value to
+`std::optional<UpdateRange>`; it does not ask `std::optional` to invoke the private constructor.
+Valid ranges are inclusive and may cover many IDs; M3 does not assume that each event represents
+exactly one integer.
 
 ## Sequence policy abstraction
 
@@ -170,13 +180,12 @@ M3 selects a closed, immutable value policy at `BookProjection` construction:
 
 | Policy kind | Product | Bootstrap anchor | Live continuity anchor | `previous_final_update_id` |
 |---|---|---|---|---|
-| `Spot` | Binance Spot | Range covers the successor of `L`, with `u > L` | Range covers the successor of current | Ignored whether absent or present |
+| `Spot` | Binance Spot | Advancing range contains `L`: `U <= L < u` | Advancing range starts no later than the overflow-safe successor of current | Ignored whether absent or present |
 | `UsdMPerpetual` | Binance USD(S)-M perpetual | Range contains `L` | Present `pu == current` for every advancing batch | Required for relevant bridge/live candidates |
-| `CoinMPerpetual` | Binance COIN-M perpetual | Range contains `L` | Present `pu == current` for every advancing batch | Required for relevant bridge/live candidates |
 
-The implementation will use an enum and small internal pure classification functions. USD-M and
-COIN-M share an algorithm initially but retain distinct enum values so diagnostics, tests, and a
-future official divergence remain explicit.
+The implementation will use the market-facing enum and small internal pure classification
+functions. An internal Futures classifier may be reusable, but an algorithm category such as
+`FuturesPreviousFinal` is not a market identity and is not exposed as the public policy value.
 
 | Mechanism considered | Decision |
 |---|---|
@@ -188,8 +197,10 @@ future official divergence remain explicit.
 | Runtime plugin registration | Rejected: the supported policy set is small and governed by source evidence |
 | Global mutable configuration | Rejected: violates determinism and instance isolation |
 
-Supporting another Binance market requires official evidence, a new explicit enum value, a reviewed
-classification branch, and conformance tests. M3 is not a plugin framework.
+Supporting another Binance market requires official evidence, a Contracts market identifier, an
+explicit adapter mapping, a new reviewed enum value and classification branch, and conformance
+tests. M3 is not a plugin framework. COIN-M remains reviewed future-compatibility evidence, not a
+current supported policy.
 
 ## Lifecycle state machine
 
@@ -206,7 +217,9 @@ state, and invalidated state:
 ### State transition matrix
 
 `Strong` below means that a thrown allocation exception leaves status, accepted ID, gap, and live
-book exactly unchanged. Result names refer to `ApplyDisposition` unless an install result is named.
+book exactly unchanged. Every `DepthBatch` in this matrix already contains a valid-by-construction
+`UpdateRange`; malformed wire values cannot reach these transitions. Result names refer to
+`ApplyDisposition` unless an install result is named.
 
 | Old state | Input | Validation | Book change | Sequence change | New state / result | Exception guarantee |
 |---|---|---|---|---|---|---|
@@ -215,18 +228,17 @@ book exactly unchanged. Result names refer to `ApplyDisposition` unless an insta
 | `AwaitingBridge` | Install newer baseline | Same rules | Atomically replaces pending baseline | Replace `L` | `AwaitingBridge` / `Installed` | Strong |
 | `NeedsResync` | Install new baseline after gap | Same rules | Atomically replaces preserved stale book | Replace accepted ID with new `L`; retain last-gap evidence | `AwaitingBridge` / `Installed` | Strong |
 | `Synchronized` | Install baseline without reset | Wrong lifecycle | No | No | `Synchronized` / `RejectedWrongState` install result | No-throw result |
-| `AwaitingBridge` | Accept Spot bridge | Valid range; `u > L`; range covers successor of `L` | Apply all levels atomically | Set accepted ID to `u` | `Synchronized` / `Applied` | Strong |
+| `AwaitingBridge` | Accept Spot bridge | `u > L` and range contains `L`: `U <= L <= u` | Apply all levels atomically | Set accepted ID to `u` | `Synchronized` / `Applied` | Strong |
 | `AwaitingBridge` | Accept Futures bridge with `u > L` | Valid range contains `L`; relevant `pu` present | Apply all levels atomically | Set accepted ID to `u` | `Synchronized` / `Applied` | Strong |
-| `AwaitingBridge` | Accept Futures bridge with `u == L` | Valid range contains `L`; relevant `pu` present | No; snapshot already includes updates through `L` | ID remains `L`; bridge becomes established | `Synchronized` / `Applied` | No allocation; no-throw result |
+| `AwaitingBridge` | Accept USD-M equality bridge with `u == L` | Range contains `L`; relevant `pu` present | Apply all absolute-quantity levels atomically | ID remains `L`; bridge becomes established only after commit | `Synchronized` / `Applied` | Strong; failure leaves the exact baseline and `AwaitingBridge` state |
 | `Synchronized` | Accept live update | Policy continuity succeeds | Apply all levels atomically, including an empty level set | Advance accepted ID to `u` | `Synchronized` / `Applied` | Strong |
 | `AwaitingBridge` or `Synchronized` | Stale update (`u < current`) | Range structurally valid; stale classification precedes optional-field requirements | No | No | Same state / `IgnoredStale` | No-throw result |
 | `AwaitingBridge` or `Synchronized` | Exact sequence duplicate (`u == current`) | Range structurally valid; in Futures `AwaitingBridge`, equality is the special bridge case above | No | No | Same state / `IgnoredDuplicate` | No-throw result |
 | `Synchronized` | Overlapping Spot update (`U <= current < u`) | Range covers successor | Atomic level apply | Advance to `u` | `Synchronized` / `Applied` | Strong |
 | `Synchronized` | Spot forward gap | `u > current` and `U` is later than successor | Preserve | Preserve last accepted ID; store `GapInfo` | `NeedsResync` / `GapDetected` | No allocation; no-throw result |
-| `AwaitingBridge` | Non-bridgeable candidate | Spot misses successor or Futures does not contain `L` | Preserve baseline | Preserve `L`; store `GapInfo` | `NeedsResync` / `GapDetected` | No allocation; no-throw result |
+| `AwaitingBridge` | Non-bridgeable candidate | Advancing Spot range has `U > L`, or USD-M range does not contain `L` | Preserve baseline | Preserve `L`; store `GapInfo` | `NeedsResync` / `GapDetected` | No allocation; no-throw result |
 | `AwaitingBridge` or `Synchronized` | Futures missing relevant `pu` | Candidate would otherwise need bridge/live validation | Preserve | Preserve; store gap | `NeedsResync` / `GapDetected` | No allocation; no-throw result |
 | `Synchronized` | Futures `pu` mismatch | Advancing `u`, present `pu != current` | Preserve | Preserve; store gap | `NeedsResync` / `GapDetected` | No allocation; no-throw result |
-| Any state | Invalid range (`first > final`), or Futures `pu > final` | Structural validation occurs before lifecycle/policy validation | No | No | Same state / `RejectedInvalidRange` | No-throw result |
 | `AwaitingBaseline` or `NeedsResync` | Apply update | Wrong lifecycle | No | No | Same state / `RejectedWrongState` | No-throw result |
 | Any live object | Reset | None | Internal `OrderBook::clear()` | Clear accepted ID and last gap | `AwaitingBaseline` | `noexcept` |
 | `NeedsResync` | Receive more updates | Wrong lifecycle; no attempt to heal from diffs | No | No | `NeedsResync` / `RejectedWrongState` | No-throw result |
@@ -266,29 +278,38 @@ reveals pending state only to callers that opt into diagnostic semantics.
 
 ### Spot bootstrap
 
-1. For each structurally valid candidate, ignore `u < L` as stale and `u == L` as a sequence
-   duplicate.
-2. For the first candidate with `u > L`, determine whether it covers the successor of `L` without
-   unguarded addition.
-3. If it does, atomically apply its absolute-quantity levels, set the accepted ID to `u`, and enter
-   `Synchronized`.
-4. If it starts after the successor, record `SpotBootstrapForwardGap`, enter `NeedsResync`, and do
-   not change the book.
+1. Ignore `u < L` as stale and `u == L` as a sequence duplicate; both leave the projection in
+   `AwaitingBridge`.
+2. For the first candidate with `u > L`, require the inclusive interval to contain the snapshot
+   ID: `U <= L <= u`. Because `u > L` is already established, the bridge predicate can also be
+   written `U <= L < u` and requires no successor arithmetic.
+3. If the interval contains `L`, atomically apply all absolute-quantity levels, set the accepted ID
+   to `u`, and enter `Synchronized`.
+4. If `U > L`, record `SpotBootstrapForwardGap`, enter `NeedsResync`, and preserve the baseline.
 
-This accepts both an overlapping bridge and an exact-next bridge and records why that interpretation
-was selected in the source-difference table.
+An exact-next range beginning at `L + 1` is therefore a Spot bootstrap gap even though an exact-next
+range is valid after the projection is synchronized. Bootstrap contains-`L` and live successor
+coverage are deliberately different official rules.
 
-### Futures bootstrap (USD-M and COIN-M)
+### USD-M Futures bootstrap
 
 1. Ignore `u < L` as stale.
 2. The first relevant candidate must contain `L`: `U <= L <= u`.
 3. The candidate must carry `previous_final_update_id`; it is not compared to `L` for the first
    bridge because it refers to the prior WebSocket event, not to the REST snapshot.
-4. If `u == L`, establish synchronization without reapplying levels already represented by the
-   baseline. Future live input must then have `pu == L`.
-5. If `u > L`, atomically apply levels, advance to `u`, and enter `Synchronized`.
-6. A missing relevant `pu` or a first relevant range that does not contain `L` records a Futures
+4. For both `u == L` and `u > L`, run the same logical copy-on-apply transaction and apply every
+   absolute-quantity level. A REST snapshot has a finite depth limit, so an equality bridge can add
+   or update a price that the baseline did not retain.
+5. If `u == L`, commit the candidate book, keep the accepted ID at `L`, and then enter
+   `Synchronized`. Future live input must have `pu == L`.
+6. If `u > L`, commit the candidate book, advance to `u`, and enter `Synchronized`.
+7. A missing relevant `pu` or a first relevant range that does not contain `L` records a Futures
    bootstrap gap and enters `NeedsResync`.
+
+If candidate construction or level application throws for an equality bridge, the live baseline
+book, accepted ID `L`, status `AwaitingBridge`, gap, and visibility are all unchanged. COIN-M uses a
+similar rule in the reviewed official documentation but has no M3 runtime policy because the frozen
+Contracts baseline cannot identify it.
 
 ## Live update algorithm
 
@@ -296,15 +317,22 @@ was selected in the source-difference table.
 
 The following order is stable across policies:
 
-1. Reject `first > final`. For Futures, also reject a present `previous_final > final` as invalid
-   metadata. Spot does not interpret `previous_final`.
+1. Receive a `DepthBatch` whose `UpdateRange` invariant has already been established by its factory.
 2. Reject calls in `AwaitingBaseline` or `NeedsResync` as wrong-state input.
 3. If `final < current`, return `IgnoredStale`.
-4. If `final == current`, return `IgnoredDuplicate`.
-5. Only an advancing batch (`final > current`) reaches market-specific continuity validation.
+4. If `final == current`, return `IgnoredDuplicate`, except that a relevant USD-M candidate in
+   `AwaitingBridge` is the equality-bridge transaction defined above.
+5. Only an advancing batch (`final > current`) reaches market-specific live-continuity validation.
 
 This ordering prevents a replay/network duplicate from becoming a false Futures `pu` gap merely
 because its `pu` points to the event that preceded the duplicate.
+
+M4 converts Contracts/wire fields into M3 values. If `first_update_id > final_update_id`, range
+construction fails before `BookProjection::apply()` is called. A malformed wire event cannot be
+silently skipped while the projection continues claiming synchronization. The Host must stop
+reliable publication for that feed, `reset()` or discard the affected projection, and rebootstrap
+before processing later depth input; M4 adapter tests will verify the failed construction and the
+Host integration will verify this fail-closed response.
 
 ### Spot input classification matrix
 
@@ -324,7 +352,7 @@ needed.
 
 ### Futures input classification matrix
 
-This table applies independently to `UsdMPerpetual` and `CoinMPerpetual`.
+This table applies to `UsdMPerpetual`.
 
 | Input relative to current | `previous_final` | Classification | Book / ID / status |
 |---|---|---|---|
@@ -334,8 +362,11 @@ This table applies independently to `UsdMPerpetual` and `CoinMPerpetual`.
 | `final > current` | Not equal to current | `FuturesPreviousFinalMismatch` gap | Preserve; enter `NeedsResync` |
 | `final > current` | Equal to current | Accepted live batch, regardless of whether `U` equals `current + 1` | Atomic apply; ID becomes `final`; remains synchronized |
 
-Futures still requires `first <= final`. It does not add Spot's interval-continuity predicate after
-`pu` succeeds. Update IDs are batch intervals, not proof that every event increments by one.
+The range factory already guarantees `first <= final`. USD-M does not add Spot's
+interval-continuity predicate after `pu` succeeds. Update IDs are batch intervals, not proof that
+every event increments by one. No additional `previous_final <= final` invariant is imposed: the
+frozen Contracts baseline does not define it, and for an advancing accepted USD-M input
+`previous_final == current < final` follows naturally from the selected live rule.
 
 ## Duplicate and identity conflict
 
@@ -343,11 +374,11 @@ M3 distinguishes these concepts:
 
 | Concept | Meaning | M3 behavior |
 |---|---|---|
-| Sequence duplicate | Incoming `u == current` | `IgnoredDuplicate`; do not reapply |
+| Sequence duplicate | Incoming `u == current` outside the relevant USD-M equality-bootstrap case | `IgnoredDuplicate`; do not reapply |
 | Stale/replay duplicate | Incoming `u < current`, whether seen before or merely older | `IgnoredStale`; no event history lookup |
 | Network duplicate | Transport cause for receiving the same sequence again | Same sequence classification; transport cause is not stored |
 | Content duplicate | Byte/domain content equals an earlier event | Not computed |
-| Same `u`, different content | Candidate identity conflict under a still-TBD Contracts identity rule | Not detected by M3; it is ignored by sequence to avoid corrupting accepted state |
+| Same `u`, different content | Candidate identity conflict under a still-TBD Contracts identity rule, outside the baseline-versus-USD-M-equality-bridge case | Not detected by M3; a sequence duplicate is ignored to avoid corrupting accepted state |
 
 M3 will not serialize, hash, or retain event history. Contracts assigns normalized identity conflict
 detection to the normalization layer and still marks diff-depth identity as TBD. The Host or future
@@ -379,7 +410,8 @@ Proposed reasons are:
 - `FuturesMissingPreviousFinal`; and
 - `FuturesPreviousFinalMismatch`.
 
-Malformed ranges return `RejectedInvalidRange` and are not fabricated into a market gap.
+Malformed wire ranges fail M4 adaptation/domain construction before apply and are not fabricated
+into a market gap or silently treated as an ignorable market event.
 
 ### Behavior after a gap
 
@@ -440,20 +472,21 @@ M2 facts at the reviewed base are:
 - `apply_updates` applies levels in input order and is not transactional if allocation fails.
 - `all_levels` returns ordered vectors by value and may allocate.
 
-An advancing sequence ID must never be committed against a partially applied live book.
+An advancing sequence ID must never be committed against a partially applied live book, and an
+equality bridge must never expose `Synchronized` before all of its levels commit.
 
 ### Alternatives matrix
 
 | Alternative | Correctness | Complexity / cost | Decision |
 |---|---|---|---|
 | A: temporary complete `OrderBook` | Strong if the candidate can be populated and committed by `noexcept` move | Requires reconstructing the current complete state because public copy is deleted | This is the mechanism used by selected option B |
-| B: logical copy-on-apply | Read current sides with `all_levels`, construct a candidate with the same spec, `replace_all`, apply the batch to the candidate, then move-assign on success | O(full book) copying and allocations per advancing batch; simple and testable with current M2 API | **Selected M3 correctness baseline** |
+| B: logical copy-on-apply | Read current sides with `all_levels`, construct a candidate with the same spec, `replace_all`, apply the batch to the candidate, then move-assign on success | O(full book) copying and allocations per accepted batch; simple and testable with current M2 API | **Selected M3 correctness baseline** |
 | C: undo log | Could be strong only if rollback can never allocate and every change is captured | Reinsertion may allocate; node-handle/allocator design would substantially expand M2 and failure tests | Rejected for M3 |
 | D: accept M2 basic guarantee and mark `NeedsResync` after failure | Fail-closed visibility, but leaves a partially changed diagnostic book and makes allocation failure a resync event | Smallest code, weaker recoverability and evidence semantics | Rejected as the baseline; retained only as a future explicitly reviewed fallback if strong commit proves impossible |
 
 ### Selected incremental transaction
 
-For every advancing accepted batch:
+For every accepted batch that applies levels, including a USD-M equality bridge:
 
 1. Copy current bids and asks into ordered vectors using `all_levels`.
 2. Construct a candidate `OrderBook` with the same `NumericSpec`.
@@ -463,7 +496,9 @@ For every advancing accepted batch:
    is unchanged.
 6. Move-assign the fully updated candidate into the live `OrderBook`; current M2 move assignment is
    `noexcept`.
-7. Advance the sequence ID and status using non-throwing scalar assignments.
+7. Commit status using non-throwing scalar assignment and set the accepted ID to `u` only when it
+   advances. A USD-M equality bridge keeps `L` but still commits the candidate book before entering
+   `Synchronized`.
 
 This needs no M2 Public API extension. It prioritizes a verifiable strong guarantee over unmeasured
 performance. M5 benchmarks may justify an internal transactional clone/swap or allocator-aware
@@ -475,8 +510,8 @@ optimization without changing M3 semantics.
 |---|---|---|
 | Projection construction | Strong construction | No object on failure |
 | Baseline installation | Strong | Prior book, status, ID, and gap unchanged |
-| Stale/duplicate/rejected/gap classification | Non-allocating, expected `noexcept` internally | Deterministic result; gap transition is fully committed |
-| Incremental accepted apply | Strong | Prior synchronized book, status, ID, and gap unchanged; `std::bad_alloc` propagates |
+| Stale/duplicate/wrong-state/gap classification | Non-allocating, expected `noexcept` internally | Deterministic result; gap transition is fully committed |
+| Accepted bridge or live apply, including USD-M `u == L` | Strong | Prior book, status, ID, gap, and visibility unchanged; `std::bad_alloc` propagates. Equality-bridge failure remains exactly `AwaitingBridge` with ID `L` |
 | Result construction | Non-allocating value construction | No failure expected |
 | Reset | `noexcept` | Empty book, no ID/gap, `AwaitingBaseline` |
 | Queries returning M2 vectors | Existing allocation behavior | Projection unchanged if allocation throws |
@@ -498,17 +533,25 @@ class UpdateId final {
     friend constexpr auto operator<=>(UpdateId, UpdateId) noexcept = default;
 };
 
-struct UpdateRange final {
-    UpdateId first;
-    UpdateId final;
-    [[nodiscard]] constexpr bool valid() const noexcept;
+class UpdateRange final {
+  public:
+    [[nodiscard]] static constexpr std::optional<UpdateRange>
+    try_create(UpdateId first, UpdateId final) noexcept;
+
+    [[nodiscard]] constexpr UpdateId first() const noexcept;
+    [[nodiscard]] constexpr UpdateId final() const noexcept;
     friend constexpr bool operator==(const UpdateRange&, const UpdateRange&) noexcept = default;
+
+  private:
+    constexpr UpdateRange(UpdateId first, UpdateId final) noexcept;
+
+    UpdateId first_;
+    UpdateId final_;
 };
 
 enum class SequencePolicyKind : std::uint8_t {
     Spot,
     UsdMPerpetual,
-    CoinMPerpetual,
 };
 
 enum class ProjectionStatus : std::uint8_t {
@@ -523,7 +566,6 @@ enum class ApplyDisposition : std::uint8_t {
     IgnoredStale,
     IgnoredDuplicate,
     GapDetected,
-    RejectedInvalidRange,
     RejectedWrongState,
 };
 
@@ -610,6 +652,13 @@ class BookProjection final {
 
 Design choices embodied by the draft:
 
+- The public header directly includes the standard declarations it uses, including `<compare>`,
+  `<cstdint>`, `<functional>`, `<memory>`, `<optional>`, and `<span>`, and remains self-contained.
+- `UpdateRange::try_create` is a small allocation-free C++20 `constexpr` factory. It returns
+  `nullopt` for `first > final`; it does not throw for normal range validation and does not require
+  a custom expected/result framework.
+- `first()` and `final()` follow the repository's noun-style `value()` and `numeric_spec()` getter
+  convention; no `get_` prefix or public data members are introduced.
 - Default construction is forbidden because numeric and policy context are mandatory.
 - Policy and numeric context have no mutator and are logically immutable for object lifetime.
 - Copy is forbidden because the projection has single ownership and copying a large book should not
@@ -627,11 +676,10 @@ Design choices embodied by the draft:
 
 | Disposition | Book changes | ID advances | Status changes | Carries `GapInfo` | Classification |
 |---|---:|---:|---:|---:|---|
-| `Applied` | Yes for advancing batch; no for Futures equality bridge or empty/no-op levels | To `u` when greater; equality bridge remains `L` | `AwaitingBridge` may become `Synchronized` | No | Normal market input |
+| `Applied` | May change for every accepted transaction. A USD-M equality bridge applies all levels; an empty/no-op batch may leave content equal | To `u` only when greater; equality bridge remains `L` | `AwaitingBridge` may become `Synchronized` only after book commit | No | Normal market input |
 | `IgnoredStale` | No | No | No | No | Normal replay/network condition |
 | `IgnoredDuplicate` | No | No | No | No | Normal sequence condition; not content identity proof |
 | `GapDetected` | No | No | To `NeedsResync` | Yes | Normal adverse market/input continuity condition |
-| `RejectedInvalidRange` | No | No | No | No | Boundary/programmer validation error |
 | `RejectedWrongState` | No | No | No | No | Lifecycle misuse or input received while recovery is required |
 
 Every result reports the resulting status and accepted ID, making transcripts directly comparable.
@@ -643,10 +691,11 @@ must be absent. These are constructor/implementation invariants tested exhaustiv
 | Input | Behavior |
 |---|---|
 | `UpdateId{0}` | Valid baseline or event ID |
-| `UpdateId{UINT64_MAX}` | Valid. If current is max, all representable incoming finals are stale or duplicate; no successor arithmetic occurs |
-| `first > final` | `RejectedInvalidRange`, no mutation |
+| `UpdateId{UINT64_MAX}` | Valid. In `Synchronized`, all representable incoming finals are stale or duplicate and no successor arithmetic occurs; USD-M equality-bootstrap behavior is listed separately below |
+| `UpdateRange::try_create(first, final)` with `first > final` | Returns `nullopt`; no `UpdateRange` exists and no projection call is possible |
 | `current + 1` would overflow | The algorithm first establishes whether `final > current`; this is impossible at max. A guarded successor predicate is used elsewhere |
-| Futures `previous_final > final` | `RejectedInvalidRange`, no mutation; Spot ignores the field |
+| Baseline `L == UINT64_MAX` | Spot has no representable advancing bridge; `u == L` is duplicate and lower `u` is stale. USD-M may still apply an equality bridge without successor arithmetic |
+| `previous_final` greater than `final` | No standalone structural rule. Spot ignores the field; USD-M stale/duplicate classification precedes `pu`, and an advancing accepted event requires only `pu == current` |
 | Extremely wide valid range | Classified as an inclusive range; M3 neither expands nor iterates IDs |
 | Empty bids/asks | Valid; an accepted batch may advance the ID without level changes |
 | Duplicate prices in one update | M2 ordered application gives same-price last-write-wins |
@@ -676,11 +725,13 @@ path.
 
 | Area | Required cases |
 |---|---|
-| ID/range | zero, max, equality, first greater than final, huge inclusive interval, guarded successor at max, Futures previous greater than final |
-| Spot bootstrap | documented overlap, exact-next bridge, stale, equality duplicate, forward gap, empty-level bridge |
+| Update ID/range | IDs zero and max; ranges `[0,0]`, `[0,max]`, `[max,max]`, and `first < final` construct successfully; `try_create(first > final)` returns `nullopt`; range accessors/equality; guarded live successor at max |
+| Spot bootstrap | `L=500`: `[499,501]` and `[500,501]` apply; `[501,501]` and `[501,502]` detect `SpotBootstrapForwardGap`; `u=500` is duplicate; `u=499` is stale; empty-level contains-`L` bridge; `L=max` cannot advance |
 | Spot live | exact-next, overlap, stale, equality duplicate, forward gap, max final, previous-final present but ignored |
-| USD-M bootstrap/live | range contains `L`, equality bridge without mutation, `pu` continuity, stale and duplicate before `pu` validation, missing `pu`, mismatch, exact-next bootstrap range miss |
-| COIN-M bootstrap/live | Same policy matrix tested independently so enum routing cannot regress |
+| USD-M bootstrap | contains-`L` bridge with `u > L`; `U <= L == u` applies every level; equality bridge adds a deeper price absent from the limited baseline; ID remains `L`; missing `pu`; range miss; exact-next range miss; allocation failure preserves the exact pending baseline |
+| USD-M live | present `pu == current`; missing `pu`; mismatched `pu`; stale and duplicate classified before `pu`; empty advancing update |
+| API scope | `SequencePolicyKind` has only `Spot` and `UsdMPerpetual`; no COIN-M M3 public value; public-header self-containment includes `std::optional` support |
+| Adapter boundary documentation | Malformed Contracts/wire `first_update_id > final_update_id` fails range construction before domain apply; no fail-open projection result exists. M4 adapter implementation is not part of M3 |
 | Lifecycle | construction, wrong-state apply, install, replace pending baseline, bridge, gap, reject after gap, install after gap, reset from every state, reinstallation |
 | Book semantics through projection | mixed bid/ask, zero deletion, missing delete, duplicate-price last-write-wins, empty batch advances, crossed and locked book retained |
 | Context and ownership | `NumericSpec` retained through baseline/reset/move, policy retained and immutable, move destination exact, no copy, no mutable book exposure |
@@ -688,30 +739,34 @@ path.
 | Results | every disposition's status/ID/gap invariants and equality |
 
 Every row in the state transition matrix receives at least one direct test. Cross-policy table tests
-feed the same range/`pu` values to Spot, USD-M, and COIN-M and assert their intentionally different
-outcomes.
+feed the same range/`pu` values to Spot and USD-M and assert their intentionally different outcomes.
 
 ### Independent property model
 
-The test reference model will use primitive `uint64_t`, a vector-based reference book, and
-independently written decision tables. It must not call production policy helpers, successor
-predicates, `BookProjection`, or M2 map logic.
+The test reference model will use primitive `uint64_t`, its own valid-range construction, a
+vector-based reference book, and independently written decision tables. It must not call production
+policy helpers, successor predicates, `BookProjection`, the production range factory, or M2 map
+logic. Range-factory properties are tested separately; the model never passes an invalid range to
+production apply.
 
 Deterministic generators will produce:
 
-- legal contiguous Spot and Futures sequences;
-- batch intervals and overlapping ranges;
+- legal continuous Spot and USD-M sequences;
+- valid batch intervals and overlapping ranges;
+- Spot bootstrap intervals that contain `L` and exact-next bootstrap intervals that must gap;
 - stale and equality-duplicate batches;
 - Spot forward gaps;
-- Futures missing/mismatched `pu`;
+- USD-M missing/mismatched `pu` and equality bridges whose levels change the reference book without
+  advancing the ID;
 - reset and new-baseline operations;
 - empty batches; and
 - mixed bid/ask insert, replacement, and deletion updates.
 
 After every operation, compare production and reference status, result, accepted ID, gap, visible
-state, and complete diagnostic book. Assert that no gap/rejected operation changes the book or
-advances the ID, and that only synchronized state exposes the normal view. Seeds and operation
-indexes must be printed on failure.
+state, and complete diagnostic book. Assert that no gap/wrong-state operation changes the book or
+advances the ID, that an equality bridge can change the book without advancing the ID, and that only
+synchronized state exposes the normal view. COIN-M official evidence is not instantiated as an M3
+runtime model. Seeds and operation indexes must be printed on failure.
 
 ### Model-based fuzz plan
 
@@ -720,41 +775,48 @@ A future M3 harness will decode these operations:
 - `InstallBaseline`;
 - `ApplySpotUpdate`;
 - `ApplyUsdMUpdate`;
-- `ApplyCoinMUpdate`;
 - `Reset`;
 - `Query`;
-- `MalformedRange`;
-- `Gap`; and
-- `Duplicate`.
+- `Gap`;
+- `Duplicate`; and
+- `Stale`.
 
 One projection instance has a fixed policy; operations for a different policy are applied to a
 separate instance or decoded as reference-only comparisons, never by mutating policy. The harness
 will compare the production machine with an independent vector/reference model after each step and
 abort on any mismatch.
 
-Seed corpus categories will include: empty baseline, zero/max IDs, Spot overlap bridge, Spot
-exact-next bridge, both Futures equality bridges, multi-ID live ranges, empty advancing update,
-duplicate, stale, forward gap, `pu` mismatch, missing `pu`, reset/rebaseline, crossed book, zero
-delete, missing delete, duplicate price, and query in every state.
+An independent range-factory fuzz input may exercise arbitrary `(first, final)` pairs, but a failed
+factory result is never forwarded to projection apply. Seed corpus categories will include: empty
+baseline, zero/max IDs, Spot contains-`L` overlap bridge, Spot exact-next bootstrap gap, Spot
+exact-next live acceptance, USD-M `u > L` bridge, USD-M equality bridge that adds a
+snapshot-depth-excluded price, multi-ID live ranges, empty advancing update, duplicate, stale,
+forward gap, `pu` mismatch, missing `pu`, reset/rebaseline, crossed book, zero delete, missing delete,
+duplicate price, and query in every state.
 
 ### Replay determinism
 
-Each curated Spot/USD-M/COIN-M transcript is replayed into two fresh projections. The complete
-result sequence and every checkpoint listed in the determinism invariants must compare equal. A
-second test resets and replays into the same projection and compares with a fresh instance.
+Each curated Spot and USD-M transcript is replayed into two fresh projections. The corpus includes
+a Spot exact-next bootstrap gap, a Spot exact-next live update, and a USD-M equality bridge whose
+levels change the book while its ID remains `L`. The complete result sequence and every checkpoint
+listed in the determinism invariants must compare equal. A second test resets and replays into the
+same projection and compares with a fresh instance.
 
 ### Executable allocation-failure tests
 
 Exception tests will live in a dedicated test executable that overrides allocation with a
-deterministic fail-after counter; production code receives no failpoint API. For a known baseline
-and advancing batch, the test will first count successful transaction allocations, then sweep every
-failure position through `all_levels`, candidate construction, `replace_all`, and candidate
-`apply_updates`. After each caught `std::bad_alloc`, it will compare status, ID, gap, bids, and asks
-with an exact pre-call checkpoint. A final no-failure run must apply successfully.
+deterministic fail-after counter; production code receives no failpoint API. Separate scenarios
+cover baseline installation, a Spot accepted bridge, a Spot accepted live batch, a USD-M `u > L`
+bridge, a USD-M `u == L` equality bridge, and a USD-M accepted live batch. Each scenario first
+counts successful transaction allocations, then sweeps every failure position through
+`all_levels`, candidate construction, `replace_all`, and candidate `apply_updates`.
 
-The same countdown sweep covers baseline `replace_all`. The test only claims a failure point when
-the counter actually fires, so it cannot pass without exercising allocation failure. Sanitizer
-runs execute these tests as normal.
+After each caught `std::bad_alloc`, the test compares status, ID, gap, bids, asks, synchronized-view
+availability, and diagnostic-view contents with an exact pre-call checkpoint. Equality-bridge
+failures must remain `AwaitingBridge` with ID `L` and the unchanged baseline book. A final
+no-failure run must apply successfully and prove that the equality bridge can change book content
+without advancing the ID. The test only claims a failure point when the counter actually fires, so
+it cannot pass without exercising allocation failure. Sanitizer runs execute these tests as normal.
 
 ### Test deliverable matrix
 
@@ -763,7 +825,7 @@ runs execute these tests as normal.
 | Unit tests | Explicit expected table | Boundary and policy regressions |
 | State-transition tests | Complete transition matrix | Illegal lifecycle mutation |
 | Property tests | Independent primitive/vector model | Composed sequence/book divergence |
-| Model fuzz | Independent decoded model | Unexpected operation sequences and malformed input |
+| Model fuzz | Independent decoded model plus separate range-factory input | Unexpected operation sequences and domain-construction boundaries |
 | Replay determinism | Full transcript/checkpoint equality | Ambient or unstable behavior |
 | Allocation-failure sweep | Exact pre-call checkpoint | Book/sequence partial commit |
 
@@ -794,7 +856,7 @@ Implementation, if externally approved, will use a separate
 `feat/m3-sequence-projection-state` branch and proceed in small reviewed steps:
 
 1. Add `UpdateId`, `UpdateRange`, enum values, and header self-containment tests.
-2. Implement independent pure Spot and Futures classification functions and table tests.
+2. Implement independent pure Spot and USD-M classification functions and table tests.
 3. Add projection lifecycle/value results without book mutation.
 4. Add baseline installation and strong-guarantee tests.
 5. Add copy-on-apply incremental transaction and sequence commit.
@@ -822,7 +884,7 @@ This design PR does not create that branch or any production/test/fuzz files.
 | Clear immediately after every gap | Destroys diagnostic evidence without improving safety over gated visibility |
 | Put system time in `GapInfo` | Core must not read a clock; the Host can add explicit time at the adapter boundary |
 | Expose mutable `OrderBook&` | Allows bypassing sequence policy and creates permanent sequence/book divergence |
-| Virtual/plugin/callback policy framework | Adds open behavior, allocation, and ambient-state risks for three closed policy kinds |
+| Virtual/plugin/callback policy framework | Adds open behavior, allocation, and ambient-state risks for two closed policy kinds |
 | Store all event history | Unbounded memory and identity concerns are outside M3 |
 | Silently content-deduplicate every same-ID event | Content identity is unproven/TBD and would require history/hash/serialization |
 | Advance sequence before applying levels | Allocation failure would permanently associate the wrong book with the new ID |

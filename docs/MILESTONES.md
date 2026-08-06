@@ -116,9 +116,10 @@ the M2 order book.
 
 ### Planned outputs
 
-- Strongly typed unsigned Binance update IDs and inclusive update ranges.
-- Explicit Spot, USD(S)-M perpetual, and COIN-M perpetual sequence-policy kinds.
-- Separate Spot interval continuity and Futures previous-final (`pu`) continuity classifiers.
+- Strongly typed unsigned Binance update IDs and valid-by-construction inclusive update ranges.
+- Explicit Spot and USD(S)-M perpetual sequence-policy kinds, matching the frozen Contracts market
+  identifiers.
+- Separate Spot interval continuity and USD-M previous-final (`pu`) continuity classifiers.
 - Domain-only baseline and depth-batch views with no wire or runtime dependency.
 - `AwaitingBaseline`, `AwaitingBridge`, `Synchronized`, and `NeedsResync` lifecycle states.
 - Stable apply results, deterministic gap evidence, reset, and synchronization-aware const queries.
@@ -126,6 +127,9 @@ the M2 order book.
 - Complete transition/unit matrices, an independent property model, deterministic replay tests,
   allocation-failure tests, and a model-based M3 fuzz harness.
 - M3 architecture design and PROPOSED ADR-0005, followed by independent external review.
+
+COIN-M was reviewed as future-compatibility evidence but is not in the current M3 public surface
+because the frozen Contracts baseline does not identify a COIN-M market.
 
 ### Design status
 
