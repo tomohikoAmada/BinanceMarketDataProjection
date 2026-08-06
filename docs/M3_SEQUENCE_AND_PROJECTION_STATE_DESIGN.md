@@ -3,15 +3,15 @@
 ## Status
 
 - Design status: **APPROVED**
-- Implementation status: **NOT STARTED**
+- Implementation status: **IN EXTERNAL CODE REVIEW**
 - ADR status: **ACCEPTED**
 - Design date: 2026-08-06
 - Projection base: `413e3cd9236d0c5de15d4e838149111718260303`
 - Contracts baseline: `01d76a41929f36d89573159f5f458f9f1e378ada`
 
-Every C++ declaration in this document is **Proposed** and **Not implemented**; implementation is
-subject to a separate external code review. This document authorizes creation of the separate
-`feat/m3-sequence-projection-state` implementation branch only after this design PR is merged.
+The accepted API and semantics in this document are implemented on the separate
+`feat/m3-sequence-projection-state` branch. The implementation remains subject to external code
+review and is neither complete nor approved for merge.
 
 ## Design acceptance
 
@@ -20,7 +20,27 @@ subject to a separate external code review. This document authorizes creation of
 - External architecture review round 2: APPROVED
 - Blocking findings after round 2: 0
 - Approved scope: M3 architecture and sequence policy design only
-- Implementation status: NOT STARTED
+- Implementation status: IN EXTERNAL CODE REVIEW
+
+## Implementation review record
+
+- Implementation base: `3d3a7ee3131e1f8b489f76921a4c69c0fce1ab05`
+- Implementation branch: `feat/m3-sequence-projection-state`
+- Public header:
+  `include/binance_market_data/projection/v1/projection_state/book_projection.hpp`
+- Production source: `src/projection_state/book_projection.cpp`
+- Tests: direct policy/lifecycle and transition tests, public-header self-containment, an independent
+  primitive/vector property model, curated Spot and USD-M replay, and the dedicated
+  `bmd_projection_m3_allocation_failure_tests` executable.
+- Fuzz: `bmd_projection_book_projection_fuzz` with the independent vector model and checked-in
+  `fuzz/corpus/book_projection/` seeds.
+- Packaging: the staged downstream consumer includes and links the installed M3 API only through
+  `BinanceMarketDataProjection::Core`.
+- Local acceptance gates: `scripts/verify.sh` passed on 2026-08-06; local clang-tidy and libFuzzer
+  were explicitly skipped by the existing AppleClang rules, while Debug, Release, ASan, UBSan,
+  TSan, coverage, benchmark smoke, staged install, and 139 registered tests passed.
+- Pull-request CI: pending creation and execution for the implementation head.
+- External implementation code review: NOT STARTED.
 
 ## Goals
 
@@ -526,10 +546,10 @@ optimization without changing M3 semantics.
 
 No path advances `last_update_id` before the book commit.
 
-## Proposed public API
+## Approved public API
 
-The layout below is illustrative header-level design only. It is **Proposed**, **Not implemented**,
-and **Subject to external review**.
+The declarations below are implemented in the public header named in the implementation review
+record. Their implementation remains **In external code review**.
 
 ```cpp
 namespace binance_market_data::projection::v1 {
@@ -776,9 +796,9 @@ advances the ID, that an equality bridge can change the book without advancing t
 synchronized state exposes the normal view. COIN-M official evidence is not instantiated as an M3
 runtime model. Seeds and operation indexes must be printed on failure.
 
-### Model-based fuzz plan
+### Model-based fuzz harness
 
-A future M3 harness will decode these operations:
+The M3 harness decodes these operations:
 
 - `InstallBaseline`;
 - `ApplySpotUpdate`;
@@ -839,7 +859,7 @@ it cannot pass without exercising allocation failure. Sanitizer runs execute the
 
 ## Acceptance gates
 
-The future M3 implementation is not complete until all of these gates pass:
+The M3 implementation is not complete until all of these gates pass:
 
 - public-header self-containment;
 - Debug and Release builds/tests;
@@ -856,12 +876,14 @@ The future M3 implementation is not complete until all of these gates pass:
 - executable allocation-failure tests; and
 - independent external code review.
 
-This design-stage PR does not claim that any future M3 gate has passed.
+Local gates have passed subject to the explicit AppleClang skips recorded above. Linux
+clang-tidy/libFuzzer, the full pull-request matrix, and independent external code review remain
+pending and are required before M3 can be marked complete.
 
-## Implementation plan
+## Implementation sequence
 
-Implementation, after this design PR is merged, will use a separate
-`feat/m3-sequence-projection-state` branch and proceed in small reviewed steps:
+Implementation uses the separate `feat/m3-sequence-projection-state` branch and follows these
+reviewable steps:
 
 1. Add `UpdateId`, `UpdateRange`, enum values, and header self-containment tests.
 2. Implement independent pure Spot and USD-M classification functions and table tests.
@@ -876,7 +898,9 @@ Implementation, after this design PR is merged, will use a separate
 11. Add deterministic transcript replay and allocation-failure sweep.
 12. Update implementation documentation, run all acceptance gates, and obtain external review.
 
-This design PR does not create that branch or any production/test/fuzz files.
+Steps 1 through 11 and the documentation/local-validation portions of step 12 are represented in
+the implementation review branch. Passing CI and external code review remain outstanding
+acceptance gates.
 
 ## Alternatives rejected
 
@@ -908,7 +932,6 @@ baseline all have recommended decisions and executable tests above. Therefore th
 add an `O-P004` entry to `docs/OPEN_QUESTIONS.md`.
 
 Implementation blocker count from unresolved technical questions: **0**. External Architecture and
-Sequence Policy Review Round 2 is recorded as approved with no blocking findings. Creation of the
-separate `feat/m3-sequence-projection-state` implementation branch is authorized only after this
-design PR is merged; implementation remains subject to its own validation cycle and external code
+Sequence Policy Review Round 2 is recorded as approved with no blocking findings. The separate
+implementation branch now exists and remains subject to its validation cycle and external code
 review.
