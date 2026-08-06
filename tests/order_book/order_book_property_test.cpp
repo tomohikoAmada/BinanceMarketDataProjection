@@ -222,6 +222,7 @@ void verify_consistency(const bmd::OrderBook& book, const bmd_test::ReferenceOrd
 
 } // namespace
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
     constexpr std::uint64_t kFixedSeed = 1234567890ULL;
     constexpr std::size_t kTranscriptCount = 100;
@@ -450,6 +451,8 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                 }
                 break;
             }
+            default:
+                break;
             }
 
             verify_consistency(book, reference);
