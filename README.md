@@ -2,18 +2,16 @@
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. The current state is **M1 Numeric and Domain Primitives — COMPLETE, M2
-Order Book Core — COMPLETE, M3 Sequence and Projection State — IMPLEMENTATION APPROVED; PENDING
-MERGE**. The library exposes stable project/version metadata and exact numeric and order-book APIs
-on `main`; the M3 sequence-aware projection API currently remains on Draft PR #6.
+Order Book Core — COMPLETE, M3 Sequence and Projection State — COMPLETE**. M3 passed external
+architecture and implementation review, was merged through PR #6, and is available on `main`.
 
 This is an unofficial project and is not affiliated with, endorsed by, or sponsored by Binance.
 This module does not connect to Binance, use API keys, place orders, or contain trading strategies.
 
 > M1 introduced strict decimal parsing, strongly typed signed 64-bit units, exact rescaling, and
 > deterministic formatting. M2 subsequently added the deterministic order book core. The M3
-> implementation for sequence validation and projection lifecycle state has passed external code
-> review and is pending merge. Market-state snapshots, protobuf adapters, networking, persistence,
-> and trading remain unimplemented.
+> sequence validation and projection lifecycle state. Main CI passed after the M3 merge. Market-state
+> snapshots, protobuf adapters, networking, persistence, and trading remain unimplemented.
 
 ## Architecture boundary
 
@@ -96,7 +94,7 @@ Core. See [M2 order book semantics](docs/M2_ORDER_BOOK_SEMANTICS.md) and
 
 ## Sequence and projection state
 
-The M3 API on Draft PR #6 provides strongly typed `UpdateId` and valid-by-construction `UpdateRange`
+The M3 API provides strongly typed `UpdateId` and valid-by-construction `UpdateRange`
 values plus a `BookProjection` that selects either the approved Spot interval policy or USD-M
 previous-final policy. Its lifecycle is `AwaitingBaseline`, `AwaitingBridge`, `Synchronized`, or
 `NeedsResync`. Baselines and accepted batches commit with the strong exception guarantee.
@@ -106,8 +104,8 @@ A detected gap preserves the last accepted book and update ID but quarantines no
 explicit const view for pending or stale evidence. Core owns no snapshot download, network buffer,
 wire type, clock, or recovery runtime. See the
 [M3 design](docs/M3_SEQUENCE_AND_PROJECTION_STATE_DESIGN.md) and
-[ADR-0005](docs/adr/ADR-0005-market-specific-sequence-policy.md). The implementation passed external
-code review but is pending merge; `main` does not yet contain M3, and M3 is not complete.
+[ADR-0005](docs/adr/ADR-0005-market-specific-sequence-policy.md). The M3 implementation was merged
+through PR #6 and is available on `main`.
 
 ## Sanitizers and coverage
 
@@ -191,16 +189,14 @@ fuzz/          libFuzzer harnesses and checked-in seed corpus
 
 ## Milestone status
 
-M1 Numeric and Domain Primitives and M2 Order Book Core were externally reviewed and merged. M3
-Sequence and Projection State design and implementation are approved, with the implementation
-pending merge from Draft PR #6. The Contracts reference baseline is
+M1, M2, and M3 are COMPLETE. All three milestones were externally reviewed and merged. The
+Contracts reference baseline is
 `01d76a41929f36d89573159f5f458f9f1e378ada`.
 
 ## Known limitations
 
-- The repository now includes numeric primitives, a deterministic L2 market-by-price order book,
-  and the branch-only M3 sequence/projection implementation. M3 is not present on `main` and is not
-  complete until PR #6 is authorized and merged.
+- The repository includes numeric primitives, a deterministic L2 market-by-price order book, and
+  the completed M3 sequence/projection implementation on `main`.
 - Snapshot contracts, protobuf adapters, networking, persistence, Gateway runtime, History runtime,
   strategy, and trading behavior remain unimplemented.
 - Tick-size, step-size, signed-decimal, and symbol-metadata validation remain outside the implemented

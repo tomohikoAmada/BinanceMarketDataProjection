@@ -3,15 +3,14 @@
 ## Status
 
 - Design status: **APPROVED**
-- Implementation status: **APPROVED; PENDING MERGE**
+- Implementation status: **COMPLETE**
 - ADR status: **ACCEPTED**
 - Design date: 2026-08-06
 - Projection base: `413e3cd9236d0c5de15d4e838149111718260303`
 - Contracts baseline: `01d76a41929f36d89573159f5f458f9f1e378ada`
 
-The accepted API and semantics in this document are implemented on the separate
-`feat/m3-sequence-projection-state` branch. External implementation code review is approved, but
-Draft PR #6 is not merged and M3 is not complete.
+The accepted API and semantics in this document are implemented on `main` through merged PR #6.
+M3 is complete on main; M4 and later milestones remain separate future work.
 
 ## Design acceptance
 
@@ -20,7 +19,7 @@ Draft PR #6 is not merged and M3 is not complete.
 - External architecture review round 2: APPROVED
 - Blocking findings after round 2: 0
 - Approved scope: M3 architecture and sequence policy design only
-- Implementation status: APPROVED; PENDING MERGE
+- Implementation status: COMPLETE
 
 ## Implementation review record
 
@@ -48,9 +47,30 @@ Draft PR #6 is not merged and M3 is not complete.
 - Reviewed CI head: `7606a60bbb2d2a192f6c0259942174fbd49847ba`.
 - Reviewed CI result: 8/8 PASS.
 
-This approval covers the reviewed implementation head. Draft PR #6 remains unmerged, M3 remains
-incomplete, and this approval-record commit and its resulting PR head require final CI verification
-before merge authorization. M4 and later milestones must not start.
+This approval covers the reviewed implementation head. The implementation was subsequently merged
+through PR #6 and verified on `main` as recorded below.
+
+## Merge completion record
+
+- Pull request: #6 — Implement M3 sequence and projection state
+- Final approved PR head:
+  `3c51d9e8c59567cf6c08caa45c0a120e912ecb98`
+- Squash merge commit:
+  `39b34dc3a2fd5784f6a53d5e39c80e56be42355c`
+- Merge time:
+  `2026-08-06T09:16:24Z`
+- Main CI run:
+  `31088396997`
+- Main CI head:
+  `39b34dc3a2fd5784f6a53d5e39c80e56be42355c`
+- Main CI event:
+  `push`
+- Main CI result:
+  `8/8 PASS`
+- M3 implementation status:
+  `COMPLETE`
+
+M3 is complete on main. M4 and later milestones remain separate future work.
 
 ## Goals
 
@@ -559,7 +579,7 @@ No path advances `last_update_id` before the book commit.
 ## Approved public API
 
 The declarations below are implemented in the public header named in the implementation review
-record. Their implementation remains **In external code review**.
+record and are available on `main`.
 
 ```cpp
 namespace binance_market_data::projection::v1 {
@@ -869,7 +889,7 @@ it cannot pass without exercising allocation failure. Sanitizer runs execute the
 
 ## Acceptance gates
 
-The M3 implementation is not complete until all of these gates pass:
+The completed M3 implementation passed the following acceptance gates:
 
 - public-header self-containment;
 - Debug and Release builds/tests;
@@ -886,13 +906,13 @@ The M3 implementation is not complete until all of these gates pass:
 - executable allocation-failure tests; and
 - independent external code review.
 
-Local gates have passed subject to the explicit AppleClang skips recorded above. Linux
-clang-tidy/libFuzzer, the full pull-request matrix, and independent external code review remain
-pending and are required before M3 can be marked complete.
+Local gates passed subject to the explicit AppleClang skips recorded above. The full pull-request
+matrix and independent external code review also passed; the reviewed implementation was merged
+and Main CI passed as recorded in the merge completion record.
 
 ## Implementation sequence
 
-Implementation uses the separate `feat/m3-sequence-projection-state` branch and follows these
+Implementation used the `feat/m3-sequence-projection-state` branch and followed these
 reviewable steps:
 
 1. Add `UpdateId`, `UpdateRange`, enum values, and header self-containment tests.
@@ -909,8 +929,7 @@ reviewable steps:
 12. Update implementation documentation, run all acceptance gates, and obtain external review.
 
 Steps 1 through 11 and the documentation/local-validation portions of step 12 are represented in
-the implementation review branch. Passing CI and external code review remain outstanding
-acceptance gates.
+the merged implementation. CI and external code review passed as recorded above.
 
 ## Alternatives rejected
 
@@ -942,6 +961,5 @@ baseline all have recommended decisions and executable tests above. Therefore th
 add an `O-P004` entry to `docs/OPEN_QUESTIONS.md`.
 
 Implementation blocker count from unresolved technical questions: **0**. External Architecture and
-Sequence Policy Review Round 2 is recorded as approved with no blocking findings. The separate
-implementation branch now exists and remains subject to its validation cycle and external code
-review.
+Sequence Policy Review Round 2 and the external implementation code review are recorded as approved
+with no blocking findings. The implementation is complete on `main`.
