@@ -10,9 +10,11 @@
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
+#include <optional>
 #include <random>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 // NOLINTBEGIN(bugprone-unchecked-optional-access)
@@ -103,8 +105,11 @@ struct OperationContext {
     bmd::BookSide side{bmd::BookSide::Bid};
     Price price{0};
     Quantity quantity{0};
-    std::size_t extra1{0};
-    std::size_t extra2{0};
+    std::optional<std::size_t> limit;
+    std::optional<std::size_t> batch_size;
+    std::optional<std::size_t> bid_count;
+    std::optional<std::size_t> ask_count;
+    bool skipped{false};
 };
 
 std::string format_failure_context(const OperationContext& ctx) {
@@ -112,8 +117,18 @@ std::string format_failure_context(const OperationContext& ctx) {
     oss << "seed=" << ctx.seed << " transcript=" << ctx.transcript_idx << " op=" << ctx.op_idx
         << " type=" << op_name(ctx.type) << " side=" << to_string(ctx.side)
         << " price=" << ctx.price << " quantity=" << ctx.quantity;
-    if (ctx.extra1 > 0 || ctx.extra2 > 0) {
-        oss << " extra1=" << ctx.extra1 << " extra2=" << ctx.extra2;
+    if (ctx.skipped) {
+        oss << " empty=true";
+    }
+    if (ctx.limit.has_value()) {
+        oss << " limit=" << ctx.limit.value();
+    }
+    if (ctx.batch_size.has_value()) {
+        oss << " batch_size=" << ctx.batch_size.value();
+    }
+    if (ctx.bid_count.has_value() || ctx.ask_count.has_value()) {
+        oss << " bid_count=" << (ctx.bid_count.has_value() ? ctx.bid_count.value() : 0)
+            << " ask_count=" << (ctx.ask_count.has_value() ? ctx.ask_count.value() : 0);
     }
     return oss.str();
 }
@@ -220,6 +235,14 @@ void verify_consistency(const bmd::OrderBook& book, const bmd_test::ReferenceOrd
     verify_no_duplicates(prod_asks);
 }
 
+template <typename Action>
+void run_checked_operation(const OperationContext& ctx, bmd::OrderBook& book,
+                           bmd_test::ReferenceOrderBook& reference, Action&& action) {
+    SCOPED_TRACE(format_failure_context(ctx));
+    std::forward<Action>(action)();
+    verify_consistency(book, reference);
+}
+
 } // namespace
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
@@ -252,11 +275,19 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                 const auto quantity_val = rng.next_quantity();
                 const auto price = bmd_test::price_units(price_val);
                 const auto quantity = bmd_test::quantity_units(quantity_val);
-                OperationContext ctx{seed_str,           transcript_idx, op_idx,      op,
-                                     bmd::BookSide::Bid, price_val,      quantity_val};
-                SCOPED_TRACE(format_failure_context(ctx));
-                static_cast<void>(book.apply_level(bmd::BookSide::Bid, price, quantity));
-                reference.apply_level(bmd::BookSide::Bid, price, quantity);
+                OperationContext ctx{
+                    .seed = seed_str,
+                    .transcript_idx = transcript_idx,
+                    .op_idx = op_idx,
+                    .type = op,
+                    .side = bmd::BookSide::Bid,
+                    .price = price_val,
+                    .quantity = quantity_val,
+                };
+                run_checked_operation(ctx, book, reference, [&] {
+                    static_cast<void>(book.apply_level(bmd::BookSide::Bid, price, quantity));
+                    reference.apply_level(bmd::BookSide::Bid, price, quantity);
+                });
                 break;
             }
             case OpType::AskInsert: {
@@ -264,17 +295,35 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                 const auto quantity_val = rng.next_quantity();
                 const auto price = bmd_test::price_units(price_val);
                 const auto quantity = bmd_test::quantity_units(quantity_val);
-                OperationContext ctx{seed_str,           transcript_idx, op_idx,      op,
-                                     bmd::BookSide::Ask, price_val,      quantity_val};
-                SCOPED_TRACE(format_failure_context(ctx));
-                static_cast<void>(book.apply_level(bmd::BookSide::Ask, price, quantity));
-                reference.apply_level(bmd::BookSide::Ask, price, quantity);
+                OperationContext ctx{
+                    .seed = seed_str,
+                    .transcript_idx = transcript_idx,
+                    .op_idx = op_idx,
+                    .type = op,
+                    .side = bmd::BookSide::Ask,
+                    .price = price_val,
+                    .quantity = quantity_val,
+                };
+                run_checked_operation(ctx, book, reference, [&] {
+                    static_cast<void>(book.apply_level(bmd::BookSide::Ask, price, quantity));
+                    reference.apply_level(bmd::BookSide::Ask, price, quantity);
+                });
                 break;
             }
             case OpType::Update: {
                 const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
                 const auto levels = reference.all_levels(side);
-                if (!levels.empty()) {
+                OperationContext ctx{
+                    .seed = seed_str,
+                    .transcript_idx = transcript_idx,
+                    .op_idx = op_idx,
+                    .type = op,
+                    .side = side,
+                };
+                if (levels.empty()) {
+                    ctx.skipped = true;
+                    run_checked_operation(ctx, book, reference, [] {});
+                } else {
                     const auto idx = rng.next_size_t(levels.size());
                     const auto price = levels[idx].price;
                     auto raw_quantity = rng.next_quantity();
@@ -286,26 +335,38 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                         raw_quantity = (raw_quantity == 1) ? 2 : raw_quantity - 1;
                     }
                     const auto quantity = bmd_test::quantity_units(raw_quantity);
-                    OperationContext ctx{seed_str, transcript_idx, op_idx,      op,
-                                         side,     price.value(),  raw_quantity};
-                    SCOPED_TRACE(format_failure_context(ctx));
-                    static_cast<void>(book.apply_level(side, price, quantity));
-                    reference.apply_level(side, price, quantity);
+                    ctx.price = price.value();
+                    ctx.quantity = raw_quantity;
+                    run_checked_operation(ctx, book, reference, [&] {
+                        static_cast<void>(book.apply_level(side, price, quantity));
+                        reference.apply_level(side, price, quantity);
+                    });
                 }
                 break;
             }
             case OpType::Delete: {
                 const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
                 const auto levels = reference.all_levels(side);
-                if (!levels.empty()) {
+                OperationContext ctx{
+                    .seed = seed_str,
+                    .transcript_idx = transcript_idx,
+                    .op_idx = op_idx,
+                    .type = op,
+                    .side = side,
+                };
+                if (levels.empty()) {
+                    ctx.skipped = true;
+                    run_checked_operation(ctx, book, reference, [] {});
+                } else {
                     const auto idx = rng.next_size_t(levels.size());
                     const auto price = levels[idx].price;
                     const auto quantity = bmd_test::quantity_units(0);
-                    OperationContext ctx{seed_str, transcript_idx, op_idx, op,
-                                         side,     price.value(),  0};
-                    SCOPED_TRACE(format_failure_context(ctx));
-                    static_cast<void>(book.apply_level(side, price, quantity));
-                    reference.apply_level(side, price, quantity);
+                    ctx.price = price.value();
+                    ctx.quantity = 0;
+                    run_checked_operation(ctx, book, reference, [&] {
+                        static_cast<void>(book.apply_level(side, price, quantity));
+                        reference.apply_level(side, price, quantity);
+                    });
                 }
                 break;
             }
@@ -313,26 +374,46 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                 const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
                 const auto price = find_missing_price(reference, side, rng);
                 const auto quantity = bmd_test::quantity_units(0);
-                OperationContext ctx{seed_str, transcript_idx, op_idx, op, side, price.value(), 0};
-                SCOPED_TRACE(format_failure_context(ctx));
-                const auto change = book.apply_level(side, price, quantity);
-                reference.apply_level(side, price, quantity);
-                EXPECT_EQ(change, bmd::LevelChange::Unchanged);
+                OperationContext ctx{
+                    .seed = seed_str,
+                    .transcript_idx = transcript_idx,
+                    .op_idx = op_idx,
+                    .type = op,
+                    .side = side,
+                    .price = price.value(),
+                    .quantity = 0,
+                };
+                run_checked_operation(ctx, book, reference, [&] {
+                    const auto change = book.apply_level(side, price, quantity);
+                    reference.apply_level(side, price, quantity);
+                    EXPECT_EQ(change, bmd::LevelChange::Unchanged);
+                });
                 break;
             }
             case OpType::SameValue: {
                 const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
                 const auto levels = reference.all_levels(side);
-                if (!levels.empty()) {
+                OperationContext ctx{
+                    .seed = seed_str,
+                    .transcript_idx = transcript_idx,
+                    .op_idx = op_idx,
+                    .type = op,
+                    .side = side,
+                };
+                if (levels.empty()) {
+                    ctx.skipped = true;
+                    run_checked_operation(ctx, book, reference, [] {});
+                } else {
                     const auto idx = rng.next_size_t(levels.size());
                     const auto price = levels[idx].price;
                     const auto quantity = levels[idx].quantity;
-                    OperationContext ctx{seed_str, transcript_idx, op_idx,          op,
-                                         side,     price.value(),  quantity.value()};
-                    SCOPED_TRACE(format_failure_context(ctx));
-                    const auto change = book.apply_level(side, price, quantity);
-                    EXPECT_EQ(change, bmd::LevelChange::Unchanged);
-                    reference.apply_level(side, price, quantity);
+                    ctx.price = price.value();
+                    ctx.quantity = quantity.value();
+                    run_checked_operation(ctx, book, reference, [&] {
+                        const auto change = book.apply_level(side, price, quantity);
+                        EXPECT_EQ(change, bmd::LevelChange::Unchanged);
+                        reference.apply_level(side, price, quantity);
+                    });
                 }
                 break;
             }
@@ -345,28 +426,54 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                     const auto q = bmd_test::quantity_units(rng.next_quantity());
                     batch_updates.push_back({bs, p, q});
                 }
-                OperationContext ctx{seed_str, transcript_idx, op_idx, op};
-                ctx.extra1 = batch_size;
-                SCOPED_TRACE(format_failure_context(ctx));
-                book.apply_updates(batch_updates);
-                for (const auto& u : batch_updates) {
-                    reference.apply_level(u.side, u.price, u.quantity);
+                OperationContext ctx{
+                    .seed = seed_str,
+                    .transcript_idx = transcript_idx,
+                    .op_idx = op_idx,
+                    .type = op,
+                };
+                ctx.batch_size = batch_size;
+                if (!batch_updates.empty()) {
+                    ctx.side = batch_updates[0].side;
+                    ctx.price = batch_updates[0].price.value();
+                    ctx.quantity = batch_updates[0].quantity.value();
+                } else {
+                    ctx.skipped = true;
                 }
+                run_checked_operation(ctx, book, reference, [&] {
+                    book.apply_updates(batch_updates);
+                    for (const auto& u : batch_updates) {
+                        reference.apply_level(u.side, u.price, u.quantity);
+                    }
+                });
                 break;
             }
             case OpType::ClearSide: {
                 const auto side = (rng.next() % 2 == 0) ? bmd::BookSide::Bid : bmd::BookSide::Ask;
-                OperationContext ctx{seed_str, transcript_idx, op_idx, op, side};
-                SCOPED_TRACE(format_failure_context(ctx));
-                book.clear_side(side);
-                reference.clear_side(side);
+                OperationContext ctx{
+                    .seed = seed_str,
+                    .transcript_idx = transcript_idx,
+                    .op_idx = op_idx,
+                    .type = op,
+                    .side = side,
+                };
+                run_checked_operation(ctx, book, reference, [&] {
+                    book.clear_side(side);
+                    reference.clear_side(side);
+                });
                 break;
             }
             case OpType::ClearAll: {
-                OperationContext ctx{seed_str, transcript_idx, op_idx, op};
-                SCOPED_TRACE(format_failure_context(ctx));
-                book.clear();
-                reference.clear();
+                OperationContext ctx{
+                    .seed = seed_str,
+                    .transcript_idx = transcript_idx,
+                    .op_idx = op_idx,
+                    .type = op,
+                };
+                run_checked_operation(ctx, book, reference, [&] {
+                    book.clear();
+                    reference.clear();
+                });
                 break;
             }
             case OpType::ReplaceAll: {
@@ -384,18 +491,35 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                     const auto q = bmd_test::quantity_units(rng.next_quantity());
                     new_asks.push_back({p, q});
                 }
-                OperationContext ctx{seed_str, transcript_idx, op_idx, op};
-                ctx.extra1 = bid_count;
-                ctx.extra2 = ask_count;
-                SCOPED_TRACE(format_failure_context(ctx));
-                book.replace_all(new_bids, new_asks);
-                reference.clear();
-                for (const auto& level : new_bids) {
-                    reference.apply_level(bmd::BookSide::Bid, level.price, level.quantity);
+                OperationContext ctx{
+                    .seed = seed_str,
+                    .transcript_idx = transcript_idx,
+                    .op_idx = op_idx,
+                    .type = op,
+                };
+                ctx.bid_count = bid_count;
+                ctx.ask_count = ask_count;
+                if (!new_bids.empty()) {
+                    ctx.side = bmd::BookSide::Bid;
+                    ctx.price = new_bids[0].price.value();
+                    ctx.quantity = new_bids[0].quantity.value();
+                } else if (!new_asks.empty()) {
+                    ctx.side = bmd::BookSide::Ask;
+                    ctx.price = new_asks[0].price.value();
+                    ctx.quantity = new_asks[0].quantity.value();
+                } else {
+                    ctx.skipped = true;
                 }
-                for (const auto& level : new_asks) {
-                    reference.apply_level(bmd::BookSide::Ask, level.price, level.quantity);
-                }
+                run_checked_operation(ctx, book, reference, [&] {
+                    book.replace_all(new_bids, new_asks);
+                    reference.clear();
+                    for (const auto& level : new_bids) {
+                        reference.apply_level(bmd::BookSide::Bid, level.price, level.quantity);
+                    }
+                    for (const auto& level : new_asks) {
+                        reference.apply_level(bmd::BookSide::Ask, level.price, level.quantity);
+                    }
+                });
                 break;
             }
             case OpType::TopNQuery: {
@@ -419,15 +543,20 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                 case 4:
                     limit = (count < std::numeric_limits<std::size_t>::max()) ? count + 1 : count;
                     break;
-                default:
-                    break;
                 }
-                OperationContext ctx{seed_str, transcript_idx, op_idx, op, side};
-                ctx.extra1 = limit;
-                SCOPED_TRACE(format_failure_context(ctx));
-                const auto production = book.top_levels(side, limit);
-                const auto expected = reference.top_levels(side, limit);
-                EXPECT_EQ(production, expected);
+                OperationContext ctx{
+                    .seed = seed_str,
+                    .transcript_idx = transcript_idx,
+                    .op_idx = op_idx,
+                    .type = op,
+                    .side = side,
+                };
+                ctx.limit = limit;
+                run_checked_operation(ctx, book, reference, [&] {
+                    const auto production = book.top_levels(side, limit);
+                    const auto expected = reference.top_levels(side, limit);
+                    EXPECT_EQ(production, expected);
+                });
                 break;
             }
             case OpType::QuantityLookup: {
@@ -443,21 +572,26 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                     }
                     return find_missing_price(reference, side, rng);
                 }();
-                OperationContext ctx{seed_str, transcript_idx, op_idx, op, side, price.value(), 0};
-                SCOPED_TRACE(format_failure_context(ctx));
-                const auto prod_qty = book.quantity_at(side, price);
-                const auto ref_qty = reference.quantity_at(side, price);
-                ASSERT_EQ(prod_qty.has_value(), ref_qty.has_value());
-                if (prod_qty.has_value()) {
-                    EXPECT_EQ(prod_qty.value().value(), ref_qty.value().value());
-                }
+                OperationContext ctx{
+                    .seed = seed_str,
+                    .transcript_idx = transcript_idx,
+                    .op_idx = op_idx,
+                    .type = op,
+                    .side = side,
+                    .price = price.value(),
+                    .quantity = 0,
+                };
+                run_checked_operation(ctx, book, reference, [&] {
+                    const auto prod_qty = book.quantity_at(side, price);
+                    const auto ref_qty = reference.quantity_at(side, price);
+                    ASSERT_EQ(prod_qty.has_value(), ref_qty.has_value());
+                    if (prod_qty.has_value()) {
+                        EXPECT_EQ(prod_qty.value().value(), ref_qty.value().value());
+                    }
+                });
                 break;
             }
-            default:
-                break;
             }
-
-            verify_consistency(book, reference);
         }
     }
 }

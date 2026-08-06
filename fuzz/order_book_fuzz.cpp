@@ -267,7 +267,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         case 4:
         case 5:
             batch_buf.clear();
-            for (std::size_t j = 0; j < 5 && offset + 2 < size; ++j) {
+            for (std::size_t j = 0; j < 5 && offset + 2 <= size; ++j) {
                 const auto bp_raw = static_cast<std::int64_t>((data[offset] % 128) + 1);
                 const auto bq_raw = static_cast<std::int64_t>(data[offset + 1]);
                 offset += 2;
@@ -295,7 +295,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         case 8: {
             std::vector<bmd::BookLevel> new_bids;
             std::vector<bmd::BookLevel> new_asks;
-            for (std::size_t j = 0; j < 4 && offset + 2 < size; ++j) {
+            for (std::size_t j = 0; j < 4 && offset + 2 <= size; ++j) {
                 const auto rp_raw = static_cast<std::int64_t>((data[offset] % 128) + 1);
                 const auto rq_raw = static_cast<std::int64_t>(data[offset + 1]);
                 offset += 2;
