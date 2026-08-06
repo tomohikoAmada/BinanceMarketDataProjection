@@ -54,6 +54,7 @@ add_library(
     src/numeric/decimal_format.cpp
     src/numeric/decimal_parse.cpp
     src/order_book/order_book.cpp
+    src/projection_state/book_projection.cpp
     src/version.cpp
 )
 add_library(BinanceMarketDataProjection::Core ALIAS bmd_projection_core)
