@@ -171,23 +171,30 @@ owning M1/M2/M3 inputs and converts `BookProjection` plus explicit Host context 
 ### Design deliverables
 
 - Separate optional adapter target and one-way dependency direction into Core.
-- Audited Contracts C++ artifact acquisition and version-pinning strategy.
+- Audited Contracts C++ artifact acquisition with separate schema fingerprint and package
+  revision/version identities.
 - Explicit inbound `ExchangeDepthSnapshot` and `DepthUpdate` conversion.
-- Owning wrappers that safely produce M3's span-based synchronous views.
-- Typed, deterministic validation errors for normal malformed-wire failures.
+- Owning wrappers bound to `NumericSpec` and sequence policy that expose checked M3 invocation and
+  keep span-based views private.
+- Typed, deterministic validation and projection-binding errors.
 - Explicit Host-owned identity, producer, time, depth-limit, gap, and quality context.
 - State-specific `LocalOrderBookSnapshot` eligibility and visibility rules.
 - Deterministic `GapInfo` to `GapDescriptor` mapping and historical-gap policy.
+- Separate Host/Core quality domains plus owning inbound wire-quality sidecars.
 - Compatibility, packaging/install, downstream-consumer, test, property, and fuzz plans.
 - Proposed ADR-0006 for the separate Core/Protobuf adapter boundary.
 
 ### Design status
 
-The M4 architecture and ADR are proposed for independent external review. The fixed Contracts
-baseline does not provide an installable C++ Protobuf package or exported CMake target, so M4
-implementation is blocked on a separate Contracts artifact/distribution prerequisite. No M4
-production implementation, dependency, build target, test, or generated code exists in this
-repository.
+External architecture review Round 1: **CHANGES REQUESTED**. Round 1 blocking findings: **3**.
+The document revision addresses schema/package identity separation, projection-bound adapted
+inputs, and disjoint Host/Core quality facts; Round 2 external verification is **PENDING**.
+Revision: **ADDRESSING FINDINGS; ROUND 2 PENDING**.
+
+The fixed Contracts baseline does not provide an installable C++ Protobuf package or exported CMake
+target. The separate C-M4-001 Contracts C++ package prerequisite remains an **IMPLEMENTATION
+BLOCKER**. M4 Design and ADR-0006 remain **PROPOSED**, implementation remains **NOT STARTED**, and no
+M4 production implementation, dependency, build target, test, or generated code exists here.
 
 ### Non-goals
 

@@ -19,7 +19,7 @@ transport, scheduling, persistence, and external integration.
 Gateway / History Host
         ↓ explicit wire input and runtime context
 Optional Protobuf Adapter Target
-        ↓ owning domain values and non-owning call views
+        ↓ checked owning domain values; private call-local views
 Projection Core
 
 Projection Core + explicit Host context
@@ -33,6 +33,11 @@ The optional adapter is proposed for M4 and is not implemented. Core remains ind
 buildable, installable, and usable without Protobuf, generated Contracts code, or gRPC. The adapter
 maps messages and explicit context; it does not own networking, clocks, buffering, recovery, or
 Gateway lifecycle. Gateway/gRPC runtime remains M6 scope.
+
+Adapter owners are bound to the conversion `NumericSpec` and sequence policy and must check both
+against the target Core instance before mutation. Schema baseline/fingerprint identity is distinct
+from the later Contracts package revision/version. Host runtime quality uses a closed input domain
+that cannot represent or override facts derived from the current Core book and lifecycle state.
 
 ## Runtime context
 

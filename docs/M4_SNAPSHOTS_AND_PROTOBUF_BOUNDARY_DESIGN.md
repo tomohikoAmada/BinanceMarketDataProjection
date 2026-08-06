@@ -5,7 +5,7 @@
 - Design status: **PROPOSED**
 - Implementation status: **NOT STARTED**
 - ADR status: **PROPOSED**
-- External architecture review: **NOT STARTED**
+- External architecture review: **ROUND 1 CHANGES REQUESTED; ROUND 2 PENDING**
 - Date: 2026-08-06
 - Projection base: `27279fe3e61c092d5dcc50cb35b0483b32ed428b`
 - Contracts baseline: `01d76a41929f36d89573159f5f458f9f1e378ada`
@@ -13,6 +13,26 @@
 This document is an architecture proposal, not an implementation claim. Every API and CMake
 declaration below is **Proposed, not implemented, and subject to external review**. M4 implementation
 must not start until this design is accepted and all implementation blockers are closed.
+
+## External architecture review record
+
+### Round 1
+
+- Reviewed head: `62283fcefcf17aef50b189714c8ffcfd2a04db39`
+- Result: **CHANGES REQUESTED**
+- Blocking findings: **3**
+- Findings:
+  - P1-1 Contracts schema/package identity conflation
+  - P1-2 Adapted inputs not bound to target `BookProjection`
+  - P1-3 Host can inject contradictory Core quality facts
+
+### Round 2
+
+- Status: **PENDING**
+- Revision head: pending commit
+
+This design revision addresses the Round 1 findings and awaits independent Round 2 review. It does
+not claim that any finding has been closed by external review.
 
 ## Source-of-truth order
 
@@ -104,7 +124,7 @@ The Contracts artifact audit found:
 | Installable proto target | No | Python wheel packaging only |
 | Standalone descriptor set | No | Descriptor tests load Python generated modules; no installable descriptor-set artifact |
 | Stable installed C++ include layout | No | No C++ installation contract exists |
-| Exact C++ artifact fingerprint | No | Repository/package version exists, but no C++ target exposes the pinned commit identity |
+| Schema/package identity metadata | No | No C++ target exports a schema fingerprint, package revision/version, generator identity, or runtime compatibility metadata |
 
 Therefore M4 implementation has one external blocker: a Contracts-owned versioned C++ Protobuf
 package/target is unavailable. Design work can proceed; production implementation cannot.
@@ -147,10 +167,14 @@ M4 does not implement or own:
 | Adapter | The proposed optional M4 target and its explicit conversion functions |
 | Host | Gateway or History/Replay owner of network/runtime/context concerns |
 | Expected identity | Host-owned expected symbol and M3 policy used to validate inbound identity |
-| Adapted owner | A value owning normalized vectors and able to construct a fresh synchronous M3 view |
+| Adapted owner | A value owning normalized vectors/binding metadata and invoking M3 through a private call-local view |
 | Snapshot context | Host-owned output identity, producer, source, time, gap, and quality inputs |
 | Semantic message equality | Equality of all known output fields and ordered repeated values, independent of allocator/address |
-| Contracts fingerprint | Exact build-time identity of the Contracts C++ artifact, including the pinned commit |
+| Schema baseline commit | Historical repository commit that fixes the approved M4 `.proto` semantics |
+| Schema fingerprint | Stable SHA-256 of the canonical M4 message descriptor closure; independent of package revision |
+| Package revision | Future Contracts repository commit or release revision that supplies the C++ package |
+| Package version | Versioned distribution identity selected by the future Contracts prerequisite |
+| Generator identity | `protoc` version, generated-C++ ABI options, and compatible Protobuf runtime range |
 
 Gateway `session_sequence`, Binance update IDs, Protobuf field numbers, and any future Projection
 revision are distinct domains and are never interchanged.
@@ -163,12 +187,12 @@ revision are distinct domains and are never interchanged.
 | Decimal business grammar | Authority | Validates through M1 exact parser | Owns exact units/formatting | Supplies `NumericSpec` |
 | Sequence classification | Semantic reference | Does not classify | M3 authority | Orders calls/recovery |
 | Snapshot download/buffering | None | None | None | Owns |
-| Span lifetime | None | Owns vectors and call views | Consumes synchronously | Keeps owner alive for call |
-| Projection mutation | None | None | Sole owner/API | Single ordered writer |
+| Span lifetime | None | Owns vectors; creates only private call-local views | Consumes synchronously | Keeps owner alive for call |
+| Projection mutation | None | Checks owner binding, then invokes M3 | Sole mutation authority/API | Single ordered writer |
 | Identity and schema check | Authority | Validates | Stores policy, not wire identity | Supplies expected identity |
 | Output timestamps | Defines meaning | Copies explicit value | No clocks | Captures/supplies |
 | Output producer/source/depth | Defines fields | Validates/maps | No storage | Supplies |
-| Core-derived quality facts | Defines enum | Derives only approved facts | Exposes deterministic state/book | Supplies runtime facts |
+| Quality facts | Defines wire enum | Separates Core-derived, Host-observed, and inbound-wire domains | Exposes deterministic state/book | Supplies only closed Host facts |
 | Networking/gRPC/subscriptions | Defines wire protocol | None | None | M6 owns |
 
 ## Dependency graph
@@ -196,10 +220,10 @@ Every detailed decision below is Proposed and subject to external review.
 | ID | Decision | Rationale | Rejected alternatives | Compatibility impact | Implementation consequence | Required tests | Blocking status |
 |---|---|---|---|---|---|---|---|
 | D1 | Separate optional `ProtoAdapter` target | Preserves accepted Core/wire boundary | Core linkage; monolithic target | Core ABI unaffected | Component-aware exports/config | Core-only and adapter consumers | Closed |
-| D2 | Contracts-owned versioned C++ package | One schema owner and generated-symbol definition | Source checkout, submodule, FetchContent, copies, arbitrary injection | Exact pin and release coordination required | External Contracts prerequisite | Package, fingerprint, and symbol tests | **IMPLEMENTATION BLOCKER** |
+| D2 | Separate schema fingerprint from package revision/version in a Contracts-owned C++ package | Schema semantics can remain fixed while build/distribution commits change | Historical repository commit as both identities; source checkout; copied artifacts | Dependency lock and approved schema identity are checked independently | C-M4-001 exports both identity domains | Canonical fingerprint, package lock, runtime, and symbol tests | **IMPLEMENTATION BLOCKER; P1-1 addressed, Round 2 pending** |
 | D3 | Strict inbound snapshot conversion | Wire objects can bypass Pydantic validation | Trust generated setters | Rejects malformed or future unsupported values | Validate before owner return | Field/order/decimal tests | Closed |
 | D4 | Strict inbound depth conversion without sequencing | Separation between adaptation and M3 policy | Adapter repairs or classifies IDs | Preserves M3 semantics | Produce owner; never call projection | Range/presence/order tests | Closed |
-| D5 | Movable owning wrappers with fresh `view()` | Prevents dangling spans | Naked views, stored spans, repeated-field views | Adds adapter value types | Own vectors and delete rvalue view | Move/lifetime tests | Closed |
+| D5 | Adapted owners bind `NumericSpec` and policy and expose only checked M3 invocation | Prevents dangling spans and cross-projection scale/policy misuse | Public naked views; Host-only call discipline; stored spans | Adds binding metadata and typed mismatch results | Private call-local view inside `install_into`/`apply_to` | Binding, result propagation, move, and lifetime tests | **P1-2 addressed, Round 2 pending** |
 | D6 | `std::variant<T, AdapterError>` | Matches C++20/repository style | Exceptions, optional plus out error, callbacks | Stable typed error API | Validation returns values | Taxonomy/precedence tests | Closed |
 | D7 | Explicit closed enum maps | Enum numbers are wire authority, not Core identity | Casts/numeric alignment | Unknown enum fails closed | One mapping switch per enum | Every value, zero, unknown tests | Closed |
 | D8 | Owning Host snapshot context | Core lacks runtime fields and adapter cannot read ambient state | Clocks, globals, string views | Context/API versioned separately | Caller constructs complete context | Lifetime/identity tests | Closed |
@@ -207,13 +231,13 @@ Every detailed decision below is Proposed and subject to external review.
 | D10 | Generic Contracts gap reason plus preserved sequence endpoints | Current wire lacks M3-specific reason | Schema copy/change in this PR | Detailed reason is intentionally lost | Explicit five-to-one map | Five-reason mapping tests | Closed; non-blocking loss |
 | D11 | Positive `DepthLimit`; absence means unlimited | Mirrors Pydantic and safe `int32` | Zero sentinel/raw signed input | Presence remains exact | Valid-by-construction wrapper | Boundaries/top-N tests | Closed |
 | D12 | Fixed `NumericSpec` decimal output | Deterministic new snapshot, no input-spelling promise | Float/source precision heuristics | Canonical fixed scale | Use M1 fixed formatters | Formatting/locale tests | Closed |
-| D13 | Merge explicit Host flags with three Core facts | Avoids implicit runtime inference | Infer from logs/history | Known enums only, stable order | Deduplicate by explicit rank | Ownership/order/dedup tests | Closed |
+| D13 | Separate Host-observed and Core-derived quality domains; own mapped inbound Host facts in a sidecar | Makes three Core facts impossible for Host to inject | One full-range `QualityFact`; implicit inference; discard all metadata | Host enum evolves only by reviewed ownership decision | Derive Core facts, map Host facts, then rank/deduplicate | Compile-time domain, sidecar, contradiction, rank tests | **P1-3 addressed, Round 2 pending** |
 | D14 | Defer `MarketStateSnapshot` | Core lacks approved derived/full state | Partial adapter computation | No output promise in M4 | No MarketState builder | Absence/boundary review | Closed |
 | D15 | M6 owns `ConsumerGapNotice` and `StreamStatus` | They are subscription runtime messages | M4 Gateway state machine | M4 only maps snapshot gap descriptor | No subscription API in adapter | Dependency tests | Closed |
 | D16 | M6 owns gRPC | M4 is a message adapter | Server/client in adapter | No gRPC dependency in M4 | Depend on message target only | Link/package tests | Closed |
 | D17 | Stateless deterministic candidate construction | Live/replay equivalence and strong isolation | Ambient config/partial output | Semantic output stable | Build local candidate then return | Replay/allocation tests | Closed |
 | D18 | No adapter synchronization or Arena in baseline | Host already owns single-writer lifetime | Locks/atomics/Arena API | Simple value ownership | Stateless free functions | Thread-boundary/lifetime tests | Closed |
-| D19 | Exact build pin plus exact schema strings | Messages carry schema version, not repository identity | Schema string alone/runtime guessing | Package fingerprint required | Configure and defensive runtime checks | Version-positive/negative tests | Part of D2 blocker |
+| D19 | Dependency lock plus canonical schema fingerprint and generator/runtime metadata | Wire schema strings do not identify package or build ABI | Schema string alone; per-message descriptor hashing | Harmless package revisions remain distinct from schema identity | Configure-time checks; optional one-time defensive integrity probe | Missing/mismatched metadata and reproducibility tests | Part of D2 blocker |
 
 ## Target layout
 
@@ -249,6 +273,57 @@ current name collision, but public adapter headers must fully qualify generated/
 must never use blanket `using namespace`, and must add a compatibility test that compiles both
 header families together. A future same-name Core class would be a source conflict requiring review.
 
+## Contracts schema and package identity model
+
+Schema identity and package identity are separate domains:
+
+| Identity | Definition | Authority / validation |
+|---|---|---|
+| Schema baseline commit | `01d76a41929f36d89573159f5f458f9f1e378ada`; fixes the approved `.proto` structures, numbers, presence, package names, and semantics | Exported by the future package as provenance and checked by Projection |
+| Schema fingerprint | SHA-256 of the canonical M4 message-schema descriptor closure | Produced reproducibly by Contracts, approved by M4 review, exported by the package, checked at configure time |
+| Package revision | The future actual Contracts commit or release tag containing C-M4-001 | Chosen only after that prerequisite exists; pinned by dependency lock, never assumed equal to the schema baseline |
+| Package version | Version of the installable Contracts C++ distribution | Defined by C-M4-001 and constrained/pinned by Projection package management |
+| Generator identity | `protoc` version plus generated-C++ ABI-affecting options | Exported package metadata and compatibility tests |
+| Runtime compatibility | Supported C++ Protobuf runtime version/range and static/shared requirements | Exported target/package metadata and configure-time dependency resolution |
+
+M4 selects a canonical `FileDescriptorSet` SHA-256 rather than a source-tree hash, schema manifest,
+or historical repository commit alone. Its roots are the M4 message files containing
+`ExchangeDepthSnapshot`, `DepthUpdate`, and `LocalOrderBookSnapshot`; its set includes every
+transitively imported `.proto` required by those messages. Unrelated Gateway/gRPC service files are
+outside the set. If a selected root later contains a service, that descriptor remains part of the
+selected file; M4 does not silently edit descriptors to hide a change.
+
+Canonicalization version 1 is part of C-M4-001 and must:
+
+1. invoke a declared `protoc` version with imports included and source info excluded;
+2. use normalized proto-relative file names, never absolute checkout or build paths;
+3. clear `source_code_info`, unknown fields, and language-specific `FileOptions` used only for
+   generated-code naming/packaging; retain syntax/edition, package, dependencies, messages, fields,
+   oneofs, enums, reserved/extension declarations, services present in a selected file, and every
+   option affecting wire or message semantics; C++ ABI-affecting options are exported separately as
+   Generator Identity;
+4. sort `FileDescriptorProto` entries by normalized file name while retaining declaration order
+   within each descriptor;
+5. deterministically serialize the canonical `FileDescriptorSet`; and
+6. SHA-256 the resulting bytes and export the algorithm version and digest.
+
+Excluding source info prevents comments and source locations from changing the digest. Sorting files
+prevents input traversal order from changing it. The declared compiler and canonicalization version
+make a `protoc` upgrade explicit; C-M4-001 must reproduce the same digest on independent clean
+builds before the digest is approved. The design does not invent that future digest.
+
+The dependency manager pins the Package Revision/Version. Projection separately verifies that the
+package exports the approved schema baseline and fingerprint, matches the dependency lock, and
+declares a compatible generator/runtime combination. A later package revision with the same schema
+fingerprint is accepted only after the dependency lock is deliberately updated; matching schema
+alone never selects an unpinned package.
+
+Configuration and link dependency are the normal integrity boundary. Adapter and generated classes
+in one binary already bind to one selected target. No wire message may self-report package identity,
+and no conversion recomputes a descriptor hash. `ContractsVersionMismatch` is reserved for an
+explicit one-time debug/defensive package-integrity probe against exported compiled metadata; it is
+not part of ordinary per-message validation and cannot fabricate a repository revision.
+
 ## Contracts artifact acquisition analysis
 
 | Option | Reproducibility / pinning | Offline/install behavior | Ownership/drift/symbol risk | Decision |
@@ -269,13 +344,17 @@ The selected Contracts prerequisite must provide:
   `BinanceMarketDataContracts::Protobuf`;
 - one documented compatible C++ Protobuf runtime version/range;
 - static/shared and PIC behavior;
-- exact Contracts commit/package fingerprint available to CMake and C++;
+- separate schema baseline/fingerprint and package revision/version metadata available to CMake and
+  C++, plus the canonicalization algorithm version;
+- declared `protoc` identity, ABI-affecting generation options, and Protobuf runtime compatibility;
 - package tests for downstream compilation, serialization, optional presence, and duplicate-symbol
   avoidance; and
 - an offline-consumable versioned package, preferably a Conan package aligned with this repository's
   existing dependency workflow.
 
-This is a build/distribution addition in Contracts, not a schema change.
+This is a build/distribution addition in Contracts, not a schema change. Its future package revision
+will necessarily differ from the historical schema baseline commit and must never be compared to it
+as though they were the same identity.
 
 ## Inbound `ExchangeDepthSnapshot` conversion
 
@@ -284,14 +363,14 @@ Proposed flow:
 ```text
 ::binance_market_data::market::v1::ExchangeDepthSnapshot
     -> adapt_exchange_depth_snapshot(...)
-    -> AdaptedBookBaseline (owns vectors)
-    -> AdaptedBookBaseline::view()
-    -> BookProjection::install_baseline(...)
+    -> AdaptedBookBaseline (owns vectors, metadata, NumericSpec, and policy)
+    -> AdaptedBookBaseline::install_into(target)
+    -> private call-local BookBaseline view
 ```
 
 Validation is ordered and deterministic:
 
-1. Verify the compiled Contracts fingerprint is the pinned baseline.
+1. Rely on the configure/package integrity boundary; do not hash descriptors per message.
 2. Reject `VENUE_UNSPECIFIED`, unknown venue values, and every venue except Binance.
 3. Map only Spot and USD-M perpetual; reject unspecified/unknown/unsupported markets.
 4. Require a valid non-empty Contracts symbol and exact equality with `ExpectedIdentity.symbol`.
@@ -302,11 +381,13 @@ Validation is ordered and deterministic:
 8. Accept every `uint64` last update ID, including zero and maximum. The non-optional proto scalar
    cannot distinguish omitted from explicitly encoded zero, and zero is valid by Contracts; M4 must
    not invent a presence rule.
-9. Validate every quality enum even though quality metadata does not enter Core.
+9. Validate every quality enum, map Host-relevant values into owned `AdaptedMetadata`, and omit the
+   three source-message Core-derived values from that sidecar.
 10. Parse price and quantity strings through the M1 exact parser using the supplied `NumericSpec`.
 11. Revalidate normalized bids as strictly descending and asks as strictly ascending. Equal unit
     prices, including differently spelled exact decimals that normalize equal, are invalid.
-12. Build local vectors completely, then return the owner. No Core call occurs inside conversion.
+12. Build local vectors, binding metadata, and quality sidecar completely, then return the owner.
+    No Core call occurs inside conversion.
 
 Price must be greater than zero. Quantity may be zero. Exact rescaling is allowed when discarded
 fractional digits are all zero; scale need not textually match `NumericSpec`. Inexact rescaling is
@@ -317,9 +398,10 @@ and M3 `replace_all` removes or omits those levels. Duplicate prices are rejecte
 ordering rather than converted to M2's last-write-wins fallback. Locked/crossed books are accepted;
 ordering is per side, and M2 intentionally preserves them.
 
-Exchange/receive times, producer metadata, request identity, and inbound quality flags are validated
-but do not enter Core. The Host retains any runtime metadata it needs independently. Conversion
-failure returns a typed error and leaves every `BookProjection` untouched.
+Exchange/receive times, producer metadata, and request identity are validated but do not enter Core.
+Validated Host-relevant inbound quality is owned by the result sidecar; it is never written to Core
+or automatically copied to an output snapshot. Conversion failure returns a typed error and leaves
+every `BookProjection` untouched.
 
 ## Inbound `DepthUpdate` conversion
 
@@ -328,9 +410,9 @@ Proposed flow:
 ```text
 ::binance_market_data::market::v1::DepthUpdate
     -> adapt_depth_update(...)
-    -> AdaptedDepthBatch (owns one ordered vector)
-    -> AdaptedDepthBatch::view()
-    -> BookProjection::apply(...)
+    -> AdaptedDepthBatch (owns vector, metadata, NumericSpec, and policy)
+    -> AdaptedDepthBatch::apply_to(target)
+    -> private call-local DepthBatch view
 ```
 
 The adapter:
@@ -342,7 +424,8 @@ The adapter:
 4. creates `UpdateId` values and calls `UpdateRange::try_create`; `first > final` returns
    `InvalidUpdateRange` before M3 is callable;
 5. preserves `previous_final_update_id` presence exactly with `has_previous_final_update_id()`;
-6. validates all metadata quality enums but does not store them in Core;
+6. validates all metadata quality enums, maps Host-relevant values into an owned sidecar, and does
+   not store any quality metadata in Core;
 7. parses every level exactly using `NumericSpec`, rejecting non-positive price, negative quantity,
    malformed decimal, inexact scale, and overflow;
 8. appends all bid updates in their wire order followed by all ask updates in their wire order; and
@@ -353,52 +436,88 @@ canonical merge order. It preserves same-side input order, so duplicate prices o
 last-write-wins semantics. Cross-side order cannot affect independent side maps. Update arrays are
 not required to be price-sorted. Quantity zero maps to a deletion; negative quantity text is rejected.
 
-The adapter does not classify stale, duplicate, bridge, live, or gap input; does not repair IDs,
-fill ranges, synthesize `pu`, or reorder same-side values; and does not call `BookProjection`.
-Malformed payloads cannot enter M3. The Host decides the fail-closed recovery action after a typed
-adaptation failure.
+Adaptation does not classify stale, duplicate, bridge, live, or gap input and does not repair IDs,
+fill ranges, synthesize `pu`, or reorder same-side values. Only the owner's separately invoked,
+binding-checked `apply_to` method calls `BookProjection`. Malformed payloads cannot enter M3. The
+Host decides the fail-closed recovery action after a typed adaptation failure.
 
 ## Owning adapter objects and span lifetime
 
 `AdaptedBookBaseline` owns:
 
+- the `NumericSpec` used for conversion;
+- the mapped `SequencePolicyKind`;
 - one `UpdateId`;
-- `std::vector<BookLevel> bids`; and
-- `std::vector<BookLevel> asks`.
+- `std::vector<BookLevel> bids`;
+- `std::vector<BookLevel> asks`; and
+- owned `AdaptedMetadata`.
 
 `AdaptedDepthBatch` owns:
 
+- the `NumericSpec` used for conversion;
+- the mapped `SequencePolicyKind`;
 - one valid `UpdateRange`;
-- optional `UpdateId previous_final`; and
-- `std::vector<LevelUpdate> levels`.
+- optional `UpdateId previous_final`;
+- `std::vector<LevelUpdate> levels`; and
+- owned `AdaptedMetadata`.
 
 Both are non-copyable to avoid accidental full-depth copies and are move-constructible/move-
 assignable with the default allocator's `noexcept` vector move. A moved-from owner is destruction-
-or assignment-only. `view() const & noexcept` constructs a new `BookBaseline` or `DepthBatch` from
-current vector storage on each call; `view() const &&` is deleted. Neither class stores a span.
+or assignment-only. Neither class exposes or stores a span.
+
+The public mutation surface is binding-checked:
+
+```cpp
+AdapterResult<InstallResult>
+AdaptedBookBaseline::install_into(BookProjection& target) const &;
+
+AdapterResult<ApplyResult>
+AdaptedDepthBatch::apply_to(BookProjection& target) const &;
+```
+
+Each method checks the target before creating a private call-local view:
+
+1. compare price scale, then quantity scale, and return `ProjectionNumericSpecMismatch` with the
+   corresponding `AdapterField` on the first difference;
+2. compare `SequencePolicyKind` and return `ProjectionPolicyMismatch` on difference;
+3. construct `view_unchecked() const & noexcept` privately from current vector storage; and
+4. synchronously invoke M3 and return its complete `InstallResult` or `ApplyResult` as the successful
+   `AdapterResult` alternative.
+
+No M3 call occurs on a binding error. Book, accepted ID, status, gap, and visibility therefore
+remain unchanged. M3 `RejectedWrongState`, `GapDetected`, `IgnoredDuplicate`, and `IgnoredStale` are
+domain outcomes from a successful checked call; they are returned unchanged and never translated
+to `AdapterError`.
+
+Market mapping must equal the owner policy during adaptation. Symbol remains in
+`ExpectedIdentity`/metadata, but Core does not retain a symbol, so the Host's Projection Registry
+still guarantees that the selected `BookProjection` belongs to that symbol. This is the only part
+of binding that Core cannot recheck. Numeric scale and policy are stored by Core and are therefore
+enforced by the adapter before mutation.
 
 Host call discipline is:
 
 ```cpp
 auto result = adapt_depth_update(wire, spec, expected);
 if (auto* adapted = std::get_if<AdaptedDepthBatch>(&result)) {
-    const auto apply_result = projection.apply(adapted->view());
+    const auto checked_result = adapted->apply_to(projection);
 }
 ```
 
-The owner remains alive and unmoved through the synchronous call. The view is not stored or returned
-by the Host. Destroying the Protobuf message before the Core call is safe.
+The owner remains alive and unmoved through the synchronous call. Its temporary view cannot escape
+the private method. Destroying the Protobuf message before the Core call is safe. Public checked
+methods are lvalue-qualified; rvalue owner and rvalue projection overloads are deleted. A moved-from
+owner supports only destruction or assignment, while the move destination retains vectors,
+`NumericSpec`, policy, and metadata and can be invoked safely.
 
 | Alternative | Decision |
 |---|---|
-| Return `BookBaseline`/`DepthBatch` directly | Rejected: would reference temporary adapter vectors |
+| Return public `BookBaseline`/`DepthBatch` | Rejected: permits dangling storage and bypasses binding checks |
+| Keep a public checked-token view | Rejected: expands API while still allowing view escape |
 | Store spans as owner members | Rejected: self-references break under move and vector relocation |
 | Reference Protobuf repeated fields | Rejected: wrong element type, lifetime leak, and no exact numeric conversion storage |
 | Copy into M3 persistent event storage | Rejected: M3 intentionally owns no network buffer/history |
-| Owning vectors plus fresh call view | Selected |
-
-Views obtained before an owner move are invalid, as are views retained beyond owner lifetime. The
-ref-qualified API and tests make the supported synchronous usage explicit.
+| Owning values plus checked invocation and private fresh view | Selected |
 
 ## Adapter error model
 
@@ -436,7 +555,10 @@ InvalidOrdering
 UnsupportedProjectionState
 MissingLastUpdateId
 InvalidGapContext
+InvalidHostQualityCombination
 ContractsVersionMismatch
+ProjectionNumericSpecMismatch
+ProjectionPolicyMismatch
 ```
 
 `AdapterError` owns a code, an `AdapterField` enum, optional `DecimalErrorCode`/byte offset, and an
@@ -446,12 +568,17 @@ but text is never the business result.
 
 Error precedence is:
 
-1. Contracts fingerprint and required message presence;
+1. required message presence;
 2. venue/market/stream enum and expected identity;
 3. exact schema version and required identifiers;
 4. structural range/depth/ordering constraints;
 5. level decimal grammar/domain, exact scale, then numeric overflow in M1's established precedence;
-6. projection-state/output-context eligibility.
+6. projection-state, output-context, then Host-quality-combination eligibility.
+
+Checked Core invocation has its own fixed precedence: price-scale mismatch, quantity-scale mismatch,
+policy mismatch, then invoke M3. `ContractsVersionMismatch` belongs only to the explicit one-time
+defensive integrity probe; ordinary conversion performs no package hash or repository-identity
+validation.
 
 Negative quantity and non-positive price are detected as domain-specific codes rather than exposing
 only a generic sign/zero decimal code. M1 decimal code and offset are retained as detail.
@@ -468,7 +595,7 @@ wire values. No `static_cast` assumes numeric alignment.
 | `Market` | Spot -> `SequencePolicyKind::Spot`; USD-M -> `UsdMPerpetual`; unspecified/unknown rejected |
 | `Stream` | Inbound update and gap output require `DIFF_DEPTH`; unspecified/unknown rejected |
 | `SnapshotSource` | Explicit map from adapter `SnapshotOrigin::{GatewayLive,RecorderReplay,HistoryReplay}` |
-| `QualityFlag` | Explicit two-way map to closed adapter `QualityFact`; zero/unknown rejected |
+| `QualityFlag` | Explicit inbound mapping to owned `AdaptedMetadata`, and explicit output maps from disjoint `HostQualityFact`/internal Core facts; zero/unknown rejected |
 | `ReasonCode` | Every current M3 gap reason maps explicitly to `SEQUENCE_GAP_DETECTED` |
 | `ResyncState` | Explicit map from Host `GapRecoveryState`; zero is never emitted for current gap |
 
@@ -478,7 +605,9 @@ presence is handled with `has_*`; absent optional reason/recovery remains absent
 rules require an explicit value.
 
 Core stores only `SequencePolicyKind`, `GapReason`, and other Core values. It never stores a wire
-enum or enum number.
+enum or enum number. A new Contracts quality value does not automatically enter `HostQualityFact`:
+review must assign its owner, decide whether it is valid on `LocalOrderBookSnapshot`, choose its
+canonical rank, and add explicit mapping/tests.
 
 ## Identity and snapshot context model
 
@@ -503,7 +632,8 @@ owned string. Market must map to the expected policy.
 `SnapshotOptions` owns:
 
 - optional valid `DepthLimit`; and
-- a vector of explicit Host `QualityFact` values.
+- a vector of explicit closed `HostQualityFact` values; the type cannot represent Core-derived
+  facts.
 
 All strings are owned because the context may be passed through value-returning build paths and
 must not borrow request buffers. The context remains alive for the synchronous builder call, but the
@@ -634,56 +764,102 @@ Snapshot output calls `format_price_fixed(value, spec.price_scale)` and
 
 ## Quality-flag ownership
 
-M4 output flags are the deduplicated union of explicit Host facts and facts directly observable in
-the current Core snapshot. A fixed adapter rank table defines output order; it does not sort by an
-assumption that adapter and Protobuf enum numbers align.
+M4 uses three non-interchangeable quality domains:
 
-| Quality flag | Owner / M4 rule |
-|---|---|
-| `CROSSED_BOOK` | M4 derives when both best levels exist and `best_bid >= best_ask` (locked included by Contracts semantics) |
-| `SEQUENCE_GAP` | M4 derives only in `NeedsResync` |
-| `SNAPSHOT_BRIDGE_PENDING` | M4 derives only in `AwaitingBridge` |
-| `ORDERBOOK_RESYNC` | Host supplies when recovery activity is observed; `NeedsResync` alone is not proof that recovery started |
-| `DUPLICATE` | Host/normalization supplies; M3 does not retain prior apply dispositions |
-| `OVERLAP` | Host supplies from an observed input/result; not reconstructible from current state |
-| `OUT_OF_ORDER` | Host/normalization supplies |
-| `SNAPSHOT_TOO_OLD` | Host supplies |
-| `BOOTSTRAP_BUFFER_OVERFLOW` | Host supplies; M4 owns no buffer |
-| `EXCHANGE_TIME_MISSING` | Host supplies; Core has no exchange time |
-| `SLOW_CONSUMER_GAP` | M6 Gateway supplies; subscription-runtime fact |
-| `PRODUCER_RESTART` | Host supplies |
-| `RECOVERED_TAIL` | Recorder/History Host supplies |
-| `MALFORMED_PAYLOAD` | Host supplies on a later diagnostic artifact; the failing inbound conversion itself produces no snapshot |
-| `RECEIVE_CLOCK_DISCONTINUITY` | Host supplies |
-| `IDENTITY_CONFLICT` | Normalization/Host supplies; M3 does not hash or retain event history |
+| Domain | Members / source | Public Host input? |
+|---|---|---:|
+| Core-derived | `CROSSED_BOOK`, `SEQUENCE_GAP`, `SNAPSHOT_BRIDGE_PENDING`; derived from the exact projection/book being serialized | No |
+| Host-observed | Closed `HostQualityFact` values listed below; asserted by Gateway/History/normalization | Yes |
+| Inbound wire | Contracts `QualityFlag` values on the adapted source message; validated and selectively mapped into owned metadata | No direct pass-through |
 
-M4 never infers flags from logs, time comparisons, network state, or event history. Unspecified or
-unknown Host flag values cannot enter `SnapshotOptions` because `QualityFact` is closed; inbound wire
-quality flags are explicitly mapped and rejected if unsupported.
-
-The canonical output rank is explicitly:
+`HostQualityFact` contains exactly:
 
 ```text
-DUPLICATE
-OUT_OF_ORDER
-SEQUENCE_GAP
-ORDERBOOK_RESYNC
-SNAPSHOT_BRIDGE_PENDING
-SNAPSHOT_TOO_OLD
-BOOTSTRAP_BUFFER_OVERFLOW
-RECOVERED_TAIL
-MALFORMED_PAYLOAD
-EXCHANGE_TIME_MISSING
-RECEIVE_CLOCK_DISCONTINUITY
-SLOW_CONSUMER_GAP
-PRODUCER_RESTART
-OVERLAP
-IDENTITY_CONFLICT
-CROSSED_BOOK
+Duplicate
+OutOfOrder
+OrderBookResync
+SnapshotTooOld
+BootstrapBufferOverflow
+RecoveredTail
+MalformedPayload
+ExchangeTimeMissing
+ReceiveClockDiscontinuity
+SlowConsumerGap
+ProducerRestart
+Overlap
+IdentityConflict
 ```
 
-This list is a semantic table, not a cast or sort by Protobuf numeric value. Future flags require an
-explicit reviewed insertion point.
+The three Core-derived values are deliberately absent, so a Host cannot construct or pass them.
+Core-derived rules are:
+
+- emit `CROSSED_BOOK` exactly when both best levels exist and `best_bid >= best_ask` (locked is
+  included by Contracts semantics);
+- emit `SEQUENCE_GAP` exactly in `NeedsResync`; and
+- emit `SNAPSHOT_BRIDGE_PENDING` exactly in `AwaitingBridge`.
+
+Host ownership remains explicit: duplicate, out-of-order, overlap, and identity conflict come from
+normalization/event observation; buffer overflow, exchange-time absence, producer restart, and clock
+discontinuity are runtime facts; `SlowConsumerGap` is an M6 Gateway fact that M4 may serialize only
+when supplied; snapshot age and recovery facts come from the Host. M4 never infers them from logs,
+clocks, network state, or retained history.
+
+`MalformedPayload` is allowed only as a Host assertion on an unsynchronized diagnostic snapshot: it
+means the source window contained a rejected malformed upstream payload, not that the generated
+snapshot message is malformed. `OrderBookResync` is allowed only in `AwaitingBridge` or
+`NeedsResync`, where recovery is pending/in progress. `RecoveredTail` is allowed only in
+`Synchronized`, where it records the Host-observed completion of recovery. A violation returns
+`InvalidHostQualityCombination`. Other Host facts are assertions whose runtime truth M4 cannot
+independently prove; accepting their closed values is not a claim that the adapter observed them.
+
+Inbound wire quality uses an owning sidecar. `AdaptedMetadata::observed_quality` stores mapped,
+deduplicated `HostQualityFact` values in canonical Host rank. It never enters Core and is never
+automatically copied to output. The Host may explicitly select/copy sidecar facts into
+`SnapshotOptions::host_quality_facts`, after which output-state combination rules still apply.
+Inbound `CROSSED_BOOK`, `SEQUENCE_GAP`, and `SNAPSHOT_BRIDGE_PENDING` are recognized and validated
+but intentionally omitted: they describe the source message and cannot assert the state of the
+target projection. Unspecified/unknown wire values fail closed. The original message remains the
+Host's source if it needs complete source-only metadata.
+
+The snapshot builder:
+
+1. derives current Core facts;
+2. validates/maps `HostQualityFact` values;
+3. merges the disjoint sets;
+4. deduplicates; and
+5. emits this explicit semantic rank:
+
+```text
+DUPLICATE                         (Host)
+OUT_OF_ORDER                      (Host)
+SEQUENCE_GAP                      (Core)
+ORDERBOOK_RESYNC                  (Host)
+SNAPSHOT_BRIDGE_PENDING           (Core)
+SNAPSHOT_TOO_OLD                  (Host)
+BOOTSTRAP_BUFFER_OVERFLOW         (Host)
+RECOVERED_TAIL                    (Host)
+MALFORMED_PAYLOAD                 (Host)
+EXCHANGE_TIME_MISSING             (Host)
+RECEIVE_CLOCK_DISCONTINUITY       (Host)
+SLOW_CONSUMER_GAP                 (Host)
+PRODUCER_RESTART                  (Host)
+OVERLAP                           (Host)
+IDENTITY_CONFLICT                 (Host)
+CROSSED_BOOK                      (Core)
+```
+
+This rank is not derived from Protobuf enum numbers. Repeated Host values collapse to one output.
+A new Contracts flag requires reviewed ownership, Local snapshot eligibility, rank, mapping, and
+tests before it can enter either closed adapter domain.
+
+Design invariants are:
+
+- no Host input can cause `SEQUENCE_GAP` unless status is `NeedsResync`;
+- no Host input can cause `SNAPSHOT_BRIDGE_PENDING` unless status is `AwaitingBridge`;
+- no Host input can cause `CROSSED_BOOK` unless current best levels are locked/crossed;
+- a synchronized snapshot contains neither bridge-pending nor Core-derived sequence-gap; and
+- a synchronized snapshot may contain historical Host facts only where the explicit rules above
+  define them as meaningful, notably `RecoveredTail`, never an in-progress resync assertion.
 
 ## `MarketStateSnapshot` scope decision
 
@@ -744,8 +920,9 @@ filesystem, or mutable global configuration. It has no plugin callbacks.
 |---|---|
 | Inbound validation failure | Returns `AdapterError`; no owner and no Core mutation |
 | Inbound allocation failure | `std::bad_alloc` propagates; local vectors die; no Core mutation |
-| Owner `view()` | Non-allocating, `noexcept`, valid for synchronous call lifetime |
-| M3 install/apply after adaptation | Existing M3 strong guarantees; adapter no longer participates |
+| Numeric-spec or policy binding mismatch | Returns typed error before M3; book, ID, status, gap, and visibility unchanged |
+| Private `view_unchecked()` | Non-allocating and `noexcept`; exists only during checked synchronous call |
+| Checked M3 install/apply | Returns the unmodified M3 result and retains existing M3 strong guarantees |
 | Output validation failure | Returns `AdapterError`; projection unchanged |
 | Output allocation/Protobuf construction failure | Exception propagates; local candidate destroyed; projection unchanged |
 | Successful output | Fully constructed message returned by value/move; no partial caller-visible message |
@@ -776,7 +953,8 @@ Core component
 
 ProtoAdapter component (only when built)
   - adapter headers/library/export
-  - requires exact Contracts C++ package
+  - requires dependency-locked Contracts C++ package revision/version
+  - verifies separate approved schema baseline/fingerprint metadata
   - requires the Contracts target's supported Protobuf runtime
 ```
 
@@ -788,13 +966,23 @@ copy of generated Contracts sources.
 
 ## Compatibility and versioning
 
-- Contracts commit pin: `01d76a41929f36d89573159f5f458f9f1e378ada`.
+- Schema baseline commit: `01d76a41929f36d89573159f5f458f9f1e378ada`; it is not the future
+  package revision.
+- Schema fingerprint: approved canonical M4 `FileDescriptorSet` SHA-256 exported by C-M4-001; the
+  digest is intentionally not invented before reproducible generation evidence exists.
+- Package revision/version: future values defined by C-M4-001 and pinned by the Projection
+  dependency lock independently of schema identity.
+- Generator/runtime identity: exported `protoc` version, ABI-affecting options, and compatible C++
+  Protobuf runtime range.
 - Required schema strings: `exchange-depth-snapshot.v1`, `depth-update.v1`, and
   `local-order-book-snapshot.v1`.
 - Proto package, field numbers, enum numbers, and optional presence come only from the Contracts
   target.
-- Configure fails if the exported Contracts fingerprint differs from the pin. A defensive runtime
-  fingerprint check returns `ContractsVersionMismatch` if an inconsistent artifact bypasses CMake.
+- Configure fails on missing identity metadata, schema-baseline/fingerprint mismatch, dependency-lock
+  package mismatch, or incompatible generator/runtime metadata.
+- No per-message fingerprint computation occurs. An optional explicit startup/debug integrity probe
+  may compare compiled exported constants and return `ContractsVersionMismatch`; it never trusts a
+  wire field or derives a repository revision.
 - Unknown fields are accepted/ignored for forward-compatible parsing and are not propagated to the
   new output message.
 - Unspecified and unknown enum values that M4 interprets are rejected.
@@ -808,9 +996,9 @@ copy of generated Contracts sources.
   version and the generated Contracts/Protobuf ABI; cross-version binary mixing is unsupported
   unless the packages explicitly guarantee it.
 
-A schema string alone cannot identify the repository commit. Build-time pin plus artifact
-fingerprint is required and sufficient for M4 because all messages in one binary use the same
-linked generated target. No new runtime wire field is required.
+A schema string alone identifies neither the approved descriptor set nor the installed package.
+Dependency lock plus separate schema and generator/runtime metadata is the build-time authority.
+All messages in one binary use the linked generated target, so no new runtime wire field is needed.
 
 ## Proposed public API sketch
 
@@ -840,7 +1028,10 @@ enum class AdapterErrorCode : std::uint8_t {
     UnsupportedProjectionState,
     MissingLastUpdateId,
     InvalidGapContext,
+    InvalidHostQualityCombination,
     ContractsVersionMismatch,
+    ProjectionNumericSpecMismatch,
+    ProjectionPolicyMismatch,
 };
 
 enum class AdapterField : std::uint8_t;
@@ -865,23 +1056,59 @@ struct ExpectedIdentity final {
     projection::v1::SequencePolicyKind policy;
 };
 
+enum class HostQualityFact : std::uint8_t {
+    Duplicate,
+    OutOfOrder,
+    OrderBookResync,
+    SnapshotTooOld,
+    BootstrapBufferOverflow,
+    RecoveredTail,
+    MalformedPayload,
+    ExchangeTimeMissing,
+    ReceiveClockDiscontinuity,
+    SlowConsumerGap,
+    ProducerRestart,
+    Overlap,
+    IdentityConflict,
+};
+
+struct AdaptedMetadata final {
+    std::vector<HostQualityFact> observed_quality;
+};
+
 class AdaptedBookBaseline final {
   public:
     AdaptedBookBaseline(AdaptedBookBaseline&&) noexcept;
     AdaptedBookBaseline& operator=(AdaptedBookBaseline&&) noexcept;
     AdaptedBookBaseline(const AdaptedBookBaseline&) = delete;
     AdaptedBookBaseline& operator=(const AdaptedBookBaseline&) = delete;
-    [[nodiscard]] projection::v1::BookBaseline view() const & noexcept;
-    projection::v1::BookBaseline view() const && = delete;
+
+    [[nodiscard]] AdapterResult<projection::v1::InstallResult>
+    install_into(projection::v1::BookProjection& projection) const &;
+    AdapterResult<projection::v1::InstallResult>
+    install_into(projection::v1::BookProjection& projection) const && = delete;
+    AdapterResult<projection::v1::InstallResult>
+    install_into(projection::v1::BookProjection&& projection) const & = delete;
+
+    [[nodiscard]] const AdaptedMetadata& metadata() const & noexcept;
+    const AdaptedMetadata& metadata() const && = delete;
+
   private:
     friend struct detail::AdapterFactory;
     AdaptedBookBaseline(
+        projection::v1::NumericSpec,
+        projection::v1::SequencePolicyKind,
         projection::v1::UpdateId,
         std::vector<projection::v1::BookLevel>,
-        std::vector<projection::v1::BookLevel>) noexcept;
+        std::vector<projection::v1::BookLevel>,
+        AdaptedMetadata) noexcept;
+    [[nodiscard]] projection::v1::BookBaseline view_unchecked() const & noexcept;
+    projection::v1::NumericSpec numeric_spec_;
+    projection::v1::SequencePolicyKind policy_;
     projection::v1::UpdateId last_update_id_;
     std::vector<projection::v1::BookLevel> bids_;
     std::vector<projection::v1::BookLevel> asks_;
+    AdaptedMetadata metadata_;
 };
 
 class AdaptedDepthBatch final {
@@ -890,17 +1117,33 @@ class AdaptedDepthBatch final {
     AdaptedDepthBatch& operator=(AdaptedDepthBatch&&) noexcept;
     AdaptedDepthBatch(const AdaptedDepthBatch&) = delete;
     AdaptedDepthBatch& operator=(const AdaptedDepthBatch&) = delete;
-    [[nodiscard]] projection::v1::DepthBatch view() const & noexcept;
-    projection::v1::DepthBatch view() const && = delete;
+
+    [[nodiscard]] AdapterResult<projection::v1::ApplyResult>
+    apply_to(projection::v1::BookProjection& projection) const &;
+    AdapterResult<projection::v1::ApplyResult>
+    apply_to(projection::v1::BookProjection& projection) const && = delete;
+    AdapterResult<projection::v1::ApplyResult>
+    apply_to(projection::v1::BookProjection&& projection) const & = delete;
+
+    [[nodiscard]] const AdaptedMetadata& metadata() const & noexcept;
+    const AdaptedMetadata& metadata() const && = delete;
+
   private:
     friend struct detail::AdapterFactory;
     AdaptedDepthBatch(
+        projection::v1::NumericSpec,
+        projection::v1::SequencePolicyKind,
         projection::v1::UpdateRange,
         std::optional<projection::v1::UpdateId>,
-        std::vector<projection::v1::LevelUpdate>) noexcept;
+        std::vector<projection::v1::LevelUpdate>,
+        AdaptedMetadata) noexcept;
+    [[nodiscard]] projection::v1::DepthBatch view_unchecked() const & noexcept;
+    projection::v1::NumericSpec numeric_spec_;
+    projection::v1::SequencePolicyKind policy_;
     projection::v1::UpdateRange range_;
     std::optional<projection::v1::UpdateId> previous_final_;
     std::vector<projection::v1::LevelUpdate> levels_;
+    AdaptedMetadata metadata_;
 };
 
 enum class SnapshotOrigin : std::uint8_t {
@@ -909,7 +1152,6 @@ enum class SnapshotOrigin : std::uint8_t {
     HistoryReplay,
 };
 
-enum class QualityFact : std::uint8_t;
 enum class GapRecoveryState : std::uint8_t;
 
 class DepthLimit final {
@@ -935,7 +1177,7 @@ struct SnapshotContext final {
 
 struct SnapshotOptions final {
     std::optional<DepthLimit> depth_limit;
-    std::vector<QualityFact> additional_quality_flags;
+    std::vector<HostQualityFact> host_quality_facts;
 };
 
 [[nodiscard]] AdapterResult<AdaptedBookBaseline>
@@ -964,9 +1206,11 @@ The generated snapshot and Core classes currently occupy the same proto-derived
 `projection_adapter::v1` to avoid implying that generated wire storage is part of Core. The real
 header must include every standard/generated declaration it uses and receive self-containment tests.
 
-`AdapterField` and `QualityFact` will list closed values rather than accepting arbitrary integers or
-strings. Value types use owned strings. There are no output parameters, boolean behavior modes,
-callbacks, virtual plugins, or mutable global policy.
+`AdapterField` will include `ProjectionPriceScale`, `ProjectionQuantityScale`, and
+`ProjectionPolicy`. `HostQualityFact` is the complete public Host-input domain; internal
+Core-derived facts have no public constructor or input type. All values and sidecars own their
+storage. There are no output parameters, boolean behavior modes, callbacks, virtual plugins, or
+mutable global policy.
 
 ## Proposed CMake design sketch
 
@@ -980,7 +1224,9 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
   find_package(Protobuf CONFIG REQUIRED)
   find_package(BinanceMarketDataContracts CONFIG REQUIRED COMPONENTS Protobuf)
 
-  # Fail configure unless the package exports the exact approved Contracts fingerprint.
+  # Fail configure unless the dependency-locked package revision/version is selected,
+  # the exported schema baseline/fingerprint matches the approved M4 schema identity,
+  # and generator/runtime metadata is compatible.
   # add_library(bmd_projection_proto_adapter ...)
   # target_link_libraries(bmd_projection_proto_adapter
   #   PUBLIC
@@ -1005,6 +1251,20 @@ linkage is necessary depend on prerequisite C-M4-001 and must be verified rather
 - Including Core plus every generated header detects namespace/type collisions.
 - Core exported targets contain no adapter/Protobuf link interface.
 
+### Contracts identity tests
+
+- Reproduce the canonical descriptor fingerprint from independent clean paths/machines with no
+  source path, timestamp, traversal order, or machine information in the digest.
+- Approved schema fingerprint plus the dependency-locked package revision/version configures.
+- A different package revision with the same schema fingerprint fails until the dependency lock is
+  deliberately updated, then may pass without changing the approved schema identity.
+- Same package version with a wrong schema fingerprint fails configuration.
+- Correct schema fingerprint with incompatible Protobuf runtime metadata fails configuration.
+- Missing schema fingerprint, schema baseline, package revision, package version, generator
+  identity, or runtime metadata fails configuration.
+- The explicit startup/debug integrity probe is optional and cheap; ordinary conversions never
+  recompute a descriptor hash.
+
 ### Inbound conversion matrix
 
 | Area | Cases |
@@ -1017,15 +1277,24 @@ linkage is necessary depend on prerequisite C-M4-001 and must be verified rather
 | Decimal | malformed syntax, negative quantity, zero quantity, non-positive price, exact rescale, inexact scale, overflow |
 | Levels | update input order, repeated same-side price, bid-then-ask merge, strict snapshot order, normalized duplicate price |
 | Book shape | empty side, locked/crossed baseline, zero baseline quantity |
+| Quality sidecar | map/deduplicate supported Host facts; omit three Core-derived source flags; reject unspecified/unknown |
 | Failure | result code/field/precedence; no projection mutation |
 
-### Lifetime tests
+### Binding and lifetime tests
 
-- Owner move construction and move assignment preserve the destination view.
-- Existing pre-move views are never used; moved-from owner is destruction/assignment-only.
-- `view()` is unavailable on an rvalue at compile time.
+- Price-scale mismatch, quantity-scale mismatch, both-scale mismatch with price-first precedence,
+  Spot-owner/UsdM-target, and UsdM-owner/Spot-target all fail before M3.
+- Matching spec/policy checked install and apply invoke M3 normally.
+- M3 `RejectedWrongState`, `GapDetected`, `IgnoredDuplicate`, and `IgnoredStale` remain M3 results,
+  not adapter errors.
+- A full projection checkpoint proves every binding failure leaves book, ID, status, gap, and
+  visibility unchanged.
+- Public API cannot obtain a raw `BookBaseline`/`DepthBatch`; only private `view_unchecked` exists.
+- Rvalue owner and rvalue projection calls are unavailable at compile time.
+- Owner move construction and move assignment preserve destination vectors, spec, policy, and
+  metadata; moved-from owner is destruction/assignment-only.
 - Protobuf input destruction before the synchronous Core call is safe.
-- Owner vectors outlive the call and no class contains a cached span.
+- Owner vectors outlive the checked call and no class contains a cached span.
 - Sanitizers exercise use-after-free-sensitive scenarios.
 
 ### Snapshot output matrix
@@ -1040,7 +1309,11 @@ linkage is necessary depend on prerequisite C-M4-001 and must be verified rather
 - Explicit timestamp/monotonic presence and exact identity/producer/source mapping.
 - All five M3 gap reasons, next=`incoming.first`, generic reason, recovery state, and known
   information loss.
-- Host/Core quality merge, canonical ordering, and deduplication.
+- Public Host input cannot name `CROSSED_BOOK`, `SEQUENCE_GAP`, or `SNAPSHOT_BRIDGE_PENDING`.
+- Non-crossed output omits `CROSSED_BOOK`; locked/crossed output includes it.
+- Only `NeedsResync` emits Core `SEQUENCE_GAP`; only `AwaitingBridge` emits bridge-pending.
+- Host/Core quality merge follows canonical rank and deduplicates repeated Host facts.
+- `OrderBookResync`, `RecoveredTail`, and `MalformedPayload` state-combination rules are enforced.
 - Fixed-scale decimal output, trailing zeroes, no float/locale/scientific notation.
 
 ### Semantic round trip
@@ -1070,6 +1343,9 @@ flags. At every fired failure point:
 - projection status, ID, gap, and complete diagnostic book equal a pre-call checkpoint; and
 - a final non-failing attempt proves the scenario actually succeeds.
 
+Allocation sweeps include owning sidecar construction and checked invocation. Binding errors are
+tested separately as non-allocating pre-M3 outcomes with the same checkpoint invariant.
+
 ### State and determinism tests
 
 Replay identical fixtures twice with identical explicit context and compare every adapter result,
@@ -1089,19 +1365,25 @@ Property generators cover:
 - enum zero, every known value, and unknown `int32` values;
 - optional `pu`, monotonic/depth/gap presence;
 - arbitrary bid/ask arrays, duplicate prices, ordering, empty updates, and crossed books;
-- all projection states, depth limits, Host quality permutations, and gap reasons; and
+- independent schema fingerprint/package revision/version tuples;
+- adapted owners with Spec A against projections with Spec B, including independent price/quantity
+  scale differences and both policy cross-applications;
+- all projection states, depth limits, arbitrary `HostQualityFact` combinations, and gap reasons;
+- a Host-quality generator whose domain cannot produce any Core-derived fact; and
 - repeated replay for semantic equality.
 
 A dedicated adapter libFuzzer directly constructs/mutates Protobuf message objects; network parsing
-or serialized bytes are not required. Operations include adapt snapshot, adapt update, install/apply,
-build snapshot, move owner, query view, and reset projection. The harness compares the production
-result with the independent reference after each operation and asserts Core is unchanged on every
-adapt/output failure.
+or serialized bytes are not required. Operations include adapt snapshot, adapt update, checked
+install/apply across matching and mismatched projections, build snapshot, move owner, query owned
+metadata, and reset projection. The harness models schema and package identities separately,
+compares the production result with the independent reference after each operation, and asserts the
+complete Core checkpoint is unchanged on every adapt, binding, or output failure.
 
 Seed corpus categories include both valid fixtures, enum zero/unknown, empty required strings,
 optional presence toggles, max IDs, invalid range, invalid/exact-rescale decimals, duplicate and
 misordered levels, all four states, current/historical gaps, depth boundaries, crossed/empty books,
-and quality duplicates.
+and Host-quality duplicates/invalid state combinations. Seeds also cover inbound quality sidecars,
+three omitted source Core facts, schema/package mismatch metadata, and Spec/policy cross-application.
 
 ## Downstream consumer strategy
 
@@ -1109,8 +1391,9 @@ Two isolated staged-install consumers are required:
 
 1. Core-only consumer: no Protobuf package in its discovery path; includes M1/M2/M3 and links only
    `BinanceMarketDataProjection::Core`.
-2. Adapter consumer: finds exact Contracts/Protobuf packages, includes generated input/output types
-   plus the adapter header, adapts one fixture-equivalent message, applies it, and builds a snapshot.
+2. Adapter consumer: finds the dependency-locked Contracts/Protobuf packages, verifies separate
+   schema/package metadata, includes generated input/output types plus the adapter header, adapts one
+   fixture-equivalent message, invokes checked apply, and builds a snapshot.
 
 Both test build-tree-independent install paths. Static and shared package configurations must prove
 that generated symbols occur once and all public dependencies propagate correctly.
@@ -1122,11 +1405,11 @@ remains an implementation blocker:
 
 | ID | Question | Recommended answer | Alternative | Impact | Blocks implementation? | Evidence needed to close |
 |---|---|---|---|---|---:|---|
-| OD-M4-001 | What exact installable C++ target provides Contracts messages? | Contracts-owned versioned CMake/Conan package exporting one Protobuf message target and exact commit fingerprint | Arbitrary Host injection | Determines dependency, package config, include layout, runtime version, and symbol ownership | **YES — IMPLEMENTATION BLOCKER** | Merged Contracts prerequisite plus successful clean install-consumer audit |
+| OD-M4-001 | What exact installable C++ target and package revision provide Contracts messages? | Contracts-owned versioned CMake/Conan package exporting one message target, separate schema/package identities, and generator/runtime metadata | Arbitrary Host injection | Determines dependency, package config, include layout, lock, runtime version, and symbol ownership | **YES — IMPLEMENTATION BLOCKER** | Merged C-M4-001 plus reproducible schema fingerprint and successful clean install-consumer audit |
 
 ## Implementation blockers
 
-Closed potential blockers:
+Reviewed blocker candidates:
 
 | Candidate | Decision | Blocking? |
 |---|---|---:|
@@ -1134,9 +1417,12 @@ Closed potential blockers:
 | B2 Gap information loss | Generic `SEQUENCE_GAP_DETECTED` plus endpoints is truthful; exact reason stays Core-only | No |
 | B3 Historical `last_gap` | Emit only for current `NeedsResync` | No |
 | B4 MarketState owner/data | Deferred to separate future Core design | No |
-| B5 Exact Contracts identity | Build pin + package fingerprint is sufficient; delivered by C-M4-001 | No separate blocker |
+| B5 Exact Contracts identity | Dependency lock plus separate canonical schema and package/generator metadata; delivered by C-M4-001 | No separate blocker beyond B1 |
 
 Implementation blocker count: **1**.
+
+Architecture review blockers pending re-review: **3**. P1-1, P1-2, and P1-3 are addressed in this
+document revision but remain open until independent Round 2 verification.
 
 ## Contracts prerequisites
 
@@ -1144,7 +1430,7 @@ This design changes no Contracts file. The required separate work is:
 
 | Prerequisite ID | Repository | Required change | Why required | Compatibility classification | Blocks M4 implementation? | Suggested branch/PR |
 |---|---|---|---|---|---:|---|
-| C-M4-001 | `tomohikoAmada/BinanceMarketDataContracts` | Publish versioned installable C++ Protobuf message target/package, stable include layout, Protobuf dependency metadata, and exact commit fingerprint for `01d76a4...` | Reproducible/offline Projection build, one schema owner, no copied/generated drift, safe static/shared linking | Additive build/distribution change; no `.proto` semantic change | **YES** | Separate Contracts design/implementation branch and PR |
+| C-M4-001 | `tomohikoAmada/BinanceMarketDataContracts` | Publish a versioned installable C++ Protobuf message package generated from the approved M4 schema set. Export a stable message target/include layout, Schema Baseline Commit `01d76a...`, canonical schema fingerprint and algorithm version, future Package Revision/Version, `protoc`/ABI options, and Protobuf runtime compatibility; prove generated-symbol uniqueness | Reproducible/offline builds with schema semantics independently verified from the later package implementation revision | Additive build/distribution change, not a schema change; existing `.proto` semantics remain unchanged | **YES** | Separate Contracts design/implementation branch and PR; future package revision must not be predeclared as the schema baseline |
 
 No Contracts schema enhancement is required for initial M4 gap output. A possible future optional
 field for exact Core gap reason is explicitly non-prerequisite and would require its own evidence and
@@ -1153,13 +1439,18 @@ compatibility review.
 ## Rejected alternatives
 
 - Put generated types, Protobuf runtime, or Contracts dependencies into Core.
+- Treat the historical schema baseline commit as the future package revision or use one fingerprint
+  for both identities.
+- Recompute descriptor hashes for every wire message or trust a message-reported package version.
 - Build all markets with one implicit wire policy or cast Market directly to Core policy.
 - Trust raw Protobuf objects as already Pydantic-validated.
 - Parse prices/quantities with floating point, locale, scientific notation, rounding, or truncation.
 - Require source fractional digits to equal `NumericSpec` when exact rescale is possible.
 - Repair malformed ranges or synthesize missing previous-final IDs.
 - Let M4 sequence-classify or apply events while converting.
-- Return naked span views, cache spans in owners, or borrow repeated-field memory.
+- Return public naked span views, rely on Host discipline for projection binding, cache spans in
+  owners, or borrow repeated-field memory.
+- Expose one Host-input quality enum that includes Core-derived facts.
 - Throw for ordinary malformed-wire input or report only strings.
 - Generate timestamps or infer Host quality from clocks/logs/network state.
 - Allow a caller boolean to set `synchronized=true`.
@@ -1177,14 +1468,16 @@ compatibility review.
 Implementation remains NOT STARTED. After design acceptance and C-M4-001 completion, a separate
 `feat/m4-snapshots-protobuf-boundary` branch should proceed in these reviewable steps:
 
-1. Verify and pin the installed Contracts C++ target/fingerprint in an isolated consumer.
+1. Verify the dependency-locked Contracts package revision/version, canonical schema baseline and
+   fingerprint, and generator/runtime metadata in an isolated consumer.
 2. Add optional target/package-component scaffolding while keeping Core-only discovery clean.
 3. Add adapter error/field enums and `AdapterResult` boundary tests.
 4. Add `ExpectedIdentity` and explicit enum mapping functions.
-5. Add owning wrappers and compile-time/runtime lifetime tests.
+5. Add owning wrappers, binding metadata, checked invocation, owned quality sidecars, and
+   compile-time/runtime lifetime tests.
 6. Add inbound snapshot conversion and matrix tests.
 7. Add inbound depth conversion and matrix tests.
-8. Add depth limit, context, gap, quality, and output builder value types.
+8. Add depth limit, context, gap, disjoint Host/Core quality domains, and output builder value types.
 9. Add state-specific Local snapshot generation and deterministic formatting.
 10. Add semantic round trip, replay determinism, and allocation-failure sweeps.
 11. Add independent property model, fuzzer, seeds, and sanitizer coverage.
@@ -1200,11 +1493,13 @@ Future M4 implementation must pass:
 - accepted M4 design/ADR and closed C-M4-001 artifact blocker;
 - public-header self-containment for Core and adapter;
 - Core-only configure/build/install/consumer with Protobuf unavailable;
-- adapter configure/build/install/consumer with exact Contracts fingerprint;
+- adapter configure/build/install/consumer with locked package identity, approved canonical schema
+  identity, and compatible generator/runtime metadata;
+- reproducible schema fingerprint generation with no path/time/machine input and no per-message hash;
 - Debug and Release on Ubuntu GCC, Ubuntu Clang, and macOS AppleClang;
 - ASan and UBSan; supported TSan evidence;
 - clang-format and clang-tidy with warnings as errors;
-- complete inbound/output/state/error/enum/presence/lifetime test matrices;
+- complete inbound/output/state/error/enum/presence/binding/lifetime/quality-domain test matrices;
 - independent property and deterministic replay tests;
 - model-based adapter fuzz and blocking smoke run;
 - executable allocation-failure sweeps;
@@ -1237,7 +1532,11 @@ External M4 Architecture Review must challenge:
 - MarketState deferral and M6 ownership of Gateway/gRPC messages;
 - exception safety, determinism, and Arena rejection;
 - static/shared/export dependency responsibility;
-- version fingerprint and compatibility gates; and
+- version fingerprint and compatibility gates;
+- schema/package identity separation and fingerprint canonicalization;
+- checked adapted-owner binding with no public raw view;
+- Host/Core/inbound quality-domain separation and contradiction rules; and
 - independence of the proposed reference model and executability of failpoint tests.
 
-The required next step after this docs-only PR is **External M4 Architecture Review**.
+The required next step after this docs-only revision is
+**External M4 Architecture Review — Round 2**.
