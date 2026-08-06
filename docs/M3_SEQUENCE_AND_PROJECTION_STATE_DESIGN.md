@@ -3,15 +3,15 @@
 ## Status
 
 - Design status: **APPROVED**
-- Implementation status: **IN EXTERNAL CODE REVIEW**
+- Implementation status: **APPROVED; PENDING MERGE**
 - ADR status: **ACCEPTED**
 - Design date: 2026-08-06
 - Projection base: `413e3cd9236d0c5de15d4e838149111718260303`
 - Contracts baseline: `01d76a41929f36d89573159f5f458f9f1e378ada`
 
 The accepted API and semantics in this document are implemented on the separate
-`feat/m3-sequence-projection-state` branch. The implementation remains subject to external code
-review and is neither complete nor approved for merge.
+`feat/m3-sequence-projection-state` branch. External implementation code review is approved, but
+Draft PR #6 is not merged and M3 is not complete.
 
 ## Design acceptance
 
@@ -20,7 +20,7 @@ review and is neither complete nor approved for merge.
 - External architecture review round 2: APPROVED
 - Blocking findings after round 2: 0
 - Approved scope: M3 architecture and sequence policy design only
-- Implementation status: IN EXTERNAL CODE REVIEW
+- Implementation status: APPROVED; PENDING MERGE
 
 ## Implementation review record
 
@@ -39,8 +39,18 @@ review and is neither complete nor approved for merge.
 - Local acceptance gates: `scripts/verify.sh` passed on 2026-08-06; local clang-tidy and libFuzzer
   were explicitly skipped by the existing AppleClang rules, while Debug, Release, ASan, UBSan,
   TSan, coverage, benchmark smoke, staged install, and 139 registered tests passed.
-- Pull-request CI: pending creation and execution for the implementation head.
-- External implementation code review: NOT STARTED.
+- External implementation code review: APPROVED.
+- Reviewed implementation head: `7606a60bbb2d2a192f6c0259942174fbd49847ba`.
+- Blocking findings: 0.
+- Production code changes requested: 0.
+- Test changes requested: 0.
+- Reviewed CI run: `31083008166`.
+- Reviewed CI head: `7606a60bbb2d2a192f6c0259942174fbd49847ba`.
+- Reviewed CI result: 8/8 PASS.
+
+This approval covers the reviewed implementation head. Draft PR #6 remains unmerged, M3 remains
+incomplete, and this approval-record commit and its resulting PR head require final CI verification
+before merge authorization. M4 and later milestones must not start.
 
 ## Goals
 
