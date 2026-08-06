@@ -1015,7 +1015,7 @@ All messages in one binary use the linked generated target, so no new runtime wi
 
 ## Proposed public API sketch
 
-**Proposed, not implemented, and subject to external review:**
+**Approved architecture; proposed API and not implemented:**
 
 ```cpp
 namespace binance_market_data::projection_adapter::v1 {
@@ -1227,7 +1227,7 @@ mutable global policy.
 
 ## Proposed CMake design sketch
 
-**Proposed, not implemented, and subject to external review:**
+**Approved architecture; proposed build configuration and not implemented:**
 
 ```cmake
 option(BMD_PROJECTION_BUILD_PROTO_ADAPTER
