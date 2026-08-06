@@ -54,6 +54,22 @@ void* operator new(std::size_t size) { return allocation_control::allocate(size)
 
 void* operator new[](std::size_t size) { return allocation_control::allocate(size); }
 
+void* operator new(std::size_t size, const std::nothrow_t&) noexcept {
+    try {
+        return allocation_control::allocate(size);
+    } catch (const std::bad_alloc&) {
+        return nullptr;
+    }
+}
+
+void* operator new[](std::size_t size, const std::nothrow_t&) noexcept {
+    try {
+        return allocation_control::allocate(size);
+    } catch (const std::bad_alloc&) {
+        return nullptr;
+    }
+}
+
 void operator delete(void* memory) noexcept {
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
     std::free(memory);
@@ -70,6 +86,16 @@ void operator delete(void* memory, std::size_t) noexcept {
 }
 
 void operator delete[](void* memory, std::size_t) noexcept {
+    // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
+    std::free(memory);
+}
+
+void operator delete(void* memory, const std::nothrow_t&) noexcept {
+    // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
+    std::free(memory);
+}
+
+void operator delete[](void* memory, const std::nothrow_t&) noexcept {
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
     std::free(memory);
 }

@@ -15,7 +15,7 @@ enum class SequenceDecision : std::uint8_t {
 };
 
 struct Classification final {
-    SequenceDecision decision;
+    SequenceDecision decision{SequenceDecision::Gap};
     std::optional<GapReason> gap_reason;
 };
 
@@ -202,6 +202,8 @@ class BookProjection::Impl final {
     }
 
     [[nodiscard]] ApplyResult record_gap(DepthBatch batch, GapReason reason) noexcept {
+        // The lifecycle admits this path only after a baseline supplied the current ID.
+        // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
         GapInfo gap{last_update_id_.value(), batch.range, batch.previous_final, reason, policy_};
         last_gap_ = gap;
         status_ = ProjectionStatus::NeedsResync;
@@ -216,8 +218,8 @@ class BookProjection::Impl final {
         return {disposition, status_, last_update_id_};
     }
 
-    const NumericSpec numeric_spec_;
-    const SequencePolicyKind policy_;
+    NumericSpec numeric_spec_;
+    SequencePolicyKind policy_;
     ProjectionStatus status_{ProjectionStatus::AwaitingBaseline};
     std::optional<UpdateId> last_update_id_;
     std::optional<GapInfo> last_gap_;

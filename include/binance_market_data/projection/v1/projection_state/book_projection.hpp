@@ -104,6 +104,7 @@ enum class InstallDisposition : std::uint8_t {
     RejectedWrongState,
 };
 
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct InstallResult final {
     InstallDisposition disposition;
     ProjectionStatus status_after;
@@ -112,6 +113,7 @@ struct InstallResult final {
     friend constexpr bool operator==(const InstallResult&, const InstallResult&) noexcept = default;
 };
 
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct ApplyResult final {
     ApplyDisposition disposition;
     ProjectionStatus status_after;
