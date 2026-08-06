@@ -419,6 +419,8 @@ TEST(OrderBookPropertyTest, DeterministicPropertyValidation) {
                 case 4:
                     limit = (count < std::numeric_limits<std::size_t>::max()) ? count + 1 : count;
                     break;
+                default:
+                    break;
                 }
                 OperationContext ctx{seed_str, transcript_idx, op_idx, op, side};
                 ctx.extra1 = limit;
