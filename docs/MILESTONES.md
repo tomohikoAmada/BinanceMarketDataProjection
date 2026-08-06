@@ -104,6 +104,43 @@ No sequence validation, update IDs, gap detection, resynchronization, snapshot c
 adapter, networking, Gateway runtime, History runtime, Python binding, matching engine, strategy,
 persistence, or trading behavior.
 
+## M3 Sequence and Projection State — DESIGN IN REVIEW
+
+Implementation status: **NOT STARTED**
+
+### Goal
+
+Define market-specific sequencing, bootstrap validation, gap detection, reset, and the synchronized
+projection lifecycle while deterministically applying normalized absolute-quantity depth batches to
+the M2 order book.
+
+### Planned outputs
+
+- Strongly typed unsigned Binance update IDs and inclusive update ranges.
+- Explicit Spot, USD(S)-M perpetual, and COIN-M perpetual sequence-policy kinds.
+- Separate Spot interval continuity and Futures previous-final (`pu`) continuity classifiers.
+- Domain-only baseline and depth-batch views with no wire or runtime dependency.
+- `AwaitingBaseline`, `AwaitingBridge`, `Synchronized`, and `NeedsResync` lifecycle states.
+- Stable apply results, deterministic gap evidence, reset, and synchronization-aware const queries.
+- Strong exception safety for baseline installation and incremental sequence/book commit.
+- Complete transition/unit matrices, an independent property model, deterministic replay tests,
+  allocation-failure tests, and a model-based M3 fuzz harness.
+- M3 architecture design and PROPOSED ADR-0005, followed by independent external review.
+
+### Design status
+
+Architecture and policy design is under external review. No M3 production implementation exists.
+ADR-0005 remains PROPOSED. The implementation branch
+`feat/m3-sequence-projection-state` must not be created until review approves the design.
+
+### Non-goals
+
+M3 does not own snapshot download, WebSocket transport, network-event buffering, reconnect, Host
+queues, Gateway session identity, timestamps, threads, locks, logging, telemetry, persistence, or
+History storage. M4 owns Protobuf/wire adaptation and snapshot contract production; M6 owns Gateway
+runtime integration. Derived market prices, matching, orders, strategy, risk, and trading remain out
+of scope.
+
 ## Development map
 
 1. **M0 Repository Foundation** — Build, test, installation, CI, and governance baseline.
@@ -111,7 +148,9 @@ persistence, or trading behavior.
    types, quantity/price representation, decimal parsing, exact formatting, property tests, and fuzz
    validation.
 3. **M2 Order Book Core — COMPLETE** — Deterministic book storage, level management, depth operations.
-4. **M3 Sequence and Projection State** — Market-specific sequencing, gap detection, reset logic.
+4. **M3 Sequence and Projection State — DESIGN IN REVIEW; IMPLEMENTATION NOT STARTED** —
+   Market-specific sequencing, bootstrap validation, gap detection, reset logic, and synchronized
+   projection lifecycle.
 5. **M4 Snapshots and Protobuf Boundary** — Wire-format adapter outside Core; snapshot production.
 6. **M5 Differential Validation and Performance** — Replay/differential/fuzz validation; benchmark
    with representative workloads.
