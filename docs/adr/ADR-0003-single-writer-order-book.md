@@ -16,4 +16,17 @@ immutable objects.
 ## Consequences
 
 Core algorithms need no internal scheduler or competing-writer synchronization. Hosts must enforce
-ordering. This ADR establishes architecture only; M0 does not implement an order book.
+ordering.
+
+## M2 implementation
+
+M2 implemented a single-writer order book with the following properties:
+
+- Core creates no threads, locks, or atomics.
+- The host guarantees ordered calls per projection instance.
+- Storage is a PIMPL-hidden `std::map` (M2 correctness baseline).
+- Quantity is absolute (not delta); zero deletes; missing delete is a no-op.
+- Crossed and locked books are retained without rejection.
+- Results leave by value or as immutable objects.
+- Container selection may be re-evaluated in M5.
+- M2 has no sequence tracking or update IDs.

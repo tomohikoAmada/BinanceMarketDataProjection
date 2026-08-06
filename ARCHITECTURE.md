@@ -4,7 +4,7 @@
 
 BinanceMarketDataProjection is intended to be a strategy-independent, deterministic, replayable,
 single-writer, embedded C++20 library. Live ingestion and historical replay will invoke the same
-core logic. M1 adds exact numeric and domain primitives but no order book or projection state.
+core logic. M1 added exact numeric and domain primitives. M2 adds a deterministic order book core.
 
 ## Explicit non-responsibilities
 

@@ -71,13 +71,46 @@ No order book, price-level map, snapshots, diff application, sequencing, gap/res
 market-state calculations, Protobuf adapter, networking, host runtime, Python binding, symbol
 filters, signed decimals, persistence, threading, logging, strategy, or trading behavior.
 
+## M2 Order Book Core — COMPLETE
+
+### Goal
+
+Implement a deterministic, single-writer, market-by-price order book with absolute-quantity
+semantics, zero-quantity deletion, bid/ask ordering, best-level queries, top-N output, batch
+updates, and atomic full-book replacement.
+
+### Outputs
+
+- `BookSide`, `BookLevel`, `LevelUpdate`, `LevelChange`, and `OrderBook` public API.
+- PIMPL-isolated `std::map` storage with bid descending / ask ascending ordering.
+- Absolute quantity replacement, zero-quantity deletion, missing-delete no-op.
+- Batch update with ordered application and same-price last-write-wins.
+- Atomic `replace_all` with last-write-wins per side and strong exception guarantee.
+- Best bid/ask, quantity-at-price, top-N, and full-level-copy queries.
+- Crossed and locked book acceptance without rejection or auto-resolution.
+- Independent vector-based reference model for property and fuzz validation.
+- Model-based libFuzzer harness and deterministic property tests.
+- M2 semantics documentation and updated ADR-0003.
+
+### Acceptance status
+
+Implementation, unit tests, property tests, fuzzing, and external code review are complete.
+M2 passed external code review with no blocking correctness, determinism, portability, or
+validation findings. M2 is approved for merge and is marked complete.
+
+### Non-goals
+
+No sequence validation, update IDs, gap detection, resynchronization, snapshot contract, protobuf
+adapter, networking, Gateway runtime, History runtime, Python binding, matching engine, strategy,
+persistence, or trading behavior.
+
 ## Development map
 
 1. **M0 Repository Foundation** — Build, test, installation, CI, and governance baseline.
 2. **M1 Numeric and Domain Primitives — COMPLETE** — Fixed-point
    types, quantity/price representation, decimal parsing, exact formatting, property tests, and fuzz
    validation.
-3. **M2 Order Book Core** — Deterministic book storage, level management, depth operations.
+3. **M2 Order Book Core — COMPLETE** — Deterministic book storage, level management, depth operations.
 4. **M3 Sequence and Projection State** — Market-specific sequencing, gap detection, reset logic.
 5. **M4 Snapshots and Protobuf Boundary** — Wire-format adapter outside Core; snapshot production.
 6. **M5 Differential Validation and Performance** — Replay/differential/fuzz validation; benchmark

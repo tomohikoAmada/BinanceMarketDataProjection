@@ -1,7 +1,7 @@
 # BinanceMarketDataProjection
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
-market-data projection core. The current state is **M1 Numeric and Domain Primitives — COMPLETE**. The library exposes stable project/version metadata and exact numeric
+market-data projection core. The current state is **M1 Numeric and Domain Primitives — COMPLETE, M2 Order Book Core — COMPLETE**. The library exposes stable project/version metadata and exact numeric
 primitives; it does not yet implement projection state.
 
 This is an unofficial project and is not affiliated with, endorsed by, or sponsored by Binance.
@@ -156,15 +156,14 @@ docs/          Milestones, open questions, and ADRs
 
 ## Milestone status
 
-M1 Numeric and Domain Primitives is complete. External code review completed with no blocking
-correctness findings. M1 is approved for merge. No M2 or later behavior is implemented by this
-branch. The Contracts reference baseline is
+M1 Numeric and Domain Primitives was externally reviewed and merged. M2 Order Book Core is in
+progress. The Contracts reference baseline is
 `01d76a41929f36d89573159f5f458f9f1e378ada`.
 
 ## Known limitations
 
 - There is no order book, sequencing, snapshot application, or market-state projection yet.
-- Tick-size, step-size, signed-decimal, and symbol-metadata validation are outside M1.
+- Tick-size, step-size, signed-decimal, and symbol-metadata validation are outside M2.
 - TSan support varies by host platform and toolchain.
 - Dedicated Ubuntu ARM64/RK3588 CI is not part of the initial hosted matrix.
 - No M2 or later milestone implementation is present.
