@@ -101,6 +101,8 @@ class ReferenceProjection final {
         return {InstallDisposition::Installed, status_, last_};
     }
 
+    // The explicit branches are intentionally independent of production classification helpers.
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
     [[nodiscard]] Result apply(std::uint64_t first, std::uint64_t final,
                                std::optional<std::uint64_t> previous,
                                const std::vector<RawLevel>& levels) {
@@ -202,7 +204,7 @@ class ReferenceProjection final {
     }
 
     [[nodiscard]] Result gap(std::uint64_t first, std::uint64_t final,
-                             std::optional<std::uint64_t> previous, GapReason reason) noexcept {
+                             std::optional<std::uint64_t> previous, GapReason reason) {
         Gap evidence{last_.value(), first, final, previous, reason, policy_};
         last_gap_ = evidence;
         status_ = Status::NeedsResync;

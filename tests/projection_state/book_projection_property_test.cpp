@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -263,7 +264,8 @@ void run_property(std::uint64_t seed, reference::Policy policy) {
 } // namespace
 
 TEST(BookProjectionPropertyTest, MatchesIndependentReferenceModelForFixedSeeds) {
-    constexpr std::uint64_t kSeeds[] = {1, 7, 42, 99991, 0xC0FFEE, 0x123456789ABCDEF0ULL};
+    constexpr std::array<std::uint64_t, 6> kSeeds = {1,     7,        42,
+                                                     99991, 0xC0FFEE, 0x123456789ABCDEF0ULL};
     for (const auto seed : kSeeds) {
         run_property(seed, reference::Policy::Spot);
         run_property(seed ^ 0x9E3779B97F4A7C15ULL, reference::Policy::UsdM);
