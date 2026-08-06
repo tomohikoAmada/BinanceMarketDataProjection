@@ -104,9 +104,9 @@ No sequence validation, update IDs, gap detection, resynchronization, snapshot c
 adapter, networking, Gateway runtime, History runtime, Python binding, matching engine, strategy,
 persistence, or trading behavior.
 
-## M3 Sequence and Projection State — DESIGN APPROVED; IMPLEMENTATION NOT STARTED
+## M3 Sequence and Projection State — DESIGN APPROVED; IMPLEMENTATION APPROVED, PENDING MERGE
 
-Implementation status: **NOT STARTED**
+Implementation status: **APPROVED; PENDING MERGE**
 
 ### Goal
 
@@ -114,7 +114,7 @@ Define market-specific sequencing, bootstrap validation, gap detection, reset, a
 projection lifecycle while deterministically applying normalized absolute-quantity depth batches to
 the M2 order book.
 
-### Planned outputs
+### Implementation deliverables
 
 - Strongly typed unsigned Binance update IDs and valid-by-construction inclusive update ranges.
 - Explicit Spot and USD(S)-M perpetual sequence-policy kinds, matching the frozen Contracts market
@@ -139,8 +139,14 @@ findings.
 
 ADR-0005 is ACCEPTED.
 
-No M3 production implementation exists yet. The separate implementation branch
-`feat/m3-sequence-projection-state` may be created only after this design PR is merged.
+The M3 public API, production source, unit/state/property/replay/allocation-failure validation,
+model-based fuzz harness, seed corpus, and staged-install consumer are implemented on
+`feat/m3-sequence-projection-state`. Local validation passed subject to the repository's explicit
+AppleClang clang-tidy/libFuzzer skips. External implementation code review approved head
+`7606a60bbb2d2a192f6c0259942174fbd49847ba` with no blocking findings, and CI run `31083008166`
+passed 8/8 jobs for that exact head. ADR-0005 remains ACCEPTED. Draft PR #6 is not merged, so M3 is
+not complete; the approval-record commit and its new CI must pass final merge-readiness review, and
+M4 must not start.
 
 ### Non-goals
 
@@ -157,7 +163,7 @@ of scope.
    types, quantity/price representation, decimal parsing, exact formatting, property tests, and fuzz
    validation.
 3. **M2 Order Book Core — COMPLETE** — Deterministic book storage, level management, depth operations.
-4. **M3 Sequence and Projection State — DESIGN APPROVED; IMPLEMENTATION NOT STARTED** —
+4. **M3 Sequence and Projection State — DESIGN APPROVED; IMPLEMENTATION APPROVED, PENDING MERGE** —
    Market-specific sequencing, bootstrap validation, gap detection, reset logic, and synchronized
    projection lifecycle.
 5. **M4 Snapshots and Protobuf Boundary** — Wire-format adapter outside Core; snapshot production.

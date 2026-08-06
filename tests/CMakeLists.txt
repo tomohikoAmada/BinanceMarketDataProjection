@@ -19,6 +19,10 @@ add_executable(
     order_book/order_book_crossed_test.cpp
     order_book/order_book_determinism_test.cpp
     order_book/order_book_property_test.cpp
+    projection_state/update_types_test.cpp
+    projection_state/book_projection_test.cpp
+    projection_state/book_projection_property_test.cpp
+    projection_state/book_projection_replay_test.cpp
     public_header_test.cpp
     version_test.cpp
 )
@@ -55,6 +59,7 @@ add_library(
     public_headers/order_book/book_level_compile_test.cpp
     public_headers/order_book/level_update_compile_test.cpp
     public_headers/order_book/order_book_compile_test.cpp
+    public_headers/projection_state/book_projection_compile_test.cpp
 )
 target_link_libraries(
     bmd_projection_public_header_self_containment
@@ -69,5 +74,25 @@ set_target_properties(
 )
 bmd_projection_apply_project_options(bmd_projection_public_header_self_containment)
 
+add_executable(
+    bmd_projection_m3_allocation_failure_tests
+    projection_state/book_projection_allocation_failure_test.cpp
+)
+target_link_libraries(
+    bmd_projection_m3_allocation_failure_tests
+    PRIVATE
+        BinanceMarketDataProjection::Core
+        GTest::gtest_main
+)
+set_target_properties(
+    bmd_projection_m3_allocation_failure_tests
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m3_allocation_failure_tests)
+
 include(GoogleTest)
 gtest_discover_tests(bmd_projection_tests)
+gtest_discover_tests(bmd_projection_m3_allocation_failure_tests)

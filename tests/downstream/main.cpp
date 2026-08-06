@@ -2,11 +2,14 @@
 #include <binance_market_data/projection/v1/numeric/decimal_parse.hpp>
 #include <binance_market_data/projection/v1/numeric/decimal_scale.hpp>
 #include <binance_market_data/projection/v1/order_book/order_book.hpp>
+#include <binance_market_data/projection/v1/projection_state/book_projection.hpp>
 #include <binance_market_data/projection/v1/version.hpp>
 
 #include <iostream>
+#include <optional>
 #include <string>
 #include <variant>
+#include <vector>
 
 // NOLINTBEGIN(bugprone-unchecked-optional-access)
 
@@ -88,6 +91,29 @@ int main() {
     book.replace_all(crossed_bids, crossed_asks);
     if (book.best_bid().value().price.value() <= book.best_ask().value().price.value()) {
         return 13;
+    }
+
+    bmd::BookProjection projection{spec, bmd::SequencePolicyKind::Spot};
+    const std::vector<bmd::BookLevel> baseline_bids{{*bid_price, *bid_qty}};
+    const std::vector<bmd::BookLevel> baseline_asks{{*ask_price, *ask_qty}};
+    const auto install =
+        projection.install_baseline({bmd::UpdateId{500}, baseline_bids, baseline_asks});
+    if (install.disposition != bmd::InstallDisposition::Installed ||
+        projection.status() != bmd::ProjectionStatus::AwaitingBridge) {
+        return 14;
+    }
+
+    const auto bridge_range = bmd::UpdateRange::try_create(bmd::UpdateId{499}, bmd::UpdateId{501});
+    if (!bridge_range.has_value()) {
+        return 15;
+    }
+    const std::vector<bmd::LevelUpdate> bridge_levels{
+        {bmd::BookSide::Bid, *bid_price, *bmd::QuantityUnits::create(600000000)}};
+    const auto applied = projection.apply({*bridge_range, std::nullopt, bridge_levels});
+    if (applied.disposition != bmd::ApplyDisposition::Applied ||
+        projection.status() != bmd::ProjectionStatus::Synchronized ||
+        !projection.synchronized_book().has_value()) {
+        return 16;
     }
 
     std::cout << "consumer-ok\n";

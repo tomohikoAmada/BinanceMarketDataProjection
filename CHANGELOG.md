@@ -6,6 +6,12 @@ All notable changes will be recorded here.
 
 ### Added
 
+- M3 `UpdateId`, valid-by-construction `UpdateRange`, and `BookProjection` public API with explicit
+  Spot and USD-M sequence policies, a four-state lifecycle, deterministic gap evidence,
+  synchronization-aware const visibility, and strongly transactional baseline/incremental apply.
+- M3 unit/state-transition coverage, independent primitive/vector property model, deterministic
+  Spot and USD-M replay tests, exhaustive allocation-failure sweeps, installed-consumer coverage,
+  and a model-based libFuzzer harness with seed corpus.
 - M2 deterministic order book core: `BookSide`, `BookLevel`, `LevelUpdate`, `LevelChange`, `OrderBook`
   with PIMPL storage, absolute-quantity semantics, batch updates, atomic replace-all, best bid/ask,
   top-N queries, and model-based fuzzing.
