@@ -215,7 +215,7 @@ void verify_strong_guarantee(Scenario scenario) {
     {
         allocation_control::Scope scope{std::numeric_limits<std::size_t>::max()};
         counting_success = counting.invoke();
-        allocation_count = scope.allocations();
+        allocation_count = allocation_control::Scope::allocations();
     }
     ASSERT_TRUE(counting_success);
     ASSERT_GT(allocation_count, 0U);
