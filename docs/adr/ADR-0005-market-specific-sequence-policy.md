@@ -1,7 +1,19 @@
 # ADR-0005: Market-Specific Sequence Policy
 
-- Status: PROPOSED
+- Status: ACCEPTED
 - Date: 2026-08-06
+
+## Acceptance
+
+The proposed architecture received independent external review.
+
+- Round 1: CHANGES REQUESTED
+- Revised design head: `58dfcb82f62e9b70033f8fd7bd4304b3f06388ac`
+- Round 2: APPROVED
+- Remaining blocking architecture findings: none
+
+This acceptance covers the design decision only. M3 implementation has not started and requires a
+separate implementation branch, validation cycle, and external code review.
 
 ## Context
 
@@ -35,7 +47,8 @@ ranges that are valid by construction, own one M2 `OrderBook`, and expose all mu
 or exceptions and makes `first <= final` a permanent invariant. The projection will not expose a
 mutable book reference.
 
-All declarations remain proposed until this ADR passes the required independent external review.
+All declarations remain Proposed and Not implemented; implementation requires a separate external
+code review.
 
 ## Policy model
 
@@ -222,9 +235,9 @@ supplies time and performs network recovery. Gateway `session_sequence`, `connec
   `replace_all`, non-transactional `apply_updates`, deterministic ordered queries, independent
   vector property model, and model-based fuzz organization.
 
-## Review requirements
+## Implementation review requirements
 
-ADR status remains `PROPOSED` until an independent external reviewer explicitly evaluates:
+Implementation review must explicitly evaluate:
 
 - Spot versus Futures policy correctness;
 - Spot bootstrap contains-`L` correctness and its separation from live successor coverage;
@@ -238,5 +251,9 @@ ADR status remains `PROPOSED` until an independent external reviewer explicitly 
 - proposed API minimality; and
 - independence and completeness of the test model.
 
-Before approval, no M3 implementation branch, public header, source, test, or fuzz harness may be
-created. External approval may change this ADR to `ACCEPTED` only in a separately reviewed change.
+No M3 implementation branch may be created until this design PR is merged. After merge, the
+implementation branch, public header, source, tests, and fuzz harness require the separate
+validation cycle and external code review described above.
+
+ADR-0005 is accepted as the implementation contract for M3. Any semantic change requires a
+separately reviewed ADR amendment.

@@ -2,17 +2,25 @@
 
 ## Status
 
-- Design status: **IN REVIEW**
+- Design status: **APPROVED**
 - Implementation status: **NOT STARTED**
-- ADR status: **PROPOSED**
+- ADR status: **ACCEPTED**
 - Design date: 2026-08-06
 - Projection base: `413e3cd9236d0c5de15d4e838149111718260303`
 - Contracts baseline: `01d76a41929f36d89573159f5f458f9f1e378ada`
 
-Every C++ declaration in this document is **Proposed**, **Not implemented**, and **Subject to
-external review**. This document does not authorize an implementation branch. An independent
-external Architecture and Sequence Policy Review must approve this design before work may start on
-`feat/m3-sequence-projection-state`.
+Every C++ declaration in this document is **Proposed** and **Not implemented**; implementation is
+subject to a separate external code review. This document authorizes creation of the separate
+`feat/m3-sequence-projection-state` implementation branch only after this design PR is merged.
+
+## Design acceptance
+
+- External architecture review round 1: CHANGES REQUESTED
+- Revision commit: `58dfcb82f62e9b70033f8fd7bd4304b3f06388ac`
+- External architecture review round 2: APPROVED
+- Blocking findings after round 2: 0
+- Approved scope: M3 architecture and sequence policy design only
+- Implementation status: NOT STARTED
 
 ## Goals
 
@@ -49,7 +57,7 @@ Sources are applied in this order:
 1. Binance official documentation defines exchange update-ID behavior.
 2. The fixed Contracts baseline defines cross-module fields and established contract semantics.
 3. Projection architecture defines deterministic Core boundaries.
-4. ADR-0005 defines the proposed internal M3 decision where the higher sources leave choices open.
+4. ADR-0005 defines the accepted internal M3 decision where the higher sources leave choices open.
 
 A lower-ranked source never silently overrides a higher-ranked source. Differences are recorded in
 the evidence and interpretation sections below. Contracts types are semantic references and wire
@@ -852,7 +860,7 @@ This design-stage PR does not claim that any future M3 gate has passed.
 
 ## Implementation plan
 
-Implementation, if externally approved, will use a separate
+Implementation, after this design PR is merged, will use a separate
 `feat/m3-sequence-projection-state` branch and proceed in small reviewed steps:
 
 1. Add `UpdateId`, `UpdateRange`, enum values, and header self-containment tests.
@@ -899,7 +907,8 @@ bootstrap difference, equality classification, gap visibility, buffering boundar
 baseline all have recommended decisions and executable tests above. Therefore this design does not
 add an `O-P004` entry to `docs/OPEN_QUESTIONS.md`.
 
-Implementation blocker count from unresolved technical questions: **0**. Independent external
-Architecture and Sequence Policy Review is still a mandatory process gate; it is not a deferred
-technical decision. If review rejects a decision, this document and PROPOSED ADR must be revised
-before any implementation branch is created.
+Implementation blocker count from unresolved technical questions: **0**. External Architecture and
+Sequence Policy Review Round 2 is recorded as approved with no blocking findings. Creation of the
+separate `feat/m3-sequence-projection-state` implementation branch is authorized only after this
+design PR is merged; implementation remains subject to its own validation cycle and external code
+review.
