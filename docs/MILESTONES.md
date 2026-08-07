@@ -158,9 +158,9 @@ History storage. M4 owns Protobuf/wire adaptation and snapshot contract producti
 runtime integration. Derived market prices, matching, orders, strategy, risk, and trading remain out
 of scope.
 
-## M4 Snapshots and Protobuf Boundary — DESIGN APPROVED; IMPLEMENTATION BLOCKED
+## M4 Snapshots and Protobuf Boundary — IMPLEMENTED CANDIDATE; REVIEW PENDING
 
-Implementation status: **NOT STARTED**
+Implementation status: **IMPLEMENTED CANDIDATE / PENDING INDEPENDENT REVIEW**
 
 ### Acceptance status
 
@@ -171,8 +171,9 @@ ADR-0006: **ACCEPTED**.
 External architecture review: **APPROVED**. Round 1 findings: **3 CLOSED**. Architecture blockers:
 **0**.
 
-Implementation status: **NOT STARTED**. Implementation blockers: **1 — C-M4-001**.
-Implementation has not started. It is blocked only by C-M4-001.
+Implementation blockers: **0**. C-M4-001: **CLOSED / SATISFIED**. OD-M4-001: **CLOSED**.
+Contracts integration: **VERIFIED**. M4 remains **OPEN / PENDING IMPLEMENTATION REVIEW** and is not
+complete.
 
 ### Goal
 
@@ -201,16 +202,18 @@ owning M1/M2/M3 inputs and converts `BookProjection` plus explicit Host context 
 External architecture review Round 2: **APPROVED**. Round 1 findings are **3 CLOSED** and
 architecture blocking findings are **0**.
 
-The fixed Contracts baseline does not provide an installable C++ Protobuf package or exported CMake
-target. The separate C-M4-001 Contracts C++ package prerequisite remains an **IMPLEMENTATION
-BLOCKER**. M4 Design is **APPROVED**, ADR-0006 is **ACCEPTED**, implementation remains **NOT STARTED**, and no
-M4 production implementation, dependency, build target, test, or generated code exists here.
+The merged C-M4-001 prerequisite at `67ee1bf69fad980d114cfa278c3a6ffe310a4d7a`
+provides `binance-market-data-contracts-cpp/0.1.0` and
+`BinanceMarketDataContracts::Protobuf`. Projection pins Conan RREV
+`7fd3efe3d289462fb16c78ffeced1682`, validates the approved schema/runtime metadata at configure
+time, and implements the optional `BinanceMarketDataProjection::ProtoAdapter` component without
+changing Core. The formal Contracts Package Revision remains `NOT_FORMALLY_ASSIGNED` until release.
 
 ### Non-goals
 
-No M4 implementation, Contracts change, gRPC runtime, Gateway lifecycle, network ownership,
-system-time read, generated-code copy, or M5/M6 work is included. `MarketStateSnapshot` generation
-and derived market calculations remain deferred unless separately designed and approved.
+No Contracts change, gRPC runtime, Gateway lifecycle, network ownership, system-time read,
+generated-code copy, or M5/M6 work is included. `MarketStateSnapshot` generation and derived market
+calculations remain deferred unless separately designed and approved.
 
 ## Development map
 
@@ -222,8 +225,9 @@ and derived market calculations remain deferred unless separately designed and a
 4. **M3 Sequence and Projection State — COMPLETE** —
    Market-specific sequencing, bootstrap validation, gap detection, reset logic, and synchronized
    projection lifecycle.
-5. **M4 Snapshots and Protobuf Boundary — DESIGN APPROVED; IMPLEMENTATION BLOCKED** — Optional
-   wire-format adapter outside Core; snapshot production boundary.
+5. **M4 Snapshots and Protobuf Boundary — IMPLEMENTED CANDIDATE; REVIEW PENDING** — Optional
+   wire-format adapter outside Core; snapshot production boundary. Not complete until independent
+   implementation review and acceptance.
 6. **M5 Differential Validation and Performance** — Replay/differential/fuzz validation; benchmark
    with representative workloads.
 7. **M6 Gateway Integration** — Production host embedding surface; live ingestion.

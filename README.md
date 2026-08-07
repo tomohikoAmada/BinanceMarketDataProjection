@@ -1,17 +1,17 @@
 # BinanceMarketDataProjection
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
-market-data projection core. The current state is **M1 Numeric and Domain Primitives — COMPLETE, M2
-Order Book Core — COMPLETE, M3 Sequence and Projection State — COMPLETE**. M3 passed external
-architecture and implementation review, was merged through PR #6, and is available on `main`.
+market-data projection core. M1 through M3 are complete. The optional M4 snapshots/Protobuf boundary
+is an **implemented candidate pending independent implementation review**; M4 is not complete.
 
 This is an unofficial project and is not affiliated with, endorsed by, or sponsored by Binance.
 This module does not connect to Binance, use API keys, place orders, or contain trading strategies.
 
 > M1 introduced strict decimal parsing, strongly typed signed 64-bit units, exact rescaling, and
-> deterministic formatting. M2 subsequently added the deterministic order book core. The M3
-> sequence validation and projection lifecycle state. Main CI passed after the M3 merge. Market-state
-> snapshots, protobuf adapters, networking, persistence, and trading remain unimplemented.
+> deterministic formatting. M2 subsequently added the deterministic order book core, and M3 added
+> sequence validation and projection lifecycle state. M4 adds only the optional Contracts message
+> adapter and local-order-book snapshot production boundary; runtime Gateway/History integration,
+> networking, persistence, market-state derivation, and trading remain unimplemented.
 
 ## Architecture boundary
 
@@ -67,7 +67,8 @@ bash scripts/test.sh release
 The configured CMake targets are `bmd_projection_core`, `bmd_projection_tests`, and, when enabled,
 `bmd_projection_m3_allocation_failure_tests`, `bmd_projection_benchmarks`,
 `bmd_projection_decimal_parser_fuzz`, `bmd_projection_order_book_fuzz`, or
-`bmd_projection_book_projection_fuzz`. Build-tree and installed consumers link the alias
+`bmd_projection_book_projection_fuzz`. The optional M4 build also provides
+`bmd_projection_proto_adapter` and `bmd_projection_proto_adapter_fuzz`. Build-tree and installed consumers link the alias
 `BinanceMarketDataProjection::Core`.
 
 ## Exact numeric API
@@ -107,6 +108,31 @@ wire type, clock, or recovery runtime. See the
 [ADR-0005](docs/adr/ADR-0005-market-specific-sequence-policy.md). The M3 implementation was merged
 through PR #6 and is available on `main`.
 
+## Optional snapshots and Protobuf adapter
+
+Core-only mode remains the default and has no Contracts or Protobuf dependency. To build M4, first
+create the exact accepted Contracts package in the repository-local Conan cache, then enable the
+component:
+
+```bash
+bash scripts/bootstrap-contracts.sh
+bash scripts/configure.sh debug -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON
+bash scripts/build.sh debug
+bash scripts/test.sh debug
+```
+
+The public target `BinanceMarketDataProjection::ProtoAdapter` converts strict Contracts
+`ExchangeDepthSnapshot` and `DepthUpdate` messages to lifetime-safe owning values with checked M3
+invocation. It also builds deterministic `LocalOrderBookSnapshot` values from Core plus explicit
+Host identity, time, recovery, depth, and quality context. The adapter does not own clocks,
+networking, buffering, persistence, recovery orchestration, or gRPC.
+
+Contracts are pinned by source revision, Conan recipe revision, schema baseline/fingerprint, and
+generator/runtime metadata. The formal Contracts Package Revision is still
+`NOT_FORMALLY_ASSIGNED` until release. See the
+[M4 design and implementation status](docs/M4_SNAPSHOTS_AND_PROTOBUF_BOUNDARY_DESIGN.md) and
+[ADR-0006](docs/adr/ADR-0006-protobuf-adapter-boundary.md).
+
 ## Sanitizers and coverage
 
 ```bash
@@ -127,7 +153,7 @@ requires ASan and UBSan and retains TSan as an explicit independently testable c
 bash scripts/fuzz-smoke.sh
 ```
 
-The decimal parser, order book, and book projection fuzz harnesses are built with upstream Clang and
+The decimal parser, order book, book projection, and Protobuf adapter fuzz harnesses are built with upstream Clang and
 libFuzzer plus AddressSanitizer and UndefinedBehaviorSanitizer. Unsupported local toolchains report
 an explicit skip; the Ubuntu Clang CI job requires support and runs each harness for a fixed
 10,000-input smoke test from its checked-in seed corpus.
@@ -162,14 +188,26 @@ target_link_libraries(consumer PRIVATE BinanceMarketDataProjection::Core)
 The scripted consumer is a separate CMake project. It only reads the staged installation and never
 uses `add_subdirectory` or source-tree include paths.
 
+An adapter installation is consumed explicitly:
+
+```cmake
+find_package(BinanceMarketDataProjection CONFIG REQUIRED COMPONENTS ProtoAdapter)
+target_link_libraries(consumer PRIVATE BinanceMarketDataProjection::ProtoAdapter)
+```
+
+`scripts/install-adapter-consumer-test.sh` validates the pinned transitive Contracts dependency,
+fixture conversion, checked M3 call, output snapshot, and single generated-symbol ownership for
+static or shared builds.
+
 ## Complete local verification
 
 ```bash
 bash scripts/verify.sh
 ```
 
-This runs formatting, warnings-as-errors, Debug/Release tests, required sanitizers, the
-benchmark smoke test, the staged-install consumer, and `git diff --check`. When the host
+This runs formatting, warnings-as-errors, Core-only and M4 Debug/Release tests, required sanitizers,
+the benchmark/fuzz smoke tests, both staged-install consumers, static/shared M4 packaging, and
+`git diff --check`. When the host
 has clang-tidy the gate enables it automatically; otherwise it skips with a clear message.
 CI clang-tidy is mandatory regardless of local skip.
 
@@ -189,21 +227,21 @@ fuzz/          libFuzzer harnesses and checked-in seed corpus
 
 ## Milestone status
 
-M1, M2, and M3 are COMPLETE. All three milestones were externally reviewed and merged. The
-Contracts reference baseline is
+M1, M2, and M3 are COMPLETE. M4 is **IMPLEMENTED CANDIDATE / PENDING INDEPENDENT REVIEW** and
+remains **OPEN / PENDING IMPLEMENTATION REVIEW**. The Contracts reference baseline is
 `01d76a41929f36d89573159f5f458f9f1e378ada`.
 
 ## Known limitations
 
 - The repository includes numeric primitives, a deterministic L2 market-by-price order book, and
   the completed M3 sequence/projection implementation on `main`.
-- Snapshot contracts, protobuf adapters, networking, persistence, Gateway runtime, History runtime,
-  strategy, and trading behavior remain unimplemented.
+- M4 is not accepted or complete until independent implementation review; M5 and M6 are not started.
+- Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
+  trading behavior remain unimplemented.
 - Tick-size, step-size, signed-decimal, and symbol-metadata validation remain outside the implemented
   M1/M2 scope.
 - TSan support varies by host platform and toolchain.
 - Dedicated Ubuntu ARM64/RK3588 CI is not part of the initial hosted matrix.
-- M4 Snapshots and Protobuf Boundary and all later milestones remain unimplemented.
 
 ## License status
 

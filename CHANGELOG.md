@@ -6,6 +6,14 @@ All notable changes will be recorded here.
 
 ### Added
 
+- M4 optional `BinanceMarketDataProjection::ProtoAdapter` component with strict owning conversion
+  for Contracts `ExchangeDepthSnapshot`/`DepthUpdate`, checked `NumericSpec` and sequence-policy
+  binding, deterministic four-state `LocalOrderBookSnapshot` output, explicit gap/recovery/context
+  mapping, and separated Host/Core/inbound quality domains.
+- Pinned C-M4-001 Conan bootstrap and lock identity, configure-time schema/package/runtime metadata
+  checks and negative gates, component-aware installs, isolated Core/adapter consumers, static/shared
+  generated-symbol ownership checks, property/fixture/lifetime/allocation matrices, and an M4
+  libFuzzer corpus. M4 remains an implementation candidate pending independent review.
 - M3 `UpdateId`, valid-by-construction `UpdateRange`, and `BookProjection` public API with explicit
   Spot and USD-M sequence policies, a four-state lifecycle, deterministic gap evidence,
   synchronization-aware const visibility, and strongly transactional baseline/incremental apply.
