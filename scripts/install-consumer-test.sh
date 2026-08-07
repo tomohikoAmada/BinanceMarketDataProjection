@@ -16,6 +16,7 @@ trap cleanup EXIT
 
 stage_prefix="$work_dir/stage"
 consumer_build="$work_dir/consumer-build"
+missing_adapter_build="$work_dir/missing-adapter-build"
 
 "$repo_root/scripts/configure.sh" release
 "$repo_root/scripts/build.sh" release
@@ -29,3 +30,16 @@ cmake \
     -DCMAKE_PREFIX_PATH="$stage_prefix"
 cmake --build "$consumer_build"
 "$consumer_build/consumer"
+
+if [[ -e "$stage_prefix/include/binance_market_data/projection_adapter" ]]; then
+    echo "Core-only installation unexpectedly contains the ProtoAdapter public header" >&2
+    exit 1
+fi
+if cmake \
+    -S "$repo_root/tests/downstream_adapter_unavailable" \
+    -B "$missing_adapter_build" \
+    -G Ninja \
+    -DCMAKE_PREFIX_PATH="$stage_prefix"; then
+    echo "Core-only installation unexpectedly satisfied the ProtoAdapter component" >&2
+    exit 1
+fi
