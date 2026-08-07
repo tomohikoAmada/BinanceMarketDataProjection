@@ -24,6 +24,7 @@ include(CMakePackageConfigHelpers)
 option(BMD_PROJECTION_BUILD_TESTS "Build projection foundation tests" ${PROJECT_IS_TOP_LEVEL})
 option(BMD_PROJECTION_BUILD_BENCHMARKS "Build projection foundation benchmarks" OFF)
 option(BMD_PROJECTION_BUILD_FUZZERS "Build Clang libFuzzer targets" OFF)
+option(BMD_PROJECTION_BUILD_PROTO_ADAPTER "Build the optional Contracts Protobuf adapter" OFF)
 option(BMD_PROJECTION_ENABLE_WARNINGS "Enable strict warnings for project targets" ON)
 option(BMD_PROJECTION_ENABLE_WERROR "Treat project warnings as errors" OFF)
 option(BMD_PROJECTION_ENABLE_CLANG_TIDY "Run clang-tidy on project targets" OFF)
@@ -82,6 +83,42 @@ target_compile_features(bmd_projection_core PUBLIC cxx_std_20)
 
 bmd_projection_apply_project_options(bmd_projection_core)
 
+if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
+    find_package(BinanceMarketDataContracts 0.1.0 EXACT CONFIG REQUIRED COMPONENTS Protobuf)
+    include(ValidateContractsMetadata)
+    bmd_projection_validate_contracts_metadata()
+
+    add_library(
+        bmd_projection_proto_adapter
+        src/proto_adapter/proto_adapter.cpp
+    )
+    add_library(BinanceMarketDataProjection::ProtoAdapter ALIAS bmd_projection_proto_adapter)
+    set_target_properties(
+        bmd_projection_proto_adapter
+        PROPERTIES
+            CXX_STANDARD 20
+            CXX_STANDARD_REQUIRED YES
+            CXX_EXTENSIONS NO
+            POSITION_INDEPENDENT_CODE YES
+            EXPORT_NAME ProtoAdapter
+            VERSION ${PROJECT_VERSION}
+            SOVERSION ${PROJECT_VERSION_MAJOR}
+    )
+    target_include_directories(
+        bmd_projection_proto_adapter
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+    target_link_libraries(
+        bmd_projection_proto_adapter
+        PUBLIC
+            BinanceMarketDataProjection::Core
+            BinanceMarketDataContracts::Protobuf
+    )
+    bmd_projection_apply_project_options(bmd_projection_proto_adapter)
+endif()
+
 if(BMD_PROJECTION_BUILD_FUZZERS)
     if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         message(FATAL_ERROR "BMD_PROJECTION_BUILD_FUZZERS requires upstream Clang")
@@ -90,6 +127,12 @@ if(BMD_PROJECTION_BUILD_FUZZERS)
         bmd_projection_core
         PRIVATE -fsanitize=fuzzer-no-link,address,undefined -fno-omit-frame-pointer
     )
+    if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
+        target_compile_options(
+            bmd_projection_proto_adapter
+            PRIVATE -fsanitize=fuzzer-no-link,address,undefined -fno-omit-frame-pointer
+        )
+    endif()
 endif()
 
 if(BMD_PROJECTION_BUILD_TESTS)
@@ -107,18 +150,37 @@ endif()
 
 install(
     TARGETS bmd_projection_core
-    EXPORT BinanceMarketDataProjectionTargets
+    EXPORT BinanceMarketDataProjectionCoreTargets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
+if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
+    install(
+        TARGETS bmd_projection_proto_adapter
+        EXPORT BinanceMarketDataProjectionProtoAdapterTargets
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    )
+endif()
+
 install(
     DIRECTORY include/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     PATTERN "*.in" EXCLUDE
+    PATTERN "projection_adapter" EXCLUDE
 )
+
+if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
+    install(
+        DIRECTORY include/binance_market_data/projection_adapter/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/binance_market_data/projection_adapter
+    )
+endif()
 
 install(
     FILES
@@ -143,15 +205,25 @@ write_basic_package_version_file(
 )
 
 install(
-    EXPORT BinanceMarketDataProjectionTargets
-    FILE BinanceMarketDataProjectionTargets.cmake
+    EXPORT BinanceMarketDataProjectionCoreTargets
+    FILE BinanceMarketDataProjectionCoreTargets.cmake
     NAMESPACE BinanceMarketDataProjection::
     DESTINATION "${BMD_PROJECTION_INSTALL_CMAKEDIR}"
 )
+
+if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
+    install(
+        EXPORT BinanceMarketDataProjectionProtoAdapterTargets
+        FILE BinanceMarketDataProjectionProtoAdapterTargets.cmake
+        NAMESPACE BinanceMarketDataProjection::
+        DESTINATION "${BMD_PROJECTION_INSTALL_CMAKEDIR}"
+    )
+endif()
 
 install(
     FILES
         "${CMAKE_CURRENT_BINARY_DIR}/BinanceMarketDataProjectionConfig.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/BinanceMarketDataProjectionConfigVersion.cmake"
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ValidateContractsMetadata.cmake"
     DESTINATION "${BMD_PROJECTION_INSTALL_CMAKEDIR}"
 )
