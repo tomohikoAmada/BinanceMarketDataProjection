@@ -637,7 +637,7 @@ TEST(SnapshotOutputTest, RejectsContradictoryGapAndHostQualityContext) {
 struct UpdateSequence final {
     std::uint64_t first{};
     std::uint64_t final{};
-    std::optional<std::uint64_t> previous{};
+    std::optional<std::uint64_t> previous;
 };
 
 struct GapExpectation final {
