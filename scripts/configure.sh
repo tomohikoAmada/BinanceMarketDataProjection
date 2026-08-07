@@ -13,6 +13,16 @@ fi
 preset="$1"
 shift
 
+proto_adapter="False"
+shared="False"
+for cmake_arg in "$@"; do
+    if [[ "$cmake_arg" == "-DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON" ]]; then
+        proto_adapter="True"
+    elif [[ "$cmake_arg" == "-DBUILD_SHARED_LIBS=ON" ]]; then
+        shared="True"
+    fi
+done
+
 case "$preset" in
     debug|asan|ubsan|tsan|coverage|fuzz)
         build_type="Debug"
@@ -41,6 +51,12 @@ fi
     --lockfile="$repo_root/conan.lock" \
     --build=missing \
     -s build_type="$build_type" \
-    -s compiler.cppstd=20
+    -s compiler.cppstd=20 \
+    -o "&:proto_adapter=$proto_adapter" \
+    -o "&:shared=$shared"
 
-cmake --preset "$preset" "$@"
+cmake --preset "$preset" \
+    -U BinanceMarketDataContracts_DIR \
+    -DBMD_PROJECTION_BUILD_PROTO_ADAPTER="$proto_adapter" \
+    -DBUILD_SHARED_LIBS="$shared" \
+    "$@"
