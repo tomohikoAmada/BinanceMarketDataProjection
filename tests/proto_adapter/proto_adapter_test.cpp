@@ -695,7 +695,7 @@ TEST(SnapshotOutputTest, MapsAllFiveGapReasonsAndAllCurrentRecoveryStates) {
     expect_gap(futures_mismatch, usdm_identity(), core::GapReason::FuturesPreviousFinalMismatch,
                101, 102);
 
-    for (const auto [host_state, wire_state] :
+    for (const auto& [host_state, wire_state] :
          std::array<std::pair<adapter::GapRecoveryState, common_wire::ResyncState>, 3>{
              {{adapter::GapRecoveryState::ResyncRequired,
                common_wire::RESYNC_STATE_RESYNC_REQUIRED},
