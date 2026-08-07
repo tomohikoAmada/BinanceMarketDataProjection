@@ -114,24 +114,33 @@ update_wire(common_wire::Market market = common_wire::MARKET_SPOT) {
     return result.value();
 }
 
-void expect_baseline_error(market_wire::ExchangeDepthSnapshot wire,
+[[nodiscard]] core::GapInfo require_last_gap(const core::BookProjection& projection) {
+    const auto result = projection.last_gap();
+    if (!result.has_value()) {
+        ADD_FAILURE() << "expected a recorded gap";
+        std::abort();
+    }
+    return result.value();
+}
+
+void expect_baseline_error(const market_wire::ExchangeDepthSnapshot& wire,
                            adapter::AdapterErrorCode expected) {
     const auto result = adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity());
     ASSERT_TRUE(std::holds_alternative<adapter::AdapterError>(result));
     EXPECT_EQ(std::get<adapter::AdapterError>(result).code, expected);
 }
 
-void expect_baseline_rejected(market_wire::ExchangeDepthSnapshot wire) {
+void expect_baseline_rejected(const market_wire::ExchangeDepthSnapshot& wire) {
     EXPECT_TRUE(std::holds_alternative<adapter::AdapterError>(
         adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity())));
 }
 
-void expect_baseline_accepted(market_wire::ExchangeDepthSnapshot wire) {
+void expect_baseline_accepted(const market_wire::ExchangeDepthSnapshot& wire) {
     EXPECT_TRUE(std::holds_alternative<adapter::AdaptedBookBaseline>(
         adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity())));
 }
 
-void expect_update_error(market_wire::DepthUpdate wire, adapter::AdapterErrorCode expected) {
+void expect_update_error(const market_wire::DepthUpdate& wire, adapter::AdapterErrorCode expected) {
     const auto result = adapter::adapt_depth_update(wire, spec(), spot_identity());
     ASSERT_TRUE(std::holds_alternative<adapter::AdapterError>(result));
     EXPECT_EQ(std::get<adapter::AdapterError>(result).code, expected);
@@ -626,15 +635,15 @@ TEST(SnapshotOutputTest, RejectsContradictoryGapAndHostQualityContext) {
 }
 
 struct UpdateSequence final {
-    std::uint64_t first;
-    std::uint64_t final;
-    std::optional<std::uint64_t> previous;
+    std::uint64_t first{};
+    std::uint64_t final{};
+    std::optional<std::uint64_t> previous{};
 };
 
 struct GapExpectation final {
-    core::GapReason reason;
-    std::uint64_t previous;
-    std::uint64_t next;
+    core::GapReason reason{};
+    std::uint64_t previous{};
+    std::uint64_t next{};
 };
 
 [[nodiscard]] core::ApplyResult apply_wire(core::BookProjection& projection,
@@ -666,9 +675,7 @@ struct GapExpectation final {
 
 void expect_projection_gap(const core::BookProjection& projection, const GapExpectation& expected) {
     ASSERT_EQ(projection.status(), core::ProjectionStatus::NeedsResync);
-    const auto gap = projection.last_gap();
-    ASSERT_TRUE(gap.has_value());
-    EXPECT_EQ(gap->reason, expected.reason);
+    EXPECT_EQ(require_last_gap(projection).reason, expected.reason);
 }
 
 void expect_serialized_gap(const core::BookProjection& projection,
