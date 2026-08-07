@@ -1098,6 +1098,7 @@ class AdaptedBookBaseline final {
   public:
     AdaptedBookBaseline(AdaptedBookBaseline&&) noexcept;
     AdaptedBookBaseline& operator=(AdaptedBookBaseline&&) noexcept;
+    ~AdaptedBookBaseline() = default;
     AdaptedBookBaseline(const AdaptedBookBaseline&) = delete;
     AdaptedBookBaseline& operator=(const AdaptedBookBaseline&) = delete;
 
@@ -1133,6 +1134,7 @@ class AdaptedDepthBatch final {
   public:
     AdaptedDepthBatch(AdaptedDepthBatch&&) noexcept;
     AdaptedDepthBatch& operator=(AdaptedDepthBatch&&) noexcept;
+    ~AdaptedDepthBatch() = default;
     AdaptedDepthBatch(const AdaptedDepthBatch&) = delete;
     AdaptedDepthBatch& operator=(const AdaptedDepthBatch&) = delete;
 

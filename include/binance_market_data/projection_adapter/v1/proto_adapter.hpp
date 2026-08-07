@@ -117,6 +117,7 @@ class AdaptedBookBaseline final {
   public:
     AdaptedBookBaseline(AdaptedBookBaseline&&) noexcept;
     AdaptedBookBaseline& operator=(AdaptedBookBaseline&&) noexcept;
+    ~AdaptedBookBaseline() = default;
     AdaptedBookBaseline(const AdaptedBookBaseline&) = delete;
     AdaptedBookBaseline& operator=(const AdaptedBookBaseline&) = delete;
 
@@ -128,7 +129,7 @@ class AdaptedBookBaseline final {
     install_into(projection::v1::BookProjection&& target) const& = delete;
 
     [[nodiscard]] const AdaptedMetadata& metadata() const& noexcept;
-    const AdaptedMetadata& metadata() const&& = delete;
+    [[nodiscard]] const AdaptedMetadata& metadata() const&& = delete;
 
   private:
     friend struct detail::AdapterFactory;
@@ -152,6 +153,7 @@ class AdaptedDepthBatch final {
   public:
     AdaptedDepthBatch(AdaptedDepthBatch&&) noexcept;
     AdaptedDepthBatch& operator=(AdaptedDepthBatch&&) noexcept;
+    ~AdaptedDepthBatch() = default;
     AdaptedDepthBatch(const AdaptedDepthBatch&) = delete;
     AdaptedDepthBatch& operator=(const AdaptedDepthBatch&) = delete;
 
@@ -163,7 +165,7 @@ class AdaptedDepthBatch final {
     apply_to(projection::v1::BookProjection&& target) const& = delete;
 
     [[nodiscard]] const AdaptedMetadata& metadata() const& noexcept;
-    const AdaptedMetadata& metadata() const&& = delete;
+    [[nodiscard]] const AdaptedMetadata& metadata() const&& = delete;
 
   private:
     friend struct detail::AdapterFactory;

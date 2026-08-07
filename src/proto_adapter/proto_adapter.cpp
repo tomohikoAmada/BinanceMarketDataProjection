@@ -190,17 +190,21 @@ adapt_quality(const google::protobuf::RepeatedField<int>& quality_flags) {
 
     AdaptedMetadata metadata;
     for (std::size_t index = 0; index < present.size(); ++index) {
-        if (present[index]) {
+        if (present.at(index)) {
             metadata.observed_quality.push_back(static_cast<HostQualityFact>(index));
         }
     }
     return metadata;
 }
 
+struct LevelFields final {
+    AdapterField price;
+    AdapterField quantity;
+};
+
 template <typename WireLevel>
 [[nodiscard]] AdapterResult<core::BookLevel>
-adapt_book_level(const WireLevel& wire, core::NumericSpec spec, AdapterField price_field,
-                 AdapterField quantity_field) noexcept {
+adapt_book_level(const WireLevel& wire, core::NumericSpec spec, LevelFields fields) noexcept {
     const auto price_result = core::parse_price(wire.price(), spec.price_scale);
     if (const auto* detail = std::get_if<core::DecimalError>(&price_result)) {
         auto code = AdapterErrorCode::InvalidDecimal;
@@ -212,7 +216,7 @@ adapt_book_level(const WireLevel& wire, core::NumericSpec spec, AdapterField pri
         } else if (detail->code == core::DecimalErrorCode::Overflow) {
             code = AdapterErrorCode::NumericOverflow;
         }
-        return decimal_error(code, price_field, *detail);
+        return decimal_error(code, fields.price, *detail);
     }
 
     const auto quantity_result = core::parse_quantity(wire.quantity(), spec.quantity_scale);
@@ -225,7 +229,7 @@ adapt_book_level(const WireLevel& wire, core::NumericSpec spec, AdapterField pri
         } else if (detail->code == core::DecimalErrorCode::Overflow) {
             code = AdapterErrorCode::NumericOverflow;
         }
-        return decimal_error(code, quantity_field, *detail);
+        return decimal_error(code, fields.quantity, *detail);
     }
 
     return core::BookLevel{
@@ -239,9 +243,10 @@ adapt_baseline_side(const RepeatedLevels& wire_levels, core::NumericSpec spec, b
     std::vector<core::BookLevel> levels;
     levels.reserve(static_cast<std::size_t>(wire_levels.size()));
     for (const auto& wire_level : wire_levels) {
-        const auto adapted = adapt_book_level(
-            wire_level, spec, bids ? AdapterField::BidPrice : AdapterField::AskPrice,
-            bids ? AdapterField::BidQuantity : AdapterField::AskQuantity);
+        const auto adapted =
+            adapt_book_level(wire_level, spec,
+                             {bids ? AdapterField::BidPrice : AdapterField::AskPrice,
+                              bids ? AdapterField::BidQuantity : AdapterField::AskQuantity});
         if (const auto* failure = std::get_if<AdapterError>(&adapted)) {
             return *failure;
         }
@@ -266,9 +271,10 @@ adapt_updates(const RepeatedLevels& wire_levels, core::NumericSpec spec, core::B
     updates.reserve(static_cast<std::size_t>(wire_levels.size()));
     for (const auto& wire_level : wire_levels) {
         const bool bids = side == core::BookSide::Bid;
-        const auto adapted = adapt_book_level(
-            wire_level, spec, bids ? AdapterField::BidPrice : AdapterField::AskPrice,
-            bids ? AdapterField::BidQuantity : AdapterField::AskQuantity);
+        const auto adapted =
+            adapt_book_level(wire_level, spec,
+                             {bids ? AdapterField::BidPrice : AdapterField::AskPrice,
+                              bids ? AdapterField::BidQuantity : AdapterField::AskQuantity});
         if (const auto* failure = std::get_if<AdapterError>(&adapted)) {
             return *failure;
         }
@@ -324,7 +330,11 @@ validate_wire_identity(common_wire::Venue venue, common_wire::Market market,
     if (const auto* failure = std::get_if<AdapterError>(&mapped_market)) {
         return *failure;
     }
-    const auto policy = std::get<core::SequencePolicyKind>(mapped_market);
+    const auto* mapped_policy = std::get_if<core::SequencePolicyKind>(&mapped_market);
+    if (mapped_policy == nullptr) {
+        return error(AdapterErrorCode::UnsupportedMarket, AdapterField::Market);
+    }
+    const auto policy = *mapped_policy;
     if (const auto identity_error = validate_expected_identity(symbol, policy, expected)) {
         return *identity_error;
     }
@@ -548,11 +558,11 @@ make_quality_flags(const core::OrderBook& book, core::ProjectionStatus status,
 append_levels(::google::protobuf::RepeatedPtrField<common_wire::PriceLevel>* output,
               const std::vector<core::BookLevel>& levels, core::NumericSpec spec) {
     for (const auto& level : levels) {
-        const auto price = format_price(level, spec);
+        auto price = format_price(level, spec);
         if (const auto* failure = std::get_if<AdapterError>(&price)) {
             return *failure;
         }
-        const auto quantity = format_quantity(level, spec);
+        auto quantity = format_quantity(level, spec);
         if (const auto* failure = std::get_if<AdapterError>(&quantity)) {
             return *failure;
         }
@@ -561,19 +571,117 @@ append_levels(::google::protobuf::RepeatedPtrField<common_wire::PriceLevel>* out
             auto owned_price =
                 std::make_unique<std::string>(std::get<std::string>(std::move(price)));
             wire_level->set_allocated_price(owned_price.get());
-            static_cast<void>(owned_price.release());
+            [[maybe_unused]] auto* transferred_price = owned_price.release();
             auto owned_quantity =
                 std::make_unique<std::string>(std::get<std::string>(std::move(quantity)));
             wire_level->set_allocated_quantity(owned_quantity.get());
-            static_cast<void>(owned_quantity.release());
+            [[maybe_unused]] auto* transferred_quantity = owned_quantity.release();
             output->AddAllocated(wire_level.get());
-            static_cast<void>(wire_level.release());
+            [[maybe_unused]] auto* transferred_level = wire_level.release();
         } catch (const std::bad_alloc&) {
             wire_level->set_allocated_price(nullptr);
             wire_level->set_allocated_quantity(nullptr);
             throw;
         }
     }
+    return std::nullopt;
+}
+
+struct SnapshotBookSelection final {
+    const core::OrderBook* book;
+    bool synchronized;
+};
+
+struct SnapshotLevels final {
+    std::vector<core::BookLevel> bids;
+    std::vector<core::BookLevel> asks;
+};
+
+[[nodiscard]] AdapterResult<common_wire::SnapshotSource>
+validate_snapshot_context(const core::BookProjection& projection, core::ProjectionStatus status,
+                          const SnapshotContext& context) noexcept {
+    if (!is_symbol(context.identity.symbol)) {
+        return error(AdapterErrorCode::InvalidIdentifier, AdapterField::Symbol);
+    }
+    if (context.identity.policy != projection.policy()) {
+        return error(AdapterErrorCode::ProjectionPolicyMismatch, AdapterField::ProjectionPolicy);
+    }
+    if (!is_non_empty_text(context.producer)) {
+        return error(context.producer.empty() ? AdapterErrorCode::MissingRequiredField
+                                              : AdapterErrorCode::InvalidIdentifier,
+                     AdapterField::Producer);
+    }
+    if (!is_non_empty_text(context.producer_version)) {
+        return error(context.producer_version.empty() ? AdapterErrorCode::MissingRequiredField
+                                                      : AdapterErrorCode::InvalidIdentifier,
+                     AdapterField::ProducerVersion);
+    }
+    const auto source = map_snapshot_origin(context.source);
+    if (const auto* failure = std::get_if<AdapterError>(&source)) {
+        return *failure;
+    }
+    if (status == core::ProjectionStatus::NeedsResync && !context.current_gap.has_value()) {
+        return error(AdapterErrorCode::MissingRequiredField, AdapterField::CurrentGap);
+    }
+    if (status != core::ProjectionStatus::NeedsResync && context.current_gap.has_value()) {
+        return error(AdapterErrorCode::InvalidGapContext, AdapterField::CurrentGap);
+    }
+    return *std::get_if<common_wire::SnapshotSource>(&source);
+}
+
+[[nodiscard]] AdapterResult<SnapshotBookSelection>
+select_snapshot_book(const core::BookProjection& projection, core::ProjectionStatus status) {
+    if (status == core::ProjectionStatus::Synchronized) {
+        const auto synchronized_book = projection.synchronized_book();
+        if (!synchronized_book.has_value()) {
+            return error(AdapterErrorCode::UnsupportedProjectionState, AdapterField::None);
+        }
+        return SnapshotBookSelection{&synchronized_book->get(), true};
+    }
+    if (status == core::ProjectionStatus::AwaitingBridge ||
+        status == core::ProjectionStatus::NeedsResync) {
+        return SnapshotBookSelection{&projection.diagnostic_book(), false};
+    }
+    return error(AdapterErrorCode::UnsupportedProjectionState, AdapterField::None);
+}
+
+[[nodiscard]] SnapshotLevels select_snapshot_levels(const core::OrderBook& book,
+                                                    const SnapshotOptions& options) {
+    if (options.depth_limit.has_value()) {
+        const auto limit = static_cast<std::size_t>(options.depth_limit->value());
+        return {book.top_levels(core::BookSide::Bid, limit),
+                book.top_levels(core::BookSide::Ask, limit)};
+    }
+    return {book.all_levels(core::BookSide::Bid), book.all_levels(core::BookSide::Ask)};
+}
+
+[[nodiscard]] std::optional<AdapterError>
+append_current_gap(core::LocalOrderBookSnapshot& candidate, const core::BookProjection& projection,
+                   const SnapshotContext& context, core::ProjectionStatus status) {
+    if (status != core::ProjectionStatus::NeedsResync) {
+        return std::nullopt;
+    }
+    const auto gap = projection.last_gap();
+    if (!gap.has_value() || !context.current_gap.has_value()) {
+        return error(AdapterErrorCode::InvalidGapContext, AdapterField::CurrentGap);
+    }
+    const auto recovery = map_gap_recovery(context.current_gap->recovery_state);
+    if (const auto* failure = std::get_if<AdapterError>(&recovery)) {
+        return *failure;
+    }
+    const auto reason = map_gap_reason(gap->reason);
+    if (const auto* failure = std::get_if<AdapterError>(&reason)) {
+        return *failure;
+    }
+    auto wire_gap = std::make_unique<core::GapDescriptor>();
+    wire_gap->set_stream(common_wire::STREAM_DIFF_DEPTH);
+    wire_gap->set_detected_at_utc_ns(context.current_gap->detected_at_utc_ns);
+    wire_gap->set_previous_sequence(gap->last_accepted_final.value());
+    wire_gap->set_next_sequence(gap->incoming_range.first().value());
+    wire_gap->set_reason_code(*std::get_if<common_wire::ReasonCode>(&reason));
+    wire_gap->set_recovery_state(*std::get_if<common_wire::ResyncState>(&recovery));
+    candidate.set_allocated_last_gap(wire_gap.get());
+    [[maybe_unused]] auto* transferred_gap = wire_gap.release();
     return std::nullopt;
 }
 
@@ -756,63 +864,23 @@ make_local_order_book_snapshot(const core::BookProjection& projection,
     if (!last_update_id.has_value()) {
         return error(AdapterErrorCode::MissingLastUpdateId, AdapterField::LastUpdateId);
     }
-    if (!is_symbol(context.identity.symbol)) {
-        return error(AdapterErrorCode::InvalidIdentifier, AdapterField::Symbol);
-    }
-    if (context.identity.policy != projection.policy()) {
-        return error(AdapterErrorCode::ProjectionPolicyMismatch, AdapterField::ProjectionPolicy);
-    }
-    if (!is_non_empty_text(context.producer)) {
-        return error(context.producer.empty() ? AdapterErrorCode::MissingRequiredField
-                                              : AdapterErrorCode::InvalidIdentifier,
-                     AdapterField::Producer);
-    }
-    if (!is_non_empty_text(context.producer_version)) {
-        return error(context.producer_version.empty() ? AdapterErrorCode::MissingRequiredField
-                                                      : AdapterErrorCode::InvalidIdentifier,
-                     AdapterField::ProducerVersion);
-    }
-    const auto source = map_snapshot_origin(context.source);
+    const auto source = validate_snapshot_context(projection, status, context);
     if (const auto* failure = std::get_if<AdapterError>(&source)) {
         return *failure;
     }
-    if (status == core::ProjectionStatus::NeedsResync && !context.current_gap.has_value()) {
-        return error(AdapterErrorCode::MissingRequiredField, AdapterField::CurrentGap);
+    const auto selection_result = select_snapshot_book(projection, status);
+    if (const auto* failure = std::get_if<AdapterError>(&selection_result)) {
+        return *failure;
     }
-    if (status != core::ProjectionStatus::NeedsResync && context.current_gap.has_value()) {
-        return error(AdapterErrorCode::InvalidGapContext, AdapterField::CurrentGap);
-    }
+    const auto selection = *std::get_if<SnapshotBookSelection>(&selection_result);
 
-    const core::OrderBook* book = &projection.diagnostic_book();
-    bool synchronized = false;
-    if (status == core::ProjectionStatus::Synchronized) {
-        const auto synchronized_book = projection.synchronized_book();
-        if (!synchronized_book.has_value()) {
-            return error(AdapterErrorCode::UnsupportedProjectionState, AdapterField::None);
-        }
-        book = &synchronized_book->get();
-        synchronized = true;
-    } else if (status != core::ProjectionStatus::AwaitingBridge &&
-               status != core::ProjectionStatus::NeedsResync) {
-        return error(AdapterErrorCode::UnsupportedProjectionState, AdapterField::None);
-    }
-
-    const auto quality = make_quality_flags(*book, status, options);
+    const auto quality = make_quality_flags(*selection.book, status, options);
     if (const auto* failure = std::get_if<AdapterError>(&quality)) {
         return *failure;
     }
 
     const auto numeric_spec = projection.numeric_spec();
-    std::vector<core::BookLevel> bids;
-    std::vector<core::BookLevel> asks;
-    if (options.depth_limit.has_value()) {
-        const auto limit = static_cast<std::size_t>(options.depth_limit->value());
-        bids = book->top_levels(core::BookSide::Bid, limit);
-        asks = book->top_levels(core::BookSide::Ask, limit);
-    } else {
-        bids = book->all_levels(core::BookSide::Bid);
-        asks = book->all_levels(core::BookSide::Ask);
-    }
+    const auto levels = select_snapshot_levels(*selection.book, options);
 
     ::binance_market_data::projection::v1::LocalOrderBookSnapshot candidate;
     try {
@@ -820,22 +888,24 @@ make_local_order_book_snapshot(const core::BookProjection& projection,
         candidate.set_market(market_for_policy(projection.policy()));
         auto symbol = std::make_unique<std::string>(context.identity.symbol);
         candidate.set_allocated_symbol(symbol.get());
-        static_cast<void>(symbol.release());
+        [[maybe_unused]] auto* transferred_symbol = symbol.release();
         auto schema_version = std::make_unique<std::string>(kLocalSnapshotSchema);
         candidate.set_allocated_schema_version(schema_version.get());
-        static_cast<void>(schema_version.release());
+        [[maybe_unused]] auto* transferred_schema_version = schema_version.release();
         auto producer = std::make_unique<std::string>(context.producer);
         candidate.set_allocated_producer(producer.get());
-        static_cast<void>(producer.release());
+        [[maybe_unused]] auto* transferred_producer = producer.release();
         auto producer_version = std::make_unique<std::string>(context.producer_version);
         candidate.set_allocated_producer_version(producer_version.get());
-        static_cast<void>(producer_version.release());
-        candidate.set_source(std::get<common_wire::SnapshotSource>(source));
+        [[maybe_unused]] auto* transferred_producer_version = producer_version.release();
+        candidate.set_source(*std::get_if<common_wire::SnapshotSource>(&source));
         candidate.set_last_update_id(last_update_id->value());
-        if (const auto append_error = append_levels(candidate.mutable_bids(), bids, numeric_spec)) {
+        if (const auto append_error =
+                append_levels(candidate.mutable_bids(), levels.bids, numeric_spec)) {
             return *append_error;
         }
-        if (const auto append_error = append_levels(candidate.mutable_asks(), asks, numeric_spec)) {
+        if (const auto append_error =
+                append_levels(candidate.mutable_asks(), levels.asks, numeric_spec)) {
             return *append_error;
         }
         if (options.depth_limit.has_value()) {
@@ -845,30 +915,10 @@ make_local_order_book_snapshot(const core::BookProjection& projection,
         if (context.generated_monotonic_ns.has_value()) {
             candidate.set_generated_monotonic_ns(*context.generated_monotonic_ns);
         }
-        candidate.set_synchronized(synchronized);
+        candidate.set_synchronized(selection.synchronized);
 
-        if (status == core::ProjectionStatus::NeedsResync) {
-            const auto gap = projection.last_gap();
-            if (!gap.has_value()) {
-                return error(AdapterErrorCode::InvalidGapContext, AdapterField::CurrentGap);
-            }
-            const auto recovery = map_gap_recovery(context.current_gap->recovery_state);
-            if (const auto* failure = std::get_if<AdapterError>(&recovery)) {
-                return *failure;
-            }
-            const auto reason = map_gap_reason(gap->reason);
-            if (const auto* failure = std::get_if<AdapterError>(&reason)) {
-                return *failure;
-            }
-            auto wire_gap = std::make_unique<core::GapDescriptor>();
-            wire_gap->set_stream(common_wire::STREAM_DIFF_DEPTH);
-            wire_gap->set_detected_at_utc_ns(context.current_gap->detected_at_utc_ns);
-            wire_gap->set_previous_sequence(gap->last_accepted_final.value());
-            wire_gap->set_next_sequence(gap->incoming_range.first().value());
-            wire_gap->set_reason_code(std::get<common_wire::ReasonCode>(reason));
-            wire_gap->set_recovery_state(std::get<common_wire::ResyncState>(recovery));
-            candidate.set_allocated_last_gap(wire_gap.get());
-            static_cast<void>(wire_gap.release());
+        if (const auto gap_error = append_current_gap(candidate, projection, context, status)) {
+            return *gap_error;
         }
 
         for (const auto flag : std::get<std::vector<common_wire::QualityFlag>>(quality)) {
