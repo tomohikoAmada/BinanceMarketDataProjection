@@ -59,7 +59,7 @@ class Scope final {
 void* operator new(std::size_t size) { return allocation_control::allocate(size); }
 void* operator new[](std::size_t size) { return allocation_control::allocate(size); }
 
-void* operator new(std::size_t size, const std::nothrow_t&) noexcept {
+void* operator new(std::size_t size, [[maybe_unused]] const std::nothrow_t& tag) noexcept {
     try {
         return allocation_control::allocate(size);
     } catch (const std::bad_alloc&) {
@@ -67,7 +67,7 @@ void* operator new(std::size_t size, const std::nothrow_t&) noexcept {
     }
 }
 
-void* operator new[](std::size_t size, const std::nothrow_t&) noexcept {
+void* operator new[](std::size_t size, [[maybe_unused]] const std::nothrow_t& tag) noexcept {
     try {
         return allocation_control::allocate(size);
     } catch (const std::bad_alloc&) {
@@ -83,19 +83,19 @@ void operator delete[](void* memory) noexcept {
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
     std::free(memory);
 }
-void operator delete(void* memory, std::size_t) noexcept {
+void operator delete(void* memory, [[maybe_unused]] std::size_t size) noexcept {
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
     std::free(memory);
 }
-void operator delete[](void* memory, std::size_t) noexcept {
+void operator delete[](void* memory, [[maybe_unused]] std::size_t size) noexcept {
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
     std::free(memory);
 }
-void operator delete(void* memory, const std::nothrow_t&) noexcept {
+void operator delete(void* memory, [[maybe_unused]] const std::nothrow_t& tag) noexcept {
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
     std::free(memory);
 }
-void operator delete[](void* memory, const std::nothrow_t&) noexcept {
+void operator delete[](void* memory, [[maybe_unused]] const std::nothrow_t& tag) noexcept {
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc,cppcoreguidelines-owning-memory)
     std::free(memory);
 }
@@ -194,10 +194,17 @@ class PreparedScenario final {
             return std::holds_alternative<adapter::AdaptedDepthBatch>(
                 adapter::adapt_depth_update(update_, helper::spec(), identity()));
         case Scenario::CheckedInstall:
+            if (!baseline_owner_.has_value()) {
+                return false;
+            }
             return std::holds_alternative<core::InstallResult>(
-                baseline_owner_->install_into(projection_));
+                baseline_owner_.value().install_into(projection_));
         case Scenario::CheckedApply:
-            return std::holds_alternative<core::ApplyResult>(update_owner_->apply_to(projection_));
+            if (!update_owner_.has_value()) {
+                return false;
+            }
+            return std::holds_alternative<core::ApplyResult>(
+                update_owner_.value().apply_to(projection_));
         case Scenario::SnapshotOutput:
             return std::holds_alternative<core::LocalOrderBookSnapshot>(
                 adapter::make_local_order_book_snapshot(projection_, snapshot_context(),
@@ -257,8 +264,12 @@ class PreparedScenario final {
     std::optional<adapter::AdaptedDepthBatch> update_owner_;
 };
 
-// Assertions are kept outside the measured region so their allocations cannot affect the sweep.
-void verify_strong_guarantee(Scenario scenario) {
+struct WireBytes final {
+    std::string baseline;
+    std::string update;
+};
+
+[[nodiscard]] std::size_t measure_allocations(Scenario scenario) {
     PreparedScenario counting{scenario};
     std::size_t allocation_count = 0;
     bool counting_success = false;
@@ -267,27 +278,43 @@ void verify_strong_guarantee(Scenario scenario) {
         counting_success = counting.invoke();
         allocation_count = allocation_control::Scope::allocations();
     }
-    ASSERT_TRUE(counting_success);
-    ASSERT_GT(allocation_count, 0U);
+    EXPECT_TRUE(counting_success);
+    EXPECT_GT(allocation_count, 0U);
+    return allocation_count;
+}
 
+[[nodiscard]] bool invoke_with_failure(PreparedScenario& scenario, std::size_t failure_index) {
+    allocation_control::Scope scope{failure_index};
+    try {
+        static_cast<void>(scenario.invoke());
+    } catch (const std::bad_alloc&) {
+        return true;
+    }
+    return false;
+}
+
+void expect_unchanged(const PreparedScenario& scenario,
+                      const helper::ProjectionCheckpoint& checkpoint, const WireBytes& wire,
+                      std::size_t failure_index) {
+    EXPECT_EQ(scenario.checkpoint(), checkpoint) << "allocation index=" << failure_index;
+    EXPECT_EQ(scenario.baseline_bytes(), wire.baseline) << "allocation index=" << failure_index;
+    EXPECT_EQ(scenario.update_bytes(), wire.update) << "allocation index=" << failure_index;
+}
+
+void verify_failure_at(Scenario scenario, std::size_t failure_index) {
+    PreparedScenario failing{scenario};
+    const auto checkpoint = failing.checkpoint();
+    const WireBytes wire{failing.baseline_bytes(), failing.update_bytes()};
+    ASSERT_TRUE(invoke_with_failure(failing, failure_index))
+        << "allocation index=" << failure_index;
+    expect_unchanged(failing, checkpoint, wire, failure_index);
+}
+
+// Assertions are kept outside the measured region so their allocations cannot affect the sweep.
+void verify_strong_guarantee(Scenario scenario) {
+    const auto allocation_count = measure_allocations(scenario);
     for (std::size_t failure_index = 0; failure_index < allocation_count; ++failure_index) {
-        PreparedScenario failing{scenario};
-        const auto checkpoint = failing.checkpoint();
-        const auto baseline_bytes = failing.baseline_bytes();
-        const auto update_bytes = failing.update_bytes();
-        bool threw = false;
-        {
-            allocation_control::Scope scope{failure_index};
-            try {
-                static_cast<void>(failing.invoke());
-            } catch (const std::bad_alloc&) {
-                threw = true;
-            }
-        }
-        ASSERT_TRUE(threw) << "allocation index=" << failure_index;
-        EXPECT_EQ(failing.checkpoint(), checkpoint) << "allocation index=" << failure_index;
-        EXPECT_EQ(failing.baseline_bytes(), baseline_bytes) << "allocation index=" << failure_index;
-        EXPECT_EQ(failing.update_bytes(), update_bytes) << "allocation index=" << failure_index;
+        verify_failure_at(scenario, failure_index);
     }
 
     PreparedScenario final_success{scenario};

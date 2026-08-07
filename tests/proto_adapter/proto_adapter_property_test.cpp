@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <limits>
 #include <optional>
 #include <string>
@@ -32,20 +33,30 @@ class Generator final {
 };
 
 [[nodiscard]] core::DecimalScale scale(std::uint32_t value) {
-    return core::DecimalScale::create(value).value();
+    const auto result = core::DecimalScale::create(value);
+    if (!result.has_value()) {
+        ADD_FAILURE() << "invalid property-test scale: " << value;
+        std::abort();
+    }
+    return result.value();
 }
 
 [[nodiscard]] core::NumericSpec spec(std::uint32_t value) { return {scale(value), scale(value)}; }
 
-[[nodiscard]] std::string reference_fixed(std::uint64_t units, std::uint32_t decimal_scale) {
-    auto digits = std::to_string(units);
-    if (decimal_scale == 0) {
+struct ReferenceDecimal final {
+    std::uint64_t units;
+    std::uint32_t scale;
+};
+
+[[nodiscard]] std::string reference_fixed(ReferenceDecimal value) {
+    auto digits = std::to_string(value.units);
+    if (value.scale == 0) {
         return digits;
     }
-    if (digits.size() <= decimal_scale) {
-        digits.insert(0, static_cast<std::size_t>(decimal_scale + 1) - digits.size(), '0');
+    if (digits.size() <= value.scale) {
+        digits.insert(0, static_cast<std::size_t>(value.scale + 1) - digits.size(), '0');
     }
-    digits.insert(digits.size() - decimal_scale, 1, '.');
+    digits.insert(digits.size() - value.scale, 1, '.');
     return digits;
 }
 
@@ -101,8 +112,7 @@ reference_parse(std::string_view text, std::uint32_t target_scale, bool allow_ze
     return digits;
 }
 
-[[nodiscard]] market_wire::ExchangeDepthSnapshot baseline(std::uint32_t decimal_scale,
-                                                          std::uint64_t id = 100) {
+[[nodiscard]] market_wire::ExchangeDepthSnapshot baseline(std::uint32_t decimal_scale) {
     market_wire::ExchangeDepthSnapshot wire;
     wire.set_venue(common_wire::VENUE_BINANCE);
     wire.set_market(common_wire::MARKET_SPOT);
@@ -111,13 +121,13 @@ reference_parse(std::string_view text, std::uint32_t target_scale, bool allow_ze
     wire.set_producer("property-model");
     wire.set_producer_version("1");
     wire.set_request_id("property-request");
-    wire.set_last_update_id(id);
+    wire.set_last_update_id(100);
     auto* bid = wire.add_bids();
-    bid->set_price(reference_fixed(12345, decimal_scale));
-    bid->set_quantity(reference_fixed(777, decimal_scale));
+    bid->set_price(reference_fixed({12345, decimal_scale}));
+    bid->set_quantity(reference_fixed({777, decimal_scale}));
     auto* ask = wire.add_asks();
-    ask->set_price(reference_fixed(12346, decimal_scale));
-    ask->set_quantity(reference_fixed(888, decimal_scale));
+    ask->set_price(reference_fixed({12346, decimal_scale}));
+    ask->set_quantity(reference_fixed({888, decimal_scale}));
     return wire;
 }
 
@@ -150,6 +160,78 @@ reference_parse(std::string_view text, std::uint32_t target_scale, bool allow_ze
             987654321,  std::uint64_t{1234}, std::nullopt};
 }
 
+[[nodiscard]] core::BookProjection make_projection(std::uint32_t decimal_scale) {
+    core::BookProjection projection{spec(decimal_scale), core::SequencePolicyKind::Spot};
+    auto adapted = adapter::adapt_exchange_depth_snapshot(baseline(decimal_scale),
+                                                          spec(decimal_scale), identity());
+    auto owner = std::move(std::get<adapter::AdaptedBookBaseline>(adapted));
+    static_cast<void>(owner.install_into(projection));
+    auto bridge = update(reference_fixed({12345, decimal_scale}),
+                         reference_fixed({999, decimal_scale}), 99, 101);
+    auto adapted_bridge = adapter::adapt_depth_update(bridge, spec(decimal_scale), identity());
+    auto bridge_owner = std::move(std::get<adapter::AdaptedDepthBatch>(adapted_bridge));
+    static_cast<void>(bridge_owner.apply_to(projection));
+    return projection;
+}
+
+[[nodiscard]] adapter::SnapshotOptions snapshot_options() {
+    adapter::SnapshotOptions options;
+    options.depth_limit = std::get<adapter::DepthLimit>(adapter::DepthLimit::create(1));
+    options.host_quality_facts = {adapter::HostQualityFact::Duplicate,
+                                  adapter::HostQualityFact::Duplicate,
+                                  adapter::HostQualityFact::Overlap};
+    return options;
+}
+
+void expect_snapshot_prices(const core::LocalOrderBookSnapshot& output,
+                            std::uint32_t decimal_scale) {
+    EXPECT_EQ(output.bids(0).price(), reference_fixed({12345, decimal_scale}));
+    EXPECT_EQ(output.asks(0).price(), reference_fixed({12346, decimal_scale}));
+}
+
+void expect_snapshot_quantities(const core::LocalOrderBookSnapshot& output,
+                                std::uint32_t decimal_scale) {
+    EXPECT_EQ(output.bids(0).quantity(), reference_fixed({999, decimal_scale}));
+    EXPECT_EQ(output.asks(0).quantity(), reference_fixed({888, decimal_scale}));
+}
+
+void expect_snapshot_metadata(const core::LocalOrderBookSnapshot& output) {
+    EXPECT_EQ(output.generated_time_utc_ns(), 987654321U);
+    ASSERT_TRUE(output.has_generated_monotonic_ns());
+    EXPECT_EQ(output.generated_monotonic_ns(), 1234U);
+}
+
+void expect_snapshot_quality(const core::LocalOrderBookSnapshot& output) {
+    ASSERT_EQ(output.quality_flags_size(), 2);
+    EXPECT_EQ(output.quality_flags(0), common_wire::QUALITY_FLAG_DUPLICATE);
+    EXPECT_EQ(output.quality_flags(1), common_wire::QUALITY_FLAG_OVERLAP);
+}
+
+void expect_snapshot_shape(const core::LocalOrderBookSnapshot& output) {
+    ASSERT_EQ(output.bids_size(), 1);
+    ASSERT_EQ(output.asks_size(), 1);
+}
+
+void verify_output_for_scale(std::uint32_t decimal_scale) {
+    auto first_projection = make_projection(decimal_scale);
+    auto second_projection = make_projection(decimal_scale);
+    const auto options = snapshot_options();
+    const auto first =
+        adapter::make_local_order_book_snapshot(first_projection, context(), options);
+    const auto second =
+        adapter::make_local_order_book_snapshot(second_projection, context(), options);
+    ASSERT_TRUE(std::holds_alternative<core::LocalOrderBookSnapshot>(first));
+    ASSERT_TRUE(std::holds_alternative<core::LocalOrderBookSnapshot>(second));
+    const auto& output = std::get<core::LocalOrderBookSnapshot>(first);
+    EXPECT_EQ(output.SerializeAsString(),
+              std::get<core::LocalOrderBookSnapshot>(second).SerializeAsString());
+    expect_snapshot_shape(output);
+    expect_snapshot_prices(output, decimal_scale);
+    expect_snapshot_quantities(output, decimal_scale);
+    expect_snapshot_quality(output);
+    expect_snapshot_metadata(output);
+}
+
 TEST(ProtoAdapterIndependentPropertyTest, MatchesPrimitiveInboundModelForFixedSeeds) {
     constexpr std::array<std::string_view, 8> invalid_decimals{
         "", ".", "1.", ".1", "+1", "1e2", "1_0", "9223372036854775808"};
@@ -165,8 +247,8 @@ TEST(ProtoAdapterIndependentPropertyTest, MatchesPrimitiveInboundModelForFixedSe
             final = first;
         }
 
-        std::string price = reference_fixed((generator.next() % 1000000U) + 1U, decimal_scale);
-        std::string quantity = reference_fixed(generator.next() % 1000000U, decimal_scale);
+        std::string price = reference_fixed({(generator.next() % 1000000U) + 1U, decimal_scale});
+        std::string quantity = reference_fixed({generator.next() % 1000000U, decimal_scale});
         bool reference_valid = true;
         auto wire = update(price, quantity, first, final);
 
@@ -175,7 +257,7 @@ TEST(ProtoAdapterIndependentPropertyTest, MatchesPrimitiveInboundModelForFixedSe
         case 1:
             break;
         case 2:
-            wire.mutable_bids(0)->set_price(invalid_decimals[random % invalid_decimals.size()]);
+            wire.mutable_bids(0)->set_price(invalid_decimals.at(random % invalid_decimals.size()));
             break;
         case 3:
             wire.mutable_bids(0)->set_quantity("-1");
@@ -231,50 +313,7 @@ TEST(ProtoAdapterIndependentPropertyTest, MatchesPrimitiveInboundModelForFixedSe
 
 TEST(ProtoAdapterIndependentPropertyTest, OutputMatchesPrimitiveModelAcrossAllScalesAndReplay) {
     for (std::uint32_t decimal_scale = 0; decimal_scale <= 18; ++decimal_scale) {
-        auto make_projection = [&]() {
-            core::BookProjection projection{spec(decimal_scale), core::SequencePolicyKind::Spot};
-            auto adapted = adapter::adapt_exchange_depth_snapshot(baseline(decimal_scale),
-                                                                  spec(decimal_scale), identity());
-            auto owner = std::move(std::get<adapter::AdaptedBookBaseline>(adapted));
-            static_cast<void>(owner.install_into(projection));
-            auto bridge = update(reference_fixed(12345, decimal_scale),
-                                 reference_fixed(999, decimal_scale), 99, 101);
-            auto adapted_bridge =
-                adapter::adapt_depth_update(bridge, spec(decimal_scale), identity());
-            auto bridge_owner = std::move(std::get<adapter::AdaptedDepthBatch>(adapted_bridge));
-            static_cast<void>(bridge_owner.apply_to(projection));
-            return projection;
-        };
-
-        auto first_projection = make_projection();
-        auto second_projection = make_projection();
-        adapter::SnapshotOptions options;
-        options.depth_limit = std::get<adapter::DepthLimit>(adapter::DepthLimit::create(1));
-        options.host_quality_facts = {adapter::HostQualityFact::Duplicate,
-                                      adapter::HostQualityFact::Duplicate,
-                                      adapter::HostQualityFact::Overlap};
-
-        const auto first =
-            adapter::make_local_order_book_snapshot(first_projection, context(), options);
-        const auto second =
-            adapter::make_local_order_book_snapshot(second_projection, context(), options);
-        ASSERT_TRUE(std::holds_alternative<core::LocalOrderBookSnapshot>(first));
-        ASSERT_TRUE(std::holds_alternative<core::LocalOrderBookSnapshot>(second));
-        const auto& output = std::get<core::LocalOrderBookSnapshot>(first);
-        EXPECT_EQ(output.SerializeAsString(),
-                  std::get<core::LocalOrderBookSnapshot>(second).SerializeAsString());
-        ASSERT_EQ(output.bids_size(), 1);
-        ASSERT_EQ(output.asks_size(), 1);
-        EXPECT_EQ(output.bids(0).price(), reference_fixed(12345, decimal_scale));
-        EXPECT_EQ(output.bids(0).quantity(), reference_fixed(999, decimal_scale));
-        EXPECT_EQ(output.asks(0).price(), reference_fixed(12346, decimal_scale));
-        EXPECT_EQ(output.asks(0).quantity(), reference_fixed(888, decimal_scale));
-        ASSERT_EQ(output.quality_flags_size(), 2);
-        EXPECT_EQ(output.quality_flags(0), common_wire::QUALITY_FLAG_DUPLICATE);
-        EXPECT_EQ(output.quality_flags(1), common_wire::QUALITY_FLAG_OVERLAP);
-        EXPECT_EQ(output.generated_time_utc_ns(), 987654321U);
-        ASSERT_TRUE(output.has_generated_monotonic_ns());
-        EXPECT_EQ(output.generated_monotonic_ns(), 1234U);
+        verify_output_for_scale(decimal_scale);
     }
 }
 

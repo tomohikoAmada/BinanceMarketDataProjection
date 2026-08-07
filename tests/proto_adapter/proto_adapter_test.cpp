@@ -6,8 +6,10 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <concepts>
 #include <cstdint>
+#include <cstdlib>
 #include <limits>
 #include <locale>
 #include <optional>
@@ -25,7 +27,12 @@ namespace common_wire = binance_market_data::common::v1;
 namespace market_wire = binance_market_data::market::v1;
 
 [[nodiscard]] core::DecimalScale scale(std::uint32_t value = 2) {
-    return core::DecimalScale::create(value).value();
+    const auto result = core::DecimalScale::create(value);
+    if (!result.has_value()) {
+        ADD_FAILURE() << "invalid adapter-test scale: " << value;
+        std::abort();
+    }
+    return result.value();
 }
 
 [[nodiscard]] core::NumericSpec spec(std::uint32_t price = 2, std::uint32_t quantity = 3) {
@@ -89,6 +96,47 @@ update_wire(common_wire::Market market = common_wire::MARKET_SPOT) {
         123456,          std::uint64_t{654321}, std::nullopt};
 }
 
+[[nodiscard]] core::BookLevel require_best_bid(const core::BookProjection& projection) {
+    const auto result = projection.diagnostic_book().best_bid();
+    if (!result.has_value()) {
+        ADD_FAILURE() << "expected a best bid";
+        std::abort();
+    }
+    return result.value();
+}
+
+[[nodiscard]] core::BookLevel require_best_ask(const core::BookProjection& projection) {
+    const auto result = projection.diagnostic_book().best_ask();
+    if (!result.has_value()) {
+        ADD_FAILURE() << "expected a best ask";
+        std::abort();
+    }
+    return result.value();
+}
+
+void expect_baseline_error(market_wire::ExchangeDepthSnapshot wire,
+                           adapter::AdapterErrorCode expected) {
+    const auto result = adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity());
+    ASSERT_TRUE(std::holds_alternative<adapter::AdapterError>(result));
+    EXPECT_EQ(std::get<adapter::AdapterError>(result).code, expected);
+}
+
+void expect_baseline_rejected(market_wire::ExchangeDepthSnapshot wire) {
+    EXPECT_TRUE(std::holds_alternative<adapter::AdapterError>(
+        adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity())));
+}
+
+void expect_baseline_accepted(market_wire::ExchangeDepthSnapshot wire) {
+    EXPECT_TRUE(std::holds_alternative<adapter::AdaptedBookBaseline>(
+        adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity())));
+}
+
+void expect_update_error(market_wire::DepthUpdate wire, adapter::AdapterErrorCode expected) {
+    const auto result = adapter::adapt_depth_update(wire, spec(), spot_identity());
+    ASSERT_TRUE(std::holds_alternative<adapter::AdapterError>(result));
+    EXPECT_EQ(std::get<adapter::AdapterError>(result).code, expected);
+}
+
 template <typename Owner>
 concept RvalueInstallable = requires(Owner owner, core::BookProjection projection) {
     std::move(owner).install_into(projection);
@@ -133,7 +181,7 @@ TEST(InboundSnapshotTest, AdaptsOwnsQualityAndInstallsAfterWireDestruction) {
     ASSERT_TRUE(std::holds_alternative<core::InstallResult>(install));
     EXPECT_EQ(std::get<core::InstallResult>(install).disposition,
               core::InstallDisposition::Installed);
-    EXPECT_EQ(projection.diagnostic_book().best_bid()->price.value(), 10000);
+    EXPECT_EQ(require_best_bid(projection).price.value(), 10000);
 }
 
 TEST(InboundSnapshotTest, RejectsNormalizedDuplicatesAndDoesNotMutateProjection) {
@@ -205,8 +253,8 @@ TEST(InboundUpdateTest, PreservesPuPresenceOrderAndM3Results) {
     const auto applied = owner.apply_to(projection);
     ASSERT_TRUE(std::holds_alternative<core::ApplyResult>(applied));
     EXPECT_EQ(std::get<core::ApplyResult>(applied).disposition, core::ApplyDisposition::Applied);
-    EXPECT_EQ(projection.diagnostic_book().best_bid()->quantity.value(), 4500);
-    EXPECT_EQ(projection.diagnostic_book().best_ask()->price.value(), 10100);
+    EXPECT_EQ(require_best_bid(projection).quantity.value(), 4500);
+    EXPECT_EQ(require_best_ask(projection).price.value(), 10100);
 }
 
 TEST(InboundUpdateTest, RejectsMissingMetadataInvalidRangeAndUnknownQuality) {
@@ -263,75 +311,53 @@ TEST(InboundMatrixTest, AcceptsUsdMIdsPresenceDuplicatesAndExactRescale) {
 TEST(InboundMatrixTest, RejectsAllIdentityEnumSchemaAndNumericDomains) {
     auto wire = baseline_wire();
     wire.set_venue(static_cast<common_wire::Venue>(999));
-    auto result = adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity());
-    EXPECT_EQ(std::get<adapter::AdapterError>(result).code,
-              adapter::AdapterErrorCode::UnsupportedVenue);
+    expect_baseline_error(wire, adapter::AdapterErrorCode::UnsupportedVenue);
 
     wire = baseline_wire();
     wire.set_market(static_cast<common_wire::Market>(999));
-    result = adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity());
-    EXPECT_EQ(std::get<adapter::AdapterError>(result).code,
-              adapter::AdapterErrorCode::UnknownEnumValue);
+    expect_baseline_error(wire, adapter::AdapterErrorCode::UnknownEnumValue);
 
     wire = baseline_wire();
     wire.set_market(common_wire::MARKET_UNSPECIFIED);
-    result = adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity());
-    EXPECT_EQ(std::get<adapter::AdapterError>(result).code,
-              adapter::AdapterErrorCode::UnspecifiedEnum);
+    expect_baseline_error(wire, adapter::AdapterErrorCode::UnspecifiedEnum);
 
     wire = baseline_wire(common_wire::MARKET_USD_M_PERPETUAL);
-    result = adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity());
-    EXPECT_EQ(std::get<adapter::AdapterError>(result).code,
-              adapter::AdapterErrorCode::IdentityMismatch);
+    expect_baseline_error(wire, adapter::AdapterErrorCode::IdentityMismatch);
 
     for (const std::string symbol : {"", "a", "btc usdt", "BTC_USDT"}) {
         wire = baseline_wire();
         wire.set_symbol(symbol);
-        result = adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity());
-        EXPECT_TRUE(std::holds_alternative<adapter::AdapterError>(result));
+        expect_baseline_rejected(wire);
     }
 
     wire = baseline_wire();
     wire.clear_schema_version();
-    result = adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity());
-    EXPECT_EQ(std::get<adapter::AdapterError>(result).code,
-              adapter::AdapterErrorCode::UnsupportedSchemaVersion);
+    expect_baseline_error(wire, adapter::AdapterErrorCode::UnsupportedSchemaVersion);
 
     wire = baseline_wire();
     wire.mutable_bids(0)->set_price("-1");
-    result = adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity());
-    EXPECT_EQ(std::get<adapter::AdapterError>(result).code,
-              adapter::AdapterErrorCode::NonPositivePrice);
+    expect_baseline_error(wire, adapter::AdapterErrorCode::NonPositivePrice);
 
     wire = baseline_wire();
     wire.mutable_bids(0)->set_price("9223372036854775808");
-    result = adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity());
-    EXPECT_EQ(std::get<adapter::AdapterError>(result).code,
-              adapter::AdapterErrorCode::NumericOverflow);
+    expect_baseline_error(wire, adapter::AdapterErrorCode::NumericOverflow);
 
     auto update = update_wire();
     update.mutable_metadata()->set_stream(common_wire::STREAM_BOOK_TICKER);
-    auto update_result = adapter::adapt_depth_update(update, spec(), spot_identity());
-    EXPECT_EQ(std::get<adapter::AdapterError>(update_result).code,
-              adapter::AdapterErrorCode::UnexpectedStream);
+    expect_update_error(update, adapter::AdapterErrorCode::UnexpectedStream);
 
     update = update_wire();
     update.mutable_metadata()->set_stream(common_wire::STREAM_UNSPECIFIED);
-    update_result = adapter::adapt_depth_update(update, spec(), spot_identity());
-    EXPECT_EQ(std::get<adapter::AdapterError>(update_result).code,
-              adapter::AdapterErrorCode::UnspecifiedEnum);
+    expect_update_error(update, adapter::AdapterErrorCode::UnspecifiedEnum);
 
     wire = baseline_wire();
     wire.add_quality_flags(common_wire::QUALITY_FLAG_UNSPECIFIED);
-    result = adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity());
-    EXPECT_EQ(std::get<adapter::AdapterError>(result).code,
-              adapter::AdapterErrorCode::UnspecifiedEnum);
+    expect_baseline_error(wire, adapter::AdapterErrorCode::UnspecifiedEnum);
 
     for (const auto id : {std::uint64_t{0}, std::numeric_limits<std::uint64_t>::max()}) {
         wire = baseline_wire();
         wire.set_last_update_id(id);
-        EXPECT_TRUE(std::holds_alternative<adapter::AdaptedBookBaseline>(
-            adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity())));
+        expect_baseline_accepted(wire);
     }
 }
 
@@ -599,102 +625,150 @@ TEST(SnapshotOutputTest, RejectsContradictoryGapAndHostQualityContext) {
               adapter::AdapterErrorCode::InvalidHostQualityCombination);
 }
 
-TEST(SnapshotOutputTest, MapsAllFiveGapReasonsAndAllCurrentRecoveryStates) {
-    const auto apply_wire = [](core::BookProjection& projection, common_wire::Market market,
-                               const adapter::ExpectedIdentity& expected, std::uint64_t first,
-                               std::uint64_t final,
-                               std::optional<std::uint64_t> previous = std::nullopt) {
-        auto wire = update_wire(market);
-        wire.clear_bids();
-        wire.clear_asks();
-        wire.set_first_update_id(first);
-        wire.set_final_update_id(final);
-        if (previous.has_value()) {
-            wire.set_previous_final_update_id(*previous);
-        } else {
-            wire.clear_previous_final_update_id();
-        }
-        auto adapted = adapter::adapt_depth_update(wire, spec(), expected);
-        return std::get<core::ApplyResult>(
-            std::get<adapter::AdaptedDepthBatch>(adapted).apply_to(projection));
-    };
-    const auto install = [](core::BookProjection& projection, common_wire::Market market,
-                            const adapter::ExpectedIdentity& expected) {
-        auto adapted =
-            adapter::adapt_exchange_depth_snapshot(baseline_wire(market), spec(), expected);
-        return std::get<core::InstallResult>(
-            std::get<adapter::AdaptedBookBaseline>(adapted).install_into(projection));
-    };
-    const auto expect_gap = [](const core::BookProjection& projection,
-                               const adapter::ExpectedIdentity& expected,
-                               core::GapReason expected_reason, std::uint64_t expected_previous,
-                               std::uint64_t expected_next) {
-        ASSERT_EQ(projection.status(), core::ProjectionStatus::NeedsResync);
-        ASSERT_TRUE(projection.last_gap().has_value());
-        EXPECT_EQ(projection.last_gap()->reason, expected_reason);
-        auto snapshot_context = context();
-        snapshot_context.identity = expected;
-        snapshot_context.current_gap =
-            adapter::CurrentGapContext{444, adapter::GapRecoveryState::ResyncRequired};
-        const auto output =
-            adapter::make_local_order_book_snapshot(projection, snapshot_context, {});
-        ASSERT_TRUE(std::holds_alternative<core::LocalOrderBookSnapshot>(output));
-        const auto& gap = std::get<core::LocalOrderBookSnapshot>(output).last_gap();
-        EXPECT_EQ(gap.previous_sequence(), expected_previous);
-        EXPECT_EQ(gap.next_sequence(), expected_next);
-        EXPECT_EQ(gap.reason_code(), common_wire::REASON_CODE_SEQUENCE_GAP_DETECTED);
-    };
+struct UpdateSequence final {
+    std::uint64_t first;
+    std::uint64_t final;
+    std::optional<std::uint64_t> previous;
+};
 
+struct GapExpectation final {
+    core::GapReason reason;
+    std::uint64_t previous;
+    std::uint64_t next;
+};
+
+[[nodiscard]] core::ApplyResult apply_wire(core::BookProjection& projection,
+                                           common_wire::Market market,
+                                           const adapter::ExpectedIdentity& expected,
+                                           const UpdateSequence& sequence) {
+    auto wire = update_wire(market);
+    wire.clear_bids();
+    wire.clear_asks();
+    wire.set_first_update_id(sequence.first);
+    wire.set_final_update_id(sequence.final);
+    if (sequence.previous.has_value()) {
+        wire.set_previous_final_update_id(sequence.previous.value());
+    } else {
+        wire.clear_previous_final_update_id();
+    }
+    auto adapted = adapter::adapt_depth_update(wire, spec(), expected);
+    return std::get<core::ApplyResult>(
+        std::get<adapter::AdaptedDepthBatch>(adapted).apply_to(projection));
+}
+
+[[nodiscard]] core::InstallResult install_wire(core::BookProjection& projection,
+                                               common_wire::Market market,
+                                               const adapter::ExpectedIdentity& expected) {
+    auto adapted = adapter::adapt_exchange_depth_snapshot(baseline_wire(market), spec(), expected);
+    return std::get<core::InstallResult>(
+        std::get<adapter::AdaptedBookBaseline>(adapted).install_into(projection));
+}
+
+void expect_projection_gap(const core::BookProjection& projection, const GapExpectation& expected) {
+    ASSERT_EQ(projection.status(), core::ProjectionStatus::NeedsResync);
+    const auto gap = projection.last_gap();
+    ASSERT_TRUE(gap.has_value());
+    EXPECT_EQ(gap->reason, expected.reason);
+}
+
+void expect_serialized_gap(const core::BookProjection& projection,
+                           const adapter::ExpectedIdentity& identity,
+                           const GapExpectation& expected) {
+    auto snapshot_context = context();
+    snapshot_context.identity = identity;
+    snapshot_context.current_gap =
+        adapter::CurrentGapContext{444, adapter::GapRecoveryState::ResyncRequired};
+    const auto output = adapter::make_local_order_book_snapshot(projection, snapshot_context, {});
+    ASSERT_TRUE(std::holds_alternative<core::LocalOrderBookSnapshot>(output));
+    const auto& gap = std::get<core::LocalOrderBookSnapshot>(output).last_gap();
+    EXPECT_EQ(gap.previous_sequence(), expected.previous);
+    EXPECT_EQ(gap.next_sequence(), expected.next);
+    EXPECT_EQ(gap.reason_code(), common_wire::REASON_CODE_SEQUENCE_GAP_DETECTED);
+}
+
+void expect_gap(const core::BookProjection& projection, const adapter::ExpectedIdentity& identity,
+                const GapExpectation& expected) {
+    expect_projection_gap(projection, expected);
+    expect_serialized_gap(projection, identity, expected);
+}
+
+void verify_spot_bootstrap_gap() {
     core::BookProjection spot_bootstrap{spec(), core::SequencePolicyKind::Spot};
-    ASSERT_EQ(install(spot_bootstrap, common_wire::MARKET_SPOT, spot_identity()).disposition,
+    ASSERT_EQ(install_wire(spot_bootstrap, common_wire::MARKET_SPOT, spot_identity()).disposition,
               core::InstallDisposition::Installed);
-    EXPECT_EQ(
-        apply_wire(spot_bootstrap, common_wire::MARKET_SPOT, spot_identity(), 102, 102).disposition,
-        core::ApplyDisposition::GapDetected);
-    expect_gap(spot_bootstrap, spot_identity(), core::GapReason::SpotBootstrapForwardGap, 100, 102);
-
-    core::BookProjection spot_live{spec(), core::SequencePolicyKind::Spot};
-    static_cast<void>(install(spot_live, common_wire::MARKET_SPOT, spot_identity()));
-    static_cast<void>(apply_wire(spot_live, common_wire::MARKET_SPOT, spot_identity(), 99, 101));
-    EXPECT_EQ(
-        apply_wire(spot_live, common_wire::MARKET_SPOT, spot_identity(), 103, 103).disposition,
-        core::ApplyDisposition::GapDetected);
-    expect_gap(spot_live, spot_identity(), core::GapReason::SpotLiveForwardGap, 101, 103);
-
-    core::BookProjection futures_bootstrap{spec(), core::SequencePolicyKind::UsdMPerpetual};
-    static_cast<void>(
-        install(futures_bootstrap, common_wire::MARKET_USD_M_PERPETUAL, usdm_identity()));
-    EXPECT_EQ(apply_wire(futures_bootstrap, common_wire::MARKET_USD_M_PERPETUAL, usdm_identity(),
-                         101, 101, 100)
+    EXPECT_EQ(apply_wire(spot_bootstrap, common_wire::MARKET_SPOT, spot_identity(),
+                         {102, 102, std::nullopt})
                   .disposition,
               core::ApplyDisposition::GapDetected);
-    expect_gap(futures_bootstrap, usdm_identity(), core::GapReason::FuturesBootstrapRangeMiss, 100,
-               101);
+    expect_gap(spot_bootstrap, spot_identity(),
+               {core::GapReason::SpotBootstrapForwardGap, 100, 102});
+}
 
-    core::BookProjection futures_missing{spec(), core::SequencePolicyKind::UsdMPerpetual};
+[[nodiscard]] core::BookProjection make_spot_live_gap() {
+    core::BookProjection spot_live{spec(), core::SequencePolicyKind::Spot};
+    static_cast<void>(install_wire(spot_live, common_wire::MARKET_SPOT, spot_identity()));
     static_cast<void>(
-        install(futures_missing, common_wire::MARKET_USD_M_PERPETUAL, usdm_identity()));
-    static_cast<void>(apply_wire(futures_missing, common_wire::MARKET_USD_M_PERPETUAL,
-                                 usdm_identity(), 99, 101, 50));
+        apply_wire(spot_live, common_wire::MARKET_SPOT, spot_identity(), {99, 101, std::nullopt}));
     EXPECT_EQ(
-        apply_wire(futures_missing, common_wire::MARKET_USD_M_PERPETUAL, usdm_identity(), 102, 102)
+        apply_wire(spot_live, common_wire::MARKET_SPOT, spot_identity(), {103, 103, std::nullopt})
             .disposition,
         core::ApplyDisposition::GapDetected);
-    expect_gap(futures_missing, usdm_identity(), core::GapReason::FuturesMissingPreviousFinal, 101,
-               102);
+    expect_gap(spot_live, spot_identity(), {core::GapReason::SpotLiveForwardGap, 101, 103});
+    return spot_live;
+}
 
-    core::BookProjection futures_mismatch{spec(), core::SequencePolicyKind::UsdMPerpetual};
+void verify_futures_bootstrap_gap() {
+    core::BookProjection futures_bootstrap{spec(), core::SequencePolicyKind::UsdMPerpetual};
     static_cast<void>(
-        install(futures_mismatch, common_wire::MARKET_USD_M_PERPETUAL, usdm_identity()));
-    static_cast<void>(apply_wire(futures_mismatch, common_wire::MARKET_USD_M_PERPETUAL,
-                                 usdm_identity(), 99, 101, 50));
-    EXPECT_EQ(apply_wire(futures_mismatch, common_wire::MARKET_USD_M_PERPETUAL, usdm_identity(),
-                         102, 102, 100)
+        install_wire(futures_bootstrap, common_wire::MARKET_USD_M_PERPETUAL, usdm_identity()));
+    EXPECT_EQ(apply_wire(futures_bootstrap, common_wire::MARKET_USD_M_PERPETUAL, usdm_identity(),
+                         {101, 101, 100})
                   .disposition,
               core::ApplyDisposition::GapDetected);
-    expect_gap(futures_mismatch, usdm_identity(), core::GapReason::FuturesPreviousFinalMismatch,
-               101, 102);
+    expect_gap(futures_bootstrap, usdm_identity(),
+               {core::GapReason::FuturesBootstrapRangeMiss, 100, 101});
+}
 
+void verify_futures_missing_previous_gap() {
+    core::BookProjection futures_missing{spec(), core::SequencePolicyKind::UsdMPerpetual};
+    static_cast<void>(
+        install_wire(futures_missing, common_wire::MARKET_USD_M_PERPETUAL, usdm_identity()));
+    static_cast<void>(apply_wire(futures_missing, common_wire::MARKET_USD_M_PERPETUAL,
+                                 usdm_identity(), {99, 101, 50}));
+    EXPECT_EQ(apply_wire(futures_missing, common_wire::MARKET_USD_M_PERPETUAL, usdm_identity(),
+                         {102, 102, std::nullopt})
+                  .disposition,
+              core::ApplyDisposition::GapDetected);
+    expect_gap(futures_missing, usdm_identity(),
+               {core::GapReason::FuturesMissingPreviousFinal, 101, 102});
+}
+
+void verify_futures_previous_mismatch_gap() {
+    core::BookProjection futures_mismatch{spec(), core::SequencePolicyKind::UsdMPerpetual};
+    static_cast<void>(
+        install_wire(futures_mismatch, common_wire::MARKET_USD_M_PERPETUAL, usdm_identity()));
+    static_cast<void>(apply_wire(futures_mismatch, common_wire::MARKET_USD_M_PERPETUAL,
+                                 usdm_identity(), {99, 101, 50}));
+    EXPECT_EQ(apply_wire(futures_mismatch, common_wire::MARKET_USD_M_PERPETUAL, usdm_identity(),
+                         {102, 102, 100})
+                  .disposition,
+              core::ApplyDisposition::GapDetected);
+    expect_gap(futures_mismatch, usdm_identity(),
+               {core::GapReason::FuturesPreviousFinalMismatch, 101, 102});
+}
+
+void expect_recovery_state(const core::BookProjection& projection,
+                           adapter::GapRecoveryState host_state,
+                           common_wire::ResyncState wire_state) {
+    auto snapshot_context = context();
+    snapshot_context.current_gap = adapter::CurrentGapContext{555, host_state};
+    const auto output = adapter::make_local_order_book_snapshot(projection, snapshot_context, {});
+    ASSERT_TRUE(std::holds_alternative<core::LocalOrderBookSnapshot>(output));
+    EXPECT_EQ(std::get<core::LocalOrderBookSnapshot>(output).last_gap().recovery_state(),
+              wire_state);
+}
+
+void verify_recovery_states(const core::BookProjection& projection) {
     for (const auto& [host_state, wire_state] :
          std::array<std::pair<adapter::GapRecoveryState, common_wire::ResyncState>, 3>{
              {{adapter::GapRecoveryState::ResyncRequired,
@@ -703,14 +777,17 @@ TEST(SnapshotOutputTest, MapsAllFiveGapReasonsAndAllCurrentRecoveryStates) {
                common_wire::RESYNC_STATE_RESYNC_IN_PROGRESS},
               {adapter::GapRecoveryState::ResyncFailed,
                common_wire::RESYNC_STATE_RESYNC_FAILED}}}) {
-        auto snapshot_context = context();
-        snapshot_context.current_gap = adapter::CurrentGapContext{555, host_state};
-        const auto output =
-            adapter::make_local_order_book_snapshot(spot_live, snapshot_context, {});
-        ASSERT_TRUE(std::holds_alternative<core::LocalOrderBookSnapshot>(output));
-        EXPECT_EQ(std::get<core::LocalOrderBookSnapshot>(output).last_gap().recovery_state(),
-                  wire_state);
+        expect_recovery_state(projection, host_state, wire_state);
     }
+}
+
+TEST(SnapshotOutputTest, MapsAllFiveGapReasonsAndAllCurrentRecoveryStates) {
+    verify_spot_bootstrap_gap();
+    const auto spot_live = make_spot_live_gap();
+    verify_futures_bootstrap_gap();
+    verify_futures_missing_previous_gap();
+    verify_futures_previous_mismatch_gap();
+    verify_recovery_states(spot_live);
 }
 
 TEST(SnapshotOutputTest, OmitsHistoricalGapAfterRebaselineRecovery) {
