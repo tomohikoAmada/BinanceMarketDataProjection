@@ -17,8 +17,7 @@ namespace {
 
 struct SpotBootstrapCase final {
     std::uint64_t snapshot_last_update_id;
-    std::uint64_t first_update_id;
-    std::uint64_t final_update_id;
+    replay::SpotBootstrapRange range;
     replay::SpotBootstrapOutcome outcome;
 };
 
@@ -37,24 +36,26 @@ TEST(M5ReplayFixtureTest, LoadsSpotUsdMAndRecoveryTinyFixtures) {
 TEST(M5ReplayFixtureTest, SpotBootstrapBridgeFollowsAcceptedM3ContainsLRule) {
     using enum replay::SpotBootstrapOutcome;
     const std::vector<SpotBootstrapCase> cases = {
-        {500, 499, 501, BridgeCandidate},
-        {500, 500, 501, BridgeCandidate},
-        {500, 501, 501, ForwardGap},
-        {500, 501, 502, ForwardGap},
-        {500, 400, 500, NonAdvancingDuplicate},
-        {500, 499, 500, NonAdvancingDuplicate},
-        {500, 400, 499, Stale},
-        {std::numeric_limits<std::uint64_t>::max(), std::numeric_limits<std::uint64_t>::max(),
-         std::numeric_limits<std::uint64_t>::max(), NonAdvancingDuplicate},
-        {std::numeric_limits<std::uint64_t>::max(), std::numeric_limits<std::uint64_t>::max() - 1U,
-         std::numeric_limits<std::uint64_t>::max() - 1U, Stale},
+        {500, {499, 501}, BridgeCandidate},
+        {500, {500, 501}, BridgeCandidate},
+        {500, {501, 501}, ForwardGap},
+        {500, {501, 502}, ForwardGap},
+        {500, {400, 500}, NonAdvancingDuplicate},
+        {500, {499, 500}, NonAdvancingDuplicate},
+        {500, {400, 499}, Stale},
+        {std::numeric_limits<std::uint64_t>::max(),
+         {std::numeric_limits<std::uint64_t>::max(), std::numeric_limits<std::uint64_t>::max()},
+         NonAdvancingDuplicate},
+        {std::numeric_limits<std::uint64_t>::max(),
+         {std::numeric_limits<std::uint64_t>::max() - 1U,
+          std::numeric_limits<std::uint64_t>::max() - 1U},
+         Stale},
     };
     for (const auto& test_case : cases) {
-        EXPECT_EQ(replay::classify_spot_bootstrap(test_case.snapshot_last_update_id,
-                                                  test_case.first_update_id,
-                                                  test_case.final_update_id),
-                  test_case.outcome)
-            << "U=" << test_case.first_update_id << ", u=" << test_case.final_update_id
+        EXPECT_EQ(
+            replay::classify_spot_bootstrap(test_case.snapshot_last_update_id, test_case.range),
+            test_case.outcome)
+            << "U=" << test_case.range.first_update_id << ", u=" << test_case.range.final_update_id
             << ", L=" << test_case.snapshot_last_update_id;
     }
 }

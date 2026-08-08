@@ -249,9 +249,15 @@ enum class SpotBootstrapOutcome : std::uint8_t {
     ForwardGap,
 };
 
+struct SpotBootstrapRange final {
+    std::uint64_t first_update_id{};
+    std::uint64_t final_update_id{};
+
+    friend bool operator==(const SpotBootstrapRange&, const SpotBootstrapRange&) = default;
+};
+
 [[nodiscard]] SpotBootstrapOutcome classify_spot_bootstrap(std::uint64_t snapshot_last_update_id,
-                                                           std::uint64_t first_update_id,
-                                                           std::uint64_t final_update_id);
+                                                           const SpotBootstrapRange& range);
 
 [[nodiscard]] MaterializerContract spot_materializer_contract();
 [[nodiscard]] MaterializerContract usdm_materializer_contract();

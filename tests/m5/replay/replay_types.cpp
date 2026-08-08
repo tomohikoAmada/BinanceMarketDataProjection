@@ -5,15 +5,14 @@
 namespace bmd_projection::m5::replay {
 
 SpotBootstrapOutcome classify_spot_bootstrap(std::uint64_t snapshot_last_update_id,
-                                             std::uint64_t first_update_id,
-                                             std::uint64_t final_update_id) {
-    if (final_update_id < snapshot_last_update_id) {
+                                             const SpotBootstrapRange& range) {
+    if (range.final_update_id < snapshot_last_update_id) {
         return SpotBootstrapOutcome::Stale;
     }
-    if (final_update_id == snapshot_last_update_id) {
+    if (range.final_update_id == snapshot_last_update_id) {
         return SpotBootstrapOutcome::NonAdvancingDuplicate;
     }
-    if (first_update_id <= snapshot_last_update_id) {
+    if (range.first_update_id <= snapshot_last_update_id) {
         return SpotBootstrapOutcome::BridgeCandidate;
     }
     return SpotBootstrapOutcome::ForwardGap;
