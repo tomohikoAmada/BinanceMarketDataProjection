@@ -41,8 +41,9 @@ M5 (Differential Validation and Performance) adds replay/differential/fuzz valid
 benchmark infrastructure as test/benchmark-only artifacts outside Core. It introduces no new
 production public API, no production dependency, and no container change; validation and
 performance evidence are recorded separately. The M5 architecture was independently reviewed
-and APPROVED (ADR-0007 ACCEPTED); implementation remains not started and not authorized pending
-the OD-M5-001 and OD-M5-002 open decisions.
+and APPROVED (ADR-0007 ACCEPTED); pre-implementation decisions OD-M5-001 and OD-M5-002 are
+CLOSED; M5 implementation is authorized on merge of the decision/CI-policy PR.
+OD-M5-003 remains SPIKE-RESOLVABLE.
 
 Adapter owners are bound to the conversion `NumericSpec` and sequence policy and must check both
 against the target Core instance before mutation. Schema baseline/fingerprint identity is distinct

@@ -2,8 +2,8 @@
 
 ## Status
 
-- Design status: **APPROVED / PENDING MERGE**
-- Implementation status: **NOT STARTED / NOT AUTHORIZED**
+- Design status: **APPROVED / MERGED**
+- Implementation status: **NOT STARTED / AUTHORIZED ON MERGE**
 - ADR status: **ACCEPTED** (ADR-0007)
 - Design date: 2026-08-08
 - Initial independent architecture review: **CHANGES REQUESTED** (P0: 0, P1 design: 1, P1 implementation: 2, P2: 7)
@@ -12,6 +12,7 @@
 - Projection base: `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4` (M4 merge commit)
 - M4 post-merge CI: `31242162782` — completed / success, 16/16
 - Contracts baseline: `01d76a41929f36d89573159f5f458f9f1e378ada`
+- Pre-implementation decisions: **CLOSED** (OD-M5-001, OD-M5-002). OD-M5-003: **SPIKE-RESOLVABLE**. See `docs/M5_PREIMPLEMENTATION_DECISIONS.md`.
 
 ## Architecture approval record
 
@@ -37,9 +38,9 @@ ADR-0007:
 ACCEPTED
 ```
 
-Implementation authorization remains blocked by open decisions OD-M5-001 and OD-M5-002.
-They must be closed in a separate pre-implementation decision task before any M5
-implementation work starts. This design document approves the architecture only.
+Implementation authorization was blocked by open decisions OD-M5-001 and OD-M5-002.
+Both are now CLOSED. M5 implementation is authorized to begin after the decision/CI-policy PR
+is reviewed and merged. See `docs/M5_PREIMPLEMENTATION_DECISIONS.md`.
 
 Non-blocking review observations (implementation-time only, not blockers):
 
@@ -1282,12 +1283,12 @@ Fixtures are parsed into the normalized in-memory log before timed execution.
 
 ## Open decisions
 
-### Blocking before implementation
+### Blocking before implementation — CLOSED
 
-| ID | Decision | Current position | Needed to close |
-|---|---|---|---|
-| OD-M5-001 | Exact representative transcript corpus (which recorded symbols/time ranges) | Medium/large tiers need externally recorded, provenance-verified transcripts | Data acquisition plan and reviewed selection |
-| OD-M5-002 | CI job/runner budget for medium-tier scheduled runs | Weekly scheduled job proposed | Cost review of scheduled runs and artifact retention |
+| ID | Decision | Current position |
+|---|---|---|
+| OD-M5-001 | Exact representative transcript corpus | **CLOSED:** Recorder M21.4 validated 24h BTCUSDT Spot + USD-M perpetual live Raw capture as M5 corpus source v1. Primary medium fixtures: M5-REC-SPOT-BTCUSDT-V1, M5-REC-USDM-BTCUSDT-V1. See `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. |
+| OD-M5-002 | CI job/runner budget for medium-tier scheduled runs | **CLOSED:** Free standard GitHub-hosted runners only. Docs-only CI skip, superseded-run cancellation, <= weekly scheduled medium, 45 min timeout, manual-only container spike, 200 MiB/7-day artifact ceilings. See `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. |
 
 ### Can be resolved during the performance spike
 

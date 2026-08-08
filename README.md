@@ -230,11 +230,13 @@ fuzz/          libFuzzer harnesses and checked-in seed corpus
 
 M1, M2, M3, and M4 are COMPLETE. M4 was merged through PR #8 at
 `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4` with post-merge main CI `31242162782` — 16/16 PASS.
-M5 (Differential Validation and Performance) is **APPROVED / PENDING MERGE /
+M5 (Differential Validation and Performance) is **APPROVED / MERGED /
 NOT IMPLEMENTED**; its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
 cross-compiler semantic manifests with artifact fan-in transport, replay/differential fuzzing,
 benchmark methodology, allocation/memory characterization, and a benchmark-only container spike.
+Pre-implementation decisions OD-M5-001 and OD-M5-002 are CLOSED; M5 implementation is authorized
+on merge of the decision/CI-policy PR. OD-M5-003 remains SPIKE-RESOLVABLE.
 The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
 
 ## Known limitations

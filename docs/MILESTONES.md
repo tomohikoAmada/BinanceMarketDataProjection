@@ -244,9 +244,9 @@ No Contracts change, gRPC runtime, Gateway lifecycle, network ownership, system-
 generated-code copy, or M5/M6 work is included. `MarketStateSnapshot` generation and derived market
 calculations remain deferred unless separately designed and approved.
 
-## M5 Differential Validation and Performance — APPROVED / PENDING MERGE / NOT IMPLEMENTED
+## M5 Differential Validation and Performance — APPROVED / MERGED / NOT IMPLEMENTED
 
-Implementation status: **NOT IMPLEMENTED / NOT AUTHORIZED**
+Implementation status: **NOT IMPLEMENTED / AUTHORIZED ON MERGE**
 
 ### Design status
 
@@ -262,8 +262,12 @@ Independent architecture review: **APPROVED** (focused re-review of corrected he
 `9fff05ca8333d89d28d89c794d65255b56578715`; reviewed CI `31245814229` — PASS).
 Findings M5-AR-001 through M5-AR-010: **CLOSED**. P0: **0**. P1 Design: **0**.
 No M5 implementation, production change, or container migration is authorized by the design.
-Implementation authorization remains blocked by OD-M5-001 and OD-M5-002 (open decisions to be
-closed in a separate pre-implementation decision task).
+
+### Pre-implementation decisions
+
+OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions and CI policy
+are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
+M5 implementation is authorized to begin after this decision/CI-policy PR is reviewed and merged.
 
 ### Deferred M4 P2 findings
 
