@@ -3,7 +3,9 @@
 ## Status
 
 - Design status: **APPROVED / MERGED**
-- Implementation status: **NOT STARTED / AUTHORIZED ON MERGE**
+- Implementation status: **IN PROGRESS**
+- Phase 1 status: **IMPLEMENTED / PENDING INDEPENDENT REVIEW**
+- Phase 2 status: **NOT STARTED**
 - ADR status: **ACCEPTED** (ADR-0007)
 - Design date: 2026-08-08
 - Initial independent architecture review: **CHANGES REQUESTED** (P0: 0, P1 design: 1, P1 implementation: 2, P2: 7)
@@ -49,9 +51,16 @@ Non-blocking review observations (implementation-time only, not blockers):
 - adapter-mode manifest scope may receive additional implementation-time clarification
 ```
 
-This document designs M5 **Differential Validation and Performance**. It does not implement M5, does
-not change production code, does not replace the order-book container, and does not authorize any
-production container migration. It also does not start M6.
+Phase 1 records the exact canonical grammar, byte validation, normalized operation model, fixture
+identity loader, and offline recorded-corpus materializer boundary in
+`docs/M5_PHASE1_CANONICAL_REPLAY.md`. M5-PIR-001 and M5-PIR-004 are incorporated there; M5-PIR-002
+and M5-PIR-003 remain deferred/non-blocking. This does not implement the differential oracle,
+ReplayDriver, semantic observations, fuzzing, benchmarks, or CI reporting.
+
+This document designs M5 **Differential Validation and Performance**. Phase 1 implementation details
+are recorded separately in `docs/M5_PHASE1_CANONICAL_REPLAY.md`; phases 2+ are not implemented here.
+No production code or order-book container is changed, no production container migration is
+authorized, and M6 is not started.
 
 ## Goal
 

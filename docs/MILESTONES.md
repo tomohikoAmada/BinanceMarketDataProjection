@@ -244,9 +244,9 @@ No Contracts change, gRPC runtime, Gateway lifecycle, network ownership, system-
 generated-code copy, or M5/M6 work is included. `MarketStateSnapshot` generation and derived market
 calculations remain deferred unless separately designed and approved.
 
-## M5 Differential Validation and Performance — APPROVED / MERGED / NOT IMPLEMENTED
+## M5 Differential Validation and Performance — APPROVED / MERGED / IN PROGRESS
 
-Implementation status: **NOT IMPLEMENTED / AUTHORIZED ON MERGE**
+Implementation status: **IN PROGRESS**
 
 ### Design status
 
@@ -261,13 +261,18 @@ benchmark-only container spike with explicit decision criteria.
 Independent architecture review: **APPROVED** (focused re-review of corrected head
 `9fff05ca8333d89d28d89c794d65255b56578715`; reviewed CI `31245814229` — PASS).
 Findings M5-AR-001 through M5-AR-010: **CLOSED**. P0: **0**. P1 Design: **0**.
-No M5 implementation, production change, or container migration is authorized by the design.
+No M5 production change or container migration is authorized by the design.
 
 ### Pre-implementation decisions
 
 OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions and CI policy
 are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
-M5 implementation is authorized to begin after this decision/CI-policy PR is reviewed and merged.
+M5 implementation is authorized; Phase 1 is in progress and later phases remain separate.
+
+Phase 1 canonical replay infrastructure is **IMPLEMENTED / PENDING INDEPENDENT REVIEW**. It covers
+canonical replay grammar and byte/UTF-8 validation, manifest and exact-log SHA-256 identity,
+normalized operation loading, deterministic tiny fixtures, structured parser diagnostics, and the
+explicit offline Recorder materializer/bootstrap contract. Phase 2 and later work is not started.
 
 ### Deferred M4 P2 findings
 
@@ -293,7 +298,7 @@ strategy, risk, trading, persistence, Python binding, or production container mi
 5. **M4 Snapshots and Protobuf Boundary — COMPLETE** — Optional
    wire-format adapter outside Core; snapshot production boundary. Merged through PR #8 at
    `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4`; main CI `31242162782` — 16/16 PASS.
-6. **M5 Differential Validation and Performance — APPROVED / PENDING MERGE / NOT IMPLEMENTED** —
+6. **M5 Differential Validation and Performance — APPROVED / MERGED / IN PROGRESS** —
    Replay/differential/fuzz validation; benchmark with representative workloads.
 7. **M6 Gateway Integration** — Production host embedding surface; live ingestion.
 8. **M7 Platform Hardening and Acceptance** — Harden architectures, toolchains; end-to-end acceptance.

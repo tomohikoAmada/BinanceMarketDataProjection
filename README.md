@@ -230,13 +230,13 @@ fuzz/          libFuzzer harnesses and checked-in seed corpus
 
 M1, M2, M3, and M4 are COMPLETE. M4 was merged through PR #8 at
 `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4` with post-merge main CI `31242162782` — 16/16 PASS.
-M5 (Differential Validation and Performance) is **APPROVED / MERGED /
-NOT IMPLEMENTED**; its design covers layered differential validation with operation-result
+M5 (Differential Validation and Performance) is **APPROVED / MERGED / IN PROGRESS**; Phase 1
+canonical replay infrastructure is implemented pending independent review. Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
 cross-compiler semantic manifests with artifact fan-in transport, replay/differential fuzzing,
 benchmark methodology, allocation/memory characterization, and a benchmark-only container spike.
-Pre-implementation decisions OD-M5-001 and OD-M5-002 are CLOSED; M5 implementation is authorized
-on merge of the decision/CI-policy PR. OD-M5-003 remains SPIKE-RESOLVABLE.
+Pre-implementation decisions OD-M5-001 and OD-M5-002 are CLOSED; Phase 1 is implemented pending
+independent review. OD-M5-003 remains SPIKE-RESOLVABLE.
 The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
 
 ## Known limitations
@@ -244,7 +244,8 @@ The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
 - The repository includes numeric primitives, a deterministic L2 market-by-price order book, the
   completed M3 sequence/projection implementation, and the merged optional M4 Protobuf adapter on
   `main`.
-- M5 is **APPROVED / PENDING MERGE / NOT IMPLEMENTED**; M6 is not started.
+- M5 is **APPROVED / MERGED / IN PROGRESS**; Phase 1 is implemented pending independent review and
+  M6 is not started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.
 - Tick-size, step-size, signed-decimal, and symbol-metadata validation remain outside the implemented

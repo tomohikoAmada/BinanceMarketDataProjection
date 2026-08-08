@@ -1,0 +1,9 @@
+REPLAY_V1 market=Spot symbol=BTCUSDT price_scale=8 quantity_scale=8 policy=Spot fixture_id=spot-tiny-v1
+INSTALL_BASELINE 100 B:100.0000,1.2300|B:99.0,2 A:101.00,1
+ADAPTER_METADATA Duplicate,OutOfOrder
+DEPTH_UPDATE 99 101 pu=- B:100,+1.5|A:102,0.000
+DEPTH_UPDATE 101 101 pu=- B:100,1.5
+SNAPSHOT_REQUEST - Duplicate,OutOfOrder snapshot-1 fixture 1.0 RecorderReplay 1000 - -
+RESET
+REBASELINE 200 B:100,2 A:101,3
+MALFORMED_RANGE 9 3

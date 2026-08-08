@@ -1,0 +1,12 @@
+MANIFEST_V1
+fixture_id=recovery-tiny-v1
+schema_version=REPLAY_V1
+log_sha256=983aebae7f514f5b16802c0184334019ff972d347b2101140c825777033ebfd4
+market=Spot
+symbol=BTCUSDT
+price_scale=4
+quantity_scale=4
+policy=Spot
+event_count=7
+provenance_conversion=v1
+provenance_source=synthetic

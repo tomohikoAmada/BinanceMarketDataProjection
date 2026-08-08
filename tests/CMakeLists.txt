@@ -1,5 +1,51 @@
 find_package(GTest CONFIG REQUIRED)
 
+add_library(
+    bmd_projection_m5_replay_support
+    m5/replay/canonical_text.cpp
+    m5/replay/replay_fixture.cpp
+    m5/replay/replay_manifest.cpp
+    m5/replay/replay_parser.cpp
+    m5/replay/replay_types.cpp
+)
+target_include_directories(
+    bmd_projection_m5_replay_support
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/m5/replay
+)
+set_target_properties(
+    bmd_projection_m5_replay_support
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_replay_support)
+
+add_executable(
+    bmd_projection_m5_replay_tests
+    m5/replay/replay_fixture_test.cpp
+    m5/replay/replay_manifest_test.cpp
+    m5/replay/replay_parser_test.cpp
+)
+target_compile_definitions(
+    bmd_projection_m5_replay_tests
+    PRIVATE BMD_M5_FIXTURE_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/m5/fixtures/replay_v1"
+)
+target_link_libraries(
+    bmd_projection_m5_replay_tests
+    PRIVATE
+        bmd_projection_m5_replay_support
+        GTest::gtest_main
+)
+set_target_properties(
+    bmd_projection_m5_replay_tests
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_replay_tests)
+
 add_executable(
     bmd_projection_tests
     numeric/decimal_format_test.cpp
@@ -180,6 +226,7 @@ bmd_projection_apply_project_options(bmd_projection_m3_allocation_failure_tests)
 include(GoogleTest)
 gtest_discover_tests(bmd_projection_tests)
 gtest_discover_tests(bmd_projection_m3_allocation_failure_tests)
+gtest_discover_tests(bmd_projection_m5_replay_tests)
 if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
     gtest_discover_tests(bmd_projection_proto_adapter_tests)
     gtest_discover_tests(bmd_projection_proto_adapter_allocation_failure_tests)

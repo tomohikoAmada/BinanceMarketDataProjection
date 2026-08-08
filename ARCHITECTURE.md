@@ -42,7 +42,8 @@ benchmark infrastructure as test/benchmark-only artifacts outside Core. It intro
 production public API, no production dependency, and no container change; validation and
 performance evidence are recorded separately. The M5 architecture was independently reviewed
 and APPROVED (ADR-0007 ACCEPTED); pre-implementation decisions OD-M5-001 and OD-M5-002 are
-CLOSED; M5 implementation is authorized on merge of the decision/CI-policy PR.
+CLOSED; M5 implementation is authorized and Phase 1 is test-only infrastructure pending independent
+review.
 OD-M5-003 remains SPIKE-RESOLVABLE.
 
 Adapter owners are bound to the conversion `NumericSpec` and sequence policy and must check both
