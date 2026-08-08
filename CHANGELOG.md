@@ -6,6 +6,35 @@ All notable changes will be recorded here.
 
 ### Added
 
+- M5 architecture approval recorded: independent M5 architecture review **APPROVED**
+  (focused re-review of corrected head `9fff05ca8333d89d28d89c794d65255b56578715`,
+  reviewed CI `31245814229` — PASS, 16/16). Findings M5-AR-001 through M5-AR-010:
+  **CLOSED**. P0: **0**. P1 Design: **0**. ADR-0007: **ACCEPTED**. M5 design:
+  **APPROVED / PENDING MERGE**. M5 implementation remains **NOT STARTED / NOT
+  AUTHORIZED**, blocked by OD-M5-001 and OD-M5-002 (separate pre-implementation
+  decision task required). M6 remains NOT STARTED.
+
+- M5 differential validation and performance design: layered differential oracle
+  (ADR-0007 ACCEPTED), canonical versioned replay
+  event-log grammar with ADAPTER_METADATA/HOST_QUALITY quality-domain separation and
+  adapter dimension scoping, canonical text format rules (UTF-8/LF/whitespace/token
+  semantics), OperationObservation differential model (observable operation results
+  plus semantic checkpoints), cross-job semantic manifest transport architecture
+  with artifact fan-in and fail-closed behavior, dataset size tiers, determinism and
+  cross-compiler semantic manifests, replay/differential fuzz with structured byte
+  decoding, Google Benchmark methodology, allocation/memory instrumentation, and a
+  benchmark-only container spike with batch-aware sorted-vector candidate distinction.
+  Initial independent architecture review returned CHANGES REQUESTED (P0: 0,
+  P1 design: 1, P1 implementation: 2, P2: 7). Corrected findings: M5-AR-001,
+  M5-AR-002, M5-AR-003 (mandatory), M5-AR-004 through M5-AR-010 (P2).
+  Design only; no implementation.
+
+### Changed
+
+- M4 recorded as COMPLETE on `main`: merged through PR #8 at
+  `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4`, post-merge main CI `31242162782` — 16/16 PASS.
+  The three deferred M4 P2 findings remain open and non-blocking.
+
 - M4 optional `BinanceMarketDataProjection::ProtoAdapter` component with strict owning conversion
   for Contracts `ExchangeDepthSnapshot`/`DepthUpdate`, checked `NumericSpec` and sequence-policy
   binding, deterministic four-state `LocalOrderBookSnapshot` output, explicit gap/recovery/context

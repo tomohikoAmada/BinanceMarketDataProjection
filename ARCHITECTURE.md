@@ -5,8 +5,8 @@
 BinanceMarketDataProjection is a strategy-independent, deterministic, replayable, single-writer,
 embedded C++20 library. Live ingestion and historical replay invoke the same core logic. M1 added
 exact numeric and domain primitives, M2 added the deterministic order book, M3 added
-market-specific sequence and projection lifecycle state, and the M4 implementation adds
-an optional Protobuf message adapter outside Core.
+market-specific sequence and projection lifecycle state, and M4 added an optional Protobuf message
+adapter outside Core, merged and verified on `main`.
 
 ## Explicit non-responsibilities
 
@@ -30,11 +30,19 @@ Optional Protobuf Adapter Target
 Contracts-generated Protobuf snapshot
 ```
 
-The optional adapter boundary is implemented, independently reviewed, and approved pending merge. Core remains independently
+The optional adapter boundary is implemented, independently reviewed, merged through PR #8, and
+verified on `main`. Core remains independently
 buildable, installable, and usable without Protobuf, generated Contracts code, or gRPC. The adapter
 maps messages and explicit context; it does not own networking, clocks, buffering, recovery, or
 Gateway lifecycle. Gateway/gRPC runtime remains M6 scope. The C-M4-001 prerequisite is closed and
 the exact Contracts package metadata is validated only when the optional component is requested.
+
+M5 (Differential Validation and Performance) adds replay/differential/fuzz validation and
+benchmark infrastructure as test/benchmark-only artifacts outside Core. It introduces no new
+production public API, no production dependency, and no container change; validation and
+performance evidence are recorded separately. The M5 architecture was independently reviewed
+and APPROVED (ADR-0007 ACCEPTED); implementation remains not started and not authorized pending
+the OD-M5-001 and OD-M5-002 open decisions.
 
 Adapter owners are bound to the conversion `NumericSpec` and sequence policy and must check both
 against the target Core instance before mutation. Schema baseline/fingerprint identity is distinct

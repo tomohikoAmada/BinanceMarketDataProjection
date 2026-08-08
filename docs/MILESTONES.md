@@ -158,9 +158,9 @@ History storage. M4 owns Protobuf/wire adaptation and snapshot contract producti
 runtime integration. Derived market prices, matching, orders, strategy, risk, and trading remain out
 of scope.
 
-## M4 Snapshots and Protobuf Boundary — APPROVED / PENDING MERGE
+## M4 Snapshots and Protobuf Boundary — COMPLETE
 
-Implementation status: **APPROVED / PENDING MERGE**
+Implementation status: **COMPLETE**
 
 ### Acceptance status
 
@@ -174,11 +174,24 @@ External architecture review: **APPROVED**. Round 1 findings: **3 CLOSED**. Arch
 Independent Implementation Review: **APPROVED**.
 
 Implementation blockers: **0**. C-M4-001: **CLOSED / SATISFIED**. OD-M4-001: **CLOSED**.
-Contracts integration: **VERIFIED**. M4 remains **OPEN / PENDING MERGE** and is not
-merged.
+Contracts integration: **VERIFIED**. M4 is **COMPLETE** on `main`.
 
 Reviewed Head: `390cdceb013bc05878db090bdedc40068c03c79c`.
 Reviewed CI: `31193311386` — 16/16 PASS.
+
+### Merge completion record
+
+- Pull request: #8 — Implement M4 snapshots and Protobuf boundary
+- Final approved PR head: `efddcd2fbe6901a7506ae84aee5586be773a2835`
+- Squash merge commit: `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4`
+- Merge time: `2026-08-08T05:39:08Z`
+- Main CI run: `31242162782`
+- Main CI event: `push`
+- Main CI result: `16/16 PASS`
+- M4 implementation status: `COMPLETE`
+
+The three deferred P2 findings below remain DEFERRED / NON-BLOCKING. M5 design assigns
+M4-IIR-3 to M5 corpus work and defers M4-IIR-1/M4-IIR-2 to maintenance; none are closed here.
 
 ### Deferred P2 findings
 
@@ -231,6 +244,38 @@ No Contracts change, gRPC runtime, Gateway lifecycle, network ownership, system-
 generated-code copy, or M5/M6 work is included. `MarketStateSnapshot` generation and derived market
 calculations remain deferred unless separately designed and approved.
 
+## M5 Differential Validation and Performance — APPROVED / PENDING MERGE / NOT IMPLEMENTED
+
+Implementation status: **NOT IMPLEMENTED / NOT AUTHORIZED**
+
+### Design status
+
+The M5 architecture is designed in
+`docs/M5_DIFFERENTIAL_VALIDATION_AND_PERFORMANCE_DESIGN.md` and ADR-0007 is **ACCEPTED**.
+The design covers layered differential validation with operation-result observation
+(OperationObservation model), canonical replay fixtures with explicit canonical text format
+rules, determinism and cross-compiler semantic manifests with artifact fan-in transport,
+replay/differential fuzzing, benchmark methodology, allocation/memory characterization, and the
+benchmark-only container spike with explicit decision criteria.
+
+Independent architecture review: **APPROVED** (focused re-review of corrected head
+`9fff05ca8333d89d28d89c794d65255b56578715`; reviewed CI `31245814229` — PASS).
+Findings M5-AR-001 through M5-AR-010: **CLOSED**. P0: **0**. P1 Design: **0**.
+No M5 implementation, production change, or container migration is authorized by the design.
+Implementation authorization remains blocked by OD-M5-001 and OD-M5-002 (open decisions to be
+closed in a separate pre-implementation decision task).
+
+### Deferred M4 P2 findings
+
+The three deferred M4 P2 findings remain open and non-blocking. M5 design dispositions:
+M4-IIR-1 and M4-IIR-2 are deferred to maintenance; M4-IIR-3 is incorporated into M5 corpus work.
+These are design decisions only and close nothing.
+
+### Non-goals
+
+M5 does not implement live networking, Gateway runtime, gRPC, queues, backpressure, reconnect,
+strategy, risk, trading, persistence, Python binding, or production container migration.
+
 ## Development map
 
 1. **M0 Repository Foundation** — Build, test, installation, CI, and governance baseline.
@@ -241,11 +286,11 @@ calculations remain deferred unless separately designed and approved.
 4. **M3 Sequence and Projection State — COMPLETE** —
    Market-specific sequencing, bootstrap validation, gap detection, reset logic, and synchronized
    projection lifecycle.
-5. **M4 Snapshots and Protobuf Boundary — APPROVED / PENDING MERGE** — Optional
-   wire-format adapter outside Core; snapshot production boundary. Not complete until independent
-   implementation review and acceptance.
-6. **M5 Differential Validation and Performance** — Replay/differential/fuzz validation; benchmark
-   with representative workloads.
+5. **M4 Snapshots and Protobuf Boundary — COMPLETE** — Optional
+   wire-format adapter outside Core; snapshot production boundary. Merged through PR #8 at
+   `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4`; main CI `31242162782` — 16/16 PASS.
+6. **M5 Differential Validation and Performance — APPROVED / PENDING MERGE / NOT IMPLEMENTED** —
+   Replay/differential/fuzz validation; benchmark with representative workloads.
 7. **M6 Gateway Integration** — Production host embedding surface; live ingestion.
 8. **M7 Platform Hardening and Acceptance** — Harden architectures, toolchains; end-to-end acceptance.
 
@@ -253,7 +298,8 @@ calculations remain deferred unless separately designed and approved.
 
 - **Determinism, property tests, and fuzz** are required from M1 onward, not deferred wholesale.
 - **Python Binding** is an optional History Track; not a required milestone deliverable.
-- **Container choice** is a performance spike within M5; not a standalone milestone.
+- **Container choice** is a performance spike within M5; not a standalone milestone. Migration
+  requires evidence, an explicit decision record/ADR, full regression, and independent review.
 - Detailed API design belongs in per-milestone documents written at the start of each phase.
 
 ## Core architecture principles

@@ -3,8 +3,8 @@
 ## Status
 
 - Design status: **APPROVED / MERGED**
-- Implementation status: **APPROVED / PENDING MERGE**
-- M4 status: **OPEN / PENDING MERGE**
+- Implementation status: **COMPLETE**
+- M4 status: **COMPLETE**
 - ADR status: **ACCEPTED**
 - External architecture review: **APPROVED**
 - C-M4-001: **CLOSED / SATISFIED**
@@ -16,9 +16,22 @@
 - Contracts baseline: `01d76a41929f36d89573159f5f458f9f1e378ada`
 
 This document remains the accepted M4 architecture. The API, target, package component, identity
-checks, tests, and fuzz boundary described below now have an author implementation candidate on
-`feat/m4-snapshots-protobuf-boundary`. This is not an M4 completion claim; independent implementation
-review remains mandatory.
+checks, tests, and fuzz boundary described below were implemented on
+`feat/m4-snapshots-protobuf-boundary`, independently reviewed, and merged through PR #8. The
+merge completion record appears directly below.
+
+## Merge completion record
+
+- Pull request: #8 — Implement M4 snapshots and Protobuf boundary
+- Final approved PR head: `efddcd2fbe6901a7506ae84aee5586be773a2835`
+- Squash merge commit: `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4`
+- Merge time: `2026-08-08T05:39:08Z`
+- Main CI run: `31242162782`
+- Main CI event: `push`
+- Main CI result: `16/16 PASS`
+- M4 implementation status: `COMPLETE`
+
+The three deferred P2 findings (M4-IIR-1, M4-IIR-2, M4-IIR-3) remain DEFERRED / NON-BLOCKING.
 
 ## External architecture review record
 
@@ -1512,7 +1525,9 @@ Independent M4 Implementation Review: **APPROVED**.
 Reviewed Head: `390cdceb013bc05878db090bdedc40068c03c79c`.
 Reviewed CI: `31193311386` — 16/16 PASS.
 
-M4 is **OPEN / PENDING MERGE** and must not be merged or marked complete by the finalization task.
+M4 was merged through PR #8 at `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4`; post-merge main CI
+`31242162782` passed 16/16. M4 is **COMPLETE** on `main` (see the merge completion record at the
+top of this document).
 
 ## Independent Implementation Review
 
