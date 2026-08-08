@@ -6,6 +6,20 @@ All notable changes will be recorded here.
 
 ### Added
 
+- M5 differential validation and performance design: layered differential oracle
+  (ADR-0007 PROPOSED), canonical versioned replay event-log grammar with provenance manifests,
+  dataset size tiers, determinism and cross-compiler semantic manifests, replay/differential fuzz
+  strategy with structural corpus categories, Google Benchmark methodology, allocation and memory
+  instrumentation design, benchmark-only container spike with semantic conformance gate and
+  decision criteria, CI/reporting strategy, and the M4-IIR-3 incorporation disposition. Design
+  only; no implementation.
+
+### Changed
+
+- M4 recorded as COMPLETE on `main`: merged through PR #8 at
+  `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4`, post-merge main CI `31242162782` — 16/16 PASS.
+  The three deferred M4 P2 findings remain open and non-blocking.
+
 - M4 optional `BinanceMarketDataProjection::ProtoAdapter` component with strict owning conversion
   for Contracts `ExchangeDepthSnapshot`/`DepthUpdate`, checked `NumericSpec` and sequence-policy
   binding, deterministic four-state `LocalOrderBookSnapshot` output, explicit gap/recovery/context

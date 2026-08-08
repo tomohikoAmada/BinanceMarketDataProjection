@@ -1,17 +1,18 @@
 # BinanceMarketDataProjection
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
-market-data projection core. M1 through M3 are complete. The optional M4 snapshots/Protobuf boundary
-is **approved pending merge**; M4 is not merged.
+market-data projection core. M1 through M4 are complete on `main`; M5 (Differential Validation and
+Performance) is designed but not implemented.
 
 This is an unofficial project and is not affiliated with, endorsed by, or sponsored by Binance.
 This module does not connect to Binance, use API keys, place orders, or contain trading strategies.
 
 > M1 introduced strict decimal parsing, strongly typed signed 64-bit units, exact rescaling, and
-> deterministic formatting. M2 subsequently added the deterministic order book core, and M3 added
-> sequence validation and projection lifecycle state. M4 adds only the optional Contracts message
-> adapter and local-order-book snapshot production boundary; runtime Gateway/History integration,
-> networking, persistence, market-state derivation, and trading remain unimplemented.
+> deterministic formatting. M2 subsequently added the deterministic order book core, M3 added
+> sequence validation and projection lifecycle state, and M4 added the optional Contracts message
+> adapter and local-order-book snapshot production boundary. M5 adds validation and benchmark
+> infrastructure only; runtime Gateway/History integration, networking, persistence,
+> market-state derivation, and trading remain unimplemented.
 
 ## Architecture boundary
 
@@ -227,15 +228,20 @@ fuzz/          libFuzzer harnesses and checked-in seed corpus
 
 ## Milestone status
 
-M1, M2, and M3 are COMPLETE. M4 is **APPROVED / PENDING MERGE** and
-remains **OPEN / PENDING MERGE**. The Contracts reference baseline is
-`01d76a41929f36d89573159f5f458f9f1e378ada`.
+M1, M2, M3, and M4 are COMPLETE. M4 was merged through PR #8 at
+`ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4` with post-merge main CI `31242162782` — 16/16 PASS.
+M5 (Differential Validation and Performance) is **DESIGN IN PROGRESS / NOT IMPLEMENTED**; its
+design covers layered differential validation, canonical replay fixtures, determinism and
+cross-compiler semantic manifests, replay/differential fuzzing, benchmark methodology,
+allocation/memory characterization, and a benchmark-only container spike. The Contracts reference
+baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
 
 ## Known limitations
 
-- The repository includes numeric primitives, a deterministic L2 market-by-price order book, and
-  the completed M3 sequence/projection implementation on `main`.
-- M4 is **APPROVED / PENDING MERGE**; M5 and M6 are not started.
+- The repository includes numeric primitives, a deterministic L2 market-by-price order book, the
+  completed M3 sequence/projection implementation, and the merged optional M4 Protobuf adapter on
+  `main`.
+- M5 is **DESIGN IN PROGRESS / NOT IMPLEMENTED**; M6 is not started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.
 - Tick-size, step-size, signed-decimal, and symbol-metadata validation remain outside the implemented
