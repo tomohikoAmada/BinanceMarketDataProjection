@@ -19,7 +19,7 @@ void expect_category(const replay::Result<std::monostate>& result, replay::Error
     EXPECT_EQ(std::get<replay::ParseError>(result).category, category);
 }
 
-void expect_parse_error(std::string text, replay::ErrorCategory category) {
+void expect_parse_error(std::string_view text, replay::ErrorCategory category) {
     const auto result = replay::parse_replay_log(text);
     ASSERT_TRUE(std::holds_alternative<replay::ParseError>(result));
     EXPECT_EQ(std::get<replay::ParseError>(result).category, category);
