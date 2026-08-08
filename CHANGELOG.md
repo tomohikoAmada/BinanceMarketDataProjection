@@ -29,6 +29,16 @@ All notable changes will be recorded here.
   M5-AR-002, M5-AR-003 (mandatory), M5-AR-004 through M5-AR-010 (P2).
   Design only; no implementation.
 
+- M5 pre-implementation decisions closed: OD-M5-001 (representative transcript corpus
+  acquisition plan — Recorder M21.4 validated 24h BTCUSDT Spot + USD-M perpetual live Raw
+  capture as M5 corpus source v1) and OD-M5-002 (free standard GitHub-hosted runners only;
+  docs-only CI skip via `paths-ignore`; superseded-run cancellation with
+  `concurrency.cancel-in-progress`; scheduled medium: <= weekly, 45 min timeout, non-blocking;
+  container spike: manual only, 60 min timeout; artifact ceiling: 200 MiB/run, 7-day retention;
+  no paid larger runners; no self-hosted public-repo runner). OD-M5-003 remains
+  SPIKE-RESOLVABLE. M5 implementation authorized on merge of the decision/CI-policy PR. M6
+  remains NOT STARTED. See `docs/M5_PREIMPLEMENTATION_DECISIONS.md`.
+
 ### Changed
 
 - M4 recorded as COMPLETE on `main`: merged through PR #8 at

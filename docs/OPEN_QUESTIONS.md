@@ -23,18 +23,23 @@ choice via PIMPL; changing the internal map type does not require API changes. A
 migration would require a separate decision record/ADR, full M2-M5 regression, and independent
 review. `KEEP std::map` is a valid outcome.
 
-## O-P004: Representative transcript corpus
+## O-P004: Representative transcript corpus — CLOSED (OD-M5-001)
 
-M5 medium/large workload tiers require externally recorded, provenance-verified Binance-style
-transcripts (source, market, symbol, capture time range, event count, conversion version, SHA-256,
-schema identity). Selection of the exact corpus is a blocking open decision
-(OD-M5-001) requiring a data-acquisition plan; it does not block the small-tier CI validation.
+M5 recorded corpus v1 is sourced from the Recorder M21.4 validated live Raw capture
+(2026-08-05T15:09:30.200566Z → 2026-08-06T15:09:30.200566Z, BTCUSDT Spot + USD-M perpetual).
+Primary medium fixtures: M5-REC-SPOT-BTCUSDT-V1 and M5-REC-USDM-BTCUSDT-V1, each targeting
+100,000 valid replay operations after synchronization. Large corpus: full 24h window, manual
+only. Corpus materialization is pending M5 implementation. See
+`docs/M5_PREIMPLEMENTATION_DECISIONS.md` for provenance, selection rules, and storage policy.
 
-## O-P005: Scheduled medium-tier CI budget
+## O-P005: Scheduled medium-tier CI budget — CLOSED (OD-M5-002)
 
-Medium-tier scheduled runs and the container spike need a documented runner/artifact budget.
-This blocking decision (OD-M5-002) is resolved during M5 implementation planning, before the
-scheduled workflow is enabled.
+Free standard GitHub-hosted runners only. Docs-only changes skip full CI via `paths-ignore`.
+Superseded runs cancel automatically with `concurrency.cancel-in-progress`. Scheduled medium:
+<= weekly, 1 primary Ubuntu timing job, 45 min timeout, non-blocking results. Container spike:
+manual only, 60 min timeout. Artifact ceiling: 200 MiB/run, 7-day retention. Larger runners:
+NOT ALLOWED. Self-hosted public-repo runner: NOT APPROVED. See
+`docs/M5_PREIMPLEMENTATION_DECISIONS.md`.
 
 ## O-P006: Semantic manifest granularity
 
