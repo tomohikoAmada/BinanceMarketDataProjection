@@ -7,12 +7,19 @@ All notable changes will be recorded here.
 ### Added
 
 - M5 differential validation and performance design: layered differential oracle
-  (ADR-0007 PROPOSED), canonical versioned replay event-log grammar with provenance manifests,
-  dataset size tiers, determinism and cross-compiler semantic manifests, replay/differential fuzz
-  strategy with structural corpus categories, Google Benchmark methodology, allocation and memory
-  instrumentation design, benchmark-only container spike with semantic conformance gate and
-  decision criteria, CI/reporting strategy, and the M4-IIR-3 incorporation disposition. Design
-  only; no implementation.
+  (ADR-0007 PROPOSED / PENDING FOCUSED RE-REVIEW), canonical versioned replay
+  event-log grammar with ADAPTER_METADATA/HOST_QUALITY quality-domain separation and
+  adapter dimension scoping, canonical text format rules (UTF-8/LF/whitespace/token
+  semantics), OperationObservation differential model (observable operation results
+  plus semantic checkpoints), cross-job semantic manifest transport architecture
+  with artifact fan-in and fail-closed behavior, dataset size tiers, determinism and
+  cross-compiler semantic manifests, replay/differential fuzz with structured byte
+  decoding, Google Benchmark methodology, allocation/memory instrumentation, and a
+  benchmark-only container spike with batch-aware sorted-vector candidate distinction.
+  Initial independent architecture review returned CHANGES REQUESTED (P0: 0,
+  P1 design: 1, P1 implementation: 2, P2: 7). Corrected findings: M5-AR-001,
+  M5-AR-002, M5-AR-003 (mandatory), M5-AR-004 through M5-AR-010 (P2).
+  Design only; no implementation.
 
 ### Changed
 

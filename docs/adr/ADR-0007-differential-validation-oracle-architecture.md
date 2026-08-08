@@ -1,7 +1,8 @@
 # ADR-0007: Differential Validation Oracle Architecture
 
-- Status: PROPOSED
+- Status: PROPOSED / PENDING FOCUSED RE-REVIEW
 - Date: 2026-08-08
+- Correction date: 2026-08-08 (M5-AR-001: OperationObservation semantic equality)
 
 ## Context
 
@@ -24,10 +25,15 @@ production pipeline and the reference pipeline through their public APIs.
   and `std::vector` only.
 - The replay event log is a versioned canonical text format with a manifest (SHA-256, provenance);
   it is the normalized operation vocabulary shared with a future M6 Host.
-- Semantic equality is the correctness oracle. Byte equality is used only to prove determinism
-  within one binary under a pinned Protobuf runtime, never as a cross-toolchain correctness claim.
-- Cross-toolchain correctness is proven by identical SHA-256 semantic digests over a canonical
-  checkpoint stream.
+- Semantic equality is the correctness oracle. Semantic equality means equality of the
+  canonical per-event OperationObservation stream: the observable operation result/error
+  plus the post-operation semantic checkpoint, for every event in the replay. State/checkpoint
+  equality alone is insufficient — two implementations can return different observable results
+  (e.g., IgnoredStale vs IgnoredDuplicate) while coincidentally reaching identical book state.
+  Byte equality is used only to prove determinism within one binary under a pinned Protobuf
+  runtime, never as a cross-toolchain correctness claim.
+- Cross-toolchain correctness is proven by identical SHA-256 semantic digests over the
+  canonical OperationObservation stream.
 - A production order-book container change requires a separate, later decision (proposed as
   ADR-0008 at migration time) backed by the benchmark evidence and decision criteria defined in the
   M5 design.

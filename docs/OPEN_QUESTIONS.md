@@ -38,8 +38,10 @@ scheduled workflow is enabled.
 
 ## O-P006: Semantic manifest granularity
 
-The cross-compiler semantic manifest digest granularity (per-event versus per-checkpoint) is a
-blocking open decision (OD-M5-003) confirmed during the performance spike.
+The cross-compiler semantic manifest digest granularity (per-event versus per-checkpoint) is
+resolvable during the performance spike (OD-M5-003). The default is per-event for tiny fixtures
+and per-checkpoint for small. The cross-job transport architecture is fixed; the granularity
+choice does not affect manifest schema identity.
 
 ## O-P007: Benchmark threshold and artifact retention
 

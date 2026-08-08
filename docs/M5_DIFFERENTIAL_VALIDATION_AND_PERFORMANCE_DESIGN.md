@@ -2,10 +2,13 @@
 
 ## Status
 
-- Design status: **PROPOSED / PENDING INDEPENDENT ARCHITECTURE REVIEW**
-- Implementation status: **NOT STARTED**
-- ADR status: **PROPOSED** (ADR-0007)
+- Design status: **CORRECTED / PENDING INDEPENDENT ARCHITECTURE RE-REVIEW**
+- Implementation status: **NOT STARTED / NOT AUTHORIZED**
+- ADR status: **PROPOSED / PENDING FOCUSED RE-REVIEW** (ADR-0007)
 - Design date: 2026-08-08
+- Initial independent architecture review: **CHANGES REQUESTED** (P0: 0, P1 design: 1, P1 implementation: 2, P2: 7)
+- Correction date: 2026-08-08
+- Corrected findings: M5-AR-001, M5-AR-002, M5-AR-003 (mandatory); M5-AR-004 through M5-AR-010 (P2, documentation-only)
 - Projection base: `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4` (M4 merge commit)
 - M4 post-merge CI: `31242162782` — completed / success, 16/16
 - Contracts baseline: `01d76a41929f36d89573159f5f458f9f1e378ada`
@@ -214,14 +217,28 @@ DEPTH_UPDATE <first_update_id> <final_update_id> [pu=<id>] <levels>
 REBASELINE <last_update_id> <bids> <asks>
 RESET
 SNAPSHOT_REQUEST <depth_limit|-> <host_quality_facts...> <snapshot_context...>
-HOST_QUALITY <facts...>            # attached to the following DEPTH_UPDATE in adapter mode
-MALFORMED_RANGE <first> <final>    # negative event: must fail domain construction, never reach apply
+ADAPTER_METADATA <facts...>         # adapter-mapped inbound wire quality for the following DEPTH_UPDATE
+MALFORMED_RANGE <first> <final>     # negative event: must fail domain construction, never reach apply
 ```
 
 Levels are spelled as decimal strings exactly as a Host would produce them (`price,quantity`
 pairs), so the replay exercises M1 exact parsing rather than bypassing it. Prices/quantities may be
 given at any textual precision; exact rescaling rules apply. Bid-then-ask ordering follows the M4
 canonical merge order.
+
+Quality facts in the replay grammar represent three distinct M4 quality domains:
+
+| Domain | Replay event | Storage target | Semantics |
+|---|---|---|---|
+| Inbound wire quality | `ADAPTER_METADATA` before `DEPTH_UPDATE` | `AdaptedMetadata::observed_quality` | Mapped from original Contracts `QualityFlag` values by the adapter conversion; captures what the adapter observed on the inbound wire message |
+| Host-observed quality | `<host_quality_facts...>` inside `SNAPSHOT_REQUEST` | `SnapshotOptions::host_quality_facts` | Asserted by the Host at snapshot-production time; separate from inbound-wire quality |
+| Core-derived quality | Not represented in the replay (derived by Core from book/projection state) | Emitted in snapshot output only | `CROSSED_BOOK`, `SEQUENCE_GAP`, `SNAPSHOT_BRIDGE_PENDING` — never provided as input |
+
+`ADAPTER_METADATA` is state/context that precedes a `DEPTH_UPDATE` in adapter-mode replay.
+It provides the quality facts that the adapter would have mapped from inbound wire `QualityFlag`
+values during `adapt_depth_update`. In Core-only replay mode, `ADAPTER_METADATA` events are
+ignored. This separation preserves M4's three-domain quality architecture without conflating
+inbound, host, and Core quality.
 
 Coverage requirements (minimum set the grammar must represent):
 
@@ -236,11 +253,28 @@ gap events
 bridge behavior
 duplicate/stale updates
 out-of-order input
-Host quality facts
-snapshot requests
-explicit timestamps/context
+adapter-metadata quality facts (inbound wire quality)
+host-quality facts (snapshot context)
+snapshot requests (with explicit identity, producer, timestamps, depth limit, gap context)
 malformed-range negative events
 ```
+
+### Adapter dimension scoping
+
+The replay grammar exercises the full M4 adapter boundary through `ADAPTER_METADATA` and
+`SNAPSHOT_REQUEST` events. The table below maps each M4 adapter function to its replay
+representation:
+
+| M4 API function | Replay event(s) | Fields in differential scope | Fields unit/fuzz only |
+|---|---|---|---|
+| `adapt_exchange_depth_snapshot` | `INSTALL_BASELINE` + `ADAPTER_METADATA` | Price/quantity decimal parsing, venue, market, symbol, last_update_id, `observed_quality` mapping | Wire schema version, producer version, request_id, connection_id (non-semantic wire identity fields) |
+| `adapt_depth_update` | `DEPTH_UPDATE` + optional `ADAPTER_METADATA` | Price/quantity decimal parsing, first/final update IDs, `pu`, venue, market, symbol, `observed_quality` mapping | Wire schema version, producer version, request_id (non-semantic wire identity fields) |
+| `install_into` / `apply_to` | `INSTALL_BASELINE`, `DEPTH_UPDATE` | `NumericSpec` + policy binding check, `InstallResult`/`ApplyResult` | Internal adapter span-view validity (validated by construction in the replay driver) |
+| `make_local_order_book_snapshot` | `SNAPSHOT_REQUEST` | `depth_limit`, `host_quality_facts`, `SnapshotContext` (identity, producer, source, timestamps, gap recovery state), output snapshot semantics, eligibility rules | Protobuf wire serialization byte equality (non-deterministic across compilers) |
+
+Fields not representable in the replay grammar (wire schema version, request_id, connection_id,
+non-semantic producer metadata) are validated through M4 unit and property tests, not through
+differential replay.
 
 ### Manifest
 
@@ -266,6 +300,163 @@ The timed portion of replay benchmarks consumes the in-memory sequence; fixture 
 inside a timed region. The normalized sequence is what a future M6 Host can produce from live
 normalization: one normalized op per canonical event, so live ingestion and replay invoke the same
 Core semantics (Section: Live/replay equivalence).
+
+## Canonical text format
+
+The replay log, manifest, and observation stream are all canonical text formats. The rules below
+apply to every canonical text artifact produced or consumed by M5.
+
+### Byte encoding and line discipline
+
+```text
+Encoding:            UTF-8 (no BOM)
+Line ending:         LF (0x0A) only — carriage return (0x0D) is forbidden
+Final newline:       required — every canonical text file ends with exactly one LF
+Blank lines:         forbidden (every line is a header, event, or record)
+Leading whitespace:  forbidden on any line
+Trailing whitespace: forbidden on any line
+Tabs:                forbidden — spaces only for intra-line separation
+Comment lines:       forbidden in the canonical event/observation section;
+                     if present in a header, they must be explicitly prefixed
+                     with a defined comment marker and their canonical treatment
+                     documented
+```
+
+### Token separation
+
+```text
+Token separator:  single ASCII space (0x20)
+Multiple spaces:  non-canonical — the parser rejects them in checked-in fixtures
+```
+
+### Integer canonical spelling
+
+```text
+Format:      ASCII decimal digits only
+Sign:        no leading '+' sign; negative sign '-' only for fields intentionally
+             representing negative values (not applicable to IDs)
+Zero:        canonical zero is "0" — "-0" forbidden, leading zeros forbidden
+             ("001" is invalid)
+Range:       0 .. UINT64_MAX for unsigned IDs; exact decimal representation
+Hex/octal/scientific notation:  forbidden
+```
+
+### Decimal spelling
+
+Replay fixtures intentionally test unusual but valid inbound decimal spellings
+(leading zeros, trailing zeros, different fractional precisions). Therefore the
+**replay input log preserves the exact intended decimal token spelling** as
+supplied by the fixture author or generator. The replay parser does not
+canonicalize decimal tokens before hashing.
+
+```text
+Allowed forms:  positive decimal strings matching the M1 parser grammar
+                (no sign, optional fractional part with '.')
+Explicit tests: trailing zeros, leading zeros, exact-precision edge cases
+                are preserved verbatim in the fixture
+```
+
+For the **canonical observation stream** (output), semantic decimal values use
+the M1 canonical fixed format:
+```text
+integer part in decimal with no leading zeros (except zero itself)
+decimal point
+fractional part with trailing zeros preserved according to NumericSpec scale
+no sign for positive values
+```
+
+### Enum and event symbolic spelling
+
+```text
+Event names:     uppercase ASCII tokens: INSTALL_BASELINE, DEPTH_UPDATE,
+                 REBASELINE, RESET, SNAPSHOT_REQUEST, ADAPTER_METADATA,
+                 MALFORMED_RANGE
+Market:          Spot | UsdMPerpetual
+Policy:          Spot | UsdMPerpetual
+Quality facts:   stable enum member names (e.g., Duplicate, OutOfOrder,
+                 OrderBookResync, ...) — see the HostQualityFact enum
+Result dispositions:  Applied, IgnoredStale, IgnoredDuplicate, GapDetected,
+                      RejectedWrongState, Installed, RejectedWrongState
+Adapter errors:  stable AdapterErrorCode enum member names
+All:             case-sensitive, no locale-dependent parsing
+```
+
+Unknown wire enum numeric values for adapter coverage are representable through an
+explicit numeric field in the fixture if needed.
+
+### Optional-value syntax
+
+```text
+Absence:  "-" (single hyphen)
+Presence: the value
+```
+The hyphen token "-" cannot collide with legitimate value tokens because no numeric
+or enum token is a single hyphen.
+
+### Timestamp and context fields
+
+```text
+generated_time_utc_ns:       unsigned decimal nanoseconds
+generated_monotonic_ns:      unsigned decimal nanoseconds, or "-" when absent
+detected_at_utc_ns:          unsigned decimal nanoseconds
+Timestamps use the units defined by the M4 SnapshotContext API;
+no new time semantics are invented
+```
+
+### Lists and ordering
+
+```text
+Level list:        comma-separated price,quantity pairs; bid-then-ask canonical
+                   merge order; price order within each side is the fixture's
+                   intended input order
+Quality-fact list: space-separated enum names in HostQualityFact integer-value
+                   ascending order for observation stream; fixture input order
+                   is preserved in the replay log
+Empty list:        "-" (consistent with optional-value absence)
+Duplicates:        forbidden in observation stream; allowed in replay log if
+                   semantically meaningful for the fixture
+```
+
+### Canonical manifest serialization
+
+Fixture identity uses the canonical replay-log bytes. The manifest is stored as
+JSON AND its scalar identity-bearing fields (fixture hash, schema version, market,
+symbol, NumericSpec, policy) are checked during identity validation. Two manifest
+files that are logically equal but byte-different produce the same identity as long
+as the hash of the canonical replay log matches.
+
+### Hash domain separation
+
+```text
+ReplayLogSHA256 = SHA-256(exact canonical replay-log bytes)
+FixtureIdentity = versioned tuple: (replay-log schema version, ReplayLogSHA256)
+
+The manifest includes metadata (market, symbol, NumericSpec, policy) that affects
+semantic interpretation. The fixture hash is the ReplayLogSHA256, not the manifest
+hash. Two replay logs with identical bytes but different manifest metadata (and
+therefore different expected semantics) would share a FixtureIdentity only if the
+metadata difference is intentional (e.g., same log replayed under a different
+policy) — in that case the workload identity is (FixtureIdentity, metadata), not
+FixtureIdentity alone.
+```
+
+### Observation stream canonicalization
+
+The canonical OperationObservation stream uses the same foundational rules:
+UTF-8, LF, single-space token separation, canonical integer spelling, canonical
+M1 decimal format for output values, stable enum names, explicit optional presence
+("-"), and quality-fact ordering by integer value.
+
+Unlike the replay input log, observation output decimal values are canonicalized
+to the M1 fixed format. This ensures the semantic digest is reproducible across
+compilers and platforms.
+
+### Parser behavior for checked-in fixtures
+
+The canonical replay-log parser rejects non-canonical input for checked-in fixtures.
+A separate offline converter accepts non-canonical source input and emits canonical
+replay-log v1. The replay driver does not silently normalize whitespace or line endings
+before hashing — it rejects.
 
 ## Reference model
 
@@ -380,34 +571,146 @@ under Debug and Release builds
 across supported compilers (Ubuntu GCC, Ubuntu Clang, macOS AppleClang)
 ```
 
-Result requirement: the recorded semantic checkpoint sequence must be identical in every case.
+Result requirement: the recorded semantic observation stream must be identical in every case.
 
-### Recorded digests
+### Differential observation model
 
-- A **canonical checkpoint stream** is defined: for every event (or checkpoint interval), the
-  production `ProjectionCheckpoint` (status, last ID, gap presence/fields, synchronized visibility,
-  full ordered bid/ask levels) plus, for snapshot requests, the semantic snapshot fields
-  (synchronized flag, ordered levels, quality flags in canonical rank, gap descriptor fields,
-  optional presence) are serialized as canonical text.
-- The stream is hashed with SHA-256 into the **semantic result digest** for the workload.
-- Determinism within a toolchain is proven by identical digests across runs/processes/build types.
+The differential oracle observes every canonical replay event as an **OperationObservation**.
+This is the fundamental unit of correctness comparison.
+
+An `OperationObservation` for event N contains:
+
+```text
+event index
+event kind (INSTALL_BASELINE, DEPTH_UPDATE, REBASELINE, RESET, SNAPSHOT_REQUEST)
+observable operation result (see operation-result domain below)
+post-operation semantic checkpoint
+snapshot semantic observation (only for SNAPSHOT_REQUEST where produced)
+```
+
+The operation result is compared BEFORE the post-operation checkpoint. The first mismatch
+among {result kind, result value/error fields, checkpoint, snapshot observation} is the
+first observable divergence. A state-only comparison is insufficient because two
+implementations can return different observable results while coincidentally ending in
+identical state (e.g., `IgnoredStale` vs `IgnoredDuplicate` both leave the book unchanged).
+
+### Canonical operation-result domain
+
+For every canonical event class, the operation result is canonicalized as text and recorded
+before the post-operation checkpoint:
+
+**M1 parsing (for all events that carry decimal tokens):**
+```text
+success:  canonical value (units + scale)
+failure:  canonical parse/rescale error category (DecimalError enum name)
+```
+A parsing failure that leaves the projection unchanged is still observable as a distinct
+operation result. The reference does not silently succeed where production rejects.
+
+**Baseline installation (INSTALL_BASELINE, REBASELINE):**
+```text
+result:   canonical InstallResult:
+            disposition:  Installed | RejectedWrongState
+            status_after: AwaitingBaseline | AwaitingBridge | Synchronized | NeedsResync
+            last_update_id_after:  <decimal> | -
+```
+Captures the full `InstallResult` returned by `BookProjection::install_baseline`.
+
+**Incremental application (DEPTH_UPDATE):**
+```text
+result:   canonical ApplyResult:
+            disposition:  Applied | IgnoredStale | IgnoredDuplicate | GapDetected | RejectedWrongState
+            status_after: <ProjectionStatus enum>
+            last_update_id_after:  <decimal> | -
+            gap:  <GapInfo fields> | -
+```
+Captures the full `ApplyResult` returned by `BookProjection::apply`.
+`IgnoredStale` and `IgnoredDuplicate` differ in disposition but produce identical
+checkpoint state; the operation result captures the distinction.
+
+**M4 inbound adaptation (DEPTH_UPDATE in adapter mode, INSTALL_BASELINE in adapter mode):**
+```text
+result:   success { underlying M3 InstallResult or ApplyResult }
+          | AdapterError {
+              code: <AdapterErrorCode enum name>
+              field: <AdapterField enum name> | -
+              decimal_error: <DecimalError> | -
+            }
+```
+On success, the underlying M3 result is preserved. On error, the observable
+`AdapterErrorCode` and `AdapterField` are canonicalized. If an adapter error occurs
+before any Core mutation, the post-operation checkpoint is unchanged from the previous
+event.
+
+**Snapshot request (SNAPSHOT_REQUEST):**
+```text
+result:   success {
+            synchronized: true | false
+            bids: <ordered levels>
+            asks: <ordered levels>
+            quality_flags: <canonical rank ordered>
+            gap_descriptor: <fields> | -
+          }
+          | AdapterError { code, field, decimal_error }
+```
+Captures the full observable outcome of `make_local_order_book_snapshot`.
+An eligibility rejection is canonicalized as an `AdapterError`.
+
+### SemanticCheckpoint
+
+The post-operation `SemanticCheckpoint` captures persistent projection state:
+```text
+status:            AwaitingBaseline | AwaitingBridge | Synchronized | NeedsResync
+last_update_id:    <decimal> | -
+last_gap:          { last_accepted_final, incoming_range, previous_final, reason, policy } | -
+synchronized_visible:  true | false
+bids:              price,quantity pairs in deterministic descending order
+asks:              price,quantity pairs in deterministic ascending order
+```
+This extends the existing `ProjectionCheckpoint` (`tests/projection_state/test_helpers.hpp`)
+and additionally captures `NumericSpec` identity for the fixture.
+
+### Canonical observation stream and semantic result digest
+
+- For every event, the **canonical OperationObservation** (operation result +
+  SemanticCheckpoint + snapshot observation where applicable) is serialized as canonical
+  text according to the rules in Section "Canonical text format".
+- The stream of OperationObservations is hashed with SHA-256 into the **semantic result
+  digest** for the workload.
+- Determinism within a toolchain is proven by identical digests across runs/processes/build
+  types.
 - Cross-compiler equivalence is proven by identical digests across toolchains (Section:
   Cross-compiler semantic manifest).
+- Only semantic content enters the digest. Never compared: addresses, ABI layouts,
+  unordered output, wall-clock values, sanitizer artifacts, exception text (unless part of
+  a stable API contract), compiler-specific strings.
 
 ## Failure diagnostics
 
 ### First-divergence artifacts
+
+The first divergence is the first event N for which any of the following differ between
+production and reference, compared in this exact order:
+
+```text
+1. operation-result kind (success vs error vs disposition category)
+2. operation-result value/error fields (canonical InstallResult, ApplyResult, AdapterError, etc.)
+3. post-operation SemanticCheckpoint
+4. snapshot semantic observation (if produced)
+```
 
 On any differential mismatch, the replay driver emits:
 
 ```text
 seed / transcript identity
 fixture ID and manifest hash
-event index (and checkpoint index)
-previous checkpoint (production and reference)
-production state at divergence
-reference state at divergence
-the offending event text
+event index
+divergence category (operation result / checkpoint / snapshot observation)
+offending event text / normalized event
+production operation result (canonical)
+reference operation result (canonical)
+production SemanticCheckpoint
+reference SemanticCheckpoint
 relevant NumericSpec
 sequence policy
 market identity
@@ -433,8 +736,11 @@ fixture ID + manifest hash
 workload ID
 toolchain (compiler, version, OS, architecture)
 build type
-semantic result digest (SHA-256 of canonical checkpoint stream)
+fixture set identity
+fixture hashes
+semantic result digest (SHA-256 of canonical OperationObservation stream)
 comparison status
+manifest schema version
 ```
 
 Rules:
@@ -443,9 +749,90 @@ Rules:
   decimals through the canonical fixed format, levels in deterministic M2 order.
 - Never compared: compiler-dependent binary layout, addresses, unordered iteration (M5 introduces
   no unordered container on an observable path), wall-clock values, sanitizer artifacts.
-- The manifest is produced by a CTest-style test on each platform (Ubuntu GCC, Ubuntu Clang,
-  macOS AppleClang release matrix jobs) and compared in a dedicated job. A digest mismatch across
-  toolchains fails CI with the first divergent workload and event.
+- The manifest is produced by a CTest-style test on each of the three release-matrix jobs
+  (Ubuntu GCC, Ubuntu Clang, macOS AppleClang) and uploaded as a GitHub Actions artifact.
+  A dedicated `m5-semantic-compare` blocking job downloads all three artifacts and asserts
+  cross-toolchain digest equality. See "Cross-job semantic manifest transport" for the
+  artifact fan-in architecture.
+
+### Cross-job semantic manifest transport
+
+The cross-compiler manifest comparison requires reliable artifact transport across isolated
+GitHub Actions jobs. The architecture defines a concrete artifact fan-in model.
+
+**Producer jobs.** Each of the three release-matrix jobs (Ubuntu GCC, Ubuntu Clang,
+macOS AppleClang — all Release builds) produces a machine-readable semantic manifest
+tied to:
+
+```text
+exact HEAD SHA
+toolchain identity (compiler name + version)
+build type (Release)
+fixture set identity
+fixture hashes
+observation-stream digest(s) (SHA-256 of canonical OperationObservation stream)
+manifest schema version (v1)
+```
+
+The manifest is uploaded as a GitHub Actions artifact with a deterministic naming scheme:
+
+```text
+m5-semantic-manifest-ubuntu-gcc-<short-head-sha>
+m5-semantic-manifest-ubuntu-clang-<short-head-sha>
+m5-semantic-manifest-macos-appleclang-<short-head-sha>
+```
+
+**Comparison job.** A dedicated blocking job `m5-semantic-compare` (`runs-on: ubuntu-latest`) with:
+
+```text
+needs: all three release-matrix producer jobs
+```
+
+The comparison job:
+
+```text
+1. Downloads all three expected artifacts via actions/download-artifact.
+2. Fails immediately if any artifact is missing (no silent skip).
+3. Validates manifest schema version on each artifact.
+4. Validates identical HEAD SHA across all three manifests.
+5. Validates identical fixture-set identity and fixture hashes.
+6. Compares observation-stream digests per workload.
+7. Reports the first mismatching workload ID, toolchains involved,
+   fixture hash, expected and actual digests.
+8. Does not compare manifests generated from different commits.
+```
+
+**Fail-closed behavior.** The comparison job fails with a clear diagnostic if:
+
+```text
+any producer job was skipped, failed, or re-run with a different SHA
+any expected artifact is missing
+an artifact contains a HEAD SHA mismatch
+fixture hashes differ across manifests
+a required workload is present in some but not all manifests
+manifest schema version is unrecognized
+manifest JSON is unparseable
+any observation-stream digest differs
+```
+
+A digest mismatch alone must not produce an opaque failure. The comparison artifact
+includes enough stable diagnostic information for a developer to identify the first
+divergent workload and re-run locally.
+
+**Debug/Release comparison scope.** Cross-toolchain blocking comparison is restricted
+to Release builds across the three release-matrix platforms. Debug-vs-Release determinism
+within a single toolchain is validated by the `m5-replay` job (replaying under both Debug
+and Release on Ubuntu Clang and asserting identical observation-stream digests). This
+avoids a 3×2 = 6-way matrix explosion while still proving that build type does not affect
+semantics.
+
+**Job count reconciliation.** The original "only +1 new PR-blocking job" claim is
+superseded. The corrected CI strategy adds two PR-blocking jobs:
+
+```text
+m5-replay             (small-tier replay, determinism re-runs, diagnostics)
+m5-semantic-compare   (cross-toolchain manifest download and comparison)
+```
 
 ## Fuzz strategy
 
@@ -469,9 +856,14 @@ wire adaptation where enabled
 ```
 
 The harness drives production and the layered reference pipeline after every decoded operation and
-aborts on any divergence, reusing the existing per-step checkpoint comparison discipline. Where a
-full oracle is not practical (e.g., Protobuf byte-serialization equality is only defined within one
-binary), explicit invariants are asserted instead:
+aborts on any divergence, reusing the existing per-step OperationObservation comparison discipline.
+The fuzzer uses **direct structured operation decoding from fuzz bytes**, not text fixture parsing.
+This maximizes semantic reach: fuzz bytes are decoded into a sequence of structured operations
+(install baseline, apply depth update, reset, snapshot request, etc.) without going through the
+canonical text parser. The canonical text log format is used only for deterministic replay tests.
+
+Where a full oracle is not practical (e.g., Protobuf byte-serialization equality is only defined
+within one binary), explicit invariants are asserted instead:
 
 ```text
 failure of adapt/binding/output leaves the projection checkpoint unchanged
@@ -543,7 +935,9 @@ M1: decimal parse, exact rescale, fixed format
 M2: single insert (apply_level), replace, delete, batch update (apply_updates),
     replace_all, best bid/ask, quantity_at, top-N, full level copy (all_levels)
 M3: baseline install, incremental apply (copy-on-apply cost: book depth x batch size),
-    stale/duplicate/gap classification, state transitions, reset
+    decomposed into full-side vector copy (all_levels both sides), candidate OrderBook
+    construction from vectors, move-assignment commit; stale/duplicate/gap classification,
+    state transitions, reset
 M4: adapt_exchange_depth_snapshot, adapt_depth_update, checked install/apply,
     make_local_order_book_snapshot (with/without depth limit), output serialization
 End-to-end: canonical replay events per second (production pipeline vs replay driver)
@@ -565,7 +959,10 @@ Nothing is optimized in M5 before evidence exists; M5 measures the current imple
 
 - A **counting/live-bytes allocator** (global `operator new` override in benchmark executables only,
   following the established allocation-failure pattern but counting instead of failing) measures:
-  allocation count, allocated bytes, and peak live bytes for designated operations.
+  allocation count and total allocated bytes. Peak live bytes is a documented best-effort metric:
+  it requires tracking allocation sizes on deallocation (via C++14 sized `operator delete` where
+  supported) and is reported with explicit platform-dependence caveats. Allocation count and
+  total allocated bytes are the mandatory metrics.
 - Allocation metrics are captured for: accepted M3 apply (the copy-on-apply path), baseline install,
   M4 adaptation, snapshot output, and replay of a small workload.
 - Production APIs receive no benchmark-only hooks. Instrumentation lives in test/benchmark-only
@@ -587,12 +984,16 @@ O-P003 requires evaluating alternatives to `std::map` with evidence.
 ### Candidate set (justified)
 
 | Candidate | Justification | Dependency |
-|---|---|---|
+|---|---|---|---|
 | `std::map` | M2 correctness baseline | none (production) |
-| Sorted contiguous vector | Cache-friendly, no dependency, binary search + shift/erase; classic candidate for read-heavy books | none (benchmark-only header) |
+| Sorted contiguous vector (naive) | Cache-friendly, no dependency, `std::lower_bound` + `std::vector::insert`/`erase` per individual level; classic candidate for read-heavy books | none (benchmark-only header) |
 | Abseil `btree_map` | Cache-efficient B-tree, already available in the dependency graph transitively via `protobuf`; proven C++20-ecosystem option | `abseil/20260107.1` benchmark-only |
-| Flat-map-style sorted container | Sorted contiguous storage with explicit insert/erase batching and in-place last-write-wins; represents the flat-map family without a Boost dependency | none (benchmark-only header) |
+| Sorted vector with batch-aware last-write-wins | Sorted contiguous storage with batch-aware update: deduplicates all levels at a given price within a batch before a single erase+insert per distinct price, reducing shift cost relative to the naive vector | none (benchmark-only header) |
 
+The "sorted contiguous vector (naive)" does one insert/erase per individual `LevelUpdate`.
+The "sorted vector with batch-aware last-write-wins" groups all updates to the same price
+in a batch, applies last-write-wins in-place, and does at most one erase/insert per distinct
+price. They are algorithmically distinct and measurable as separate candidates.
 Any additional candidate must be justified before inclusion; the set is not open-ended. If a
 candidate would add a new dependency, it remains benchmark/spike-only until an explicit later
 decision.
@@ -738,14 +1139,16 @@ Existing 16-job matrix remains intact. Proposed additions:
 
 | Job | Platform | PR blocking | Content |
 |---|---|---|---|
-| `m5-replay` | Ubuntu Clang | Yes | Small-tier differential replay (Spot + USD-M), determinism re-runs, first-divergence diagnostics, snapshot-semantics replay, M5 property tests |
-| Semantic manifest computation | folded into existing `release` matrix jobs (Ubuntu GCC, Ubuntu Clang, macOS AppleClang) | Yes | Each release job computes the semantic digest; a comparison step in one job asserts cross-toolchain equality |
+| `m5-replay` | Ubuntu Clang | Yes | Small-tier differential replay (Spot + USD-M), determinism re-runs (Debug + Release), first-divergence diagnostics, snapshot-semantics replay, M5 property tests |
+| `m5-semantic-compare` | ubuntu-latest | Yes | Downloads semantic-manifest artifacts from the three release-matrix producer jobs; validates HEAD SHA, fixture identity, manifest schema, and cross-toolchain observation-stream digest equality |
+| Semantic manifest computation | folded into existing `release` matrix jobs (Ubuntu GCC, Ubuntu Clang, macOS AppleClang) | Yes | Each release job computes the semantic observation-stream digest and uploads it as a named artifact |
 | `fuzz smoke (Ubuntu Clang)` | existing job, extended | Yes | Adds `bmd_projection_replay_fuzz` to the 10,000-input smoke |
 | `benchmark smoke (Ubuntu Clang)` | existing job, extended | Yes | Builds and runs the representative benchmark suite (correctness smoke + gross sanity floor); JSON + wrapper uploaded as artifacts |
 | `m5-performance` | Ubuntu Clang | No (workflow_dispatch / scheduled) | Medium/large tiers, container spike, full statistical comparison, allocation/memory characterization |
 
-No more than one new PR-blocking job is added; everything else is an extension of existing jobs or
-a scheduled/manual workflow. Existing M0-M4 CI behavior is unchanged.
+Two new PR-blocking jobs are added (`m5-replay`, `m5-semantic-compare`); everything else is
+an extension of existing jobs or a scheduled/manual workflow. Existing M0-M4 CI behavior is
+unchanged.
 
 ## Scheduled/manual performance workflow
 
@@ -850,12 +1253,12 @@ Fixtures are parsed into the normalized in-memory log before timed execution.
 |---|---|---|---|
 | OD-M5-001 | Exact representative transcript corpus (which recorded symbols/time ranges) | Medium/large tiers need externally recorded, provenance-verified transcripts | Data acquisition plan and reviewed selection |
 | OD-M5-002 | CI job/runner budget for medium-tier scheduled runs | Weekly scheduled job proposed | Cost review of scheduled runs and artifact retention |
-| OD-M5-003 | Semantic manifest granularity (per-event vs per-checkpoint digest) | Per-checkpoint digest for small tier; per-event for tiny | Confirmed in the spike |
 
 ### Can be resolved during the performance spike
 
 | ID | Decision |
 |---|---|
+| OD-M5-003 | Semantic manifest granularity (per-event vs per-checkpoint observation digest) — default: per-event for tiny fixtures, per-checkpoint for small. The cross-job transport architecture is fixed; granularity choice does not affect manifest schema identity |
 | OD-M5-004 | Candidate flat-map implementation details (batching strategy, erase discipline) |
 | OD-M5-005 | Regression statistical threshold tuning (noise-floor study refines the 20%/10% figures) |
 | OD-M5-006 | Replay minimizer heuristic details (interval vs seed reduction) |
@@ -870,7 +1273,7 @@ Phase 2:  independent differential oracle (R1 promoted, R4 new, ReplayDriver,
           layer attribution)
 Phase 3:  large deterministic replay validation (small/medium tiers, checkpoint
           comparison, first-divergence diagnostics)
-Phase 4:  cross-compiler semantic manifests (canonical checkpoint stream, SHA-256
+Phase 4:  cross-compiler semantic manifests (canonical observation stream, SHA-256
           digests, comparison test)
 Phase 5:  M5 differential fuzzing (bmd_projection_replay_fuzz, corpus categories,
           fuzz-smoke integration)

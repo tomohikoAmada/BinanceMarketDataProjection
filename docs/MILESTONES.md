@@ -244,19 +244,25 @@ No Contracts change, gRPC runtime, Gateway lifecycle, network ownership, system-
 generated-code copy, or M5/M6 work is included. `MarketStateSnapshot` generation and derived market
 calculations remain deferred unless separately designed and approved.
 
-## M5 Differential Validation and Performance — DESIGN IN PROGRESS / NOT IMPLEMENTED
+## M5 Differential Validation and Performance — DESIGN CORRECTED / PENDING RE-REVIEW / NOT IMPLEMENTED
 
-Implementation status: **NOT IMPLEMENTED**
+Implementation status: **NOT IMPLEMENTED / NOT AUTHORIZED**
 
 ### Design status
 
 The M5 architecture is designed in
-`docs/M5_DIFFERENTIAL_VALIDATION_AND_PERFORMANCE_DESIGN.md` and ADR-0007 is **PROPOSED**. The
-design covers layered differential validation, canonical replay fixtures, determinism and
-cross-compiler semantic manifests, replay/differential fuzzing, benchmark methodology,
-allocation/memory characterization, and the benchmark-only container spike with explicit decision
-criteria. No M5 implementation, production change, or container migration is authorized by the
-design.
+`docs/M5_DIFFERENTIAL_VALIDATION_AND_PERFORMANCE_DESIGN.md` and ADR-0007 is
+**PROPOSED / PENDING FOCUSED RE-REVIEW**. The design covers layered differential validation
+with operation-result observation (OperationObservation model), canonical replay fixtures with
+explicit canonical text format rules, determinism and cross-compiler semantic manifests with
+artifact fan-in transport, replay/differential fuzzing, benchmark methodology, allocation/memory
+characterization, and the benchmark-only container spike with explicit decision criteria.
+
+Initial independent architecture review (2026-08-08) returned CHANGES REQUESTED with 0 P0,
+1 P1 design blocker, 2 P1 implementation-authorization blockers, and 7 P2 findings. Findings
+M5-AR-001 through M5-AR-003 have been corrected; M5-AR-004 through M5-AR-010 have been addressed
+with documentation-only clarifications. No M5 implementation, production change, or container
+migration is authorized by the design.
 
 ### Deferred M4 P2 findings
 
