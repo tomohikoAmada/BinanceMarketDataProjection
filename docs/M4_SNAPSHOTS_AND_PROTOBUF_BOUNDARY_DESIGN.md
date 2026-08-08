@@ -2,9 +2,9 @@
 
 ## Status
 
-- Design status: **APPROVED**
-- Implementation status: **IMPLEMENTED CANDIDATE / PENDING INDEPENDENT REVIEW**
-- M4 status: **OPEN / PENDING IMPLEMENTATION REVIEW**
+- Design status: **APPROVED / MERGED**
+- Implementation status: **APPROVED / PENDING MERGE**
+- M4 status: **OPEN / PENDING MERGE**
 - ADR status: **ACCEPTED**
 - External architecture review: **APPROVED**
 - C-M4-001: **CLOSED / SATISFIED**
@@ -1507,8 +1507,91 @@ reviewable steps:
 12. Add Core-only and Adapter staged-install consumers for static/shared builds.
 13. Update implementation documentation, run full acceptance gates, and obtain external code review.
 
-The implementation remains **OPEN / PENDING INDEPENDENT IMPLEMENTATION REVIEW** and must not be
-merged or marked complete by the author task.
+Independent M4 Implementation Review: **APPROVED**.
+
+Reviewed Head: `390cdceb013bc05878db090bdedc40068c03c79c`.
+Reviewed CI: `31193311386` — 16/16 PASS.
+
+M4 is **OPEN / PENDING MERGE** and must not be merged or marked complete by the finalization task.
+
+## Independent Implementation Review
+
+Independent M4 Implementation Review: **APPROVED**. Blocking findings: **0**.
+
+Reviewed Head: `390cdceb013bc05878db090bdedc40068c03c79c`.
+Reviewed CI: `31193311386` — 16/16 PASS.
+
+### Review findings
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| — | P0 | — | None | — |
+| — | P1 | — | None | — |
+| M4-IIR-1 | P2 | `tests/cmake/check_m4_lock.cmake` | Lock-drift test proves required Contracts and Protobuf identities but does not assert the entire allowable dependency recipe set | **DEFERRED / NON-BLOCKING** |
+| M4-IIR-2 | P2 | shared duplicate-symbol audit | Shared-mode audit checks consumer and Contracts shared library but does not separately `nm` the installed ProtoAdapter library | **DEFERRED / NON-BLOCKING** |
+| M4-IIR-3 | P2 | M4 fuzz corpus / quality-input coverage | Initial corpus seeds are simple labels; fuzz bytes do not currently drive quality flags / HostQualityFact inputs | **DEFERRED / NON-BLOCKING** |
+
+These P2 items do not block M4 approval recording, final CI, PR Ready, or merge. They may be
+addressed later as test hardening, maintenance, M5 preparation, or future quality follow-up.
+
+### Architecture and dependency evidence
+
+| Check | Result |
+|---|---|
+| Core Isolation | PASS |
+| Core target | `BinanceMarketDataProjection::Core` |
+| ProtoAdapter target | `BinanceMarketDataProjection::ProtoAdapter` |
+| ProtoAdapter Default | OFF |
+| Core-only Without Contracts | PASS |
+| Core-only Without Protobuf | PASS |
+| Component Packaging | PASS |
+| Contracts Metadata Gate | PASS |
+| Mandatory gRPC | NO |
+
+### Functional evidence
+
+| Check | Result |
+|---|---|
+| ExchangeDepthSnapshot Adaptation | PASS |
+| DepthUpdate Adaptation | PASS |
+| Numeric Semantics | PASS |
+| Enum Semantics | PASS |
+| Binding | PASS |
+| Lifetime | PASS |
+| M3 Result Propagation | PASS |
+| Snapshot Four-State Matrix | PASS |
+| Gap Mapping | PASS |
+| DepthLimit | PASS |
+| Quality Ownership | PASS |
+| Quality Ordering | PASS |
+| Fixed Decimal Formatting | PASS |
+| Determinism | PASS |
+| Contracts Fixture Roundtrip | PASS |
+| Allocation-Failure Sweep | PASS |
+| Independent Property Model | PASS |
+| Adapter Fuzz | PASS |
+
+### Support matrix
+
+| Platform / Config | Result |
+|---|---|
+| Ubuntu x86_64 GCC 13 Debug | PASS |
+| Ubuntu x86_64 GCC 13 Release | PASS |
+| Ubuntu x86_64 Clang 18 Debug | PASS |
+| Ubuntu x86_64 Clang 18 Release | PASS |
+| macOS arm64 AppleClang 15 Debug | PASS |
+| macOS arm64 AppleClang 15 Release | PASS |
+| Ubuntu x86_64 GCC 13 Release (shared) | PASS |
+| macOS arm64 AppleClang 15 Release (shared) | PASS |
+
+| Sanitizer | Status |
+|---|---|
+| ASan | PASS — CI |
+| UBSan | PASS — CI |
+| TSan | PASS — LOCAL-ONLY EVIDENCE |
+
+TSan: No GitHub CI TSan job currently exists. Native macOS arm64 AppleClang 21 validation:
+180/180 tests PASS with ProtoAdapter enabled.
 
 ## Acceptance gates
 
@@ -1539,7 +1622,7 @@ Future M4 implementation must pass:
 - no Core dependency regression; and
 - independent external implementation code review.
 
-None of these gates is claimed to have passed for M4 in this design PR.
+All acceptance gates have been satisfied by the independent implementation review.
 
 ## External review checklist
 

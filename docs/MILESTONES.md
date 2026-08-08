@@ -158,22 +158,38 @@ History storage. M4 owns Protobuf/wire adaptation and snapshot contract producti
 runtime integration. Derived market prices, matching, orders, strategy, risk, and trading remain out
 of scope.
 
-## M4 Snapshots and Protobuf Boundary — IMPLEMENTED CANDIDATE; REVIEW PENDING
+## M4 Snapshots and Protobuf Boundary — APPROVED / PENDING MERGE
 
-Implementation status: **IMPLEMENTED CANDIDATE / PENDING INDEPENDENT REVIEW**
+Implementation status: **APPROVED / PENDING MERGE**
 
 ### Acceptance status
 
-Design status: **APPROVED**.
+Design status: **APPROVED / MERGED**.
 
 ADR-0006: **ACCEPTED**.
 
 External architecture review: **APPROVED**. Round 1 findings: **3 CLOSED**. Architecture blockers:
 **0**.
 
+Independent Implementation Review: **APPROVED**.
+
 Implementation blockers: **0**. C-M4-001: **CLOSED / SATISFIED**. OD-M4-001: **CLOSED**.
-Contracts integration: **VERIFIED**. M4 remains **OPEN / PENDING IMPLEMENTATION REVIEW** and is not
-complete.
+Contracts integration: **VERIFIED**. M4 remains **OPEN / PENDING MERGE** and is not
+merged.
+
+Reviewed Head: `390cdceb013bc05878db090bdedc40068c03c79c`.
+Reviewed CI: `31193311386` — 16/16 PASS.
+
+### Deferred P2 findings
+
+| ID | Area | Finding | Status |
+|---|---|---|---|
+| M4-IIR-1 | `tests/cmake/check_m4_lock.cmake` | Lock-drift test proves required Contracts and Protobuf identities but does not assert the entire allowable dependency recipe set | DEFERRED / NON-BLOCKING |
+| M4-IIR-2 | shared duplicate-symbol audit | Shared-mode audit checks consumer and Contracts shared library but does not separately `nm` the installed ProtoAdapter library | DEFERRED / NON-BLOCKING |
+| M4-IIR-3 | M4 fuzz corpus / quality-input coverage | Initial corpus seeds are simple labels; fuzz bytes do not currently drive quality flags / HostQualityFact inputs | DEFERRED / NON-BLOCKING |
+
+These P2 items do not block M4 merge. They may be addressed later as test hardening,
+maintenance, M5 preparation, or future quality follow-up.
 
 ### Goal
 
@@ -225,7 +241,7 @@ calculations remain deferred unless separately designed and approved.
 4. **M3 Sequence and Projection State — COMPLETE** —
    Market-specific sequencing, bootstrap validation, gap detection, reset logic, and synchronized
    projection lifecycle.
-5. **M4 Snapshots and Protobuf Boundary — IMPLEMENTED CANDIDATE; REVIEW PENDING** — Optional
+5. **M4 Snapshots and Protobuf Boundary — APPROVED / PENDING MERGE** — Optional
    wire-format adapter outside Core; snapshot production boundary. Not complete until independent
    implementation review and acceptance.
 6. **M5 Differential Validation and Performance** — Replay/differential/fuzz validation; benchmark

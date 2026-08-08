@@ -2,7 +2,7 @@
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. M1 through M3 are complete. The optional M4 snapshots/Protobuf boundary
-is an **implemented candidate pending independent implementation review**; M4 is not complete.
+is **approved pending merge**; M4 is not merged.
 
 This is an unofficial project and is not affiliated with, endorsed by, or sponsored by Binance.
 This module does not connect to Binance, use API keys, place orders, or contain trading strategies.
@@ -227,15 +227,15 @@ fuzz/          libFuzzer harnesses and checked-in seed corpus
 
 ## Milestone status
 
-M1, M2, and M3 are COMPLETE. M4 is **IMPLEMENTED CANDIDATE / PENDING INDEPENDENT REVIEW** and
-remains **OPEN / PENDING IMPLEMENTATION REVIEW**. The Contracts reference baseline is
+M1, M2, and M3 are COMPLETE. M4 is **APPROVED / PENDING MERGE** and
+remains **OPEN / PENDING MERGE**. The Contracts reference baseline is
 `01d76a41929f36d89573159f5f458f9f1e378ada`.
 
 ## Known limitations
 
 - The repository includes numeric primitives, a deterministic L2 market-by-price order book, and
   the completed M3 sequence/projection implementation on `main`.
-- M4 is not accepted or complete until independent implementation review; M5 and M6 are not started.
+- M4 is **APPROVED / PENDING MERGE**; M5 and M6 are not started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.
 - Tick-size, step-size, signed-decimal, and symbol-metadata validation remain outside the implemented

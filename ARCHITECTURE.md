@@ -5,7 +5,7 @@
 BinanceMarketDataProjection is a strategy-independent, deterministic, replayable, single-writer,
 embedded C++20 library. Live ingestion and historical replay invoke the same core logic. M1 added
 exact numeric and domain primitives, M2 added the deterministic order book, M3 added
-market-specific sequence and projection lifecycle state, and the M4 implementation candidate adds
+market-specific sequence and projection lifecycle state, and the M4 implementation adds
 an optional Protobuf message adapter outside Core.
 
 ## Explicit non-responsibilities
@@ -30,7 +30,7 @@ Optional Protobuf Adapter Target
 Contracts-generated Protobuf snapshot
 ```
 
-The optional adapter boundary is implemented as an M4 candidate pending independent review. Core remains independently
+The optional adapter boundary is implemented, independently reviewed, and approved pending merge. Core remains independently
 buildable, installable, and usable without Protobuf, generated Contracts code, or gRPC. The adapter
 maps messages and explicit context; it does not own networking, clocks, buffering, recovery, or
 Gateway lifecycle. Gateway/gRPC runtime remains M6 scope. The C-M4-001 prerequisite is closed and
