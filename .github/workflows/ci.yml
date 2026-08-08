@@ -3,7 +3,21 @@ name: ci
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "README*.md"
+      - "CHANGELOG*.md"
+      - "ARCHITECTURE.md"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "README*.md"
+      - "CHANGELOG*.md"
+      - "ARCHITECTURE.md"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
