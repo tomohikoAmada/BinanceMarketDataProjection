@@ -244,25 +244,26 @@ No Contracts change, gRPC runtime, Gateway lifecycle, network ownership, system-
 generated-code copy, or M5/M6 work is included. `MarketStateSnapshot` generation and derived market
 calculations remain deferred unless separately designed and approved.
 
-## M5 Differential Validation and Performance — DESIGN CORRECTED / PENDING RE-REVIEW / NOT IMPLEMENTED
+## M5 Differential Validation and Performance — APPROVED / PENDING MERGE / NOT IMPLEMENTED
 
 Implementation status: **NOT IMPLEMENTED / NOT AUTHORIZED**
 
 ### Design status
 
 The M5 architecture is designed in
-`docs/M5_DIFFERENTIAL_VALIDATION_AND_PERFORMANCE_DESIGN.md` and ADR-0007 is
-**PROPOSED / PENDING FOCUSED RE-REVIEW**. The design covers layered differential validation
-with operation-result observation (OperationObservation model), canonical replay fixtures with
-explicit canonical text format rules, determinism and cross-compiler semantic manifests with
-artifact fan-in transport, replay/differential fuzzing, benchmark methodology, allocation/memory
-characterization, and the benchmark-only container spike with explicit decision criteria.
+`docs/M5_DIFFERENTIAL_VALIDATION_AND_PERFORMANCE_DESIGN.md` and ADR-0007 is **ACCEPTED**.
+The design covers layered differential validation with operation-result observation
+(OperationObservation model), canonical replay fixtures with explicit canonical text format
+rules, determinism and cross-compiler semantic manifests with artifact fan-in transport,
+replay/differential fuzzing, benchmark methodology, allocation/memory characterization, and the
+benchmark-only container spike with explicit decision criteria.
 
-Initial independent architecture review (2026-08-08) returned CHANGES REQUESTED with 0 P0,
-1 P1 design blocker, 2 P1 implementation-authorization blockers, and 7 P2 findings. Findings
-M5-AR-001 through M5-AR-003 have been corrected; M5-AR-004 through M5-AR-010 have been addressed
-with documentation-only clarifications. No M5 implementation, production change, or container
-migration is authorized by the design.
+Independent architecture review: **APPROVED** (focused re-review of corrected head
+`9fff05ca8333d89d28d89c794d65255b56578715`; reviewed CI `31245814229` — PASS).
+Findings M5-AR-001 through M5-AR-010: **CLOSED**. P0: **0**. P1 Design: **0**.
+No M5 implementation, production change, or container migration is authorized by the design.
+Implementation authorization remains blocked by OD-M5-001 and OD-M5-002 (open decisions to be
+closed in a separate pre-implementation decision task).
 
 ### Deferred M4 P2 findings
 
@@ -288,7 +289,7 @@ strategy, risk, trading, persistence, Python binding, or production container mi
 5. **M4 Snapshots and Protobuf Boundary — COMPLETE** — Optional
    wire-format adapter outside Core; snapshot production boundary. Merged through PR #8 at
    `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4`; main CI `31242162782` — 16/16 PASS.
-6. **M5 Differential Validation and Performance — DESIGN IN PROGRESS / NOT IMPLEMENTED** —
+6. **M5 Differential Validation and Performance — APPROVED / PENDING MERGE / NOT IMPLEMENTED** —
    Replay/differential/fuzz validation; benchmark with representative workloads.
 7. **M6 Gateway Integration** — Production host embedding surface; live ingestion.
 8. **M7 Platform Hardening and Acceptance** — Harden architectures, toolchains; end-to-end acceptance.

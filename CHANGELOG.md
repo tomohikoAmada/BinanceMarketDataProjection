@@ -6,8 +6,16 @@ All notable changes will be recorded here.
 
 ### Added
 
+- M5 architecture approval recorded: independent M5 architecture review **APPROVED**
+  (focused re-review of corrected head `9fff05ca8333d89d28d89c794d65255b56578715`,
+  reviewed CI `31245814229` — PASS, 16/16). Findings M5-AR-001 through M5-AR-010:
+  **CLOSED**. P0: **0**. P1 Design: **0**. ADR-0007: **ACCEPTED**. M5 design:
+  **APPROVED / PENDING MERGE**. M5 implementation remains **NOT STARTED / NOT
+  AUTHORIZED**, blocked by OD-M5-001 and OD-M5-002 (separate pre-implementation
+  decision task required). M6 remains NOT STARTED.
+
 - M5 differential validation and performance design: layered differential oracle
-  (ADR-0007 PROPOSED / PENDING FOCUSED RE-REVIEW), canonical versioned replay
+  (ADR-0007 ACCEPTED), canonical versioned replay
   event-log grammar with ADAPTER_METADATA/HOST_QUALITY quality-domain separation and
   adapter dimension scoping, canonical text format rules (UTF-8/LF/whitespace/token
   semantics), OperationObservation differential model (observable operation results

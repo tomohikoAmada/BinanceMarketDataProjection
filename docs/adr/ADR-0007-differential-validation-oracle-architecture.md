@@ -1,8 +1,11 @@
 # ADR-0007: Differential Validation Oracle Architecture
 
-- Status: PROPOSED / PENDING FOCUSED RE-REVIEW
+- Status: ACCEPTED
 - Date: 2026-08-08
 - Correction date: 2026-08-08 (M5-AR-001: OperationObservation semantic equality)
+- Acceptance date: 2026-08-08
+- Acceptance evidence: focused independent M5 architecture re-review APPROVED;
+  reviewed head `9fff05ca8333d89d28d89c794d65255b56578715`; reviewed CI `31245814229` — PASS
 
 ## Context
 
@@ -61,8 +64,13 @@ logic.
 
 ## Acceptance
 
-This ADR is PROPOSED pending the independent M5 architecture review. Acceptance covers the oracle
-architecture decision only; M5 implementation requires a separate implementation branch,
+ACCEPTED by independent M5 architecture review on 2026-08-08. Acceptance scope is exactly the
+independently reviewed durable architecture: the layered R1/R2/R3/R4 reference oracle; the neutral
+ReplayDriver; the canonical replay representation; OperationObservation (observable operation
+result/error plus post-operation semantic checkpoint); the semantic observation-stream digest;
+cross-toolchain semantic comparison; and the separate future production-container migration
+decision. Acceptance does not authorize a production container migration. M5 implementation
+remains blocked by OD-M5-001 and OD-M5-002 and requires a separate implementation branch,
 validation cycle, and external code review.
 
 ## Superseded by

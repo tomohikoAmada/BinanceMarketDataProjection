@@ -2,9 +2,9 @@
 
 ## Status
 
-- Design status: **CORRECTED / PENDING INDEPENDENT ARCHITECTURE RE-REVIEW**
+- Design status: **APPROVED / PENDING MERGE**
 - Implementation status: **NOT STARTED / NOT AUTHORIZED**
-- ADR status: **PROPOSED / PENDING FOCUSED RE-REVIEW** (ADR-0007)
+- ADR status: **ACCEPTED** (ADR-0007)
 - Design date: 2026-08-08
 - Initial independent architecture review: **CHANGES REQUESTED** (P0: 0, P1 design: 1, P1 implementation: 2, P2: 7)
 - Correction date: 2026-08-08
@@ -12,6 +12,41 @@
 - Projection base: `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4` (M4 merge commit)
 - M4 post-merge CI: `31242162782` — completed / success, 16/16
 - Contracts baseline: `01d76a41929f36d89573159f5f458f9f1e378ada`
+
+## Architecture approval record
+
+Independent M5 architecture review: **APPROVED** (focused re-review).
+
+```text
+Reviewed Head:
+9fff05ca8333d89d28d89c794d65255b56578715
+
+Reviewed CI:
+31245814229 — PASS (16/16)
+
+M5-AR-001 through M5-AR-010:
+CLOSED
+
+P0:
+0
+
+P1 Design:
+0
+
+ADR-0007:
+ACCEPTED
+```
+
+Implementation authorization remains blocked by open decisions OD-M5-001 and OD-M5-002.
+They must be closed in a separate pre-implementation decision task before any M5
+implementation work starts. This design document approves the architecture only.
+
+Non-blocking review observations (implementation-time only, not blockers):
+
+```text
+- string-token grammar may receive additional implementation-time hardening
+- adapter-mode manifest scope may receive additional implementation-time clarification
+```
 
 This document designs M5 **Differential Validation and Performance**. It does not implement M5, does
 not change production code, does not replace the order-book container, and does not authorize any
@@ -1371,7 +1406,7 @@ Independent M5 Architecture Review must challenge:
 
 - `docs/MILESTONES.md` (M5 charter, M4 completion)
 - `docs/OPEN_QUESTIONS.md` (O-P003 and M5 open decisions)
-- `docs/adr/ADR-0007-differential-validation-oracle-architecture.md` (PROPOSED)
+- `docs/adr/ADR-0007-differential-validation-oracle-architecture.md` (ACCEPTED)
 - `docs/adr/ADR-0003-single-writer-order-book.md`, `ADR-0005-market-specific-sequence-policy.md`,
   `ADR-0006-protobuf-adapter-boundary.md`
 - `docs/M2_ORDER_BOOK_SEMANTICS.md`, `docs/M3_SEQUENCE_AND_PROJECTION_STATE_DESIGN.md`,
