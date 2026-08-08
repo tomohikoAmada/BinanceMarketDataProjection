@@ -4,14 +4,15 @@
 #include <gtest/gtest.h>
 
 #include <string>
+#include <string_view>
 #include <variant>
 
 namespace replay = bmd_projection::m5::replay;
 
 namespace {
 
-constexpr char kHeader[] = "REPLAY_V1 market=Spot symbol=BTCUSDT price_scale=8 quantity_scale=8 "
-                           "policy=Spot fixture_id=x\n";
+constexpr std::string_view kHeader = "REPLAY_V1 market=Spot symbol=BTCUSDT price_scale=8 "
+                                     "quantity_scale=8 policy=Spot fixture_id=x\n";
 
 void expect_category(const replay::Result<std::monostate>& result, replay::ErrorCategory category) {
     ASSERT_TRUE(std::holds_alternative<replay::ParseError>(result));

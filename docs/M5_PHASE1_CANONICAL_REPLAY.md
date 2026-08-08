@@ -3,12 +3,13 @@
 ## Status
 
 - M5 implementation: **IN PROGRESS**
-- Phase 1: **IMPLEMENTED / PENDING INDEPENDENT REVIEW**
+- Phase 1: **CORRECTED / PENDING FOCUSED RE-REVIEW**
 - Phase 2: **NOT STARTED**
-- M5-PIR-001: **INCORPORATED INTO PHASE 1** - bootstrap/bridge materializer contract
+- M5-PIR-001: **CORRECTED / PENDING FOCUSED RE-REVIEW** - Spot bootstrap bridge now follows the
+  accepted M3/ADR-0005 contains-`L` rule `U <= L < u`
 - M5-PIR-002: **DEFERRED / NON-BLOCKING**
 - M5-PIR-003: **DEFERRED / NON-BLOCKING** - before required branch protection
-- M5-PIR-004: **INCORPORATED INTO PHASE 1** - explicit offline acquisition boundary
+- M5-PIR-004: **CLOSED** - explicit offline acquisition boundary
 
 Phase 1 is test-only infrastructure. It does not change `include/**`, `src/**`, Core, or the
 ProtoAdapter target.
@@ -88,11 +89,16 @@ Recorder immutable live Raw -> verified source manifest/catalog -> offline mater
 -> canonical replay-log v1 -> provenance manifest
 ```
 
-Spot uses the approved `L` bridge contract: retain the buffered diff stream through snapshot
-acquisition, discard buffered events with `u < L+1`, accept the first event satisfying
-`U <= L+1 <= u`, then require each later event to cover `local_last_update_id+1` and advance to
-its `u`. A missing bridge, forward gap, source integrity failure, or provenance failure rejects
-the fixture and requires resync/rebaseline.
+Spot uses the accepted M3/ADR-0005 `L` bridge contract. The REST depth snapshot lastUpdateId is
+`L`, and the buffer holds all diff-depth events received from stream start through snapshot
+acquisition. Pre-bridge classification is: `u < L` is stale and discarded; `u == L` is a
+duplicate/non-advancing event and cannot form a bridge. The first advancing bridge must contain
+`L` and advance beyond it: `U <= L < u`. An advancing candidate with `U > L` (including the
+exact-next range beginning at `L + 1`) is a forward gap. `L == UINT64_MAX` cannot form an
+advancing bridge. Bootstrap semantics are distinct from the post-synchronization live successor
+rule: after bridging, each live event must cover `local_last_update_id + 1` per the accepted M3
+live Spot policy and then advance to its `u`. A missing bridge, forward gap, source integrity
+failure, or provenance failure rejects the fixture and requires resync/rebaseline.
 
 USD-M retains the buffered `U/u/pu` stream through snapshot acquisition, discards events with
 `u < L`, accepts the first event satisfying `U <= L <= u`, then requires `pu == local_last_update_id`

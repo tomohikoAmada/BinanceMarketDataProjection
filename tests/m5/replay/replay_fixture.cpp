@@ -16,12 +16,14 @@ namespace {
 
 [[nodiscard]] Result<std::string> read_bytes(const std::filesystem::path& path) {
     std::ifstream input(path, std::ios::binary);
-    if (!input)
+    if (!input) {
         return error(ErrorCategory::IoFailure, "cannot open fixture file");
+    }
     std::ostringstream bytes;
     bytes << input.rdbuf();
-    if (!input.good() && !input.eof())
+    if (!input.good() && !input.eof()) {
         return error(ErrorCategory::IoFailure, "cannot read fixture file");
+    }
     return bytes.str();
 }
 
@@ -29,17 +31,21 @@ namespace {
 
 Result<ReplayFixture> load_fixture(const std::filesystem::path& directory) {
     const auto log_bytes = read_bytes(directory / "replay.log");
-    if (std::holds_alternative<ParseError>(log_bytes))
+    if (std::holds_alternative<ParseError>(log_bytes)) {
         return std::get<ParseError>(log_bytes);
+    }
     const auto manifest = load_manifest(directory / "manifest.txt");
-    if (std::holds_alternative<ParseError>(manifest))
+    if (std::holds_alternative<ParseError>(manifest)) {
         return std::get<ParseError>(manifest);
+    }
     const auto replay = parse_replay_log(std::get<std::string>(log_bytes));
-    if (std::holds_alternative<ParseError>(replay))
+    if (std::holds_alternative<ParseError>(replay)) {
         return std::get<ParseError>(replay);
+    }
     const auto hash = sha256_hex(std::get<std::string>(log_bytes));
-    if (std::holds_alternative<ParseError>(hash))
+    if (std::holds_alternative<ParseError>(hash)) {
         return std::get<ParseError>(hash);
+    }
     const auto& normalized = std::get<NormalizedReplay>(replay);
     const auto& parsed_manifest = std::get<ReplayManifest>(manifest);
     const auto actual_hash = std::get<std::string>(hash);

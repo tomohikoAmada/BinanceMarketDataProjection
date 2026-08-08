@@ -1,14 +1,32 @@
 #include "replay_types.hpp"
 
+#include <algorithm>
+
 namespace bmd_projection::m5::replay {
+
+SpotBootstrapOutcome classify_spot_bootstrap(std::uint64_t snapshot_last_update_id,
+                                             std::uint64_t first_update_id,
+                                             std::uint64_t final_update_id) {
+    if (final_update_id < snapshot_last_update_id) {
+        return SpotBootstrapOutcome::Stale;
+    }
+    if (final_update_id == snapshot_last_update_id) {
+        return SpotBootstrapOutcome::NonAdvancingDuplicate;
+    }
+    if (first_update_id <= snapshot_last_update_id) {
+        return SpotBootstrapOutcome::BridgeCandidate;
+    }
+    return SpotBootstrapOutcome::ForwardGap;
+}
 
 MaterializerContract spot_materializer_contract() {
     return {MaterializerContract::MarketRule::Spot,
             "REST depth snapshot lastUpdateId=L",
             "all diff-depth events received from stream start through snapshot acquisition",
-            "discard buffered events with u < L+1",
-            "first eligible event satisfies U <= L+1 <= u",
-            "after bridge, each next event covers local_last_update_id+1; apply u",
+            "stale: u < L; duplicate/non-advancing: u == L and cannot form a bridge",
+            "first advancing bridge satisfies U <= L < u",
+            "after synchronization, each live event must cover local_last_update_id+1 per the "
+            "accepted M3 Spot live policy, then advance to u",
             "snapshot-too-old, forward gap, integrity, or provenance failure rejects the fixture "
             "and triggers resync",
             "consume only explicitly supplied immutable source archive plus expected provenance "
@@ -40,15 +58,10 @@ Result<std::monostate> validate_source_archive(const ImmutableSourceArchive& sou
         return ParseError{ErrorCategory::InvalidMetadata, 0, 0, 0, "unsupported source market"};
     }
     const auto valid_hash = [](const std::string& value) {
-        if (value.size() != 64)
-            return false;
-        for (const auto character : value) {
-            if (!((character >= '0' && character <= '9') ||
-                  (character >= 'a' && character <= 'f'))) {
-                return false;
-            }
-        }
-        return true;
+        return value.size() == 64 && std::ranges::all_of(value, [](const char character) {
+                   return (character >= '0' && character <= '9') ||
+                          (character >= 'a' && character <= 'f');
+               });
     };
     if (!valid_hash(source.recorder_wheel_sha256) || !valid_hash(source.recorder_config_sha256)) {
         return ParseError{ErrorCategory::InvalidMetadata, 0, 0, 0,

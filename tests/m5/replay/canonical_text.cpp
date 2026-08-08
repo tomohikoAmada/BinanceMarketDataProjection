@@ -1,5 +1,6 @@
 #include "canonical_text.hpp"
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <charconv>
@@ -151,7 +152,7 @@ Result<std::string> sha256_hex(std::string_view bytes) {
         std::array<std::uint32_t, 64> words{};
         for (std::size_t index = 0; index < 16; ++index) {
             const auto offset = block + index * 4;
-            words[index] =
+            words.at(index) =
                 (static_cast<std::uint32_t>(static_cast<unsigned char>(padded[offset])) << 24U) |
                 (static_cast<std::uint32_t>(static_cast<unsigned char>(padded[offset + 1]))
                  << 16U) |
@@ -159,11 +160,11 @@ Result<std::string> sha256_hex(std::string_view bytes) {
                 static_cast<std::uint32_t>(static_cast<unsigned char>(padded[offset + 3]));
         }
         for (std::size_t index = 16; index < words.size(); ++index) {
-            const auto sigma0 = std::rotr(words[index - 15], 7U) ^
-                                std::rotr(words[index - 15], 18U) ^ (words[index - 15] >> 3U);
-            const auto sigma1 = std::rotr(words[index - 2], 17U) ^
-                                std::rotr(words[index - 2], 19U) ^ (words[index - 2] >> 10U);
-            words[index] = words[index - 16] + sigma0 + words[index - 7] + sigma1;
+            const auto sigma0 = std::rotr(words.at(index - 15), 7U) ^
+                                std::rotr(words.at(index - 15), 18U) ^ (words.at(index - 15) >> 3U);
+            const auto sigma1 = std::rotr(words.at(index - 2), 17U) ^
+                                std::rotr(words.at(index - 2), 19U) ^ (words.at(index - 2) >> 10U);
+            words.at(index) = words.at(index - 16) + sigma0 + words.at(index - 7) + sigma1;
         }
         auto a = state[0];
         auto b = state[1];
@@ -176,7 +177,7 @@ Result<std::string> sha256_hex(std::string_view bytes) {
         for (std::size_t index = 0; index < words.size(); ++index) {
             const auto sigma1 = std::rotr(e, 6U) ^ std::rotr(e, 11U) ^ std::rotr(e, 25U);
             const auto choice = (e & f) ^ ((~e) & g);
-            const auto temp1 = h + sigma1 + choice + round_constants[index] + words[index];
+            const auto temp1 = h + sigma1 + choice + round_constants.at(index) + words.at(index);
             const auto sigma0 = std::rotr(a, 2U) ^ std::rotr(a, 13U) ^ std::rotr(a, 22U);
             const auto majority = (a & b) ^ (a & c) ^ (b & c);
             const auto temp2 = sigma0 + majority;
@@ -205,12 +206,8 @@ bool is_canonical_integer(std::string_view token) {
     if (token.empty() || (token.size() > 1 && token.front() == '0')) {
         return false;
     }
-    for (const auto character : token) {
-        if (character < '0' || character > '9') {
-            return false;
-        }
-    }
-    return true;
+    return std::ranges::all_of(
+        token, [](const char character) { return character >= '0' && character <= '9'; });
 }
 
 Result<std::uint64_t> parse_uint64(std::string_view token, std::size_t line, std::size_t event,

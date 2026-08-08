@@ -2,11 +2,15 @@
 
 #include "canonical_text.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cstdint>
 #include <fstream>
 #include <map>
 #include <sstream>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 namespace bmd_projection::m5::replay {
 namespace {
@@ -40,15 +44,7 @@ using Tokens = std::vector<std::string_view>;
 }
 
 [[nodiscard]] bool valid_symbolic_token(std::string_view token) {
-    if (token.empty()) {
-        return false;
-    }
-    for (const auto character : token) {
-        if (!token_char(character)) {
-            return false;
-        }
-    }
-    return true;
+    return !token.empty() && std::ranges::all_of(token, token_char);
 }
 
 [[nodiscard]] bool valid_identifier_token(std::string_view token) {
@@ -59,13 +55,10 @@ using Tokens = std::vector<std::string_view>;
     if (token.empty() || token == "-") {
         return false;
     }
-    for (const auto character : token) {
-        if (!((character >= '0' && character <= '9') || character == '+' || character == '-' ||
-              character == '.' || character == 'e' || character == 'E')) {
-            return false;
-        }
-    }
-    return true;
+    return std::ranges::all_of(token, [](const char character) {
+        return (character >= '0' && character <= '9') || character == '+' || character == '-' ||
+               character == '.' || character == 'e' || character == 'E';
+    });
 }
 
 [[nodiscard]] bool starts_with(std::string_view value, std::string_view prefix) {
@@ -291,14 +284,13 @@ key_value(std::string_view token, std::size_t line, std::size_t event, std::size
     return std::make_pair(std::string(key), std::string(value));
 }
 
-[[nodiscard]] Result<ReplayHeader> parse_header(std::string_view line) {
-    const auto tokens = split_spaces(line);
-    if (tokens.empty() || tokens.front() != kReplaySchemaName) {
-        return error(ErrorCategory::UnsupportedSchema, 1, 0, 0, "unsupported replay schema");
-    }
-    std::map<std::string, std::string> fields;
-    const std::array required = {"market",         "symbol", "price_scale",
-                                 "quantity_scale", "policy", "fixture_id"};
+constexpr std::array<std::string_view, 6> kRequiredHeaderFields = {
+    "market", "symbol", "price_scale", "quantity_scale", "policy", "fixture_id"};
+
+using HeaderFields = std::map<std::string, std::string>;
+
+[[nodiscard]] Result<HeaderFields> collect_header_fields(const Tokens& tokens) {
+    HeaderFields fields;
     std::string previous_provenance;
     for (std::size_t index = 1; index < tokens.size(); ++index) {
         const auto parsed = key_value(tokens[index], 1, 0, index);
@@ -306,8 +298,8 @@ key_value(std::string_view token, std::size_t line, std::size_t event, std::size
             return std::get<ParseError>(parsed);
         }
         const auto [key, value] = std::get<std::pair<std::string, std::string>>(parsed);
-        if (index <= required.size()) {
-            if (key != required[index - 1]) {
+        if (index <= kRequiredHeaderFields.size()) {
+            if (key != kRequiredHeaderFields.at(index - 1)) {
                 return error(ErrorCategory::InvalidMetadata, 1, 0, index,
                              "header fields are not in canonical order");
             }
@@ -328,21 +320,46 @@ key_value(std::string_view token, std::size_t line, std::size_t event, std::size
             previous_provenance = key;
         }
     }
-    for (const auto key : required) {
-        if (!fields.contains(key)) {
+    return fields;
+}
+
+[[nodiscard]] Result<std::monostate> check_header_fields_present(const HeaderFields& fields) {
+    for (const auto& key : kRequiredHeaderFields) {
+        if (!fields.contains(std::string{key})) {
             return error(ErrorCategory::InvalidMetadata, 1, 0, 0, "missing header field");
         }
     }
+    return std::monostate{};
+}
+
+struct HeaderMarketPolicy final {
+    Market market{};
+    SequencePolicy policy{};
+};
+
+[[nodiscard]] Result<HeaderMarketPolicy> parse_header_market_policy(const HeaderFields& fields) {
     const auto market = parse_market(fields.at("market"), 1, 0, 1);
     const auto policy = parse_policy(fields.at("policy"), 1, 0, 4);
+    if (std::holds_alternative<ParseError>(market)) {
+        return std::get<ParseError>(market);
+    }
+    if (std::holds_alternative<ParseError>(policy)) {
+        return std::get<ParseError>(policy);
+    }
+    return HeaderMarketPolicy{std::get<Market>(market), std::get<SequencePolicy>(policy)};
+}
+
+struct HeaderScalars final {
+    std::uint32_t price_scale{};
+    std::uint32_t quantity_scale{};
+};
+
+[[nodiscard]] Result<HeaderScalars> parse_header_scalars(const HeaderFields& fields) {
     const auto price_scale = parse_uint32(fields.at("price_scale"), 1, 0, 3);
     const auto quantity_scale = parse_uint32(fields.at("quantity_scale"), 1, 0, 4);
-    if (std::holds_alternative<ParseError>(market))
-        return std::get<ParseError>(market);
-    if (std::holds_alternative<ParseError>(policy))
-        return std::get<ParseError>(policy);
-    if (std::holds_alternative<ParseError>(price_scale))
+    if (std::holds_alternative<ParseError>(price_scale)) {
         return std::get<ParseError>(price_scale);
+    }
     if (std::holds_alternative<ParseError>(quantity_scale)) {
         return std::get<ParseError>(quantity_scale);
     }
@@ -355,35 +372,257 @@ key_value(std::string_view token, std::size_t line, std::size_t event, std::size
         return error(ErrorCategory::InvalidMetadata, 1, 0, 0,
                      "symbol and fixture ID must be non-empty identifier tokens");
     }
-    if (std::get<Market>(market) == Market::Spot &&
-        std::get<SequencePolicy>(policy) != SequencePolicy::Spot) {
+    return HeaderScalars{std::get<std::uint32_t>(price_scale),
+                         std::get<std::uint32_t>(quantity_scale)};
+}
+
+[[nodiscard]] Result<std::monostate>
+check_header_market_policy_agreement(const HeaderMarketPolicy& market_policy) {
+    if ((market_policy.market == Market::Spot && market_policy.policy != SequencePolicy::Spot) ||
+        (market_policy.market == Market::UsdMPerpetual &&
+         market_policy.policy != SequencePolicy::UsdMPerpetual)) {
         return error(ErrorCategory::InvalidMetadata, 1, 0, 4, "market and policy disagree");
     }
-    if (std::get<Market>(market) == Market::UsdMPerpetual &&
-        std::get<SequencePolicy>(policy) != SequencePolicy::UsdMPerpetual) {
-        return error(ErrorCategory::InvalidMetadata, 1, 0, 4, "market and policy disagree");
-    }
-    std::vector<std::pair<std::string, std::string>> provenance;
-    for (const auto& [key, value] : fields) {
-        if (starts_with(key, "provenance_")) {
-            provenance.emplace_back(key, value);
-        }
-    }
-    return ReplayHeader{
-        kReplaySchemaVersion,
-        std::get<Market>(market),
-        fields.at("symbol"),
-        {std::get<std::uint32_t>(price_scale), std::get<std::uint32_t>(quantity_scale)},
-        std::get<SequencePolicy>(policy),
-        fields.at("fixture_id"),
-        provenance};
+    return std::monostate{};
 }
 
 [[nodiscard]] SourceLocation source(std::size_t event, std::size_t line, std::string_view text) {
     return {event, line, std::string(text)};
 }
 
+[[nodiscard]] Result<Operation> parse_baseline_event(const Tokens& tokens, bool rebaseline,
+                                                     const SourceLocation& location,
+                                                     std::size_t line, std::size_t event) {
+    if (tokens.size() != 4) {
+        return error(ErrorCategory::ReplaySyntax, line, event, tokens.size(),
+                     "baseline event requires id, bids, asks");
+    }
+    const auto id = parse_uint64(tokens[1], line, event, 1);
+    const auto bids = parse_levels(tokens[2], Side::Bid, line, event, 2);
+    const auto asks = parse_levels(tokens[3], Side::Ask, line, event, 3);
+    if (std::holds_alternative<ParseError>(id)) {
+        return std::get<ParseError>(id);
+    }
+    if (std::holds_alternative<ParseError>(bids)) {
+        return std::get<ParseError>(bids);
+    }
+    if (std::holds_alternative<ParseError>(asks)) {
+        return std::get<ParseError>(asks);
+    }
+    if (rebaseline) {
+        return Operation{RebaselineOp{location, std::get<std::uint64_t>(id),
+                                      std::get<std::vector<LevelInput>>(bids),
+                                      std::get<std::vector<LevelInput>>(asks)}};
+    }
+    return Operation{InstallBaselineOp{location, std::get<std::uint64_t>(id),
+                                       std::get<std::vector<LevelInput>>(bids),
+                                       std::get<std::vector<LevelInput>>(asks)}};
+}
+
+[[nodiscard]] Result<Operation> parse_depth_update_event(const Tokens& tokens,
+                                                         const SourceLocation& location,
+                                                         std::size_t line, std::size_t event) {
+    if (tokens.size() != 5 || !starts_with(tokens[3], "pu=")) {
+        return error(ErrorCategory::ReplaySyntax, line, event, tokens.size(),
+                     "depth event requires first final pu=... levels");
+    }
+    const auto first = parse_uint64(tokens[1], line, event, 1);
+    const auto final = parse_uint64(tokens[2], line, event, 2);
+    const auto previous = parse_optional_uint(tokens[3].substr(3), line, event, 3);
+    const auto levels = parse_levels(tokens[4], std::nullopt, line, event, 4);
+    if (std::holds_alternative<ParseError>(first)) {
+        return std::get<ParseError>(first);
+    }
+    if (std::holds_alternative<ParseError>(final)) {
+        return std::get<ParseError>(final);
+    }
+    if (std::holds_alternative<ParseError>(previous)) {
+        return std::get<ParseError>(previous);
+    }
+    if (std::holds_alternative<ParseError>(levels)) {
+        return std::get<ParseError>(levels);
+    }
+    return Operation{DepthUpdateOp{location, std::get<std::uint64_t>(first),
+                                   std::get<std::uint64_t>(final),
+                                   std::get<std::optional<std::uint64_t>>(previous),
+                                   std::get<std::vector<LevelInput>>(levels)}};
+}
+
+[[nodiscard]] Result<Operation> parse_reset_event(const Tokens& tokens,
+                                                  const SourceLocation& location, std::size_t line,
+                                                  std::size_t event) {
+    if (tokens.size() != 1) {
+        return error(ErrorCategory::ReplaySyntax, line, event, tokens.size(),
+                     "reset takes no arguments");
+    }
+    return Operation{ResetOp{location}};
+}
+
+[[nodiscard]] Result<Operation> parse_adapter_metadata_event(const Tokens& tokens,
+                                                             const SourceLocation& location,
+                                                             std::size_t line, std::size_t event) {
+    if (tokens.size() != 2) {
+        return error(ErrorCategory::ReplaySyntax, line, event, tokens.size(),
+                     "adapter metadata requires one quality list");
+    }
+    const auto facts = parse_quality_list(tokens[1], line, event, 1);
+    if (std::holds_alternative<ParseError>(facts)) {
+        return std::get<ParseError>(facts);
+    }
+    return Operation{AdapterMetadataOp{location, std::get<std::vector<HostQualityFact>>(facts)}};
+}
+
+[[nodiscard]] Result<Operation> parse_malformed_range_event(const Tokens& tokens,
+                                                            const SourceLocation& location,
+                                                            std::size_t line, std::size_t event) {
+    if (tokens.size() != 3) {
+        return error(ErrorCategory::ReplaySyntax, line, event, tokens.size(),
+                     "malformed range requires first and final IDs");
+    }
+    const auto first = parse_uint64(tokens[1], line, event, 1);
+    const auto final = parse_uint64(tokens[2], line, event, 2);
+    if (std::holds_alternative<ParseError>(first)) {
+        return std::get<ParseError>(first);
+    }
+    if (std::holds_alternative<ParseError>(final)) {
+        return std::get<ParseError>(final);
+    }
+    return Operation{
+        MalformedRangeOp{location, std::get<std::uint64_t>(first), std::get<std::uint64_t>(final)}};
+}
+
+[[nodiscard]] Result<Operation> parse_snapshot_request_event(const Tokens& tokens,
+                                                             const SourceLocation& location,
+                                                             std::size_t line, std::size_t event) {
+    if (tokens.size() != 10) {
+        return error(ErrorCategory::ReplaySyntax, line, event, tokens.size(),
+                     "snapshot request has ten fields");
+    }
+    std::optional<std::uint32_t> depth;
+    if (tokens[1] != "-") {
+        const auto parsed = parse_uint32(tokens[1], line, event, 1);
+        if (std::holds_alternative<ParseError>(parsed)) {
+            return std::get<ParseError>(parsed);
+        }
+        depth = std::get<std::uint32_t>(parsed);
+    }
+    const auto facts = parse_quality_list(tokens[2], line, event, 2);
+    const auto origin = parse_origin(tokens[6], line, event, 6);
+    const auto generated = parse_uint64(tokens[7], line, event, 7);
+    const auto monotonic = parse_optional_uint(tokens[8], line, event, 8);
+    const auto gap = parse_current_gap(tokens[9], line, event, 9);
+    if (std::holds_alternative<ParseError>(facts)) {
+        return std::get<ParseError>(facts);
+    }
+    if (std::holds_alternative<ParseError>(origin)) {
+        return std::get<ParseError>(origin);
+    }
+    if (std::holds_alternative<ParseError>(generated)) {
+        return std::get<ParseError>(generated);
+    }
+    if (std::holds_alternative<ParseError>(monotonic)) {
+        return std::get<ParseError>(monotonic);
+    }
+    if (std::holds_alternative<ParseError>(gap)) {
+        return std::get<ParseError>(gap);
+    }
+    for (const auto token_index : {3U, 4U, 5U}) {
+        if (!valid_identifier_token(tokens[token_index])) {
+            return error(ErrorCategory::ReplaySyntax, line, event, token_index,
+                         "invalid snapshot context token");
+        }
+    }
+    return Operation{SnapshotRequestOp{
+        location, depth, std::get<std::vector<HostQualityFact>>(facts), std::string(tokens[3]),
+        std::string(tokens[4]), std::string(tokens[5]), std::get<SnapshotOrigin>(origin),
+        std::get<std::uint64_t>(generated), std::get<std::optional<std::uint64_t>>(monotonic),
+        std::get<std::optional<std::pair<std::uint64_t, GapRecoveryState>>>(gap)}};
+}
+
+[[nodiscard]] Result<Operation> parse_event(const Tokens& tokens, const SourceLocation& location,
+                                            std::size_t line, std::size_t event) {
+    if (tokens.front() == "INSTALL_BASELINE" || tokens.front() == "REBASELINE") {
+        return parse_baseline_event(tokens, tokens.front() == "REBASELINE", location, line, event);
+    }
+    if (tokens.front() == "DEPTH_UPDATE") {
+        return parse_depth_update_event(tokens, location, line, event);
+    }
+    if (tokens.front() == "RESET") {
+        return parse_reset_event(tokens, location, line, event);
+    }
+    if (tokens.front() == "ADAPTER_METADATA") {
+        return parse_adapter_metadata_event(tokens, location, line, event);
+    }
+    if (tokens.front() == "MALFORMED_RANGE") {
+        return parse_malformed_range_event(tokens, location, line, event);
+    }
+    if (tokens.front() == "SNAPSHOT_REQUEST") {
+        return parse_snapshot_request_event(tokens, location, line, event);
+    }
+    return error(ErrorCategory::ReplaySyntax, line, event, 0, "unknown event name");
+}
+
+[[nodiscard]] Result<std::monostate>
+check_adapter_metadata_ordering(const NormalizedReplay& replay) {
+    for (std::size_t index = 0; index < replay.operations.size(); ++index) {
+        if (!std::holds_alternative<AdapterMetadataOp>(replay.operations[index])) {
+            continue;
+        }
+        if (index + 1 >= replay.operations.size() ||
+            !std::holds_alternative<DepthUpdateOp>(replay.operations[index + 1])) {
+            const auto& metadata = std::get<AdapterMetadataOp>(replay.operations[index]);
+            return error(ErrorCategory::ReplaySyntax, metadata.source.line_number, index, 0,
+                         "ADAPTER_METADATA must immediately precede DEPTH_UPDATE");
+        }
+    }
+    return std::monostate{};
+}
+
 } // namespace
+
+Result<ReplayHeader> parse_header(std::string_view line) {
+    const auto tokens = split_spaces(line);
+    if (tokens.empty() || tokens.front() != kReplaySchemaName) {
+        return error(ErrorCategory::UnsupportedSchema, 1, 0, 0, "unsupported replay schema");
+    }
+    const auto fields = collect_header_fields(tokens);
+    if (std::holds_alternative<ParseError>(fields)) {
+        return std::get<ParseError>(fields);
+    }
+    const auto& parsed_fields = std::get<HeaderFields>(fields);
+    const auto present = check_header_fields_present(parsed_fields);
+    if (std::holds_alternative<ParseError>(present)) {
+        return std::get<ParseError>(present);
+    }
+    const auto market_policy = parse_header_market_policy(parsed_fields);
+    if (std::holds_alternative<ParseError>(market_policy)) {
+        return std::get<ParseError>(market_policy);
+    }
+    const auto scalars = parse_header_scalars(parsed_fields);
+    if (std::holds_alternative<ParseError>(scalars)) {
+        return std::get<ParseError>(scalars);
+    }
+    const auto agreement =
+        check_header_market_policy_agreement(std::get<HeaderMarketPolicy>(market_policy));
+    if (std::holds_alternative<ParseError>(agreement)) {
+        return std::get<ParseError>(agreement);
+    }
+    const auto& parsed_market_policy = std::get<HeaderMarketPolicy>(market_policy);
+    const auto& parsed_scalars = std::get<HeaderScalars>(scalars);
+    std::vector<std::pair<std::string, std::string>> provenance;
+    for (const auto& [key, value] : parsed_fields) {
+        if (starts_with(key, "provenance_")) {
+            provenance.emplace_back(key, value);
+        }
+    }
+    return ReplayHeader{kReplaySchemaVersion,
+                        parsed_market_policy.market,
+                        parsed_fields.at("symbol"),
+                        {parsed_scalars.price_scale, parsed_scalars.quantity_scale},
+                        parsed_market_policy.policy,
+                        parsed_fields.at("fixture_id"),
+                        provenance};
+}
 
 Result<NormalizedReplay> parse_replay_log(std::string_view bytes) {
     const auto canonical = validate_canonical_bytes(bytes);
@@ -396,8 +635,9 @@ Result<NormalizedReplay> parse_replay_log(std::string_view bytes) {
         const auto end = bytes.find('\n', start);
         lines.push_back(bytes.substr(start, end == std::string_view::npos ? bytes.size() - start
                                                                           : end - start));
-        if (end == std::string_view::npos)
+        if (end == std::string_view::npos) {
             break;
+        }
         start = end + 1;
     }
     const auto header = parse_header(lines.front());
@@ -406,143 +646,23 @@ Result<NormalizedReplay> parse_replay_log(std::string_view bytes) {
     }
     NormalizedReplay replay{std::get<ReplayHeader>(header), {}};
     for (std::size_t line_index = 1; line_index < lines.size(); ++line_index) {
-        const auto line = lines[line_index];
         const auto event_index = replay.operations.size();
-        const auto tokens = split_spaces(line);
+        const auto tokens = split_spaces(lines[line_index]);
         if (tokens.empty()) {
             return error(ErrorCategory::ReplaySyntax, line_index + 1, event_index, 0,
                          "empty event");
         }
-        const auto location = source(event_index, line_index + 1, line);
-        if (tokens.front() == "INSTALL_BASELINE" || tokens.front() == "REBASELINE") {
-            if (tokens.size() != 4) {
-                return error(ErrorCategory::ReplaySyntax, line_index + 1, event_index,
-                             tokens.size(), "baseline event requires id, bids, asks");
-            }
-            const auto id = parse_uint64(tokens[1], line_index + 1, event_index, 1);
-            const auto bids = parse_levels(tokens[2], Side::Bid, line_index + 1, event_index, 2);
-            const auto asks = parse_levels(tokens[3], Side::Ask, line_index + 1, event_index, 3);
-            if (std::holds_alternative<ParseError>(id))
-                return std::get<ParseError>(id);
-            if (std::holds_alternative<ParseError>(bids))
-                return std::get<ParseError>(bids);
-            if (std::holds_alternative<ParseError>(asks))
-                return std::get<ParseError>(asks);
-            if (tokens.front() == "INSTALL_BASELINE") {
-                replay.operations.emplace_back(InstallBaselineOp{
-                    location, std::get<std::uint64_t>(id), std::get<std::vector<LevelInput>>(bids),
-                    std::get<std::vector<LevelInput>>(asks)});
-            } else {
-                replay.operations.emplace_back(RebaselineOp{
-                    location, std::get<std::uint64_t>(id), std::get<std::vector<LevelInput>>(bids),
-                    std::get<std::vector<LevelInput>>(asks)});
-            }
-        } else if (tokens.front() == "DEPTH_UPDATE") {
-            if (tokens.size() != 5 || !starts_with(tokens[3], "pu=")) {
-                return error(ErrorCategory::ReplaySyntax, line_index + 1, event_index,
-                             tokens.size(), "depth event requires first final pu=... levels");
-            }
-            const auto first = parse_uint64(tokens[1], line_index + 1, event_index, 1);
-            const auto final = parse_uint64(tokens[2], line_index + 1, event_index, 2);
-            const auto previous =
-                parse_optional_uint(tokens[3].substr(3), line_index + 1, event_index, 3);
-            const auto levels =
-                parse_levels(tokens[4], std::nullopt, line_index + 1, event_index, 4);
-            if (std::holds_alternative<ParseError>(first))
-                return std::get<ParseError>(first);
-            if (std::holds_alternative<ParseError>(final))
-                return std::get<ParseError>(final);
-            if (std::holds_alternative<ParseError>(previous))
-                return std::get<ParseError>(previous);
-            if (std::holds_alternative<ParseError>(levels))
-                return std::get<ParseError>(levels);
-            replay.operations.emplace_back(DepthUpdateOp{
-                location, std::get<std::uint64_t>(first), std::get<std::uint64_t>(final),
-                std::get<std::optional<std::uint64_t>>(previous),
-                std::get<std::vector<LevelInput>>(levels)});
-        } else if (tokens.front() == "RESET") {
-            if (tokens.size() != 1) {
-                return error(ErrorCategory::ReplaySyntax, line_index + 1, event_index,
-                             tokens.size(), "reset takes no arguments");
-            }
-            replay.operations.emplace_back(ResetOp{location});
-        } else if (tokens.front() == "ADAPTER_METADATA") {
-            if (tokens.size() != 2) {
-                return error(ErrorCategory::ReplaySyntax, line_index + 1, event_index,
-                             tokens.size(), "adapter metadata requires one quality list");
-            }
-            const auto facts = parse_quality_list(tokens[1], line_index + 1, event_index, 1);
-            if (std::holds_alternative<ParseError>(facts))
-                return std::get<ParseError>(facts);
-            replay.operations.emplace_back(
-                AdapterMetadataOp{location, std::get<std::vector<HostQualityFact>>(facts)});
-        } else if (tokens.front() == "MALFORMED_RANGE") {
-            if (tokens.size() != 3) {
-                return error(ErrorCategory::ReplaySyntax, line_index + 1, event_index,
-                             tokens.size(), "malformed range requires first and final IDs");
-            }
-            const auto first = parse_uint64(tokens[1], line_index + 1, event_index, 1);
-            const auto final = parse_uint64(tokens[2], line_index + 1, event_index, 2);
-            if (std::holds_alternative<ParseError>(first))
-                return std::get<ParseError>(first);
-            if (std::holds_alternative<ParseError>(final))
-                return std::get<ParseError>(final);
-            replay.operations.emplace_back(MalformedRangeOp{
-                location, std::get<std::uint64_t>(first), std::get<std::uint64_t>(final)});
-        } else if (tokens.front() == "SNAPSHOT_REQUEST") {
-            if (tokens.size() != 10) {
-                return error(ErrorCategory::ReplaySyntax, line_index + 1, event_index,
-                             tokens.size(), "snapshot request has ten fields");
-            }
-            std::optional<std::uint32_t> depth;
-            if (tokens[1] != "-") {
-                const auto parsed = parse_uint32(tokens[1], line_index + 1, event_index, 1);
-                if (std::holds_alternative<ParseError>(parsed))
-                    return std::get<ParseError>(parsed);
-                depth = std::get<std::uint32_t>(parsed);
-            }
-            const auto facts = parse_quality_list(tokens[2], line_index + 1, event_index, 2);
-            const auto origin = parse_origin(tokens[6], line_index + 1, event_index, 6);
-            const auto generated = parse_uint64(tokens[7], line_index + 1, event_index, 7);
-            const auto monotonic = parse_optional_uint(tokens[8], line_index + 1, event_index, 8);
-            const auto gap = parse_current_gap(tokens[9], line_index + 1, event_index, 9);
-            if (std::holds_alternative<ParseError>(facts))
-                return std::get<ParseError>(facts);
-            if (std::holds_alternative<ParseError>(origin))
-                return std::get<ParseError>(origin);
-            if (std::holds_alternative<ParseError>(generated))
-                return std::get<ParseError>(generated);
-            if (std::holds_alternative<ParseError>(monotonic))
-                return std::get<ParseError>(monotonic);
-            if (std::holds_alternative<ParseError>(gap))
-                return std::get<ParseError>(gap);
-            for (const auto token_index : {3U, 4U, 5U}) {
-                if (!valid_identifier_token(tokens[token_index])) {
-                    return error(ErrorCategory::ReplaySyntax, line_index + 1, event_index,
-                                 token_index, "invalid snapshot context token");
-                }
-            }
-            replay.operations.emplace_back(SnapshotRequestOp{
-                location, depth, std::get<std::vector<HostQualityFact>>(facts),
-                std::string(tokens[3]), std::string(tokens[4]), std::string(tokens[5]),
-                std::get<SnapshotOrigin>(origin), std::get<std::uint64_t>(generated),
-                std::get<std::optional<std::uint64_t>>(monotonic),
-                std::get<std::optional<std::pair<std::uint64_t, GapRecoveryState>>>(gap)});
-        } else {
-            return error(ErrorCategory::ReplaySyntax, line_index + 1, event_index, 0,
-                         "unknown event name");
+        const auto parsed =
+            parse_event(tokens, source(event_index, line_index + 1, lines[line_index]),
+                        line_index + 1, event_index);
+        if (std::holds_alternative<ParseError>(parsed)) {
+            return std::get<ParseError>(parsed);
         }
+        replay.operations.emplace_back(std::get<Operation>(parsed));
     }
-
-    for (std::size_t index = 0; index < replay.operations.size(); ++index) {
-        if (!std::holds_alternative<AdapterMetadataOp>(replay.operations[index]))
-            continue;
-        if (index + 1 >= replay.operations.size() ||
-            !std::holds_alternative<DepthUpdateOp>(replay.operations[index + 1])) {
-            const auto& metadata = std::get<AdapterMetadataOp>(replay.operations[index]);
-            return error(ErrorCategory::ReplaySyntax, metadata.source.line_number, index, 0,
-                         "ADAPTER_METADATA must immediately precede DEPTH_UPDATE");
-        }
+    const auto ordering = check_adapter_metadata_ordering(replay);
+    if (std::holds_alternative<ParseError>(ordering)) {
+        return std::get<ParseError>(ordering);
     }
     return replay;
 }

@@ -4,13 +4,14 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <variant>
 #include <vector>
 
 namespace bmd_projection::m5::replay {
 
 inline constexpr std::uint32_t kReplaySchemaVersion = 1;
-inline constexpr char kReplaySchemaName[] = "REPLAY_V1";
+inline constexpr std::string_view kReplaySchemaName = "REPLAY_V1";
 
 enum class ErrorCategory : std::uint8_t {
     IoFailure,
@@ -240,6 +241,17 @@ struct MaterializerContract final {
 
     friend bool operator==(const MaterializerContract&, const MaterializerContract&) = default;
 };
+
+enum class SpotBootstrapOutcome : std::uint8_t {
+    Stale,
+    NonAdvancingDuplicate,
+    BridgeCandidate,
+    ForwardGap,
+};
+
+[[nodiscard]] SpotBootstrapOutcome classify_spot_bootstrap(std::uint64_t snapshot_last_update_id,
+                                                           std::uint64_t first_update_id,
+                                                           std::uint64_t final_update_id);
 
 [[nodiscard]] MaterializerContract spot_materializer_contract();
 [[nodiscard]] MaterializerContract usdm_materializer_contract();
