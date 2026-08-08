@@ -1,0 +1,10 @@
+MANIFEST_V1
+fixture_id=usdm-tiny-v1
+schema_version=REPLAY_V1
+log_sha256=d3084f1d5575cd519f28bf6f6f5513d7451d5468dce7e20b50ac06a91cbe0180
+market=UsdMPerpetual
+symbol=BTCUSDT
+price_scale=2
+quantity_scale=3
+policy=UsdMPerpetual
+event_count=8

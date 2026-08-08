@@ -1,0 +1,9 @@
+REPLAY_V1 market=UsdMPerpetual symbol=BTCUSDT price_scale=2 quantity_scale=3 policy=UsdMPerpetual fixture_id=usdm-tiny-v1
+INSTALL_BASELINE 500 B:100.00,2.500 A:101.00,3.000
+ADAPTER_METADATA RecoveredTail
+DEPTH_UPDATE 499 501 pu=500 B:100.00,0.000|A:101.00,3.125
+SNAPSHOT_REQUEST 1 RecoveredTail snapshot-2 recorder 1.0 RecorderReplay 2000 3000 -
+DEPTH_UPDATE 502 503 pu=501 B:99.99,1.000
+RESET
+REBASELINE 600 B:100.00,1.000 A:101.00,1.000
+MALFORMED_RANGE 8 2

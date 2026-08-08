@@ -5,7 +5,7 @@
 - Decision date: 2026-08-08
 - Projection base: `8cae70908ab420b0469e7bd35b853cd475561d90`
 - Post-merge CI: `31248929954` — PASS (same-tree equivalence verified)
-- Implementation status: **NOT STARTED / AUTHORIZED ON MERGE**
+- Implementation status: **IN PROGRESS**
 
 ## OD-M5-001: Representative Transcript Corpus Acquisition Plan
 
@@ -192,14 +192,22 @@ granularity is decided during the performance spike.
 
 ## M5 Implementation Authorization
 
-M5 Implementation: **AUTHORIZED / NOT STARTED.**
+M5 Implementation: **IN PROGRESS.**
 
-Meaning: implementation may begin AFTER this decision/CI-policy PR itself is reviewed and
-merged. Do NOT implement M5 in this PR.
+Phase 1 is implemented and pending independent review. Phase 2 and later phases remain not started.
+
+## Phase 1 Review Dispositions
+
+| ID | Disposition |
+|---|---|
+| M5-PIR-001 | **INCORPORATED INTO PHASE 1** - explicit Spot/USD-M bootstrap and bridge materializer contract |
+| M5-PIR-002 | **DEFERRED / NON-BLOCKING** |
+| M5-PIR-003 | **DEFERRED / NON-BLOCKING** - before required branch protection |
+| M5-PIR-004 | **INCORPORATED INTO PHASE 1** - explicit offline acquisition boundary |
 
 ## Non-Goals
 
-- No M5 implementation in this PR.
+- No M5 phase 2+ implementation in this PR.
 - No production code changes.
 - No Recorder modification.
 - No corpus download/upload.

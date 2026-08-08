@@ -1,0 +1,8 @@
+REPLAY_V1 market=Spot symbol=BTCUSDT price_scale=4 quantity_scale=4 policy=Spot fixture_id=recovery-tiny-v1 provenance_conversion=v1 provenance_source=synthetic
+INSTALL_BASELINE 10 B:1.0000,-0 A:1.1000,0.0000
+DEPTH_UPDATE 10 11 pu=- B:1.0000,0.0001
+RESET
+REBASELINE 20 B:1.0000,1.0000 A:1.1000,1.0000
+ADAPTER_METADATA OrderBookResync
+DEPTH_UPDATE 19 21 pu=- B:1.0000,1.0000
+SNAPSHOT_REQUEST 0 OrderBookResync snapshot-3 materializer 2.0 HistoryReplay 3000 - 2999,ResyncInProgress

@@ -1,0 +1,10 @@
+MANIFEST_V1
+fixture_id=spot-tiny-v1
+schema_version=REPLAY_V1
+log_sha256=77d6c315db00fab348305cdcb9d708585b85fc82ee67c59bcb2597cc6f060488
+market=Spot
+symbol=BTCUSDT
+price_scale=8
+quantity_scale=8
+policy=Spot
+event_count=8
