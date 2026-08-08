@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.24)
+
+project(BinanceMarketDataProjectionMissingAdapterConsumer LANGUAGES CXX)
+
+find_package(BinanceMarketDataProjection CONFIG REQUIRED COMPONENTS ProtoAdapter)

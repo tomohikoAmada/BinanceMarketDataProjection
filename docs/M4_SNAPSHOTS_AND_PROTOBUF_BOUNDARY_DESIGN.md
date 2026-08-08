@@ -2,17 +2,23 @@
 
 ## Status
 
-- Design status: **APPROVED**
-- Implementation status: **NOT STARTED**
+- Design status: **APPROVED / MERGED**
+- Implementation status: **APPROVED / PENDING MERGE**
+- M4 status: **OPEN / PENDING MERGE**
 - ADR status: **ACCEPTED**
 - External architecture review: **APPROVED**
-- Date: 2026-08-06
+- C-M4-001: **CLOSED / SATISFIED**
+- OD-M4-001: **CLOSED**
+- Contracts integration: **VERIFIED**
+- Date: 2026-08-07
 - Projection base: `27279fe3e61c092d5dcc50cb35b0483b32ed428b`
+- Implementation branch base: `7d8a655a5349ae5764bb6bd404993153c890ea02`
 - Contracts baseline: `01d76a41929f36d89573159f5f458f9f1e378ada`
 
-This document records the accepted M4 architecture, not an implementation claim. Every API and CMake
-declaration below remains **Proposed, not implemented**. M4 implementation must not start until all
-implementation blockers are closed.
+This document remains the accepted M4 architecture. The API, target, package component, identity
+checks, tests, and fuzz boundary described below now have an author implementation candidate on
+`feat/m4-snapshots-protobuf-boundary`. This is not an M4 completion claim; independent implementation
+review remains mandatory.
 
 ## External architecture review record
 
@@ -43,8 +49,8 @@ The Round 2 review approved the M4 architecture after verifying:
 - separation of Host-observed, Core-derived, and inbound-wire quality domains; and
 - consistency of the ADR, public API sketch, tests, fuzz strategy, and acceptance gates.
 
-This approval authorizes recording and merging the design. It does not authorize M4 implementation
-while C-M4-001 remains open.
+This approval authorized the design. C-M4-001 was subsequently merged and accepted, allowing the
+separate M4 implementation candidate recorded here.
 
 ## Source-of-truth order
 
@@ -119,27 +125,27 @@ ACCEPTED or production-ready.
 
 ## Current repository state
 
-M0 through M3 are complete. M4 has no header, source, target, dependency, test, fuzzer, generated
-file, or implementation branch. Current Core-only configure/install exposes
-`BinanceMarketDataProjection::Core` and does not search for Protobuf.
+M0 through M3 are complete. M4 now has an optional `ProtoAdapter` implementation candidate while
+Core-only configure/install continues to expose only `BinanceMarketDataProjection::Core` and does
+not acquire or discover Contracts/Protobuf.
 
-The Contracts artifact audit found:
+The merged Contracts prerequisite was audited at source revision
+`67ee1bf69fad980d114cfa278c3a6ffe310a4d7a`:
 
-| Artifact | Present at fixed baseline? | Evidence / consequence |
-|---|---:|---|
-| `.proto` sources | Yes | Packaged as Python package data under `binance_market_data_contracts/proto` |
-| Generated Python protobuf/grpc stubs | Yes | Generated into `src/binance_market_data`; Python-only codegen tool |
-| Generated C++ `.pb.h` / `.pb.cc` | No | No tracked files |
-| Generated C++ gRPC files | No | No tracked files |
-| CMake project/package | No | No `CMakeLists.txt`, package config, or exported CMake target |
-| Conan recipe/package | No | No Contracts Conan recipe or lock for a C++ artifact |
-| Installable proto target | No | Python wheel packaging only |
-| Standalone descriptor set | No | Descriptor tests load Python generated modules; no installable descriptor-set artifact |
-| Stable installed C++ include layout | No | No C++ installation contract exists |
-| Schema/package identity metadata | No | No C++ target exports a schema fingerprint, package revision/version, generator identity, or runtime compatibility metadata |
+| Identity | Verified value |
+|---|---|
+| Conan package | `binance-market-data-contracts-cpp/0.1.0` |
+| Conan recipe revision | `7fd3efe3d289462fb16c78ffeced1682` |
+| CMake target | `BinanceMarketDataContracts::Protobuf` |
+| Schema baseline | `01d76a41929f36d89573159f5f458f9f1e378ada` |
+| Schema fingerprint | `33286fb1d624f4dd0c827010e93113f523c7f37dc4f6ae526361d2b0c61626c0` |
+| Fingerprint algorithm | `1` |
+| Formal Package Revision | `NOT_FORMALLY_ASSIGNED` — release gate, never replaced by Git/Conan identity |
+| Protobuf | `6.33.5`, RREV `ca5ff466767b31a1b496ec60247e105c`, full runtime |
+| Generator | `libprotoc 33.5`; `cpp_out=dllexport_decl=BMD_CONTRACTS_PROTOBUF_API` |
 
-Therefore M4 implementation has one external blocker: a Contracts-owned versioned C++ Protobuf
-package/target is unavailable. Design work can proceed; production implementation cannot.
+The repository-local bootstrap verifies these installed metadata surfaces and the Projection lock
+pins the recipe graph without embedding a platform-specific package ID or PREV.
 
 ## Goals
 
@@ -227,13 +233,12 @@ closure. A Core-only consumer remains unaware that the optional component exists
 
 ## Decision summary
 
-Every detailed decision below is accepted for implementation planning; the APIs and build targets
-remain proposed and not implemented.
+Every detailed decision below is accepted and represented by the implementation candidate.
 
 | ID | Decision | Rationale | Rejected alternatives | Compatibility impact | Implementation consequence | Required tests | Blocking status |
 |---|---|---|---|---|---|---|---|
 | D1 | Separate optional `ProtoAdapter` target | Preserves accepted Core/wire boundary | Core linkage; monolithic target | Core ABI unaffected | Component-aware exports/config | Core-only and adapter consumers | Closed |
-| D2 | Separate schema fingerprint from package revision/version in a Contracts-owned C++ package | Schema semantics can remain fixed while build/distribution commits change | Historical repository commit as both identities; source checkout; copied artifacts | Dependency lock and approved schema identity are checked independently | C-M4-001 exports both identity domains | Canonical fingerprint, package lock, runtime, and symbol tests | **APPROVED; P1-1 CLOSED; implementation blocker C-M4-001 remains** |
+| D2 | Separate schema fingerprint from package revision/version in a Contracts-owned C++ package | Schema semantics can remain fixed while build/distribution commits change | Historical repository commit as both identities; source checkout; copied artifacts | Dependency lock and approved schema identity are checked independently | C-M4-001 exports both identity domains | Canonical fingerprint, package lock, runtime, and symbol tests | **IMPLEMENTED; C-M4-001 CLOSED / SATISFIED** |
 | D3 | Strict inbound snapshot conversion | Wire objects can bypass Pydantic validation | Trust generated setters | Rejects malformed or future unsupported values | Validate before owner return | Field/order/decimal tests | Closed |
 | D4 | Strict inbound depth conversion without sequencing | Separation between adaptation and M3 policy | Adapter repairs or classifies IDs | Preserves M3 semantics | Produce owner; never call projection | Range/presence/order tests | Closed |
 | D5 | Adapted owners bind `NumericSpec` and policy and expose only checked M3 invocation | Prevents dangling spans and cross-projection scale/policy misuse | Public naked views; Host-only call discipline; stored spans | Adds binding metadata and typed mismatch results | Private call-local view inside `install_into`/`apply_to` | Binding, result propagation, move, and lifetime tests | **APPROVED; P1-2 CLOSED** |
@@ -250,11 +255,11 @@ remain proposed and not implemented.
 | D16 | M6 owns gRPC | M4 is a message adapter | Server/client in adapter | No gRPC dependency in M4 | Depend on message target only | Link/package tests | Closed |
 | D17 | Stateless deterministic candidate construction | Live/replay equivalence and strong isolation | Ambient config/partial output | Semantic output stable | Build local candidate then return | Replay/allocation tests | Closed |
 | D18 | No adapter synchronization or Arena in baseline | Host already owns single-writer lifetime | Locks/atomics/Arena API | Simple value ownership | Stateless free functions | Thread-boundary/lifetime tests | Closed |
-| D19 | Dependency lock plus canonical schema fingerprint and generator/runtime metadata | Wire schema strings do not identify package or build ABI | Schema string alone; per-message descriptor hashing | Harmless package revisions remain distinct from schema identity | Configure-time checks; optional one-time defensive integrity probe | Missing/mismatched metadata and reproducibility tests | **APPROVED; implementation prerequisite remains C-M4-001** |
+| D19 | Dependency lock plus canonical schema fingerprint and generator/runtime metadata | Wire schema strings do not identify package or build ABI | Schema string alone; per-message descriptor hashing | Harmless package revisions remain distinct from schema identity | Configure-time checks; optional one-time defensive integrity probe | Missing/mismatched metadata and reproducibility tests | **IMPLEMENTED CANDIDATE** |
 
 ## Target layout
 
-The proposed build target names are:
+The implemented build target names are:
 
 ```text
 bmd_projection_core
@@ -1013,9 +1018,9 @@ A schema string alone identifies neither the approved descriptor set nor the ins
 Dependency lock plus separate schema and generator/runtime metadata is the build-time authority.
 All messages in one binary use the linked generated target, so no new runtime wire field is needed.
 
-## Proposed public API sketch
+## Implemented public API
 
-**Approved architecture; proposed API and not implemented:**
+**Approved architecture represented by the implementation candidate:**
 
 ```cpp
 namespace binance_market_data::projection_adapter::v1 {
@@ -1093,6 +1098,7 @@ class AdaptedBookBaseline final {
   public:
     AdaptedBookBaseline(AdaptedBookBaseline&&) noexcept;
     AdaptedBookBaseline& operator=(AdaptedBookBaseline&&) noexcept;
+    ~AdaptedBookBaseline() = default;
     AdaptedBookBaseline(const AdaptedBookBaseline&) = delete;
     AdaptedBookBaseline& operator=(const AdaptedBookBaseline&) = delete;
 
@@ -1128,6 +1134,7 @@ class AdaptedDepthBatch final {
   public:
     AdaptedDepthBatch(AdaptedDepthBatch&&) noexcept;
     AdaptedDepthBatch& operator=(AdaptedDepthBatch&&) noexcept;
+    ~AdaptedDepthBatch() = default;
     AdaptedDepthBatch(const AdaptedDepthBatch&) = delete;
     AdaptedDepthBatch& operator=(const AdaptedDepthBatch&) = delete;
 
@@ -1225,9 +1232,9 @@ Core-derived facts have no public constructor or input type. All values and side
 storage. There are no output parameters, boolean behavior modes, callbacks, virtual plugins, or
 mutable global policy.
 
-## Proposed CMake design sketch
+## Implemented CMake design
 
-**Approved architecture; proposed build configuration and not implemented:**
+**Approved architecture represented by the implementation candidate:**
 
 ```cmake
 option(BMD_PROJECTION_BUILD_PROTO_ADAPTER
@@ -1413,15 +1420,13 @@ that generated symbols occur once and all public dependencies propagate correctl
 
 ## Open decisions
 
-All M4 architecture decisions are approved. One external implementation prerequisite remains
-unresolved:
+All M4 architecture decisions are approved and the sole implementation prerequisite is closed:
 
 | ID | Question | Recommended answer | Alternative | Impact | Blocks implementation? | Evidence needed to close |
 |---|---|---|---|---|---:|---|
-| OD-M4-001 | What exact installable C++ target and package revision provide Contracts messages? | Contracts-owned versioned CMake/Conan package exporting one message target, separate schema/package identities, and generator/runtime metadata | Arbitrary Host injection | Determines dependency, package config, include layout, lock, runtime version, and symbol ownership | **YES — IMPLEMENTATION BLOCKER** | Merged C-M4-001 plus reproducible schema fingerprint and successful clean install-consumer audit |
+| OD-M4-001 | What exact installable C++ target and package revision provide Contracts messages? | `binance-market-data-contracts-cpp/0.1.0#7fd3efe3d289462fb16c78ffeced1682`, target `BinanceMarketDataContracts::Protobuf`, source `67ee1bf...`, formal Package Revision not assigned until release | Arbitrary Host injection | Determines dependency, package config, include layout, lock, runtime version, and symbol ownership | **CLOSED** | Merged C-M4-001, matching fingerprint, metadata validation, static/shared install consumers |
 
-OD-M4-001 status: **OPEN — IMPLEMENTATION BLOCKER**. Owner: BinanceMarketDataContracts prerequisite
-C-M4-001.
+OD-M4-001 status: **CLOSED**.
 
 ## Implementation blockers
 
@@ -1429,13 +1434,13 @@ Reviewed blocker candidates:
 
 | Candidate | Decision | Blocking? |
 |---|---|---:|
-| B1 Contracts C++ package | **OPEN / BLOCKING**; C-M4-001 required | **Yes** |
+| B1 Contracts C++ package | **CLOSED / SATISFIED** by merged C-M4-001 | No |
 | B2 Gap information loss | Generic `SEQUENCE_GAP_DETECTED` plus endpoints is truthful; exact reason stays Core-only | No |
 | B3 Historical `last_gap` | Emit only for current `NeedsResync` | No |
 | B4 MarketState owner/data | Deferred to separate future Core design | No |
 | B5 Exact Contracts identity | Dependency lock plus separate canonical schema and package/generator metadata; delivered by C-M4-001 | No separate blocker beyond B1 |
 
-Implementation blocker count: **1**.
+Implementation blocker count: **0**.
 
 Architecture review blockers: **0**.
 Round 1 findings closed by Round 2: **3**.
@@ -1446,13 +1451,13 @@ This design changes no Contracts file. The required separate work is:
 
 | Prerequisite ID | Repository | Required change | Why required | Compatibility classification | Blocks M4 implementation? | Suggested branch/PR |
 |---|---|---|---|---|---:|---|
-| C-M4-001 | `tomohikoAmada/BinanceMarketDataContracts` | Publish a versioned installable C++ Protobuf message package generated from the approved M4 schema set. Export a stable message target/include layout, Schema Baseline Commit `01d76a...`, canonical schema fingerprint and algorithm version, future Package Revision/Version, `protoc`/ABI options, and Protobuf runtime compatibility; prove generated-symbol uniqueness | Reproducible/offline builds with schema semantics independently verified from the later package implementation revision | Additive build/distribution change, not a schema change; existing `.proto` semantics remain unchanged | **YES** | Separate Contracts design/implementation branch and PR; future package revision must not be predeclared as the schema baseline |
+| C-M4-001 | `tomohikoAmada/BinanceMarketDataContracts` | **DELIVERED / ACCEPTED** at `67ee1bf...`: versioned installable C++ Protobuf package, stable target/include layout, separate schema/package identities, generator/runtime metadata, and generated-symbol uniqueness evidence | Reproducible/offline builds with schema semantics independently verified from the later package implementation revision | Additive build/distribution change, not a schema change; existing `.proto` semantics remain unchanged | No | Merged Contracts implementation plus successful Projection package audit |
 
 No Contracts schema enhancement is required for initial M4 gap output. A possible future optional
 field for exact Core gap reason is explicitly non-prerequisite and would require its own evidence and
 compatibility review.
 
-C-M4-001 status: **NOT STARTED**. It remains the sole implementation blocker.
+C-M4-001 status: **CLOSED / SATISFIED**. Contracts integration: **VERIFIED**.
 
 ## Rejected alternatives
 
@@ -1483,8 +1488,8 @@ C-M4-001 status: **NOT STARTED**. It remains the sole implementation blocker.
 
 ## Implementation sequence
 
-Implementation remains NOT STARTED. After design acceptance and C-M4-001 completion, a separate
-`feat/m4-snapshots-protobuf-boundary` branch should proceed in these reviewable steps:
+The author implementation candidate on `feat/m4-snapshots-protobuf-boundary` executed these
+reviewable steps:
 
 1. Verify the dependency-locked Contracts package revision/version, canonical schema baseline and
    fingerprint, and generator/runtime metadata in an isolated consumer.
@@ -1502,7 +1507,91 @@ Implementation remains NOT STARTED. After design acceptance and C-M4-001 complet
 12. Add Core-only and Adapter staged-install consumers for static/shared builds.
 13. Update implementation documentation, run full acceptance gates, and obtain external code review.
 
-No implementation branch is created by this design task.
+Independent M4 Implementation Review: **APPROVED**.
+
+Reviewed Head: `390cdceb013bc05878db090bdedc40068c03c79c`.
+Reviewed CI: `31193311386` — 16/16 PASS.
+
+M4 is **OPEN / PENDING MERGE** and must not be merged or marked complete by the finalization task.
+
+## Independent Implementation Review
+
+Independent M4 Implementation Review: **APPROVED**. Blocking findings: **0**.
+
+Reviewed Head: `390cdceb013bc05878db090bdedc40068c03c79c`.
+Reviewed CI: `31193311386` — 16/16 PASS.
+
+### Review findings
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| — | P0 | — | None | — |
+| — | P1 | — | None | — |
+| M4-IIR-1 | P2 | `tests/cmake/check_m4_lock.cmake` | Lock-drift test proves required Contracts and Protobuf identities but does not assert the entire allowable dependency recipe set | **DEFERRED / NON-BLOCKING** |
+| M4-IIR-2 | P2 | shared duplicate-symbol audit | Shared-mode audit checks consumer and Contracts shared library but does not separately `nm` the installed ProtoAdapter library | **DEFERRED / NON-BLOCKING** |
+| M4-IIR-3 | P2 | M4 fuzz corpus / quality-input coverage | Initial corpus seeds are simple labels; fuzz bytes do not currently drive quality flags / HostQualityFact inputs | **DEFERRED / NON-BLOCKING** |
+
+These P2 items do not block M4 approval recording, final CI, PR Ready, or merge. They may be
+addressed later as test hardening, maintenance, M5 preparation, or future quality follow-up.
+
+### Architecture and dependency evidence
+
+| Check | Result |
+|---|---|
+| Core Isolation | PASS |
+| Core target | `BinanceMarketDataProjection::Core` |
+| ProtoAdapter target | `BinanceMarketDataProjection::ProtoAdapter` |
+| ProtoAdapter Default | OFF |
+| Core-only Without Contracts | PASS |
+| Core-only Without Protobuf | PASS |
+| Component Packaging | PASS |
+| Contracts Metadata Gate | PASS |
+| Mandatory gRPC | NO |
+
+### Functional evidence
+
+| Check | Result |
+|---|---|
+| ExchangeDepthSnapshot Adaptation | PASS |
+| DepthUpdate Adaptation | PASS |
+| Numeric Semantics | PASS |
+| Enum Semantics | PASS |
+| Binding | PASS |
+| Lifetime | PASS |
+| M3 Result Propagation | PASS |
+| Snapshot Four-State Matrix | PASS |
+| Gap Mapping | PASS |
+| DepthLimit | PASS |
+| Quality Ownership | PASS |
+| Quality Ordering | PASS |
+| Fixed Decimal Formatting | PASS |
+| Determinism | PASS |
+| Contracts Fixture Roundtrip | PASS |
+| Allocation-Failure Sweep | PASS |
+| Independent Property Model | PASS |
+| Adapter Fuzz | PASS |
+
+### Support matrix
+
+| Platform / Config | Result |
+|---|---|
+| Ubuntu x86_64 GCC 13 Debug | PASS |
+| Ubuntu x86_64 GCC 13 Release | PASS |
+| Ubuntu x86_64 Clang 18 Debug | PASS |
+| Ubuntu x86_64 Clang 18 Release | PASS |
+| macOS arm64 AppleClang 15 Debug | PASS |
+| macOS arm64 AppleClang 15 Release | PASS |
+| Ubuntu x86_64 GCC 13 Release (shared) | PASS |
+| macOS arm64 AppleClang 15 Release (shared) | PASS |
+
+| Sanitizer | Status |
+|---|---|
+| ASan | PASS — CI |
+| UBSan | PASS — CI |
+| TSan | PASS — LOCAL-ONLY EVIDENCE |
+
+TSan: No GitHub CI TSan job currently exists. Native macOS arm64 AppleClang 21 validation:
+180/180 tests PASS with ProtoAdapter enabled.
 
 ## Acceptance gates
 
@@ -1533,7 +1622,7 @@ Future M4 implementation must pass:
 - no Core dependency regression; and
 - independent external implementation code review.
 
-None of these gates is claimed to have passed for M4 in this design PR.
+All acceptance gates have been satisfied by the independent implementation review.
 
 ## External review checklist
 
@@ -1563,5 +1652,4 @@ External M4 Architecture Review must challenge:
 - Host/Core/inbound quality-domain separation and contradiction rules; and
 - independence of the proposed reference model and executability of failpoint tests.
 
-The required next step after this acceptance recording is
-**Final M4 Design Merge Readiness Review**.
+The required next step is an **Independent BinanceMarketDataProjection M4 Implementation Review**.

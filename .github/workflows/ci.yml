@@ -26,13 +26,16 @@ jobs:
           python-version: "3.12"
       - name: Bootstrap repository-local Conan
         run: bash scripts/bootstrap.sh
+      - name: Bootstrap pinned Contracts package
+        run: bash scripts/bootstrap-contracts.sh
       - name: Check formatting
         run: |
-          find include src tests benchmarks -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
+          find include src tests benchmarks fuzz -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
             | xargs -0 clang-format --dry-run --Werror
       - name: Configure with clang-tidy and warnings-as-errors
         run: >-
           bash scripts/configure.sh debug
+          -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON
           -DBMD_PROJECTION_ENABLE_CLANG_TIDY=ON
           -DBMD_PROJECTION_ENABLE_WERROR=ON
       - name: Build
@@ -101,8 +104,13 @@ jobs:
           python-version: "3.12"
       - name: Bootstrap repository-local Conan
         run: bash scripts/bootstrap.sh
+      - name: Bootstrap pinned Contracts package
+        run: bash scripts/bootstrap-contracts.sh
       - name: Configure
-        run: bash scripts/configure.sh ${{ matrix.preset }} -DBMD_PROJECTION_ENABLE_WERROR=ON
+        run: >-
+          bash scripts/configure.sh ${{ matrix.preset }}
+          -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON
+          -DBMD_PROJECTION_ENABLE_WERROR=ON
       - name: Build
         run: bash scripts/build.sh ${{ matrix.preset }}
       - name: Test
@@ -145,5 +153,108 @@ jobs:
           python-version: "3.12"
       - name: Bootstrap repository-local Conan
         run: bash scripts/bootstrap.sh
-      - name: Build and run decimal parser fuzz smoke
+      - name: Build and run all fuzz smoke targets
         run: bash scripts/fuzz-smoke.sh
+
+  m4-static:
+    name: M4 static (${{ matrix.name }}, ${{ matrix.preset }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu GCC
+            os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+            preset: debug
+          - name: Ubuntu GCC
+            os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+            preset: release
+          - name: Ubuntu Clang
+            os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+            preset: debug
+          - name: Ubuntu Clang
+            os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+            preset: release
+          - name: macOS AppleClang
+            os: macos-14
+            cc: clang
+            cxx: clang++
+            preset: debug
+          - name: macOS AppleClang
+            os: macos-14
+            cc: clang
+            cxx: clang++
+            preset: release
+    runs-on: ${{ matrix.os }}
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bootstrap repository-local Conan
+        run: bash scripts/bootstrap.sh
+      - name: Bootstrap pinned Contracts package
+        run: bash scripts/bootstrap-contracts.sh
+      - name: Configure M4 static
+        run: >-
+          bash scripts/configure.sh ${{ matrix.preset }}
+          -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON
+          -DBMD_PROJECTION_ENABLE_WERROR=ON
+      - name: Build
+        run: bash scripts/build.sh ${{ matrix.preset }}
+      - name: Test complete M0-M4 matrix
+        run: bash scripts/test.sh ${{ matrix.preset }}
+      - name: ProtoAdapter installed consumer and symbol ownership
+        if: matrix.preset == 'release'
+        run: bash scripts/install-adapter-consumer-test.sh
+
+  m4-shared:
+    name: M4 shared (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu GCC
+            os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+          - name: macOS AppleClang
+            os: macos-14
+            cc: clang
+            cxx: clang++
+    runs-on: ${{ matrix.os }}
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+      BMD_PROJECTION_SHARED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bootstrap repository-local Conan
+        run: bash scripts/bootstrap.sh
+      - name: Bootstrap pinned Contracts package
+        run: bash scripts/bootstrap-contracts.sh
+      - name: Configure M4 shared
+        run: >-
+          bash scripts/configure.sh release
+          -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON
+          -DBUILD_SHARED_LIBS=ON
+          -DBMD_PROJECTION_ENABLE_WERROR=ON
+      - name: Build
+        run: bash scripts/build.sh release
+      - name: Test
+        run: bash scripts/test.sh release
+      - name: Shared installed consumer and symbol ownership
+        run: bash scripts/install-adapter-consumer-test.sh

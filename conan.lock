@@ -1,11 +1,18 @@
 {
     "version": "0.5",
     "requires": [
+        "zlib/1.3.2#1cb806da49011867778ffb6ac7190fcb%1777558780.503",
+        "protobuf/6.33.5#ca5ff466767b31a1b496ec60247e105c%1785159690.783",
         "gtest/1.17.0#5224b3b3ff3b4ce1133cbdd27d53ee7d%1755784855.585",
-        "benchmark/1.9.5#b885dc73ad67b40a55d45684d1c88ad1%1774363287.434"
+        "binance-market-data-contracts-cpp/0.1.0#7fd3efe3d289462fb16c78ffeced1682%1786103769.6299362",
+        "benchmark/1.9.5#b885dc73ad67b40a55d45684d1c88ad1%1774363287.434",
+        "abseil/20260107.1#883e95a7be2b767999f64669ac642e5d%1773137897.755"
     ],
     "build_requires": [
-        "cmake/4.4.0#a5dd5d73bd9fc56b0fc3163a04573dc8%1784051561.926"
+        "zlib/1.3.2#1cb806da49011867778ffb6ac7190fcb%1777558780.503",
+        "protobuf/6.33.5#ca5ff466767b31a1b496ec60247e105c%1785159690.783",
+        "cmake/4.4.0#a5dd5d73bd9fc56b0fc3163a04573dc8%1784051561.926",
+        "abseil/20260107.1#883e95a7be2b767999f64669ac642e5d%1773137897.755"
     ],
     "python_requires": [],
     "config_requires": []

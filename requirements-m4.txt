@@ -1,0 +1,2 @@
+protobuf==6.33.5
+pytest==9.0.2

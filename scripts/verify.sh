@@ -37,7 +37,7 @@ else
     tidy_flag_exe=""
 fi
 
-find include src tests benchmarks -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
+find include src tests benchmarks fuzz -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
     | xargs -0 "$clang_format" --dry-run --Werror
 
 scripts/configure.sh debug \
@@ -60,5 +60,15 @@ scripts/build.sh benchmark
     --benchmark_out="$repo_root/build/benchmark/foundation-benchmark.json"
 
 scripts/install-consumer-test.sh
+scripts/bootstrap-contracts.sh
+for preset in debug release asan ubsan tsan; do
+    scripts/configure.sh "$preset" \
+        -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON \
+        -DBMD_PROJECTION_ENABLE_WERROR=ON
+    scripts/build.sh "$preset"
+    scripts/test.sh "$preset"
+done
+scripts/install-adapter-consumer-test.sh
+BMD_PROJECTION_SHARED=1 scripts/install-adapter-consumer-test.sh
 scripts/fuzz-smoke.sh
 git diff --check

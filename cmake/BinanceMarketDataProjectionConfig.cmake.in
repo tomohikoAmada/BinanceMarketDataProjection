@@ -1,5 +1,21 @@
 @PACKAGE_INIT@
 
-include("${CMAKE_CURRENT_LIST_DIR}/BinanceMarketDataProjectionTargets.cmake")
+set(BinanceMarketDataProjection_Core_FOUND TRUE)
+include("${CMAKE_CURRENT_LIST_DIR}/BinanceMarketDataProjectionCoreTargets.cmake")
+
+set(BinanceMarketDataProjection_ProtoAdapter_FOUND FALSE)
+if("ProtoAdapter" IN_LIST BinanceMarketDataProjection_FIND_COMPONENTS)
+    if(@BMD_PROJECTION_BUILD_PROTO_ADAPTER@)
+        include(CMakeFindDependencyMacro)
+        find_dependency(BinanceMarketDataContracts 0.1.0 EXACT CONFIG COMPONENTS Protobuf)
+        include("${CMAKE_CURRENT_LIST_DIR}/ValidateContractsMetadata.cmake")
+        bmd_projection_validate_contracts_metadata()
+        include("${CMAKE_CURRENT_LIST_DIR}/BinanceMarketDataProjectionProtoAdapterTargets.cmake")
+        set(BinanceMarketDataProjection_ProtoAdapter_FOUND TRUE)
+    else()
+        set(BinanceMarketDataProjection_NOT_FOUND_MESSAGE
+            "BinanceMarketDataProjection was built without the ProtoAdapter component")
+    endif()
+endif()
 
 check_required_components(BinanceMarketDataProjection)
