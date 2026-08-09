@@ -166,17 +166,17 @@ adapt_quantity(const std::string& text, ReferenceAdapterField field, std::uint32
 }
 
 [[nodiscard]] std::optional<ReferenceAdapterError> adapt_level(const replay::LevelInput& level,
-                                                               std::uint32_t price_scale,
-                                                               std::uint32_t quantity_scale) {
+                                                               replay::NumericSpec numeric_spec) {
     const bool bids = level.side == replay::Side::Bid;
     const auto price_field =
         bids ? ReferenceAdapterField::BidPrice : ReferenceAdapterField::AskPrice;
     const auto quantity_field =
         bids ? ReferenceAdapterField::BidQuantity : ReferenceAdapterField::AskQuantity;
-    if (const auto failure = adapt_price(level.price, price_field, price_scale)) {
+    if (const auto failure = adapt_price(level.price, price_field, numeric_spec.price_scale)) {
         return failure;
     }
-    if (const auto failure = adapt_quantity(level.quantity, quantity_field, quantity_scale)) {
+    if (const auto failure =
+            adapt_quantity(level.quantity, quantity_field, numeric_spec.quantity_scale)) {
         return failure;
     }
     return std::nullopt;
@@ -233,7 +233,7 @@ std::optional<ReferenceAdapterError> ReferenceAdapter::validate_identity() const
 }
 
 std::optional<ReferenceAdapterError>
-ReferenceAdapter::validate_depth_limit(const std::optional<std::uint32_t>& depth_limit) const {
+ReferenceAdapter::validate_depth_limit(const std::optional<std::uint32_t>& depth_limit) {
     if (!depth_limit.has_value()) {
         return std::nullopt;
     }
@@ -279,18 +279,17 @@ ReferenceDepthPrediction ReferenceAdapter::predict_depth_update_input(
 ReferenceBaselinePrediction ReferenceAdapter::predict_baseline_levels(
     const std::vector<replay::LevelInput>& bids, const std::vector<replay::LevelInput>& asks,
     const std::vector<replay::HostQualityFact>& inbound_facts) const {
-    const auto price_scale = numeric_spec_.price_scale;
-    const auto quantity_scale = numeric_spec_.quantity_scale;
     const auto adapt_baseline_side = [&](const std::vector<replay::LevelInput>& levels,
                                          bool bids_side) -> std::optional<ReferenceAdapterError> {
         std::optional<std::int64_t> previous_price;
         for (const auto& level : levels) {
             const auto price_field =
                 bids_side ? ReferenceAdapterField::BidPrice : ReferenceAdapterField::AskPrice;
-            if (const auto failure = adapt_level(level, price_scale, quantity_scale)) {
+            if (const auto failure = adapt_level(level, numeric_spec_)) {
                 return failure;
             }
-            const auto price = parse_reference_decimal(level.price, price_scale, false);
+            const auto price =
+                parse_reference_decimal(level.price, numeric_spec_.price_scale, false);
             const auto units = std::get<ReferenceDecimalValue>(price.value).units;
             if (previous_price.has_value() &&
                 (bids_side ? units >= *previous_price : units <= *previous_price)) {
@@ -312,10 +311,8 @@ ReferenceBaselinePrediction ReferenceAdapter::predict_baseline_levels(
 ReferenceDepthPrediction ReferenceAdapter::predict_update_levels(
     const std::vector<replay::LevelInput>& levels,
     const std::vector<replay::HostQualityFact>& inbound_facts) const {
-    const auto price_scale = numeric_spec_.price_scale;
-    const auto quantity_scale = numeric_spec_.quantity_scale;
     for (const auto& level : levels) {
-        if (const auto failure = adapt_level(level, price_scale, quantity_scale)) {
+        if (const auto failure = adapt_level(level, numeric_spec_)) {
             return *failure;
         }
     }
@@ -371,6 +368,51 @@ ReferenceAdapter::predict_snapshot(const bmd_projection_reference::ReferenceProj
 
     std::vector<ReferenceQualityFlag> flags;
     flags.reserve(operation.host_quality_facts.size() + 3);
+    if (const auto quality_error = predict_host_quality(projection, operation, flags)) {
+        return *quality_error;
+    }
+    prediction.quality_flags = deduplicate_and_rank(std::move(flags));
+
+    const auto bids = projection.bids();
+    const auto asks = projection.asks();
+    std::size_t limit = bids.size();
+    if (operation.depth_limit.has_value()) {
+        limit = static_cast<std::size_t>(*operation.depth_limit);
+    }
+    const auto select_levels = [&](const std::vector<bmd_projection_reference::RawLevel>& levels)
+        -> std::vector<ReferenceSnapshotLevel> {
+        std::vector<ReferenceSnapshotLevel> selected;
+        selected.reserve(std::min(limit, levels.size()));
+        std::size_t count = 0;
+        for (const auto& level : levels) {
+            if (count == limit) {
+                break;
+            }
+            selected.push_back(
+                {reference_fixed(ReferenceFixedInput{level.price, numeric_spec_.price_scale}),
+                 reference_fixed(
+                     ReferenceFixedInput{level.quantity, numeric_spec_.quantity_scale})});
+            ++count;
+        }
+        return selected;
+    };
+    prediction.bids = select_levels(bids);
+    prediction.asks = select_levels(asks);
+    prediction.depth_limit = operation.depth_limit;
+    if (needs_resync) {
+        prediction.gap_descriptor = predict_gap_descriptor(projection, operation);
+        if (!prediction.gap_descriptor.has_value()) {
+            return error(ReferenceAdapterErrorCode::InvalidGapContext,
+                         ReferenceAdapterField::GapRecoveryState);
+        }
+    }
+    return prediction;
+}
+
+std::optional<ReferenceAdapterError> ReferenceAdapter::predict_host_quality(
+    const bmd_projection_reference::ReferenceProjection& projection,
+    const replay::SnapshotRequestOp& operation, std::vector<ReferenceQualityFlag>& flags) const {
+    const auto status = projection.status();
     for (const auto fact : operation.host_quality_facts) {
         if (!host_fact_valid_for_status(fact, status)) {
             return error(ReferenceAdapterErrorCode::InvalidHostQualityCombination,
@@ -381,7 +423,7 @@ ReferenceAdapter::predict_snapshot(const bmd_projection_reference::ReferenceProj
     if (status == bmd_projection_reference::Status::AwaitingBridge) {
         flags.push_back(ReferenceQualityFlag::SnapshotBridgePending);
     }
-    if (needs_resync) {
+    if (status == bmd_projection_reference::Status::NeedsResync) {
         flags.push_back(ReferenceQualityFlag::SequenceGap);
     }
     const auto& bids = projection.bids();
@@ -389,43 +431,22 @@ ReferenceAdapter::predict_snapshot(const bmd_projection_reference::ReferenceProj
     if (!bids.empty() && !asks.empty() && bids.front().price >= asks.front().price) {
         flags.push_back(ReferenceQualityFlag::CrossedBook);
     }
-    prediction.quality_flags = deduplicate_and_rank(std::move(flags));
+    return std::nullopt;
+}
 
-    const auto top_levels = [&](const std::vector<bmd_projection_reference::RawLevel>& levels)
-        -> std::vector<ReferenceSnapshotLevel> {
-        std::vector<ReferenceSnapshotLevel> selected;
-        const auto limit = operation.depth_limit.has_value()
-                               ? static_cast<std::size_t>(*operation.depth_limit)
-                               : levels.size();
-        const auto count = std::min(limit, levels.size());
-        selected.reserve(count);
-        for (std::size_t index = 0; index < count; ++index) {
-            selected.push_back(
-                {reference_fixed(levels[index].price, numeric_spec_.price_scale),
-                 reference_fixed(levels[index].quantity, numeric_spec_.quantity_scale)});
-        }
-        return selected;
-    };
-    prediction.bids = top_levels(bids);
-    prediction.asks = top_levels(asks);
-    prediction.depth_limit = operation.depth_limit;
-
-    if (needs_resync) {
-        const auto gap = projection.last_gap();
-        if (!gap.has_value() || !operation.current_gap.has_value()) {
-            return error(ReferenceAdapterErrorCode::InvalidGapContext,
-                         ReferenceAdapterField::CurrentGap);
-        }
-        const auto recovery = map_recovery(operation.current_gap->second);
-        if (!recovery.has_value()) {
-            return error(ReferenceAdapterErrorCode::InvalidGapContext,
-                         ReferenceAdapterField::GapRecoveryState);
-        }
-        prediction.gap_descriptor =
-            ReferenceGapDescriptor{operation.current_gap->first, gap->last, gap->first,
-                                   ReferenceReasonCode::SequenceGapDetected, *recovery};
+std::optional<ReferenceGapDescriptor> ReferenceAdapter::predict_gap_descriptor(
+    const bmd_projection_reference::ReferenceProjection& projection,
+    const replay::SnapshotRequestOp& operation) const {
+    const auto gap = projection.last_gap();
+    if (!gap.has_value() || !operation.current_gap.has_value()) {
+        return std::nullopt;
     }
-    return prediction;
+    const auto recovery = map_recovery(operation.current_gap->second);
+    if (!recovery.has_value()) {
+        return std::nullopt;
+    }
+    return ReferenceGapDescriptor{operation.current_gap->first, gap->last, gap->first,
+                                  ReferenceReasonCode::SequenceGapDetected, *recovery};
 }
 
 } // namespace bmd_projection::m5::reference

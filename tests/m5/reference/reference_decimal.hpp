@@ -62,6 +62,14 @@ struct ReferenceDecimalResult final {
 
 // Canonical fixed formatting: integer part without leading zeros (zero itself emits
 // "0"), decimal point, and exactly `scale` fractional digits with trailing zeros.
-[[nodiscard]] std::string reference_fixed(std::int64_t units, std::uint32_t scale);
+struct ReferenceFixedInput final {
+    std::int64_t units;
+    std::uint32_t scale;
+
+    friend constexpr bool operator==(const ReferenceFixedInput&,
+                                     const ReferenceFixedInput&) noexcept = default;
+};
+
+[[nodiscard]] std::string reference_fixed(ReferenceFixedInput input);
 
 } // namespace bmd_projection::m5::reference

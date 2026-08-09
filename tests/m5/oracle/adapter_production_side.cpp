@@ -219,6 +219,8 @@ constexpr std::string_view kReplayProducerVersion{"1"};
     return CanonicalAdapterCode::InvalidDecimal;
 }
 
+// Linear enum-name mapping table over the closed 25-value adapter field domain.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 [[nodiscard]] CanonicalAdapterField to_canonical(adapter::AdapterField field) noexcept {
     switch (field) {
     case adapter::AdapterField::None:
@@ -323,10 +325,11 @@ constexpr std::string_view kReplayProducerVersion{"1"};
 }
 
 [[nodiscard]] AdapterErrorOutcome to_canonical(const adapter::AdapterError& error) noexcept {
-    return {to_canonical(error.code), to_canonical(error.field),
-            error.decimal_error.has_value()
-                ? std::optional<CanonicalDecimalError>{to_canonical(error.decimal_error->code)}
-                : std::nullopt};
+    std::optional<CanonicalDecimalError> detail;
+    if (error.decimal_error.has_value()) {
+        detail = to_canonical(error.decimal_error->code);
+    }
+    return {to_canonical(error.code), to_canonical(error.field), detail};
 }
 
 // The raw_enum_value field is not representable in the replay grammar and is always

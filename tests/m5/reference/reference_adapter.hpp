@@ -143,7 +143,7 @@ struct ReferenceSnapshotLevel final {
 
 // Predicted semantic snapshot output for a SNAPSHOT_REQUEST.
 struct ReferenceSnapshotPrediction final {
-    bool synchronized;
+    bool synchronized{};
     std::optional<std::uint64_t> last_update_id;
     std::vector<ReferenceSnapshotLevel> bids;
     std::vector<ReferenceSnapshotLevel> asks;
@@ -198,10 +198,18 @@ class ReferenceAdapter final {
     [[nodiscard]] ReferenceDepthPrediction
     predict_update_levels(const std::vector<replay::LevelInput>& levels,
                           const std::vector<replay::HostQualityFact>& inbound_facts) const;
-
     [[nodiscard]] std::optional<ReferenceAdapterError> validate_identity() const;
+    [[nodiscard]] static std::optional<ReferenceAdapterError>
+    validate_depth_limit(const std::optional<std::uint32_t>& depth_limit);
+
     [[nodiscard]] std::optional<ReferenceAdapterError>
-    validate_depth_limit(const std::optional<std::uint32_t>& depth_limit) const;
+    predict_host_quality(const bmd_projection_reference::ReferenceProjection& projection,
+                         const replay::SnapshotRequestOp& operation,
+                         std::vector<ReferenceQualityFlag>& flags) const;
+
+    [[nodiscard]] std::optional<ReferenceGapDescriptor>
+    predict_gap_descriptor(const bmd_projection_reference::ReferenceProjection& projection,
+                           const replay::SnapshotRequestOp& operation) const;
 
     replay::SequencePolicy policy_;
     std::string symbol_;

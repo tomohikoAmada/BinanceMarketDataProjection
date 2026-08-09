@@ -48,12 +48,12 @@ namespace {
 ReplayDriver::ReplayDriver(const replay::ReplayFixture& fixture,
                            std::unique_ptr<ReplaySide> production,
                            std::unique_ptr<ReplaySide> reference)
-    : fixture_{fixture}, production_{std::move(production)}, reference_{std::move(reference)} {}
+    : fixture_{&fixture}, production_{std::move(production)}, reference_{std::move(reference)} {}
 
 ReplayOutcome ReplayDriver::run() {
     ReplayOutcome outcome;
-    const auto identity = fixture_identity_text(fixture_.identity);
-    const auto& operations = fixture_.replay.operations;
+    const auto identity = fixture_identity_text(fixture_->identity);
+    const auto& operations = fixture_->replay.operations;
     for (std::size_t index = 0; index < operations.size(); ++index) {
         const auto& operation = operations[index];
         auto production = production_->observe(operation);

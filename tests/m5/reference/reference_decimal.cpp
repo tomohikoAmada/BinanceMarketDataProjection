@@ -31,6 +31,11 @@ constexpr std::array<std::int64_t, 19> kReferencePowersOfTen{
     1'000'000'000'000'000'000,
 };
 
+struct ScannedCharacter final {
+    char value;
+    std::size_t offset;
+};
+
 struct ScanState final {
     std::size_t target_fraction_digits{0};
     std::int64_t units{0};
@@ -174,15 +179,15 @@ ReferenceDecimalResult parse_reference_decimal(std::string_view text, std::uint3
     return scan(text, target_scale, allow_zero);
 }
 
-std::string reference_fixed(std::int64_t units, std::uint32_t scale) {
-    auto digits = std::to_string(units);
-    if (scale == 0) {
+std::string reference_fixed(ReferenceFixedInput input) {
+    auto digits = std::to_string(input.units);
+    if (input.scale == 0) {
         return digits;
     }
-    if (digits.size() <= scale) {
-        digits.insert(0, static_cast<std::size_t>(scale) + 1 - digits.size(), '0');
+    if (digits.size() <= input.scale) {
+        digits.insert(0, static_cast<std::size_t>(input.scale) + 1 - digits.size(), '0');
     }
-    digits.insert(digits.size() - scale, 1, '.');
+    digits.insert(digits.size() - input.scale, 1, '.');
     return digits;
 }
 

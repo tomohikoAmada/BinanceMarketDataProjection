@@ -36,8 +36,7 @@ class ReferenceSide final : public ReplaySide {
     observe_depth_update(const replay::DepthUpdateOp& operation);
     [[nodiscard]] std::optional<OperationObservation>
     observe_snapshot_request(const replay::SnapshotRequestOp& operation);
-    [[nodiscard]] std::optional<OperationObservation>
-    observe_reset(const replay::ResetOp& operation);
+    [[nodiscard]] std::optional<OperationObservation> observe_reset();
     [[nodiscard]] std::optional<OperationObservation>
     observe_metadata(const replay::AdapterMetadataOp& operation);
     [[nodiscard]] std::optional<OperationObservation>

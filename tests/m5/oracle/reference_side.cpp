@@ -178,6 +178,8 @@ namespace replay = bmd_projection::m5::replay;
     return CanonicalAdapterCode::InvalidDecimal;
 }
 
+// Linear enum-name mapping table over the closed 25-value adapter field domain.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 [[nodiscard]] CanonicalAdapterField canonical(ref::ReferenceAdapterField field) noexcept {
     switch (field) {
     case ref::ReferenceAdapterField::None:
@@ -311,14 +313,14 @@ namespace replay = bmd_projection::m5::replay;
 // R1-level parse of every level token in input order; returns the first failure
 // category or nullopt when all tokens parse.
 [[nodiscard]] std::optional<CanonicalDecimalError>
-parse_reference_levels(const std::vector<replay::LevelInput>& levels, std::uint32_t price_scale,
-                       std::uint32_t quantity_scale) {
+parse_reference_levels(const std::vector<replay::LevelInput>& levels, replay::NumericSpec spec) {
     for (const auto& level : levels) {
-        const auto price = ref::parse_reference_decimal(level.price, price_scale, false);
+        const auto price = ref::parse_reference_decimal(level.price, spec.price_scale, false);
         if (const auto* failure = std::get_if<ref::ReferenceDecimalError>(&price.value)) {
             return canonical(failure->code);
         }
-        const auto quantity = ref::parse_reference_decimal(level.quantity, quantity_scale, true);
+        const auto quantity =
+            ref::parse_reference_decimal(level.quantity, spec.quantity_scale, true);
         if (const auto* failure = std::get_if<ref::ReferenceDecimalError>(&quantity.value)) {
             return canonical(failure->code);
         }
@@ -327,13 +329,13 @@ parse_reference_levels(const std::vector<replay::LevelInput>& levels, std::uint3
 }
 
 [[nodiscard]] std::vector<reference::RawLevel>
-raw_levels(const std::vector<replay::LevelInput>& levels, std::uint32_t price_scale,
-           std::uint32_t quantity_scale) {
+raw_levels(const std::vector<replay::LevelInput>& levels, replay::NumericSpec spec) {
     std::vector<reference::RawLevel> result;
     result.reserve(levels.size());
     for (const auto& level : levels) {
-        const auto price = ref::parse_reference_decimal(level.price, price_scale, false);
-        const auto quantity = ref::parse_reference_decimal(level.quantity, quantity_scale, true);
+        const auto price = ref::parse_reference_decimal(level.price, spec.price_scale, false);
+        const auto quantity =
+            ref::parse_reference_decimal(level.quantity, spec.quantity_scale, true);
         result.push_back({level.side == replay::Side::Bid,
                           std::get<ref::ReferenceDecimalValue>(price.value).units,
                           std::get<ref::ReferenceDecimalValue>(quantity.value).units});
@@ -342,10 +344,11 @@ raw_levels(const std::vector<replay::LevelInput>& levels, std::uint32_t price_sc
 }
 
 [[nodiscard]] AdapterErrorOutcome canonical(const ref::ReferenceAdapterError& error) noexcept {
-    return {canonical(error.code), canonical(error.field),
-            error.decimal_error.has_value()
-                ? std::optional<CanonicalDecimalError>{canonical(*error.decimal_error)}
-                : std::nullopt};
+    std::optional<CanonicalDecimalError> detail;
+    if (error.decimal_error.has_value()) {
+        detail = canonical(*error.decimal_error);
+    }
+    return {canonical(error.code), canonical(error.field), detail};
 }
 
 [[nodiscard]] std::vector<CanonicalQualityFlag>
@@ -379,8 +382,8 @@ std::optional<OperationObservation> ReferenceSide::observe(const replay::Operati
     if (const auto* op = std::get_if<replay::RebaselineOp>(&operation)) {
         return observe_install(op->last_update_id, op->bids, op->asks, true);
     }
-    if (const auto* op = std::get_if<replay::ResetOp>(&operation)) {
-        return observe_reset(*op);
+    if (std::holds_alternative<replay::ResetOp>(operation)) {
+        return observe_reset();
     }
     if (const auto* op = std::get_if<replay::SnapshotRequestOp>(&operation)) {
         return observe_snapshot_request(*op);
@@ -398,16 +401,14 @@ ReferenceSide::observe_install(std::uint64_t last_update_id,
     // REBASELINE is an M3 lifecycle operation; it does not cross the M4 boundary in
     // either mode, so R4 is not exercised for it.
     if (rebaseline) {
-        if (const auto failure = parse_reference_levels(bids_input, numeric_spec_.price_scale,
-                                                        numeric_spec_.quantity_scale)) {
+        if (const auto failure = parse_reference_levels(bids_input, numeric_spec_)) {
             return make_observation(DecimalErrorOutcome{*failure});
         }
-        if (const auto failure = parse_reference_levels(asks_input, numeric_spec_.price_scale,
-                                                        numeric_spec_.quantity_scale)) {
+        if (const auto failure = parse_reference_levels(asks_input, numeric_spec_)) {
             return make_observation(DecimalErrorOutcome{*failure});
         }
-        auto bids = raw_levels(bids_input, numeric_spec_.price_scale, numeric_spec_.quantity_scale);
-        auto asks = raw_levels(asks_input, numeric_spec_.price_scale, numeric_spec_.quantity_scale);
+        auto bids = raw_levels(bids_input, numeric_spec_);
+        auto asks = raw_levels(asks_input, numeric_spec_);
         std::vector<reference::RawLevel> levels;
         levels.reserve(bids.size() + asks.size());
         levels.insert(levels.end(), bids.begin(), bids.end());
@@ -423,8 +424,8 @@ ReferenceSide::observe_install(std::uint64_t last_update_id,
             return make_observation(canonical(*failure));
         }
         const auto& input = std::get<ref::ReferenceInputPrediction>(prediction);
-        auto bids = raw_levels(bids_input, numeric_spec_.price_scale, numeric_spec_.quantity_scale);
-        auto asks = raw_levels(asks_input, numeric_spec_.price_scale, numeric_spec_.quantity_scale);
+        auto bids = raw_levels(bids_input, numeric_spec_);
+        auto asks = raw_levels(asks_input, numeric_spec_);
         std::vector<reference::RawLevel> levels;
         levels.reserve(bids.size() + asks.size());
         levels.insert(levels.end(), bids.begin(), bids.end());
@@ -434,16 +435,14 @@ ReferenceSide::observe_install(std::uint64_t last_update_id,
             AdapterSuccessOutcome{std::variant<InstallOutcome, ApplyOutcome>{core_result},
                                   canonical_quality(input.observed_quality)});
     }
-    if (const auto failure = parse_reference_levels(bids_input, numeric_spec_.price_scale,
-                                                    numeric_spec_.quantity_scale)) {
+    if (const auto failure = parse_reference_levels(bids_input, numeric_spec_)) {
         return make_observation(DecimalErrorOutcome{*failure});
     }
-    if (const auto failure = parse_reference_levels(asks_input, numeric_spec_.price_scale,
-                                                    numeric_spec_.quantity_scale)) {
+    if (const auto failure = parse_reference_levels(asks_input, numeric_spec_)) {
         return make_observation(DecimalErrorOutcome{*failure});
     }
-    auto bids = raw_levels(bids_input, numeric_spec_.price_scale, numeric_spec_.quantity_scale);
-    auto asks = raw_levels(asks_input, numeric_spec_.price_scale, numeric_spec_.quantity_scale);
+    auto bids = raw_levels(bids_input, numeric_spec_);
+    auto asks = raw_levels(asks_input, numeric_spec_);
     std::vector<reference::RawLevel> levels;
     levels.reserve(bids.size() + asks.size());
     levels.insert(levels.end(), bids.begin(), bids.end());
@@ -460,8 +459,7 @@ ReferenceSide::observe_depth_update(const replay::DepthUpdateOp& operation) {
             return make_observation(canonical(*failure));
         }
         const auto& input = std::get<ref::ReferenceInputPrediction>(prediction);
-        const auto levels =
-            raw_levels(operation.levels, numeric_spec_.price_scale, numeric_spec_.quantity_scale);
+        const auto levels = raw_levels(operation.levels, numeric_spec_);
         const auto core_result =
             canonical(projection_.apply(operation.first_update_id, operation.final_update_id,
                                         operation.previous_final, levels));
@@ -469,12 +467,10 @@ ReferenceSide::observe_depth_update(const replay::DepthUpdateOp& operation) {
             AdapterSuccessOutcome{std::variant<InstallOutcome, ApplyOutcome>{core_result},
                                   canonical_quality(input.observed_quality)});
     }
-    if (const auto failure = parse_reference_levels(operation.levels, numeric_spec_.price_scale,
-                                                    numeric_spec_.quantity_scale)) {
+    if (const auto failure = parse_reference_levels(operation.levels, numeric_spec_)) {
         return make_observation(DecimalErrorOutcome{*failure});
     }
-    const auto levels =
-        raw_levels(operation.levels, numeric_spec_.price_scale, numeric_spec_.quantity_scale);
+    const auto levels = raw_levels(operation.levels, numeric_spec_);
     return make_observation(canonical(projection_.apply(
         operation.first_update_id, operation.final_update_id, operation.previous_final, levels)));
 }
@@ -517,7 +513,7 @@ ReferenceSide::observe_snapshot_request(const replay::SnapshotRequestOp& operati
     return make_snapshot_observation(snapshot);
 }
 
-std::optional<OperationObservation> ReferenceSide::observe_reset(const replay::ResetOp&) {
+std::optional<OperationObservation> ReferenceSide::observe_reset() {
     projection_.reset();
     return make_observation(ResetOutcome{});
 }
@@ -539,8 +535,9 @@ SemanticCheckpoint ReferenceSide::checkpoint() const {
     SemanticCheckpoint result;
     result.status = canonical(projection_.status());
     result.last_update_id = projection_.last();
-    if (projection_.last_gap().has_value()) {
-        result.last_gap = canonical(*projection_.last_gap());
+    const auto last_gap = projection_.last_gap();
+    if (last_gap.has_value()) {
+        result.last_gap = canonical(*last_gap);
     }
     result.synchronized_visible = projection_.status() == reference::Status::Synchronized;
     for (const auto& level : projection_.bids()) {

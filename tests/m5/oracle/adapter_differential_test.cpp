@@ -21,6 +21,10 @@
 
 namespace {
 
+// Test assertions guard optional access; the dereferences below are covered by
+// ASSERT/EXPECT has_value checks (repository-established pattern).
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
+
 namespace oracle = bmd_projection::m5::oracle;
 namespace replay = bmd_projection::m5::replay;
 
@@ -290,3 +294,5 @@ TEST(AdapterDifferentialReplayTest, AdapterErrorFaultIsAttributedToR4) {
 }
 
 } // namespace
+
+// NOLINTEND(bugprone-unchecked-optional-access)

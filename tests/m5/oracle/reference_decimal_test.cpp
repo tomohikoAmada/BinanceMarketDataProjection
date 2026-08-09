@@ -200,13 +200,13 @@ TEST(ReferenceDecimalTest, ExactRescaleAndTrailingZeros) {
 }
 
 TEST(ReferenceDecimalTest, FixedFormattingIsCanonical) {
-    EXPECT_EQ(ref::reference_fixed(0, 2), "0.00");
-    EXPECT_EQ(ref::reference_fixed(1, 0), "1");
-    EXPECT_EQ(ref::reference_fixed(12'300, 8), "0.00012300");
-    EXPECT_EQ(ref::reference_fixed(1'000'000, 4), "100.0000");
-    EXPECT_EQ(ref::reference_fixed(123, 3), "0.123");
-    EXPECT_EQ(ref::reference_fixed(10'100, 2), "101.00");
-    EXPECT_EQ(ref::reference_fixed(3'125, 3), "3.125");
+    EXPECT_EQ(ref::reference_fixed(ref::ReferenceFixedInput{0, 2}), "0.00");
+    EXPECT_EQ(ref::reference_fixed(ref::ReferenceFixedInput{1, 0}), "1");
+    EXPECT_EQ(ref::reference_fixed(ref::ReferenceFixedInput{12'300, 8}), "0.00012300");
+    EXPECT_EQ(ref::reference_fixed(ref::ReferenceFixedInput{1'000'000, 4}), "100.0000");
+    EXPECT_EQ(ref::reference_fixed(ref::ReferenceFixedInput{123, 3}), "0.123");
+    EXPECT_EQ(ref::reference_fixed(ref::ReferenceFixedInput{10'100, 2}), "101.00");
+    EXPECT_EQ(ref::reference_fixed(ref::ReferenceFixedInput{3'125, 3}), "3.125");
 }
 
 TEST(ReferenceDecimalTest, DifferentialMatchesM1AcrossBoundaryTable) {
@@ -281,7 +281,7 @@ TEST(ReferenceDecimalTest, FixedFormattingDifferentialMatchesM1) {
         const auto random = next();
         const auto scale = static_cast<std::uint32_t>(random % 19U);
         const auto units = static_cast<std::int64_t>(random % 100'000'000'000ULL);
-        const auto formatted = ref::reference_fixed(units, scale);
+        const auto formatted = ref::reference_fixed(ref::ReferenceFixedInput{units, scale});
         const auto production = core::format_quantity_fixed(
             core::QuantityUnits::create(units).value(), core::DecimalScale::create(scale).value());
         ASSERT_TRUE(std::holds_alternative<std::string>(production));

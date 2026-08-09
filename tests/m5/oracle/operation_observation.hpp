@@ -159,19 +159,19 @@ enum class CanonicalResyncState : std::uint8_t {
 enum class CanonicalReasonCode : std::uint8_t { SequenceGapDetected };
 
 struct CanonicalLevel final {
-    std::int64_t price;
-    std::int64_t quantity;
+    std::int64_t price{};
+    std::int64_t quantity{};
 
     friend bool operator==(const CanonicalLevel&, const CanonicalLevel&) = default;
 };
 
 struct CanonicalGapEvidence final {
-    std::uint64_t last_accepted_final;
-    std::uint64_t first_update_id;
-    std::uint64_t final_update_id;
+    std::uint64_t last_accepted_final{};
+    std::uint64_t first_update_id{};
+    std::uint64_t final_update_id{};
     std::optional<std::uint64_t> previous_final;
-    CanonicalGapReason reason;
-    CanonicalPolicy policy;
+    CanonicalGapReason reason{};
+    CanonicalPolicy policy{};
 
     friend bool operator==(const CanonicalGapEvidence&, const CanonicalGapEvidence&) = default;
 };
@@ -185,16 +185,16 @@ struct DecimalErrorOutcome final {
 };
 
 struct InstallOutcome final {
-    CanonicalDisposition disposition;
-    CanonicalStatus status_after;
+    CanonicalDisposition disposition{};
+    CanonicalStatus status_after{};
     std::optional<std::uint64_t> last_update_id_after;
 
     friend bool operator==(const InstallOutcome&, const InstallOutcome&) = default;
 };
 
 struct ApplyOutcome final {
-    CanonicalDisposition disposition;
-    CanonicalStatus status_after;
+    CanonicalDisposition disposition{};
+    CanonicalStatus status_after{};
     std::optional<std::uint64_t> last_update_id_after;
     std::optional<CanonicalGapEvidence> gap;
 
@@ -202,8 +202,8 @@ struct ApplyOutcome final {
 };
 
 struct AdapterErrorOutcome final {
-    CanonicalAdapterCode code;
-    CanonicalAdapterField field;
+    CanonicalAdapterCode code{};
+    CanonicalAdapterField field{};
     std::optional<CanonicalDecimalError> decimal_error;
 
     friend bool operator==(const AdapterErrorOutcome&, const AdapterErrorOutcome&) = default;
@@ -254,11 +254,11 @@ struct SnapshotLevel final {
 };
 
 struct GapDescriptorObservation final {
-    std::uint64_t detected_at_utc_ns;
-    std::uint64_t previous_sequence;
-    std::uint64_t next_sequence;
-    CanonicalReasonCode reason_code;
-    CanonicalResyncState recovery_state;
+    std::uint64_t detected_at_utc_ns{};
+    std::uint64_t previous_sequence{};
+    std::uint64_t next_sequence{};
+    CanonicalReasonCode reason_code{};
+    CanonicalResyncState recovery_state{};
 
     friend bool operator==(const GapDescriptorObservation&,
                            const GapDescriptorObservation&) = default;
@@ -267,15 +267,15 @@ struct GapDescriptorObservation final {
 // Semantic snapshot output. All fields are stable observable semantics; Protobuf
 // byte equality is deliberately not compared.
 struct SnapshotOutcome final {
-    CanonicalPolicy policy;
+    CanonicalPolicy policy{};
     std::string symbol;
     std::string producer;
     std::string producer_version;
-    CanonicalSnapshotSource source;
-    std::uint64_t generated_time_utc_ns;
+    CanonicalSnapshotSource source{};
+    std::uint64_t generated_time_utc_ns{};
     std::optional<std::uint64_t> generated_monotonic_ns;
     std::optional<std::uint64_t> last_update_id;
-    bool synchronized;
+    bool synchronized{};
     std::vector<SnapshotLevel> bids;
     std::vector<SnapshotLevel> asks;
     std::vector<CanonicalQualityFlag> quality_flags;
@@ -297,14 +297,14 @@ struct OperationResult final {
 };
 
 struct SemanticCheckpoint final {
-    CanonicalStatus status;
+    CanonicalStatus status{};
     std::optional<std::uint64_t> last_update_id;
     std::optional<CanonicalGapEvidence> last_gap;
-    bool synchronized_visible;
+    bool synchronized_visible{};
     std::vector<CanonicalLevel> bids;
     std::vector<CanonicalLevel> asks;
-    std::uint32_t price_scale;
-    std::uint32_t quantity_scale;
+    std::uint32_t price_scale{};
+    std::uint32_t quantity_scale{};
 
     friend bool operator==(const SemanticCheckpoint&, const SemanticCheckpoint&) = default;
 };

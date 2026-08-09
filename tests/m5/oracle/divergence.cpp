@@ -10,12 +10,11 @@
 namespace bmd_projection::m5::oracle {
 namespace {
 
-[[nodiscard]] std::optional<Divergence> compare_levels(const std::vector<CanonicalLevel>& expected,
-                                                       const std::vector<CanonicalLevel>& actual,
-                                                       const char* side, std::size_t event_index,
-                                                       replay::EventKind kind, Layer layer,
-                                                       const SemanticCheckpoint& production,
-                                                       const SemanticCheckpoint& reference) {
+[[nodiscard]] std::optional<Divergence>
+compare_levels(const std::vector<CanonicalLevel>& expected, const char* side,
+               const std::vector<CanonicalLevel>& actual, std::size_t event_index,
+               replay::EventKind kind, Layer layer, const SemanticCheckpoint& production,
+               const SemanticCheckpoint& reference) {
     if (expected.size() != actual.size()) {
         return Divergence{event_index,
                           kind,
@@ -55,185 +54,257 @@ namespace {
     return std::nullopt;
 }
 
-// Ordered per-type field comparison for the operation result. The exact field order
-// is part of the fixed first-divergence discipline.
+// Ordered per-type field comparison for the operation result. Each overload is a
+// small linear field walk; the exact field order is part of the fixed
+// first-divergence discipline.
+namespace detail {
+
 template <typename T>
 [[nodiscard]] std::optional<Divergence>
-compare_result_fields(const T& expected, const T& actual, const OperationObservation& production,
-                      const OperationObservation& reference, std::string_view fixture_identity,
-                      const replay::SourceLocation& source) {
-    const auto divergence = [&](DivergenceCategory category, Layer layer, std::string detail) {
-        return std::optional<Divergence>{Divergence{
-            production.event_index, production.event_kind, layer, category, std::move(detail),
-            to_canonical_text(production.result), to_canonical_text(reference.result),
-            std::string(fixture_identity), source.canonical_line}};
-    };
-    const auto field = [&](const char* name) {
-        return std::string("operation result field '") + name + "' differs";
-    };
+compare_result_impl(const T&, const T&, const OperationObservation&, const OperationObservation&,
+                    std::string_view, const replay::SourceLocation&) {
+    return std::nullopt;
+}
 
-    if constexpr (std::is_same_v<T, DecimalErrorOutcome>) {
-        if (expected.category != actual.category) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R1, field("category"));
+} // namespace detail
+
+template <>
+[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<DecimalErrorOutcome>(
+    const DecimalErrorOutcome& expected, const DecimalErrorOutcome& actual,
+    const OperationObservation& production, const OperationObservation& reference,
+    std::string_view fixture_identity, const replay::SourceLocation& source) {
+    if (expected.category != actual.category) {
+        return Divergence{production.event_index,
+                          production.event_kind,
+                          Layer::R1,
+                          DivergenceCategory::OperationResult,
+                          "operation result field 'category' differs",
+                          to_canonical_text(production.result),
+                          to_canonical_text(reference.result),
+                          std::string(fixture_identity),
+                          source.canonical_line};
+    }
+    return std::nullopt;
+}
+
+template <>
+[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<InstallOutcome>(
+    const InstallOutcome& expected, const InstallOutcome& actual,
+    const OperationObservation& production, const OperationObservation& reference,
+    std::string_view fixture_identity, const replay::SourceLocation& source) {
+    const auto mismatch = [&](const char* field) {
+        return std::optional<Divergence>{
+            Divergence{production.event_index, production.event_kind, Layer::R3,
+                       DivergenceCategory::OperationResult,
+                       std::string("operation result field '") + field + "' differs",
+                       to_canonical_text(production.result), to_canonical_text(reference.result),
+                       std::string(fixture_identity), source.canonical_line}};
+    };
+    if (expected.disposition != actual.disposition) {
+        return mismatch("disposition");
+    }
+    if (expected.status_after != actual.status_after) {
+        return mismatch("status_after");
+    }
+    if (expected.last_update_id_after != actual.last_update_id_after) {
+        return mismatch("last_update_id_after");
+    }
+    return std::nullopt;
+}
+
+template <>
+[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<ApplyOutcome>(
+    const ApplyOutcome& expected, const ApplyOutcome& actual,
+    const OperationObservation& production, const OperationObservation& reference,
+    std::string_view fixture_identity, const replay::SourceLocation& source) {
+    const auto mismatch = [&](const char* field) {
+        return std::optional<Divergence>{
+            Divergence{production.event_index, production.event_kind, Layer::R3,
+                       DivergenceCategory::OperationResult,
+                       std::string("operation result field '") + field + "' differs",
+                       to_canonical_text(production.result), to_canonical_text(reference.result),
+                       std::string(fixture_identity), source.canonical_line}};
+    };
+    if (expected.disposition != actual.disposition) {
+        return mismatch("disposition");
+    }
+    if (expected.status_after != actual.status_after) {
+        return mismatch("status_after");
+    }
+    if (expected.last_update_id_after != actual.last_update_id_after) {
+        return mismatch("last_update_id_after");
+    }
+    if (expected.gap.has_value() != actual.gap.has_value()) {
+        return mismatch("gap");
+    }
+    if (expected.gap.has_value()) {
+        const auto& expected_gap = *expected.gap;
+        const auto& actual_gap = actual.gap.value();
+        if (expected_gap.last_accepted_final != actual_gap.last_accepted_final) {
+            return mismatch("gap.last_accepted_final");
         }
-    } else if constexpr (std::is_same_v<T, InstallOutcome>) {
-        if (expected.disposition != actual.disposition) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R3, field("disposition"));
+        if (expected_gap.first_update_id != actual_gap.first_update_id) {
+            return mismatch("gap.first_update_id");
         }
-        if (expected.status_after != actual.status_after) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R3,
-                              field("status_after"));
+        if (expected_gap.final_update_id != actual_gap.final_update_id) {
+            return mismatch("gap.final_update_id");
         }
-        if (expected.last_update_id_after != actual.last_update_id_after) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R3,
-                              field("last_update_id_after"));
+        if (expected_gap.previous_final != actual_gap.previous_final) {
+            return mismatch("gap.previous_final");
         }
-    } else if constexpr (std::is_same_v<T, ApplyOutcome>) {
-        if (expected.disposition != actual.disposition) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R3, field("disposition"));
+        if (expected_gap.reason != actual_gap.reason) {
+            return mismatch("gap.reason");
         }
-        if (expected.status_after != actual.status_after) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R3,
-                              field("status_after"));
+        if (expected_gap.policy != actual_gap.policy) {
+            return mismatch("gap.policy");
         }
-        if (expected.last_update_id_after != actual.last_update_id_after) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R3,
-                              field("last_update_id_after"));
+    }
+    return std::nullopt;
+}
+
+template <>
+[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<AdapterErrorOutcome>(
+    const AdapterErrorOutcome& expected, const AdapterErrorOutcome& actual,
+    const OperationObservation& production, const OperationObservation& reference,
+    std::string_view fixture_identity, const replay::SourceLocation& source) {
+    const auto mismatch = [&](const char* field) {
+        return std::optional<Divergence>{
+            Divergence{production.event_index, production.event_kind, Layer::R4,
+                       DivergenceCategory::OperationResult,
+                       std::string("operation result field '") + field + "' differs",
+                       to_canonical_text(production.result), to_canonical_text(reference.result),
+                       std::string(fixture_identity), source.canonical_line}};
+    };
+    if (expected.code != actual.code) {
+        return mismatch("code");
+    }
+    if (expected.field != actual.field) {
+        return mismatch("field");
+    }
+    if (expected.decimal_error != actual.decimal_error) {
+        return mismatch("decimal_error");
+    }
+    return std::nullopt;
+}
+
+template <>
+[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<AdapterSuccessOutcome>(
+    const AdapterSuccessOutcome& expected, const AdapterSuccessOutcome& actual,
+    const OperationObservation& production, const OperationObservation& reference,
+    std::string_view fixture_identity, const replay::SourceLocation& source) {
+    const auto mismatch = [&](const char* field, Layer layer) {
+        return std::optional<Divergence>{
+            Divergence{production.event_index, production.event_kind, layer,
+                       DivergenceCategory::OperationResult,
+                       std::string("operation result field '") + field + "' differs",
+                       to_canonical_text(production.result), to_canonical_text(reference.result),
+                       std::string(fixture_identity), source.canonical_line}};
+    };
+    if (expected.core_result.index() != actual.core_result.index()) {
+        return mismatch("core_result kind", Layer::R3);
+    }
+    if (const auto nested = std::visit(
+            [&](const auto& expected_core, const auto& actual_core) -> std::optional<Divergence> {
+                using ExpectedCore = std::decay_t<decltype(expected_core)>;
+                using ActualCore = std::decay_t<decltype(actual_core)>;
+                if constexpr (std::is_same_v<ExpectedCore, ActualCore>) {
+                    return detail::compare_result_impl<ExpectedCore>(expected_core, actual_core,
+                                                                     production, reference,
+                                                                     fixture_identity, source);
+                }
+                return std::nullopt;
+            },
+            expected.core_result, actual.core_result)) {
+        return nested;
+    }
+    if (expected.observed_quality.size() != actual.observed_quality.size()) {
+        return mismatch("observed_quality count", Layer::R4);
+    }
+    for (std::size_t index = 0; index < expected.observed_quality.size(); ++index) {
+        if (expected.observed_quality[index] != actual.observed_quality[index]) {
+            return mismatch("observed_quality", Layer::R4);
         }
-        if (expected.gap.has_value() != actual.gap.has_value()) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R3, field("gap"));
-        }
-        if (expected.gap.has_value()) {
-            const auto& expected_gap = *expected.gap;
-            const auto& actual_gap = *actual.gap;
-            if (expected_gap.last_accepted_final != actual_gap.last_accepted_final) {
-                return divergence(DivergenceCategory::OperationResult, Layer::R3,
-                                  field("gap.last_accepted_final"));
-            }
-            if (expected_gap.first_update_id != actual_gap.first_update_id) {
-                return divergence(DivergenceCategory::OperationResult, Layer::R3,
-                                  field("gap.first_update_id"));
-            }
-            if (expected_gap.final_update_id != actual_gap.final_update_id) {
-                return divergence(DivergenceCategory::OperationResult, Layer::R3,
-                                  field("gap.final_update_id"));
-            }
-            if (expected_gap.previous_final != actual_gap.previous_final) {
-                return divergence(DivergenceCategory::OperationResult, Layer::R3,
-                                  field("gap.previous_final"));
-            }
-            if (expected_gap.reason != actual_gap.reason) {
-                return divergence(DivergenceCategory::OperationResult, Layer::R3,
-                                  field("gap.reason"));
-            }
-            if (expected_gap.policy != actual_gap.policy) {
-                return divergence(DivergenceCategory::OperationResult, Layer::R3,
-                                  field("gap.policy"));
-            }
-        }
-    } else if constexpr (std::is_same_v<T, AdapterErrorOutcome>) {
-        if (expected.code != actual.code) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4, field("code"));
-        }
-        if (expected.field != actual.field) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4, field("field"));
-        }
-        if (expected.decimal_error != actual.decimal_error) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4,
-                              field("decimal_error"));
-        }
-    } else if constexpr (std::is_same_v<T, AdapterSuccessOutcome>) {
-        if (expected.core_result.index() != actual.core_result.index()) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R3,
-                              field("core_result kind"));
-        }
-        if (const auto nested = std::visit(
-                [&](const auto& expected_core,
-                    const auto& actual_core) -> std::optional<Divergence> {
-                    using ExpectedCore = std::decay_t<decltype(expected_core)>;
-                    using ActualCore = std::decay_t<decltype(actual_core)>;
-                    if constexpr (std::is_same_v<ExpectedCore, ActualCore>) {
-                        return compare_result_fields(expected_core, actual_core, production,
-                                                     reference, fixture_identity, source);
-                    }
-                    return std::nullopt;
-                },
-                expected.core_result, actual.core_result)) {
-            return nested;
-        }
-        if (expected.observed_quality.size() != actual.observed_quality.size()) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4,
-                              field("observed_quality count"));
-        }
-        for (std::size_t index = 0; index < expected.observed_quality.size(); ++index) {
-            if (expected.observed_quality[index] != actual.observed_quality[index]) {
-                return divergence(DivergenceCategory::OperationResult, Layer::R4,
-                                  field("observed_quality"));
-            }
-        }
-    } else if constexpr (std::is_same_v<T, SnapshotOutcome>) {
-        if (expected.policy != actual.policy) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4, field("policy"));
-        }
-        if (expected.symbol != actual.symbol) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4, field("symbol"));
-        }
-        if (expected.producer != actual.producer) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4, field("producer"));
-        }
-        if (expected.producer_version != actual.producer_version) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4,
-                              field("producer_version"));
-        }
-        if (expected.source != actual.source) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4, field("source"));
-        }
-        if (expected.generated_time_utc_ns != actual.generated_time_utc_ns) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4,
-                              field("generated_time_utc_ns"));
-        }
-        if (expected.generated_monotonic_ns != actual.generated_monotonic_ns) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4,
-                              field("generated_monotonic_ns"));
-        }
-        if (expected.last_update_id != actual.last_update_id) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4,
-                              field("last_update_id"));
-        }
-        if (expected.synchronized != actual.synchronized) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4,
-                              field("synchronized"));
-        }
-        if (expected.bids != actual.bids) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4, field("bids"));
-        }
-        if (expected.asks != actual.asks) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4, field("asks"));
-        }
-        if (expected.quality_flags != actual.quality_flags) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4,
-                              field("quality_flags"));
-        }
-        if (expected.depth_limit != actual.depth_limit) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4, field("depth_limit"));
-        }
-        if (expected.gap_descriptor.has_value() != actual.gap_descriptor.has_value()) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4,
-                              field("gap_descriptor"));
-        }
-        if (expected.gap_descriptor.has_value() &&
-            *expected.gap_descriptor != *actual.gap_descriptor) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R4,
-                              field("gap_descriptor"));
-        }
-    } else if constexpr (std::is_same_v<T, RangeOutcome>) {
-        if (expected.invalid_as_intended != actual.invalid_as_intended) {
-            return divergence(DivergenceCategory::OperationResult, Layer::R3,
-                              field("invalid_as_intended"));
-        }
-    } else if constexpr (std::is_same_v<T, ResetOutcome> || std::is_same_v<T, MetadataOutcome> ||
-                         std::is_same_v<T, SnapshotNotProducedOutcome>) {
-        // No fields; kind equality was already established.
+    }
+    return std::nullopt;
+}
+
+template <>
+[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<SnapshotOutcome>(
+    const SnapshotOutcome& expected, const SnapshotOutcome& actual,
+    const OperationObservation& production, const OperationObservation& reference,
+    std::string_view fixture_identity, const replay::SourceLocation& source) {
+    const auto mismatch = [&](const char* field) {
+        return std::optional<Divergence>{
+            Divergence{production.event_index, production.event_kind, Layer::R4,
+                       DivergenceCategory::OperationResult,
+                       std::string("operation result field '") + field + "' differs",
+                       to_canonical_text(production.result), to_canonical_text(reference.result),
+                       std::string(fixture_identity), source.canonical_line}};
+    };
+    if (expected.policy != actual.policy) {
+        return mismatch("policy");
+    }
+    if (expected.symbol != actual.symbol) {
+        return mismatch("symbol");
+    }
+    if (expected.producer != actual.producer) {
+        return mismatch("producer");
+    }
+    if (expected.producer_version != actual.producer_version) {
+        return mismatch("producer_version");
+    }
+    if (expected.source != actual.source) {
+        return mismatch("source");
+    }
+    if (expected.generated_time_utc_ns != actual.generated_time_utc_ns) {
+        return mismatch("generated_time_utc_ns");
+    }
+    if (expected.generated_monotonic_ns != actual.generated_monotonic_ns) {
+        return mismatch("generated_monotonic_ns");
+    }
+    if (expected.last_update_id != actual.last_update_id) {
+        return mismatch("last_update_id");
+    }
+    if (expected.synchronized != actual.synchronized) {
+        return mismatch("synchronized");
+    }
+    if (expected.bids != actual.bids) {
+        return mismatch("bids");
+    }
+    if (expected.asks != actual.asks) {
+        return mismatch("asks");
+    }
+    if (expected.quality_flags != actual.quality_flags) {
+        return mismatch("quality_flags");
+    }
+    if (expected.depth_limit != actual.depth_limit) {
+        return mismatch("depth_limit");
+    }
+    if (expected.gap_descriptor.has_value() != actual.gap_descriptor.has_value()) {
+        return mismatch("gap_descriptor");
+    }
+    if (expected.gap_descriptor.has_value() &&
+        *expected.gap_descriptor != actual.gap_descriptor.value()) {
+        return mismatch("gap_descriptor");
+    }
+    return std::nullopt;
+}
+
+template <>
+[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<RangeOutcome>(
+    const RangeOutcome& expected, const RangeOutcome& actual,
+    const OperationObservation& production, const OperationObservation& reference,
+    std::string_view fixture_identity, const replay::SourceLocation& source) {
+    if (expected.invalid_as_intended != actual.invalid_as_intended) {
+        return Divergence{production.event_index,
+                          production.event_kind,
+                          Layer::R3,
+                          DivergenceCategory::OperationResult,
+                          "operation result field 'invalid_as_intended' differs",
+                          to_canonical_text(production.result),
+                          to_canonical_text(reference.result),
+                          std::string(fixture_identity),
+                          source.canonical_line};
     }
     return std::nullopt;
 }
@@ -290,12 +361,12 @@ std::optional<Divergence> compare_checkpoint(const OperationObservation& product
         return divergence(Layer::R3, "checkpoint field 'synchronized_visible' differs");
     }
     if (auto level_divergence =
-            compare_levels(expected.bids, actual.bids, "bids", production.event_index,
+            compare_levels(expected.bids, "bids", actual.bids, production.event_index,
                            production.event_kind, Layer::R2, expected, actual)) {
         return level_divergence;
     }
     if (auto level_divergence =
-            compare_levels(expected.asks, actual.asks, "asks", production.event_index,
+            compare_levels(expected.asks, "asks", actual.asks, production.event_index,
                            production.event_kind, Layer::R2, expected, actual)) {
         return level_divergence;
     }
@@ -330,7 +401,7 @@ std::optional<Divergence> compare_snapshot(const OperationObservation& productio
     if (!production.snapshot.has_value()) {
         return std::nullopt;
     }
-    if (*production.snapshot != *reference.snapshot) {
+    if (*production.snapshot != reference.snapshot.value()) {
         return divergence(Layer::R4, "snapshot semantic observation differs");
     }
     return std::nullopt;
@@ -502,6 +573,10 @@ std::string_view to_text(CanonicalAdapterCode code) noexcept {
     return "UNKNOWN";
 }
 
+// Linear enum-name mapping table; each case is a distinct stable name with no
+// control flow. Complexity is inherent to the closed 25-value domain (repository
+// precedent: reference_projection.hpp explicit decision tables).
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 std::string_view to_text(CanonicalAdapterField field) noexcept {
     switch (field) {
     case CanonicalAdapterField::None:
@@ -820,18 +895,22 @@ std::string to_canonical_text(const SnapshotOutcome& snapshot) {
         text += to_text(snapshot.quality_flags[index]);
     }
     text += "]";
-    text += " depth_limit=" +
-            (snapshot.depth_limit.has_value() ? std::to_string(*snapshot.depth_limit) : "-");
-    text += " gap_descriptor=";
-    if (!snapshot.gap_descriptor.has_value()) {
-        text += "-";
+    text += " depth_limit=";
+    if (snapshot.depth_limit.has_value()) {
+        text += std::to_string(*snapshot.depth_limit);
     } else {
+        text += "-";
+    }
+    text += " gap_descriptor=";
+    if (snapshot.gap_descriptor.has_value()) {
         const auto& gap = *snapshot.gap_descriptor;
         text += "{detected_at_utc_ns=" + std::to_string(gap.detected_at_utc_ns) +
                 " previous_sequence=" + std::to_string(gap.previous_sequence) +
                 " next_sequence=" + std::to_string(gap.next_sequence) +
                 " reason_code=" + std::string(to_text(gap.reason_code)) +
                 " recovery_state=" + std::string(to_text(gap.recovery_state)) + "}";
+    } else {
+        text += "-";
     }
     return text;
 }
@@ -869,8 +948,8 @@ std::optional<Divergence> compare_observations(const OperationObservation& produ
                 using Expected = std::decay_t<decltype(expected)>;
                 using Actual = std::decay_t<decltype(actual)>;
                 if constexpr (std::is_same_v<Expected, Actual>) {
-                    return compare_result_fields(expected, actual, production, reference,
-                                                 fixture_identity, source);
+                    return detail::compare_result_impl<Expected>(
+                        expected, actual, production, reference, fixture_identity, source);
                 }
                 return std::nullopt;
             },

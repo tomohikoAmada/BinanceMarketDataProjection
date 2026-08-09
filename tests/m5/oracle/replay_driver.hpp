@@ -44,7 +44,7 @@ class ReplayDriver final {
     [[nodiscard]] ReplayOutcome run();
 
   private:
-    const replay::ReplayFixture& fixture_;
+    const replay::ReplayFixture* fixture_;
     std::unique_ptr<ReplaySide> production_;
     std::unique_ptr<ReplaySide> reference_;
 };

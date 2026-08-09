@@ -15,7 +15,13 @@ namespace bmd_projection::m5::oracle {
 
 class ReplaySide {
   public:
+    ReplaySide() = default;
     virtual ~ReplaySide() = default;
+
+    ReplaySide(const ReplaySide&) = delete;
+    ReplaySide& operator=(const ReplaySide&) = delete;
+    ReplaySide(ReplaySide&&) = delete;
+    ReplaySide& operator=(ReplaySide&&) = delete;
 
     [[nodiscard]] virtual std::optional<OperationObservation>
     observe(const replay::Operation& operation) = 0;
