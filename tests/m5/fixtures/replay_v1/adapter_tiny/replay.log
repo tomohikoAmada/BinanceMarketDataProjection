@@ -1,0 +1,12 @@
+REPLAY_V1 market=Spot symbol=BTCUSDT price_scale=4 quantity_scale=4 policy=Spot fixture_id=adapter-tiny-v1 provenance_conversion=v1 provenance_source=synthetic
+ADAPTER_METADATA Duplicate,Overlap,Duplicate
+INSTALL_BASELINE 50 B:100.0000,1.0000 A:100.5000,2.0000
+DEPTH_UPDATE 50 51 pu=- B:100.0000,1.5000|A:100.5000,0.0000
+SNAPSHOT_REQUEST 2 Duplicate snapshot-a adapter 1.0 GatewayLive 4000 - -
+DEPTH_UPDATE 52 53 pu=- B:99.0000,3.0000
+DEPTH_UPDATE 54 55 pu=- A:99.0000,1.0000
+SNAPSHOT_REQUEST - - snapshot-b adapter 1.0 GatewayLive 5000 - -
+DEPTH_UPDATE 60 61 pu=- B:98.0000,4.0000
+SNAPSHOT_REQUEST - OrderBookResync snapshot-c adapter 1.0 GatewayLive 6000 - 5500,ResyncRequired
+RESET
+REBASELINE 70 B:100.0000,1.0000 A:100.5000,2.0000

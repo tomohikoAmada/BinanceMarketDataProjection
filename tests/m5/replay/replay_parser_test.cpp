@@ -69,6 +69,23 @@ TEST(M5ReplayParserTest, RejectsPendingAdapterMetadataUnlessImmediatelyFollowedB
                        replay::ErrorCategory::ReplaySyntax);
 }
 
+TEST(M5ReplayParserTest, AdapterMetadataPrecedesBaselineOrDepthUpdate) {
+    // Phase-2 scope correction: ADAPTER_METADATA may immediately precede either
+    // INSTALL_BASELINE (baseline inbound quality) or DEPTH_UPDATE, matching the
+    // approved M4 adapter dimension table. Backwards compatible with Phase-1 logs.
+    const auto baseline_log =
+        std::string{kHeader} + "ADAPTER_METADATA Duplicate,Overlap\nINSTALL_BASELINE 10 - -\n";
+    const auto baseline_result = replay::parse_replay_log(baseline_log);
+    ASSERT_TRUE(std::holds_alternative<replay::NormalizedReplay>(baseline_result));
+    EXPECT_EQ(std::get<replay::NormalizedReplay>(baseline_result).operations.size(), 2U);
+
+    const auto update_log =
+        std::string{kHeader} + "ADAPTER_METADATA Duplicate\nDEPTH_UPDATE 9 11 pu=- B:1.0,2\n";
+    const auto update_result = replay::parse_replay_log(update_log);
+    ASSERT_TRUE(std::holds_alternative<replay::NormalizedReplay>(update_result));
+    EXPECT_EQ(std::get<replay::NormalizedReplay>(update_result).operations.size(), 2U);
+}
+
 TEST(M5ReplayParserTest, AcceptsMalformedDomainRangeAsAValidReplayEvent) {
     const auto result = replay::parse_replay_log(std::string{kHeader} + "MALFORMED_RANGE 9 3\n");
     ASSERT_TRUE(std::holds_alternative<replay::NormalizedReplay>(result));

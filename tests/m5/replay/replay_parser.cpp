@@ -569,10 +569,12 @@ check_adapter_metadata_ordering(const NormalizedReplay& replay) {
             continue;
         }
         if (index + 1 >= replay.operations.size() ||
-            !std::holds_alternative<DepthUpdateOp>(replay.operations[index + 1])) {
+            (!std::holds_alternative<DepthUpdateOp>(replay.operations[index + 1]) &&
+             !std::holds_alternative<InstallBaselineOp>(replay.operations[index + 1]))) {
             const auto& metadata = std::get<AdapterMetadataOp>(replay.operations[index]);
             return error(ErrorCategory::ReplaySyntax, metadata.source.line_number, index, 0,
-                         "ADAPTER_METADATA must immediately precede DEPTH_UPDATE");
+                         "ADAPTER_METADATA must immediately precede INSTALL_BASELINE or "
+                         "DEPTH_UPDATE");
         }
     }
     return std::monostate{};
