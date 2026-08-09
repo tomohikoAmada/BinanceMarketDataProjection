@@ -63,7 +63,7 @@ struct ScanState final {
 
 // Fractional digits beyond the storage scale are discarded after zero-checking; the
 // first non-zero discarded digit is remembered as the inexact-scale evidence.
-[[nodiscard]] bool should_consume_digit(ScanState& state, char value, std::size_t offset) noexcept {
+[[nodiscard]] bool should_consume_digit(ScanState& state, ScannedCharacter character) noexcept {
     if (!state.in_fraction) {
         return true;
     }
@@ -71,21 +71,21 @@ struct ScanState final {
     if (state.source_fraction_digits <= state.target_fraction_digits) {
         return true;
     }
-    if (value != '0' && state.inexact_offset == kReferenceNoErrorOffset) {
-        state.inexact_offset = offset;
+    if (character.value != '0' && state.inexact_offset == kReferenceNoErrorOffset) {
+        state.inexact_offset = character.offset;
     }
     return false;
 }
 
-void append_digit(ScanState& state, char value, std::size_t offset) noexcept {
+void append_digit(ScanState& state, ScannedCharacter character) noexcept {
     if (state.overflow) {
         return;
     }
     constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
-    const auto digit = static_cast<std::int64_t>(value - '0');
+    const auto digit = static_cast<std::int64_t>(character.value - '0');
     if (state.units > (maximum - digit) / 10) {
         state.overflow = true;
-        state.overflow_offset = offset;
+        state.overflow_offset = character.offset;
         return;
     }
     state.units = state.units * 10 + digit;
@@ -93,18 +93,18 @@ void append_digit(ScanState& state, char value, std::size_t offset) noexcept {
 
 [[nodiscard]] std::optional<ReferenceDecimalError>
 consume_character(ScanState& state, std::string_view text, std::size_t offset) noexcept {
-    const char value = text[offset];
-    if (value == '.') {
+    const ScannedCharacter character{text[offset], offset};
+    if (character.value == '.') {
         return consume_decimal_point(state, offset);
     }
-    if (!is_ascii_digit(value)) {
+    if (!is_ascii_digit(character.value)) {
         return ReferenceDecimalError{ReferenceDecimalErrorCode::InvalidSyntax, offset};
     }
     if (!state.in_fraction && offset > 0 && text.front() == '0') {
         return ReferenceDecimalError{ReferenceDecimalErrorCode::LeadingZero, offset};
     }
-    if (should_consume_digit(state, value, offset)) {
-        append_digit(state, value, offset);
+    if (should_consume_digit(state, character)) {
+        append_digit(state, character);
     }
     return std::nullopt;
 }

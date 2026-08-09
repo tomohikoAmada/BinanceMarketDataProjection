@@ -373,8 +373,8 @@ ReferenceAdapter::predict_snapshot(const bmd_projection_reference::ReferenceProj
     }
     prediction.quality_flags = deduplicate_and_rank(std::move(flags));
 
-    const auto bids = projection.bids();
-    const auto asks = projection.asks();
+    const auto& bids = projection.bids();
+    const auto& asks = projection.asks();
     std::size_t limit = bids.size();
     if (operation.depth_limit.has_value()) {
         limit = static_cast<std::size_t>(*operation.depth_limit);
@@ -411,7 +411,7 @@ ReferenceAdapter::predict_snapshot(const bmd_projection_reference::ReferenceProj
 
 std::optional<ReferenceAdapterError> ReferenceAdapter::predict_host_quality(
     const bmd_projection_reference::ReferenceProjection& projection,
-    const replay::SnapshotRequestOp& operation, std::vector<ReferenceQualityFlag>& flags) const {
+    const replay::SnapshotRequestOp& operation, std::vector<ReferenceQualityFlag>& flags) {
     const auto status = projection.status();
     for (const auto fact : operation.host_quality_facts) {
         if (!host_fact_valid_for_status(fact, status)) {
@@ -436,7 +436,7 @@ std::optional<ReferenceAdapterError> ReferenceAdapter::predict_host_quality(
 
 std::optional<ReferenceGapDescriptor> ReferenceAdapter::predict_gap_descriptor(
     const bmd_projection_reference::ReferenceProjection& projection,
-    const replay::SnapshotRequestOp& operation) const {
+    const replay::SnapshotRequestOp& operation) {
     const auto gap = projection.last_gap();
     if (!gap.has_value() || !operation.current_gap.has_value()) {
         return std::nullopt;

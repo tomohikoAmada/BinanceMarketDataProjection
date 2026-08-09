@@ -202,14 +202,14 @@ class ReferenceAdapter final {
     [[nodiscard]] static std::optional<ReferenceAdapterError>
     validate_depth_limit(const std::optional<std::uint32_t>& depth_limit);
 
-    [[nodiscard]] std::optional<ReferenceAdapterError>
+    [[nodiscard]] static std::optional<ReferenceAdapterError>
     predict_host_quality(const bmd_projection_reference::ReferenceProjection& projection,
                          const replay::SnapshotRequestOp& operation,
-                         std::vector<ReferenceQualityFlag>& flags) const;
+                         std::vector<ReferenceQualityFlag>& flags);
 
-    [[nodiscard]] std::optional<ReferenceGapDescriptor>
+    [[nodiscard]] static std::optional<ReferenceGapDescriptor>
     predict_gap_descriptor(const bmd_projection_reference::ReferenceProjection& projection,
-                           const replay::SnapshotRequestOp& operation) const;
+                           const replay::SnapshotRequestOp& operation);
 
     replay::SequencePolicy policy_;
     std::string symbol_;
