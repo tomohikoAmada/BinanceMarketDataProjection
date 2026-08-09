@@ -258,8 +258,14 @@ std::optional<ReferenceAdapterError> ReferenceAdapter::validate_inbound_identity
     if (dimensions_.wire_venue == ReferenceVenue::Unspecified) {
         return error(ReferenceAdapterErrorCode::UnspecifiedEnum, ReferenceAdapterField::Venue);
     }
+    if (dimensions_.wire_venue == ReferenceVenue::Unknown) {
+        return error(ReferenceAdapterErrorCode::UnsupportedVenue, ReferenceAdapterField::Venue);
+    }
     if (dimensions_.wire_market == ReferenceMarket::Unspecified) {
         return error(ReferenceAdapterErrorCode::UnspecifiedEnum, ReferenceAdapterField::Market);
+    }
+    if (dimensions_.wire_market == ReferenceMarket::Unknown) {
+        return error(ReferenceAdapterErrorCode::UnknownEnumValue, ReferenceAdapterField::Market);
     }
     if (!is_symbol(dimensions_.wire_symbol)) {
         return error(ReferenceAdapterErrorCode::InvalidIdentifier, ReferenceAdapterField::Symbol);

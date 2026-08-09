@@ -28,12 +28,14 @@ namespace bmd_projection::m5::reference {
 enum class ReferenceVenue : std::uint8_t {
     Binance,
     Unspecified,
+    Unknown,
 };
 
 enum class ReferenceMarket : std::uint8_t {
     Spot,
     UsdMPerpetual,
     Unspecified,
+    Unknown,
 };
 
 enum class ReferencePolicy : std::uint8_t {

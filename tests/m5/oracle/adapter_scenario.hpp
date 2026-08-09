@@ -14,12 +14,14 @@ namespace bmd_projection::m5::oracle {
 enum class ScenarioVenue : std::uint8_t {
     Binance,
     Unspecified,
+    UnknownNumeric,
 };
 
 enum class ScenarioMarket : std::uint8_t {
     Spot,
     UsdMPerpetual,
     Unspecified,
+    UnknownNumeric,
 };
 
 struct AdapterScenario final {

@@ -5,7 +5,10 @@
 - M5 implementation: **IN PROGRESS**
 - Phase 1: **COMPLETE / MERGED** (PR #11, merge `5e8629a7ff825f8ea941304d9b09be1670643e8a`,
   post-merge main CI `31264500905` — PASS 16/16)
-- Phase 2: **CORRECTED / PENDING INDEPENDENT RE-REVIEW**
+- Phase 2: **CORRECTED / PENDING FINAL FOCUSED RE-REVIEW**
+- M5-P2-IR-007: **CORRECTED / PENDING FOCUSED RE-REVIEW**
+- M5-P2-IR-008: **DEFERRED / NON-BLOCKING**
+- M5-P2-IR-009: **DEFERRED / NON-BLOCKING**
 - Phase 3: **NOT STARTED**
 - OD-M5-003: **SPIKE-RESOLVABLE**
 - M6: **NOT STARTED**
@@ -127,13 +130,17 @@ maps these values to Contracts/Core types; R4 maps them to its own `ReferenceVen
 unspecified venue/market, known cross-market and symbol identity mismatches, price/quantity target
 spec mismatches, and projection-policy mismatch.
 
-Raw unknown Protobuf numeric enum values remain deliberately excluded: the Phase-1 canonical
-replay grammar has closed `Spot`/`UsdMPerpetual` and Binance venue semantics, and the M5 design
-excludes raw unknown enum injection. Under the pinned Contracts enum domain there is no second
-known venue and no market beyond Spot/USD-M to compose `UnsupportedVenue` or `UnsupportedMarket`
-without violating that authority. Those two branches and `UnknownEnumValue` therefore remain M4
-unit/property scope; the differential scenario covers the composable `UnspecifiedEnum` and
-known-value `IdentityMismatch` branches.
+The canonical `Replay_V1` grammar retains its closed symbolic `Spot`/`UsdMPerpetual` market and
+Binance venue semantics. Separately, the approved M5 design permits explicit raw numeric adapter
+fixture values when needed for unknown wire-enum coverage. Phase 2 uses only the test-neutral
+`AdapterScenario` control surface to inject deterministic raw numeric value `999`; this does not
+change `Replay_V1`, its parser, fixtures, manifests, or `ADAPTER_METADATA`. The production side
+synthesizes the Proto3 venue/market value and drives the real M4 `ProtoAdapter`, while R4 maps the
+neutral scenario to its independent `ReferenceVenue::Unknown` or `ReferenceMarket::Unknown`
+semantic state. Raw unknown venue (`UnsupportedVenue` / `Venue`) and raw unknown market
+(`UnknownEnumValue` / `Market`) are therefore in differential scope. The pinned public enum domain
+still has no representable known-but-unsupported market, so no `UnsupportedMarket` coverage is
+claimed.
 
 Inbound depth fields are validated in the M4 public order: all bids in repeated-field order, then
 all asks in repeated-field order, with price before quantity within each level. Snapshot output

@@ -42,10 +42,18 @@ using bmd_projection::m5::oracle::to_canonical;
 // are outside the differential scope (M5 design: adapter dimension scoping).
 constexpr std::string_view kReplayProducer{"replay-driver"};
 constexpr std::string_view kReplayProducerVersion{"1"};
+constexpr std::int32_t kRawUnknownEnumNumericValue{999};
 
 [[nodiscard]] common_wire::Venue wire_venue(ScenarioVenue venue) noexcept {
-    return venue == ScenarioVenue::Binance ? common_wire::VENUE_BINANCE
-                                           : common_wire::VENUE_UNSPECIFIED;
+    switch (venue) {
+    case ScenarioVenue::Binance:
+        return common_wire::VENUE_BINANCE;
+    case ScenarioVenue::Unspecified:
+        return common_wire::VENUE_UNSPECIFIED;
+    case ScenarioVenue::UnknownNumeric:
+        return static_cast<common_wire::Venue>(kRawUnknownEnumNumericValue);
+    }
+    return common_wire::VENUE_UNSPECIFIED;
 }
 
 [[nodiscard]] common_wire::Market wire_market(ScenarioMarket market) noexcept {
@@ -56,6 +64,8 @@ constexpr std::string_view kReplayProducerVersion{"1"};
         return common_wire::MARKET_USD_M_PERPETUAL;
     case ScenarioMarket::Unspecified:
         return common_wire::MARKET_UNSPECIFIED;
+    case ScenarioMarket::UnknownNumeric:
+        return static_cast<common_wire::Market>(kRawUnknownEnumNumericValue);
     }
     return common_wire::MARKET_UNSPECIFIED;
 }

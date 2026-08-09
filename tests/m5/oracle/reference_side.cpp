@@ -384,8 +384,15 @@ void append_decimals(std::vector<CanonicalDecimalObservation>& destination,
 }
 
 [[nodiscard]] ref::ReferenceVenue reference_venue(ScenarioVenue venue) noexcept {
-    return venue == ScenarioVenue::Binance ? ref::ReferenceVenue::Binance
-                                           : ref::ReferenceVenue::Unspecified;
+    switch (venue) {
+    case ScenarioVenue::Binance:
+        return ref::ReferenceVenue::Binance;
+    case ScenarioVenue::Unspecified:
+        return ref::ReferenceVenue::Unspecified;
+    case ScenarioVenue::UnknownNumeric:
+        return ref::ReferenceVenue::Unknown;
+    }
+    return ref::ReferenceVenue::Unspecified;
 }
 
 [[nodiscard]] ref::ReferenceMarket reference_market(ScenarioMarket market) noexcept {
@@ -396,6 +403,8 @@ void append_decimals(std::vector<CanonicalDecimalObservation>& destination,
         return ref::ReferenceMarket::UsdMPerpetual;
     case ScenarioMarket::Unspecified:
         return ref::ReferenceMarket::Unspecified;
+    case ScenarioMarket::UnknownNumeric:
+        return ref::ReferenceMarket::Unknown;
     }
     return ref::ReferenceMarket::Unspecified;
 }

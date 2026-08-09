@@ -605,6 +605,42 @@ TEST(AdapterDifferentialReplayTest, AdapterDimensionsVaryIndependently) {
     }
 }
 
+TEST(AdapterDifferentialReplayTest, RawUnknownVenueComposedDifferential) {
+    auto fixture = oracle::test::load_fixture("adapter_tiny");
+    fixture.replay.operations = {
+        replay::InstallBaselineOp{source(0, "INSTALL_BASELINE raw unknown venue"),
+                                  50,
+                                  {level(replay::Side::Bid, "100.0000")},
+                                  {level(replay::Side::Ask, "101.0000")}}};
+    auto scenario = oracle::default_adapter_scenario(fixture);
+    scenario.wire_venue = oracle::ScenarioVenue::UnknownNumeric;
+
+    const auto outcome = run_adapter(fixture, scenario);
+
+    ASSERT_FALSE(outcome.first_divergence.has_value());
+    EXPECT_EQ(observation(outcome, 0).result.value,
+              oracle::OperationResultValue{error(CanonicalAdapterCode::UnsupportedVenue,
+                                                 CanonicalAdapterField::Venue, std::nullopt)});
+}
+
+TEST(AdapterDifferentialReplayTest, RawUnknownMarketComposedDifferential) {
+    auto fixture = oracle::test::load_fixture("adapter_tiny");
+    fixture.replay.operations = {
+        replay::InstallBaselineOp{source(0, "INSTALL_BASELINE raw unknown market"),
+                                  50,
+                                  {level(replay::Side::Bid, "100.0000")},
+                                  {level(replay::Side::Ask, "101.0000")}}};
+    auto scenario = oracle::default_adapter_scenario(fixture);
+    scenario.wire_market = oracle::ScenarioMarket::UnknownNumeric;
+
+    const auto outcome = run_adapter(fixture, scenario);
+
+    ASSERT_FALSE(outcome.first_divergence.has_value());
+    EXPECT_EQ(observation(outcome, 0).result.value,
+              oracle::OperationResultValue{error(CanonicalAdapterCode::UnknownEnumValue,
+                                                 CanonicalAdapterField::Market, std::nullopt)});
+}
+
 // GoogleTest assertions inflate the path count for this linear two-row negative
 // contract matrix.
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
