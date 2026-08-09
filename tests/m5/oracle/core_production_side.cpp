@@ -64,6 +64,8 @@ parse_levels(const std::vector<replay::LevelInput>& levels, core::NumericSpec sp
 
 } // namespace
 
+// Fixture scales are parser-validated to the 0..18 domain before this side is built.
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
 CoreProductionSide::CoreProductionSide(const replay::ReplayFixture& fixture)
     : projection_{
           {core::DecimalScale::create(fixture.identity.numeric_spec.price_scale).value(),
@@ -71,6 +73,7 @@ CoreProductionSide::CoreProductionSide(const replay::ReplayFixture& fixture)
           fixture.identity.sequence_policy == replay::SequencePolicy::Spot
               ? core::SequencePolicyKind::Spot
               : core::SequencePolicyKind::UsdMPerpetual} {}
+// NOLINTEND(bugprone-unchecked-optional-access)
 
 std::optional<OperationObservation>
 CoreProductionSide::observe(const replay::Operation& operation) {
@@ -173,11 +176,13 @@ CoreProductionSide::observe_malformed_range(const replay::MalformedRangeOp& oper
 SemanticCheckpoint CoreProductionSide::checkpoint() const {
     SemanticCheckpoint result;
     result.status = to_canonical(projection_.status());
-    if (projection_.last_update_id().has_value()) {
-        result.last_update_id = projection_.last_update_id()->value();
+    const auto last_update_id = projection_.last_update_id();
+    if (last_update_id.has_value()) {
+        result.last_update_id = last_update_id->value();
     }
-    if (projection_.last_gap().has_value()) {
-        result.last_gap = to_canonical(*projection_.last_gap());
+    const auto last_gap = projection_.last_gap();
+    if (last_gap.has_value()) {
+        result.last_gap = to_canonical(*last_gap);
     }
     result.synchronized_visible = projection_.synchronized_book().has_value();
     const auto& book = projection_.diagnostic_book();

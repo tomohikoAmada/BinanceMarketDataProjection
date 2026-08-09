@@ -59,10 +59,15 @@ compare_levels(const std::vector<CanonicalLevel>& expected, const char* side,
 // first-divergence discipline.
 namespace detail {
 
+// Fallback for never-instantiated type combinations (both sides always hold the
+// same alternative); the explicit specializations below carry the real logic.
 template <typename T>
 [[nodiscard]] std::optional<Divergence>
-compare_result_impl(const T&, const T&, const OperationObservation&, const OperationObservation&,
-                    std::string_view, const replay::SourceLocation&) {
+compare_result_impl([[maybe_unused]] const T& expected, [[maybe_unused]] const T& actual,
+                    [[maybe_unused]] const OperationObservation& production,
+                    [[maybe_unused]] const OperationObservation& reference,
+                    [[maybe_unused]] std::string_view fixture_identity,
+                    [[maybe_unused]] const replay::SourceLocation& source) {
     return std::nullopt;
 }
 
