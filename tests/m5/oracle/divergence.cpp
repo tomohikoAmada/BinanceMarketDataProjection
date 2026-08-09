@@ -59,8 +59,10 @@ compare_levels(const std::vector<CanonicalLevel>& expected, const char* side,
 // first-divergence discipline.
 namespace detail {
 
-// Fallback for never-instantiated type combinations (both sides always hold the
-// same alternative); the explicit specializations below carry the real logic.
+// Compile-time dispatch terminal for same-type pairs; the concrete overloads below
+// carry the real logic. The symmetric expected/actual parameter pairs are
+// deliberate and mirror the comparison discipline.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 template <typename T>
 [[nodiscard]] std::optional<Divergence>
 compare_result_impl([[maybe_unused]] const T& expected, [[maybe_unused]] const T& actual,
@@ -71,13 +73,10 @@ compare_result_impl([[maybe_unused]] const T& expected, [[maybe_unused]] const T
     return std::nullopt;
 }
 
-} // namespace detail
-
-template <>
-[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<DecimalErrorOutcome>(
-    const DecimalErrorOutcome& expected, const DecimalErrorOutcome& actual,
-    const OperationObservation& production, const OperationObservation& reference,
-    std::string_view fixture_identity, const replay::SourceLocation& source) {
+[[nodiscard]] std::optional<Divergence>
+compare_result_impl(const DecimalErrorOutcome& expected, const DecimalErrorOutcome& actual,
+                    const OperationObservation& production, const OperationObservation& reference,
+                    std::string_view fixture_identity, const replay::SourceLocation& source) {
     if (expected.category != actual.category) {
         return Divergence{production.event_index,
                           production.event_kind,
@@ -92,11 +91,10 @@ template <>
     return std::nullopt;
 }
 
-template <>
-[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<InstallOutcome>(
-    const InstallOutcome& expected, const InstallOutcome& actual,
-    const OperationObservation& production, const OperationObservation& reference,
-    std::string_view fixture_identity, const replay::SourceLocation& source) {
+[[nodiscard]] std::optional<Divergence>
+compare_result_impl(const InstallOutcome& expected, const InstallOutcome& actual,
+                    const OperationObservation& production, const OperationObservation& reference,
+                    std::string_view fixture_identity, const replay::SourceLocation& source) {
     const auto mismatch = [&](const char* field) {
         return std::optional<Divergence>{
             Divergence{production.event_index, production.event_kind, Layer::R3,
@@ -117,11 +115,10 @@ template <>
     return std::nullopt;
 }
 
-template <>
-[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<ApplyOutcome>(
-    const ApplyOutcome& expected, const ApplyOutcome& actual,
-    const OperationObservation& production, const OperationObservation& reference,
-    std::string_view fixture_identity, const replay::SourceLocation& source) {
+[[nodiscard]] std::optional<Divergence>
+compare_result_impl(const ApplyOutcome& expected, const ApplyOutcome& actual,
+                    const OperationObservation& production, const OperationObservation& reference,
+                    std::string_view fixture_identity, const replay::SourceLocation& source) {
     const auto mismatch = [&](const char* field) {
         return std::optional<Divergence>{
             Divergence{production.event_index, production.event_kind, Layer::R3,
@@ -167,11 +164,10 @@ template <>
     return std::nullopt;
 }
 
-template <>
-[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<AdapterErrorOutcome>(
-    const AdapterErrorOutcome& expected, const AdapterErrorOutcome& actual,
-    const OperationObservation& production, const OperationObservation& reference,
-    std::string_view fixture_identity, const replay::SourceLocation& source) {
+[[nodiscard]] std::optional<Divergence>
+compare_result_impl(const AdapterErrorOutcome& expected, const AdapterErrorOutcome& actual,
+                    const OperationObservation& production, const OperationObservation& reference,
+                    std::string_view fixture_identity, const replay::SourceLocation& source) {
     const auto mismatch = [&](const char* field) {
         return std::optional<Divergence>{
             Divergence{production.event_index, production.event_kind, Layer::R4,
@@ -192,11 +188,10 @@ template <>
     return std::nullopt;
 }
 
-template <>
-[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<AdapterSuccessOutcome>(
-    const AdapterSuccessOutcome& expected, const AdapterSuccessOutcome& actual,
-    const OperationObservation& production, const OperationObservation& reference,
-    std::string_view fixture_identity, const replay::SourceLocation& source) {
+[[nodiscard]] std::optional<Divergence>
+compare_result_impl(const AdapterSuccessOutcome& expected, const AdapterSuccessOutcome& actual,
+                    const OperationObservation& production, const OperationObservation& reference,
+                    std::string_view fixture_identity, const replay::SourceLocation& source) {
     const auto mismatch = [&](const char* field, Layer layer) {
         return std::optional<Divergence>{
             Divergence{production.event_index, production.event_kind, layer,
@@ -209,17 +204,13 @@ template <>
         return mismatch("core_result kind", Layer::R3);
     }
     if (const auto nested = std::visit(
-            [&](const auto& expected_core, const auto& actual_core) -> std::optional<Divergence> {
+            [&](const auto& expected_core) -> std::optional<Divergence> {
                 using ExpectedCore = std::decay_t<decltype(expected_core)>;
-                using ActualCore = std::decay_t<decltype(actual_core)>;
-                if constexpr (std::is_same_v<ExpectedCore, ActualCore>) {
-                    return detail::compare_result_impl<ExpectedCore>(expected_core, actual_core,
-                                                                     production, reference,
-                                                                     fixture_identity, source);
-                }
-                return std::nullopt;
+                return detail::compare_result_impl(expected_core,
+                                                   std::get<ExpectedCore>(actual.core_result),
+                                                   production, reference, fixture_identity, source);
             },
-            expected.core_result, actual.core_result)) {
+            expected.core_result)) {
         return nested;
     }
     if (expected.observed_quality.size() != actual.observed_quality.size()) {
@@ -233,11 +224,10 @@ template <>
     return std::nullopt;
 }
 
-template <>
-[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<SnapshotOutcome>(
-    const SnapshotOutcome& expected, const SnapshotOutcome& actual,
-    const OperationObservation& production, const OperationObservation& reference,
-    std::string_view fixture_identity, const replay::SourceLocation& source) {
+[[nodiscard]] std::optional<Divergence>
+compare_result_impl(const SnapshotOutcome& expected, const SnapshotOutcome& actual,
+                    const OperationObservation& production, const OperationObservation& reference,
+                    std::string_view fixture_identity, const replay::SourceLocation& source) {
     const auto mismatch = [&](const char* field) {
         return std::optional<Divergence>{
             Divergence{production.event_index, production.event_kind, Layer::R4,
@@ -295,11 +285,10 @@ template <>
     return std::nullopt;
 }
 
-template <>
-[[nodiscard]] std::optional<Divergence> detail::compare_result_impl<RangeOutcome>(
-    const RangeOutcome& expected, const RangeOutcome& actual,
-    const OperationObservation& production, const OperationObservation& reference,
-    std::string_view fixture_identity, const replay::SourceLocation& source) {
+[[nodiscard]] std::optional<Divergence>
+compare_result_impl(const RangeOutcome& expected, const RangeOutcome& actual,
+                    const OperationObservation& production, const OperationObservation& reference,
+                    std::string_view fixture_identity, const replay::SourceLocation& source) {
     if (expected.invalid_as_intended != actual.invalid_as_intended) {
         return Divergence{production.event_index,
                           production.event_kind,
@@ -313,6 +302,8 @@ template <>
     }
     return std::nullopt;
 }
+
+} // namespace detail
 
 [[nodiscard]] Layer layer_for_result_kind(const OperationResultValue& production,
                                           const OperationResultValue& reference) noexcept {
@@ -951,9 +942,9 @@ std::optional<Divergence> compare_observations(const OperationObservation& produ
     if (const auto nested = std::visit(
             [&](const auto& expected) -> std::optional<Divergence> {
                 using Expected = std::decay_t<decltype(expected)>;
-                return detail::compare_result_impl<Expected>(
-                    expected, std::get<Expected>(reference.result.value), production, reference,
-                    fixture_identity, source);
+                return detail::compare_result_impl(expected,
+                                                   std::get<Expected>(reference.result.value),
+                                                   production, reference, fixture_identity, source);
             },
             production.result.value)) {
         return nested;
