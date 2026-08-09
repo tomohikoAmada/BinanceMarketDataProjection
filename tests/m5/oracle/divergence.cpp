@@ -60,9 +60,9 @@ compare_levels(const std::vector<CanonicalLevel>& expected, const char* side,
 namespace detail {
 
 // Compile-time dispatch terminal for same-type pairs; the concrete overloads below
-// carry the real logic. The symmetric expected/actual parameter pairs are
-// deliberate and mirror the comparison discipline.
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+// carry the real logic. The symmetric expected/actual and production/reference
+// parameter pairs are deliberate and mirror the comparison discipline.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 template <typename T>
 [[nodiscard]] std::optional<Divergence>
 compare_result_impl([[maybe_unused]] const T& expected, [[maybe_unused]] const T& actual,
@@ -72,6 +72,7 @@ compare_result_impl([[maybe_unused]] const T& expected, [[maybe_unused]] const T
                     [[maybe_unused]] const replay::SourceLocation& source) {
     return std::nullopt;
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 [[nodiscard]] std::optional<Divergence>
 compare_result_impl(const DecimalErrorOutcome& expected, const DecimalErrorOutcome& actual,
