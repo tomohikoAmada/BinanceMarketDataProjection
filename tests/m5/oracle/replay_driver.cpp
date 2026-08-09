@@ -47,8 +47,9 @@ namespace {
 
 ReplayDriver::ReplayDriver(const replay::ReplayFixture& fixture,
                            std::unique_ptr<ReplaySide> production,
-                           std::unique_ptr<ReplaySide> reference)
-    : fixture_{&fixture}, production_{std::move(production)}, reference_{std::move(reference)} {}
+                           std::unique_ptr<ReplaySide> reference, ObservationRetention retention)
+    : fixture_{&fixture}, production_{std::move(production)}, reference_{std::move(reference)},
+      retention_{retention} {}
 
 ReplayOutcome ReplayDriver::run() {
     ReplayOutcome outcome;
@@ -72,6 +73,9 @@ ReplayOutcome ReplayDriver::run() {
                            reference.has_value() ? to_canonical_text(reference->result) : "-",
                            identity,
                            source.canonical_line};
+            enrich_divergence(*outcome.first_divergence, *fixture_, source,
+                              production ? &*production : nullptr,
+                              reference ? &*reference : nullptr);
             return outcome;
         }
         production->event_index = index;
@@ -81,9 +85,14 @@ ReplayOutcome ReplayDriver::run() {
         if (const auto divergence =
                 compare_observations(*production, *reference, identity, source)) {
             outcome.first_divergence = divergence;
+            enrich_divergence(*outcome.first_divergence, *fixture_, source, &*production,
+                              &*reference);
             return outcome;
         }
-        outcome.observations.push_back(std::move(*production));
+        outcome.final_observation = *production;
+        if (retention_ == ObservationRetention::RetainAll) {
+            outcome.observations.push_back(std::move(*production));
+        }
     }
     return outcome;
 }

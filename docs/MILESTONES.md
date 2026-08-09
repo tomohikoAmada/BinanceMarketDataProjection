@@ -267,7 +267,8 @@ No M5 production change or container migration is authorized by the design.
 
 OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions and CI policy
 are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
-M5 implementation is authorized; Phase 1 is in progress and later phases remain separate.
+M5 implementation is authorized. Phases 1 and 2 are complete and merged; Phase 3 is partial and
+blocked on the authoritative recorded-source archive. Later phases remain separate.
 
 Phase 1 canonical replay infrastructure is **COMPLETE / MERGED** (PR #11, merge
 `5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — PASS 16/16). It
@@ -277,8 +278,17 @@ diagnostics, and the explicit offline Recorder materializer/bootstrap contract.
 
 Phase 2 (independent differential oracle: R1 ReferenceDecimal promoted, R4 ReferenceAdapter,
 neutral ReplayDriver, OperationObservation, semantic checkpoints, first-divergence diagnostics
-with layer attribution) is **IMPLEMENTED / PENDING INDEPENDENT REVIEW** — see
-`docs/M5_PHASE2_DIFFERENTIAL_ORACLE.md`. Phase 3 and later work is not started.
+with layer attribution) is **COMPLETE / MERGED** (PR #12, merge
+`75c619dd683ff2a3893f9535e206231e7bfecc41`, final review APPROVED, P0: 0, P1: 0, post-merge main
+CI `31315421548` — PASS 16/16). M5-P2-IR-001 through M5-P2-IR-007 and M5-P2-RR-001 are CLOSED;
+M5-P2-IR-008 and M5-P2-IR-009 remain DEFERRED / NON-BLOCKING.
+
+Phase 3 is **PARTIAL / BLOCKED ON RECORDED SOURCE EVIDENCE**. Deterministic 2,048-event small-tier
+Spot and USD-M workloads, per-event scaled differential comparison, bounded observation retention,
+stable first-divergence diagnostics, and the independent offline Recorder Raw-v1 materializer are
+implemented. The exact OD-M5-001 24-hour archive is not locally accessible, so the mandatory Spot
+and USD-M 100k materializations, replay/repeatability evidence, and rotation eligibility assessment
+remain blocked. See `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`. Phase 4 is NOT STARTED.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 

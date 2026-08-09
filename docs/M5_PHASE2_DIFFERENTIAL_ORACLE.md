@@ -5,11 +5,16 @@
 - M5 implementation: **IN PROGRESS**
 - Phase 1: **COMPLETE / MERGED** (PR #11, merge `5e8629a7ff825f8ea941304d9b09be1670643e8a`,
   post-merge main CI `31264500905` — PASS 16/16)
-- Phase 2: **CORRECTED / PENDING FINAL FOCUSED RE-REVIEW**
-- M5-P2-IR-007: **CORRECTED / PENDING FOCUSED RE-REVIEW**
+- Phase 2: **COMPLETE / MERGED** (PR #12, merge
+  `75c619dd683ff2a3893f9535e206231e7bfecc41`, post-merge main CI `31315421548` — PASS 16/16)
+- Final independent review: **APPROVED**; P0: 0; P1: 0
+- M5-P2-IR-001 through M5-P2-IR-007: **CLOSED**
+- M5-P2-RR-001: **CLOSED**
 - M5-P2-IR-008: **DEFERRED / NON-BLOCKING**
-- M5-P2-IR-009: **DEFERRED / NON-BLOCKING**
-- Phase 3: **NOT STARTED**
+- M5-P2-IR-009: **DEFERRED / NON-BLOCKING**; Phase 3 adds only the minimum missing
+  source-line context needed by scaled failure diagnostics
+- Phase 3: **PARTIAL / BLOCKED ON RECORDED SOURCE EVIDENCE**
+- Phase 4: **NOT STARTED**
 - OD-M5-003: **SPIKE-RESOLVABLE**
 - M6: **NOT STARTED**
 

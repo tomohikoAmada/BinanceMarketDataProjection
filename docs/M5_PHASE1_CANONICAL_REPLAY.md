@@ -7,6 +7,8 @@
   post-merge main CI `31264500905` — PASS 16/16)
 - Phase 2: **IMPLEMENTED / PENDING INDEPENDENT REVIEW** — see
   `docs/M5_PHASE2_DIFFERENTIAL_ORACLE.md`
+- Phase 3: **PARTIAL / BLOCKED ON RECORDED SOURCE EVIDENCE** — see
+  `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`
 - M5-P1-IR-1: **CLOSED** (semantics superseded) - Spot bootstrap bridge follows the corrected
   successor-coverage rule `U <= L + 1` per ADR-0008; the earlier contains-`L` reading `U <= L < u`
   is superseded by the official 2025-11-12 correction and no longer authoritative

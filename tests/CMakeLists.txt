@@ -1,4 +1,5 @@
 find_package(GTest CONFIG REQUIRED)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 add_library(
     bmd_projection_m5_replay_support
@@ -20,6 +21,27 @@ set_target_properties(
         CXX_EXTENSIONS NO
 )
 bmd_projection_apply_project_options(bmd_projection_m5_replay_support)
+
+add_library(
+    bmd_projection_m5_phase3_support
+    m5/phase3/small_workload.cpp
+)
+target_include_directories(
+    bmd_projection_m5_phase3_support
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/m5/phase3
+)
+target_link_libraries(
+    bmd_projection_m5_phase3_support
+    PUBLIC bmd_projection_m5_replay_support
+)
+set_target_properties(
+    bmd_projection_m5_phase3_support
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_phase3_support)
 
 add_executable(
     bmd_projection_m5_replay_tests
@@ -112,6 +134,7 @@ add_executable(
     m5/oracle/operation_observation_test.cpp
     m5/oracle/reference_adapter_test.cpp
     m5/oracle/reference_decimal_test.cpp
+    m5/phase3/small_replay_test.cpp
 )
 target_compile_definitions(
     bmd_projection_m5_differential_tests
@@ -121,6 +144,7 @@ target_link_libraries(
     bmd_projection_m5_differential_tests
     PRIVATE
         bmd_projection_m5_oracle_support
+        bmd_projection_m5_phase3_support
         bmd_projection_m5_reference_support
         GTest::gtest_main
 )
@@ -132,6 +156,25 @@ set_target_properties(
         CXX_EXTENSIONS NO
 )
 bmd_projection_apply_project_options(bmd_projection_m5_differential_tests)
+
+add_executable(
+    bmd_projection_m5_corpus_validate
+    m5/phase3/corpus_validate.cpp
+)
+target_link_libraries(
+    bmd_projection_m5_corpus_validate
+    PRIVATE
+        bmd_projection_m5_oracle_support
+        bmd_projection_m5_reference_support
+)
+set_target_properties(
+    bmd_projection_m5_corpus_validate
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_corpus_validate)
 
 add_executable(
     bmd_projection_tests
@@ -251,6 +294,7 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
         bmd_projection_m5_adapter_differential_tests
         m5/oracle/adapter_differential_test.cpp
         m5/oracle/adapter_production_side.cpp
+        m5/phase3/small_adapter_replay_test.cpp
     )
     target_compile_definitions(
         bmd_projection_m5_adapter_differential_tests
@@ -261,6 +305,7 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
         PRIVATE
             BinanceMarketDataProjection::ProtoAdapter
             bmd_projection_m5_oracle_support
+            bmd_projection_m5_phase3_support
             bmd_projection_m5_reference_support
             GTest::gtest_main
     )
@@ -273,6 +318,26 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
     )
     bmd_projection_apply_project_options(bmd_projection_m5_adapter_differential_tests)
 
+    add_executable(
+        bmd_projection_m5_adapter_corpus_validate
+        m5/phase3/adapter_corpus_validate.cpp
+        m5/oracle/adapter_production_side.cpp
+    )
+    target_link_libraries(
+        bmd_projection_m5_adapter_corpus_validate
+        PRIVATE
+            BinanceMarketDataProjection::ProtoAdapter
+            bmd_projection_m5_oracle_support
+            bmd_projection_m5_reference_support
+    )
+    set_target_properties(
+        bmd_projection_m5_adapter_corpus_validate
+        PROPERTIES
+            CXX_STANDARD 20
+            CXX_STANDARD_REQUIRED YES
+            CXX_EXTENSIONS NO
+    )
+    bmd_projection_apply_project_options(bmd_projection_m5_adapter_corpus_validate)
     add_library(
         bmd_projection_proto_adapter_header_self_containment
         OBJECT
@@ -341,7 +406,24 @@ gtest_discover_tests(bmd_projection_tests)
 gtest_discover_tests(bmd_projection_m3_allocation_failure_tests)
 gtest_discover_tests(bmd_projection_m5_replay_tests)
 gtest_discover_tests(bmd_projection_m5_differential_tests)
+add_test(
+    NAME m5_materializer_tests
+    COMMAND ${Python3_EXECUTABLE} -m unittest discover
+            -s ${CMAKE_CURRENT_SOURCE_DIR}/m5/materializer
+            -p test_*.py
+)
+set_tests_properties(
+    m5_materializer_tests
+    PROPERTIES
+        ENVIRONMENT
+            "PYTHONPATH=${PROJECT_SOURCE_DIR};BMD_M5_CORPUS_VALIDATOR=$<TARGET_FILE:bmd_projection_m5_corpus_validate>"
+)
 if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
+    set_property(
+        TEST m5_materializer_tests
+        APPEND PROPERTY ENVIRONMENT
+            "BMD_M5_ADAPTER_CORPUS_VALIDATOR=$<TARGET_FILE:bmd_projection_m5_adapter_corpus_validate>"
+    )
     gtest_discover_tests(bmd_projection_proto_adapter_tests)
     gtest_discover_tests(bmd_projection_proto_adapter_allocation_failure_tests)
     gtest_discover_tests(bmd_projection_m5_adapter_differential_tests)

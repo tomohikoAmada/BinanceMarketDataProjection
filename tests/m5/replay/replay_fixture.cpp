@@ -27,27 +27,17 @@ namespace {
     return bytes.str();
 }
 
-} // namespace
-
-Result<ReplayFixture> load_fixture(const std::filesystem::path& directory) {
-    const auto log_bytes = read_bytes(directory / "replay.log");
-    if (std::holds_alternative<ParseError>(log_bytes)) {
-        return std::get<ParseError>(log_bytes);
-    }
-    const auto manifest = load_manifest(directory / "manifest.txt");
-    if (std::holds_alternative<ParseError>(manifest)) {
-        return std::get<ParseError>(manifest);
-    }
-    const auto replay = parse_replay_log(std::get<std::string>(log_bytes));
+[[nodiscard]] Result<ReplayFixture> validate_fixture(std::string_view replay_log_bytes,
+                                                     const ReplayManifest& parsed_manifest) {
+    const auto replay = parse_replay_log(replay_log_bytes);
     if (std::holds_alternative<ParseError>(replay)) {
         return std::get<ParseError>(replay);
     }
-    const auto hash = sha256_hex(std::get<std::string>(log_bytes));
+    const auto hash = sha256_hex(replay_log_bytes);
     if (std::holds_alternative<ParseError>(hash)) {
         return std::get<ParseError>(hash);
     }
     const auto& normalized = std::get<NormalizedReplay>(replay);
-    const auto& parsed_manifest = std::get<ReplayManifest>(manifest);
     const auto actual_hash = std::get<std::string>(hash);
     const FixtureIdentity header_identity{
         normalized.header.schema_version, actual_hash,
@@ -80,6 +70,29 @@ Result<ReplayFixture> load_fixture(const std::filesystem::path& directory) {
         return error(ErrorCategory::InvalidMetadata, "fixture identity contains an empty field");
     }
     return ReplayFixture{normalized, parsed_manifest, header_identity, actual_hash};
+}
+
+} // namespace
+
+Result<ReplayFixture> load_fixture(std::string_view replay_log_bytes,
+                                   std::string_view manifest_bytes) {
+    const auto manifest = parse_manifest(manifest_bytes);
+    if (std::holds_alternative<ParseError>(manifest)) {
+        return std::get<ParseError>(manifest);
+    }
+    return validate_fixture(replay_log_bytes, std::get<ReplayManifest>(manifest));
+}
+
+Result<ReplayFixture> load_fixture(const std::filesystem::path& directory) {
+    const auto log_bytes = read_bytes(directory / "replay.log");
+    if (std::holds_alternative<ParseError>(log_bytes)) {
+        return std::get<ParseError>(log_bytes);
+    }
+    const auto manifest = load_manifest(directory / "manifest.txt");
+    if (std::holds_alternative<ParseError>(manifest)) {
+        return std::get<ParseError>(manifest);
+    }
+    return validate_fixture(std::get<std::string>(log_bytes), std::get<ReplayManifest>(manifest));
 }
 
 } // namespace bmd_projection::m5::replay

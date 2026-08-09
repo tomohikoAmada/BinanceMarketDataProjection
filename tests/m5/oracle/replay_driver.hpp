@@ -28,8 +28,14 @@ enum class ReplayMode : std::uint8_t {
     AdapterEnabled,
 };
 
+enum class ObservationRetention : std::uint8_t {
+    RetainAll,
+    RetainNone,
+};
+
 struct ReplayOutcome final {
     std::vector<OperationObservation> observations;
+    std::optional<OperationObservation> final_observation;
     std::optional<Divergence> first_divergence;
     std::size_t processed_events{};
 
@@ -39,7 +45,8 @@ struct ReplayOutcome final {
 class ReplayDriver final {
   public:
     ReplayDriver(const replay::ReplayFixture& fixture, std::unique_ptr<ReplaySide> production,
-                 std::unique_ptr<ReplaySide> reference);
+                 std::unique_ptr<ReplaySide> reference,
+                 ObservationRetention retention = ObservationRetention::RetainAll);
 
     [[nodiscard]] ReplayOutcome run();
 
@@ -47,6 +54,7 @@ class ReplayDriver final {
     const replay::ReplayFixture* fixture_;
     std::unique_ptr<ReplaySide> production_;
     std::unique_ptr<ReplaySide> reference_;
+    ObservationRetention retention_;
 };
 
 // Test-only fault hooks: side wrappers that alter observations before they reach the

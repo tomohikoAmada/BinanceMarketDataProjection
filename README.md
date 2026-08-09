@@ -2,8 +2,8 @@
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. M1 through M4 are complete on `main`; M5 (Differential Validation and
-Performance) implementation is in progress (Phase 1 merged, Phase 2 implemented pending
-independent review).
+Performance) implementation is in progress (Phases 1 and 2 merged, Phase 3 foundation implemented
+but blocked on the authoritative recorded-source archive).
 
 This is an unofficial project and is not affiliated with, endorsed by, or sponsored by Binance.
 This module does not connect to Binance, use API keys, place orders, or contain trading strategies.
@@ -234,7 +234,13 @@ M1, M2, M3, and M4 are COMPLETE. M4 was merged through PR #8 at
 M5 (Differential Validation and Performance) is **APPROVED / MERGED / IN PROGRESS**: Phase 1
 canonical replay infrastructure is COMPLETE / MERGED (PR #11, merge
 `5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — 16/16 PASS) and
-Phase 2 (independent differential oracle foundation) is IMPLEMENTED / PENDING INDEPENDENT REVIEW.
+Phase 2 (independent differential oracle foundation) is COMPLETE / MERGED (PR #12, merge
+`75c619dd683ff2a3893f9535e206231e7bfecc41`, post-merge main CI `31315421548` — 16/16 PASS).
+Phase 3 is PARTIAL / BLOCKED ON RECORDED SOURCE EVIDENCE: deterministic 2,048-event Spot and USD-M
+small workloads, scalable differential replay, failure diagnostics, and the offline Raw-v1
+materializer are implemented, while the mandatory recorded 100k corpora and rotation assessment
+cannot be produced without the pinned 24-hour archive. See
+[M5 Phase 3](docs/M5_PHASE3_DETERMINISTIC_REPLAY.md).
 Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
 cross-compiler semantic manifests with artifact fan-in transport, replay/differential fuzzing,
@@ -247,9 +253,8 @@ The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
 - The repository includes numeric primitives, a deterministic L2 market-by-price order book, the
   completed M3 sequence/projection implementation, and the merged optional M4 Protobuf adapter on
   `main`.
-- M5 is **APPROVED / MERGED / IN PROGRESS**; M5 implementation is in progress (Phase 1
-  COMPLETE / MERGED, Phase 2 implemented pending independent review) and
-  M6 is not started.
+- M5 is **APPROVED / MERGED / IN PROGRESS**; Phases 1 and 2 are COMPLETE / MERGED, and Phase 3 is
+  PARTIAL / BLOCKED ON RECORDED SOURCE EVIDENCE. Phase 4 and M6 are not started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.
 - Tick-size, step-size, signed-decimal, and symbol-metadata validation remain outside the implemented
