@@ -46,6 +46,93 @@ set_target_properties(
 )
 bmd_projection_apply_project_options(bmd_projection_m5_replay_tests)
 
+# M5 Phase-2 reference layers: R1 (reference decimal), R4 (reference adapter), and
+# the reference pipeline side composing R1/R3/R4. R2 (ReferenceOrderBook) and R3
+# (ReferenceProjection) are reused in place from their reviewed M2/M3 test homes.
+add_library(
+    bmd_projection_m5_reference_support
+    m5/reference/reference_adapter.cpp
+    m5/reference/reference_decimal.cpp
+    m5/oracle/reference_side.cpp
+)
+target_include_directories(
+    bmd_projection_m5_reference_support
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/m5/reference
+        ${CMAKE_CURRENT_SOURCE_DIR}/m5/oracle
+        ${CMAKE_CURRENT_SOURCE_DIR}/projection_state
+        ${CMAKE_CURRENT_SOURCE_DIR}/order_book
+)
+target_link_libraries(
+    bmd_projection_m5_reference_support
+    PUBLIC bmd_projection_m5_replay_support
+)
+set_target_properties(
+    bmd_projection_m5_reference_support
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_reference_support)
+
+# M5 Phase-2 oracle support: canonical observation model, first-divergence
+# comparison, the neutral ReplayDriver, and the Core-only production side. This
+# target links Core but never ProtoAdapter/Contracts.
+add_library(
+    bmd_projection_m5_oracle_support
+    m5/oracle/core_production_side.cpp
+    m5/oracle/divergence.cpp
+    m5/oracle/production_decimal_observation.cpp
+    m5/oracle/replay_driver.cpp
+)
+target_include_directories(
+    bmd_projection_m5_oracle_support
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/m5/oracle
+)
+target_link_libraries(
+    bmd_projection_m5_oracle_support
+    PUBLIC
+        bmd_projection_m5_replay_support
+        BinanceMarketDataProjection::Core
+)
+set_target_properties(
+    bmd_projection_m5_oracle_support
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_oracle_support)
+
+add_executable(
+    bmd_projection_m5_differential_tests
+    m5/oracle/differential_replay_test.cpp
+    m5/oracle/fault_injection_test.cpp
+    m5/oracle/operation_observation_test.cpp
+    m5/oracle/reference_adapter_test.cpp
+    m5/oracle/reference_decimal_test.cpp
+)
+target_compile_definitions(
+    bmd_projection_m5_differential_tests
+    PRIVATE BMD_M5_FIXTURE_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/m5/fixtures/replay_v1"
+)
+target_link_libraries(
+    bmd_projection_m5_differential_tests
+    PRIVATE
+        bmd_projection_m5_oracle_support
+        bmd_projection_m5_reference_support
+        GTest::gtest_main
+)
+set_target_properties(
+    bmd_projection_m5_differential_tests
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_differential_tests)
+
 add_executable(
     bmd_projection_tests
     numeric/decimal_format_test.cpp
@@ -160,6 +247,32 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
     )
     bmd_projection_apply_project_options(bmd_projection_proto_adapter_allocation_failure_tests)
 
+    add_executable(
+        bmd_projection_m5_adapter_differential_tests
+        m5/oracle/adapter_differential_test.cpp
+        m5/oracle/adapter_production_side.cpp
+    )
+    target_compile_definitions(
+        bmd_projection_m5_adapter_differential_tests
+        PRIVATE BMD_M5_FIXTURE_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/m5/fixtures/replay_v1"
+    )
+    target_link_libraries(
+        bmd_projection_m5_adapter_differential_tests
+        PRIVATE
+            BinanceMarketDataProjection::ProtoAdapter
+            bmd_projection_m5_oracle_support
+            bmd_projection_m5_reference_support
+            GTest::gtest_main
+    )
+    set_target_properties(
+        bmd_projection_m5_adapter_differential_tests
+        PROPERTIES
+            CXX_STANDARD 20
+            CXX_STANDARD_REQUIRED YES
+            CXX_EXTENSIONS NO
+    )
+    bmd_projection_apply_project_options(bmd_projection_m5_adapter_differential_tests)
+
     add_library(
         bmd_projection_proto_adapter_header_self_containment
         OBJECT
@@ -227,7 +340,9 @@ include(GoogleTest)
 gtest_discover_tests(bmd_projection_tests)
 gtest_discover_tests(bmd_projection_m3_allocation_failure_tests)
 gtest_discover_tests(bmd_projection_m5_replay_tests)
+gtest_discover_tests(bmd_projection_m5_differential_tests)
 if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
     gtest_discover_tests(bmd_projection_proto_adapter_tests)
     gtest_discover_tests(bmd_projection_proto_adapter_allocation_failure_tests)
+    gtest_discover_tests(bmd_projection_m5_adapter_differential_tests)
 endif()

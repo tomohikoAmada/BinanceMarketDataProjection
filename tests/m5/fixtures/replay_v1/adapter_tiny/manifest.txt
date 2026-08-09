@@ -1,0 +1,12 @@
+MANIFEST_V1
+fixture_id=adapter-tiny-v1
+schema_version=REPLAY_V1
+log_sha256=91381f6e26c51963833b3d9f50380adac59c5ec46f15d5ef5e846b08004f4379
+market=Spot
+symbol=BTCUSDT
+price_scale=4
+quantity_scale=4
+policy=Spot
+event_count=11
+provenance_conversion=v1
+provenance_source=synthetic

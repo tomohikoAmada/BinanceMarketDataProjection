@@ -194,20 +194,26 @@ granularity is decided during the performance spike.
 
 M5 Implementation: **IN PROGRESS.**
 
-Phase 1 is implemented and pending independent review. Phase 2 and later phases remain not started.
+Phase 1 is **COMPLETE / MERGED** (PR #11, merge `5e8629a7ff825f8ea941304d9b09be1670643e8a`,
+post-merge main CI `31264500905` — PASS 16/16). Phase 2 (independent differential oracle:
+R1 promoted, R4 new, neutral ReplayDriver, OperationObservation, layer attribution) is
+**IMPLEMENTED / PENDING INDEPENDENT REVIEW** — see `docs/M5_PHASE2_DIFFERENTIAL_ORACLE.md`.
+Phase 3 and later phases remain not started.
 
 ## Phase 1 Review Dispositions
 
 | ID | Disposition |
 |---|---|
-| M5-PIR-001 | **INCORPORATED INTO PHASE 1** - explicit Spot/USD-M bootstrap and bridge materializer contract |
+| M5-P1-IR-1 | **CLOSED** - Spot bootstrap bridge follows the accepted M3/ADR-0005 contains-`L` rule |
+| M5-P1-IR-2 | **CLOSED** |
+| M5-PIR-001 | **CLOSED** - explicit Spot/USD-M bootstrap and bridge materializer contract |
 | M5-PIR-002 | **DEFERRED / NON-BLOCKING** |
 | M5-PIR-003 | **DEFERRED / NON-BLOCKING** - before required branch protection |
-| M5-PIR-004 | **INCORPORATED INTO PHASE 1** - explicit offline acquisition boundary |
+| M5-PIR-004 | **CLOSED** - explicit offline acquisition boundary |
 
 ## Non-Goals
 
-- No M5 phase 2+ implementation in this PR.
+- No M5 phase 3+ implementation in this PR.
 - No production code changes.
 - No Recorder modification.
 - No corpus download/upload.

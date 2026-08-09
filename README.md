@@ -2,7 +2,8 @@
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. M1 through M4 are complete on `main`; M5 (Differential Validation and
-Performance) is architecture-approved but not implemented.
+Performance) implementation is in progress (Phase 1 merged, Phase 2 implemented pending
+independent review).
 
 This is an unofficial project and is not affiliated with, endorsed by, or sponsored by Binance.
 This module does not connect to Binance, use API keys, place orders, or contain trading strategies.
@@ -230,13 +231,15 @@ fuzz/          libFuzzer harnesses and checked-in seed corpus
 
 M1, M2, M3, and M4 are COMPLETE. M4 was merged through PR #8 at
 `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4` with post-merge main CI `31242162782` — 16/16 PASS.
-M5 (Differential Validation and Performance) is **APPROVED / MERGED / IN PROGRESS**; Phase 1
-canonical replay infrastructure is implemented pending independent review. Its design covers layered differential validation with operation-result
+M5 (Differential Validation and Performance) is **APPROVED / MERGED / IN PROGRESS**: Phase 1
+canonical replay infrastructure is COMPLETE / MERGED (PR #11, merge
+`5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — 16/16 PASS) and
+Phase 2 (independent differential oracle foundation) is IMPLEMENTED / PENDING INDEPENDENT REVIEW.
+Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
 cross-compiler semantic manifests with artifact fan-in transport, replay/differential fuzzing,
 benchmark methodology, allocation/memory characterization, and a benchmark-only container spike.
-Pre-implementation decisions OD-M5-001 and OD-M5-002 are CLOSED; Phase 1 is implemented pending
-independent review. OD-M5-003 remains SPIKE-RESOLVABLE.
+Pre-implementation decisions OD-M5-001 and OD-M5-002 are CLOSED. OD-M5-003 remains SPIKE-RESOLVABLE.
 The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
 
 ## Known limitations
@@ -244,7 +247,8 @@ The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
 - The repository includes numeric primitives, a deterministic L2 market-by-price order book, the
   completed M3 sequence/projection implementation, and the merged optional M4 Protobuf adapter on
   `main`.
-- M5 is **APPROVED / MERGED / IN PROGRESS**; Phase 1 is implemented pending independent review and
+- M5 is **APPROVED / MERGED / IN PROGRESS**; M5 implementation is in progress (Phase 1
+  COMPLETE / MERGED, Phase 2 implemented pending independent review) and
   M6 is not started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.

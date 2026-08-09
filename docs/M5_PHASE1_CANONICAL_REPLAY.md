@@ -3,10 +3,14 @@
 ## Status
 
 - M5 implementation: **IN PROGRESS**
-- Phase 1: **CORRECTED / PENDING FOCUSED RE-REVIEW**
-- Phase 2: **NOT STARTED**
-- M5-PIR-001: **CORRECTED / PENDING FOCUSED RE-REVIEW** - Spot bootstrap bridge now follows the
-  accepted M3/ADR-0005 contains-`L` rule `U <= L < u`
+- Phase 1: **COMPLETE / MERGED** (PR #11, merge `5e8629a7ff825f8ea941304d9b09be1670643e8a`,
+  post-merge main CI `31264500905` — PASS 16/16)
+- Phase 2: **IMPLEMENTED / PENDING INDEPENDENT REVIEW** — see
+  `docs/M5_PHASE2_DIFFERENTIAL_ORACLE.md`
+- M5-P1-IR-1: **CLOSED** - Spot bootstrap bridge follows the accepted M3/ADR-0005 contains-`L`
+  rule `U <= L < u`
+- M5-P1-IR-2: **CLOSED**
+- M5-PIR-001: **CLOSED**
 - M5-PIR-002: **DEFERRED / NON-BLOCKING**
 - M5-PIR-003: **DEFERRED / NON-BLOCKING** - before required branch protection
 - M5-PIR-004: **CLOSED** - explicit offline acquisition boundary
@@ -44,8 +48,12 @@ numeric spellings (`0-9`, `+`, `-`, `.`, `e`, `E`) and are preserved verbatim. T
 validity is deliberately deferred to execution. `facts` is a comma-separated list of fixed,
 case-sensitive HostQualityFact names; input order and duplicates are preserved.
 
-`ADAPTER_METADATA` must immediately precede one `DEPTH_UPDATE`. It is inbound wire quality only;
-Host quality is carried by `SNAPSHOT_REQUEST`, and Core-derived quality is never replay input.
+`ADAPTER_METADATA` must immediately precede one `INSTALL_BASELINE` or `DEPTH_UPDATE`. It is
+inbound wire quality only; Host quality is carried by `SNAPSHOT_REQUEST`, and Core-derived
+quality is never replay input. Phase 2 extended the ordering rule from `DEPTH_UPDATE`-only to
+also allow `INSTALL_BASELINE`, matching the approved M4 adapter dimension table for baseline
+inbound quality; this is backwards compatible with all Phase-1 fixtures
+(see `docs/M5_PHASE2_DIFFERENTIAL_ORACLE.md`).
 
 All symbolic identifiers use the conservative ASCII set `[A-Za-z0-9._:/+-]`, with `-` reserved
 for absence. Integers are unsigned ASCII decimal with no `+`, leading zero, hex, octal, scientific
