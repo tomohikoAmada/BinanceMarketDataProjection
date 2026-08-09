@@ -269,10 +269,16 @@ OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions a
 are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
 M5 implementation is authorized; Phase 1 is in progress and later phases remain separate.
 
-Phase 1 canonical replay infrastructure is **IMPLEMENTED / PENDING INDEPENDENT REVIEW**. It covers
-canonical replay grammar and byte/UTF-8 validation, manifest and exact-log SHA-256 identity,
-normalized operation loading, deterministic tiny fixtures, structured parser diagnostics, and the
-explicit offline Recorder materializer/bootstrap contract. Phase 2 and later work is not started.
+Phase 1 canonical replay infrastructure is **COMPLETE / MERGED** (PR #11, merge
+`5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — PASS 16/16). It
+covers canonical replay grammar and byte/UTF-8 validation, manifest and exact-log SHA-256
+identity, normalized operation loading, deterministic tiny fixtures, structured parser
+diagnostics, and the explicit offline Recorder materializer/bootstrap contract.
+
+Phase 2 (independent differential oracle: R1 ReferenceDecimal promoted, R4 ReferenceAdapter,
+neutral ReplayDriver, OperationObservation, semantic checkpoints, first-divergence diagnostics
+with layer attribution) is **IMPLEMENTED / PENDING INDEPENDENT REVIEW** — see
+`docs/M5_PHASE2_DIFFERENTIAL_ORACLE.md`. Phase 3 and later work is not started.
 
 ### Deferred M4 P2 findings
 
