@@ -5,19 +5,20 @@
 
 #include "replay_fixture.hpp"
 
+#include <cstddef>
+#include <exception>
 #include <filesystem>
 #include <iostream>
+#include <span>
 #include <variant>
 
-int main(int argc, char** argv) {
+namespace {
+
+int validate(const std::filesystem::path& directory) {
     namespace oracle = bmd_projection::m5::oracle;
     namespace replay = bmd_projection::m5::replay;
 
-    if (argc != 2) {
-        std::cerr << "usage: bmd_projection_m5_adapter_corpus_validate FIXTURE_DIRECTORY\n";
-        return 2;
-    }
-    const auto loaded = replay::load_fixture(std::filesystem::path{argv[1]});
+    const auto loaded = replay::load_fixture(directory);
     if (!std::holds_alternative<replay::ReplayFixture>(loaded)) {
         const auto& error = std::get<replay::ParseError>(loaded);
         std::cerr << "fixture_validation=FAIL category=" << static_cast<int>(error.category)
@@ -47,4 +48,23 @@ int main(int argc, char** argv) {
               << "final_checkpoint="
               << oracle::to_canonical_text(outcome.final_observation->checkpoint) << '\n';
     return 0;
+}
+
+} // namespace
+
+int main(int argc, char** argv) {
+    if (argc != 2) {
+        std::cerr << "usage: bmd_projection_m5_adapter_corpus_validate FIXTURE_DIRECTORY\n";
+        return 2;
+    }
+    try {
+        const std::span<char*> arguments{argv, static_cast<std::size_t>(argc)};
+        return validate(std::filesystem::path{arguments[1]});
+    } catch (const std::exception& error) {
+        std::cerr << "fixture_validation=FAIL message=" << error.what() << '\n';
+        return 1;
+    } catch (...) {
+        std::cerr << "fixture_validation=FAIL message=unknown-exception\n";
+        return 1;
+    }
 }

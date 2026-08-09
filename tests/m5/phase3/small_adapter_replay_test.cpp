@@ -20,17 +20,21 @@ run_adapter(const bmd_projection::m5::replay::ReplayFixture& fixture) {
     return driver.run();
 }
 
+void verify_adapter_replay(const bmd_projection::m5::replay::ReplayFixture& fixture) {
+    const auto first = run_adapter(fixture);
+    const auto second = run_adapter(fixture);
+    EXPECT_EQ(first, second);
+    EXPECT_FALSE(first.first_divergence.has_value());
+    EXPECT_EQ(first.processed_events, phase3::kSmallWorkloadEventCount);
+    EXPECT_TRUE(first.observations.empty());
+    EXPECT_TRUE(first.final_observation.has_value());
+}
+
 TEST(Phase3SmallAdapterReplayTest, SpotAndUsdMCompareEveryAdapterEventRepeatably) {
     for (const auto& fixture :
          {phase3::make_spot_small_workload(), phase3::make_usdm_small_workload()}) {
         SCOPED_TRACE(fixture.identity.fixture_id);
-        const auto first = run_adapter(fixture);
-        const auto second = run_adapter(fixture);
-        EXPECT_EQ(first, second);
-        EXPECT_FALSE(first.first_divergence.has_value());
-        EXPECT_EQ(first.processed_events, phase3::kSmallWorkloadEventCount);
-        EXPECT_TRUE(first.observations.empty());
-        EXPECT_TRUE(first.final_observation.has_value());
+        verify_adapter_replay(fixture);
     }
 }
 
