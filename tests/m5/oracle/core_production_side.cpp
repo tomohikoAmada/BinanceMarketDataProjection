@@ -83,14 +83,14 @@ CoreProductionSide::observe(const replay::Operation& operation) {
     if (const auto* op = std::get_if<replay::RebaselineOp>(&operation)) {
         return observe_install(op->last_update_id, op->bids, op->asks);
     }
-    if (const auto* op = std::get_if<replay::ResetOp>(&operation)) {
-        return observe_reset(*op);
+    if (std::holds_alternative<replay::ResetOp>(operation)) {
+        return observe_reset();
     }
-    if (const auto* op = std::get_if<replay::SnapshotRequestOp>(&operation)) {
-        return observe_snapshot_request(*op);
+    if (std::holds_alternative<replay::SnapshotRequestOp>(operation)) {
+        return observe_snapshot_request();
     }
-    if (const auto* op = std::get_if<replay::AdapterMetadataOp>(&operation)) {
-        return observe_metadata(*op);
+    if (std::holds_alternative<replay::AdapterMetadataOp>(operation)) {
+        return observe_metadata();
     }
     return observe_malformed_range(std::get<replay::MalformedRangeOp>(operation));
 }
@@ -139,6 +139,9 @@ CoreProductionSide::observe_depth_update(const replay::DepthUpdateOp& operation)
     }
     const auto range = core::UpdateRange::try_create(core::UpdateId{operation.first_update_id},
                                                      core::UpdateId{operation.final_update_id});
+    if (!range.has_value()) {
+        return make_observation(RangeOutcome{false});
+    }
     std::optional<core::UpdateId> previous;
     if (operation.previous_final.has_value()) {
         previous = core::UpdateId{*operation.previous_final};
@@ -147,18 +150,16 @@ CoreProductionSide::observe_depth_update(const replay::DepthUpdateOp& operation)
     return make_observation(to_canonical(result));
 }
 
-std::optional<OperationObservation>
-CoreProductionSide::observe_snapshot_request(const replay::SnapshotRequestOp&) {
+std::optional<OperationObservation> CoreProductionSide::observe_snapshot_request() {
     return make_observation(SnapshotNotProducedOutcome{});
 }
 
-std::optional<OperationObservation> CoreProductionSide::observe_reset(const replay::ResetOp&) {
+std::optional<OperationObservation> CoreProductionSide::observe_reset() {
     projection_.reset();
     return make_observation(ResetOutcome{});
 }
 
-std::optional<OperationObservation>
-CoreProductionSide::observe_metadata(const replay::AdapterMetadataOp&) {
+std::optional<OperationObservation> CoreProductionSide::observe_metadata() {
     return make_observation(MetadataOutcome{});
 }
 

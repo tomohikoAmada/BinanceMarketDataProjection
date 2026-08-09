@@ -944,16 +944,13 @@ std::optional<Divergence> compare_observations(const OperationObservation& produ
     }
 
     if (const auto nested = std::visit(
-            [&](const auto& expected, const auto& actual) -> std::optional<Divergence> {
+            [&](const auto& expected) -> std::optional<Divergence> {
                 using Expected = std::decay_t<decltype(expected)>;
-                using Actual = std::decay_t<decltype(actual)>;
-                if constexpr (std::is_same_v<Expected, Actual>) {
-                    return detail::compare_result_impl<Expected>(
-                        expected, actual, production, reference, fixture_identity, source);
-                }
-                return std::nullopt;
+                return detail::compare_result_impl<Expected>(
+                    expected, std::get<Expected>(reference.result.value), production, reference,
+                    fixture_identity, source);
             },
-            production.result.value, reference.result.value)) {
+            production.result.value)) {
         return nested;
     }
 

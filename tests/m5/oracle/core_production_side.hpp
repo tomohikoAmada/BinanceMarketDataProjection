@@ -30,12 +30,9 @@ class CoreProductionSide final : public ReplaySide {
                     const std::vector<replay::LevelInput>& asks);
     [[nodiscard]] std::optional<OperationObservation>
     observe_depth_update(const replay::DepthUpdateOp& operation);
-    [[nodiscard]] std::optional<OperationObservation>
-    observe_snapshot_request(const replay::SnapshotRequestOp& operation);
-    [[nodiscard]] std::optional<OperationObservation>
-    observe_reset(const replay::ResetOp& operation);
-    [[nodiscard]] std::optional<OperationObservation>
-    observe_metadata(const replay::AdapterMetadataOp& operation);
+    [[nodiscard]] std::optional<OperationObservation> observe_snapshot_request();
+    [[nodiscard]] std::optional<OperationObservation> observe_reset();
+    [[nodiscard]] std::optional<OperationObservation> observe_metadata();
     [[nodiscard]] std::optional<OperationObservation>
     observe_malformed_range(const replay::MalformedRangeOp& operation);
 
