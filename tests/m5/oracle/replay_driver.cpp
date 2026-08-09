@@ -63,19 +63,19 @@ ReplayOutcome ReplayDriver::run() {
         const auto source = source_of(operation);
         outcome.processed_events = index + 1;
         if (!production.has_value() || !reference.has_value()) {
-            outcome.first_divergence =
-                Divergence{index,
-                           kind,
-                           Layer::D,
-                           DivergenceCategory::Composition,
-                           "pipeline side failed to produce an observation",
-                           production.has_value() ? to_canonical_text(production->result) : "-",
-                           reference.has_value() ? to_canonical_text(reference->result) : "-",
-                           identity,
-                           source.canonical_line};
-            enrich_divergence(*outcome.first_divergence, *fixture_, source,
-                              production ? &*production : nullptr,
+            Divergence divergence{
+                index,
+                kind,
+                Layer::D,
+                DivergenceCategory::Composition,
+                "pipeline side failed to produce an observation",
+                production.has_value() ? to_canonical_text(production->result) : "-",
+                reference.has_value() ? to_canonical_text(reference->result) : "-",
+                identity,
+                source.canonical_line};
+            enrich_divergence(divergence, *fixture_, source, production ? &*production : nullptr,
                               reference ? &*reference : nullptr);
+            outcome.first_divergence = std::move(divergence);
             return outcome;
         }
         production->event_index = index;
@@ -84,9 +84,9 @@ ReplayOutcome ReplayDriver::run() {
         reference->event_kind = kind;
         if (const auto divergence =
                 compare_observations(*production, *reference, identity, source)) {
-            outcome.first_divergence = divergence;
-            enrich_divergence(*outcome.first_divergence, *fixture_, source, &*production,
-                              &*reference);
+            auto enriched = *divergence;
+            enrich_divergence(enriched, *fixture_, source, &*production, &*reference);
+            outcome.first_divergence = std::move(enriched);
             return outcome;
         }
         outcome.final_observation = *production;
