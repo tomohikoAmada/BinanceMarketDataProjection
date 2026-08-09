@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -43,6 +44,12 @@ using oracle::SnapshotNotProducedOutcome;
 
 [[nodiscard]] oracle::ReplayOutcome run_core_only(std::string_view fixture_name) {
     const auto fixture = oracle::test::load_fixture(fixture_name);
+    oracle::ReplayDriver driver{fixture, oracle::make_core_production_side(fixture),
+                                oracle::make_reference_side(fixture, oracle::ReplayMode::CoreOnly)};
+    return driver.run();
+}
+
+[[nodiscard]] oracle::ReplayOutcome run_core_only(const replay::ReplayFixture& fixture) {
     oracle::ReplayDriver driver{fixture, oracle::make_core_production_side(fixture),
                                 oracle::make_reference_side(fixture, oracle::ReplayMode::CoreOnly)};
     return driver.run();
@@ -219,6 +226,24 @@ TEST(CoreOnlyDifferentialReplayTest, RepeatedReplayIsDeterministic) {
         const auto second = run_core_only(fixture_name);
         EXPECT_EQ(first, second);
         EXPECT_EQ(first.observations.size(), second.observations.size());
+    }
+}
+
+// GoogleTest assertions inflate the path count for this linear two-row negative
+// contract matrix.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST(CoreOnlyDifferentialReplayTest, MalformedRangeIntentFailsClosed) {
+    const std::vector<std::pair<std::uint64_t, std::uint64_t>> cases{{1, 1}, {1, 2}};
+    for (const auto& [first, final] : cases) {
+        auto fixture = oracle::test::load_fixture("spot_tiny");
+        fixture.replay.operations = {replay::MalformedRangeOp{
+            replay::SourceLocation{0, 2, "MALFORMED_RANGE invalid intent"}, first, final}};
+        const auto outcome = run_core_only(fixture);
+        ASSERT_TRUE(outcome.first_divergence.has_value());
+        EXPECT_EQ(outcome.first_divergence->event_index, 0U);
+        EXPECT_EQ(outcome.first_divergence->layer, oracle::Layer::D);
+        EXPECT_EQ(outcome.first_divergence->category, oracle::DivergenceCategory::Composition);
+        EXPECT_EQ(outcome.first_divergence->source_line, "MALFORMED_RANGE invalid intent");
     }
 }
 

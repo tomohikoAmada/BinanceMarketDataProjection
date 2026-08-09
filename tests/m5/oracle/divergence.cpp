@@ -10,6 +10,68 @@
 namespace bmd_projection::m5::oracle {
 namespace {
 
+// This is a deliberately exhaustive, ordered comparison of the closed parse-evidence
+// record; each branch names one observable field for first-divergence diagnostics.
+// NOLINTBEGIN(readability-function-cognitive-complexity)
+[[nodiscard]] std::optional<Divergence> compare_decimal_observations(
+    const OperationObservation& production, const OperationObservation& reference,
+    std::string_view fixture_identity, const replay::SourceLocation& source) {
+    const auto mismatch = [&](std::string detail) {
+        return std::optional<Divergence>{
+            Divergence{production.event_index, production.event_kind, Layer::R1,
+                       DivergenceCategory::ParseEvidence, std::move(detail),
+                       to_canonical_text(production.decimal_observations),
+                       to_canonical_text(reference.decimal_observations),
+                       std::string(fixture_identity), source.canonical_line}};
+    };
+    if (production.decimal_observations.size() != reference.decimal_observations.size()) {
+        return mismatch("decimal evidence count differs");
+    }
+    for (std::size_t index = 0; index < production.decimal_observations.size(); ++index) {
+        const auto& expected = production.decimal_observations[index];
+        const auto& actual = reference.decimal_observations[index];
+        const auto field_mismatch = [&](std::string_view field) {
+            return mismatch("decimal evidence[" + std::to_string(index) + "]." +
+                            std::string(field) + " differs");
+        };
+        if (expected.side != actual.side) {
+            return field_mismatch("side");
+        }
+        if (expected.level_position != actual.level_position) {
+            return field_mismatch("level_position");
+        }
+        if (expected.role != actual.role) {
+            return field_mismatch("role");
+        }
+        if (expected.result.index() != actual.result.index()) {
+            return field_mismatch("result kind");
+        }
+        if (const auto* expected_value = std::get_if<CanonicalDecimalValue>(&expected.result)) {
+            const auto& actual_value = std::get<CanonicalDecimalValue>(actual.result);
+            if (expected_value->units != actual_value.units) {
+                return field_mismatch("units");
+            }
+            if (expected_value->storage_scale != actual_value.storage_scale) {
+                return field_mismatch("storage_scale");
+            }
+            if (expected_value->source_fraction_digits != actual_value.source_fraction_digits) {
+                return field_mismatch("source_fraction_digits");
+            }
+        } else {
+            const auto& expected_failure = std::get<CanonicalDecimalFailure>(expected.result);
+            const auto& actual_failure = std::get<CanonicalDecimalFailure>(actual.result);
+            if (expected_failure.category != actual_failure.category) {
+                return field_mismatch("error.category");
+            }
+            if (expected_failure.offset != actual_failure.offset) {
+                return field_mismatch("error.offset");
+            }
+        }
+    }
+    return std::nullopt;
+}
+// NOLINTEND(readability-function-cognitive-complexity)
+
 [[nodiscard]] std::optional<Divergence>
 compare_levels(const std::vector<CanonicalLevel>& expected, const char* side,
                const std::vector<CanonicalLevel>& actual, std::size_t event_index,
@@ -301,6 +363,17 @@ compare_result_impl(const RangeOutcome& expected, const RangeOutcome& actual,
                           std::string(fixture_identity),
                           source.canonical_line};
     }
+    if (!expected.invalid_as_intended) {
+        return Divergence{production.event_index,
+                          production.event_kind,
+                          Layer::D,
+                          DivergenceCategory::Composition,
+                          "MALFORMED_RANGE did not denote a reversed range",
+                          to_canonical_text(production.result),
+                          to_canonical_text(reference.result),
+                          std::string(fixture_identity),
+                          source.canonical_line};
+    }
     return std::nullopt;
 }
 
@@ -424,6 +497,8 @@ std::string_view to_text(Layer layer) noexcept {
 
 std::string_view to_text(DivergenceCategory category) noexcept {
     switch (category) {
+    case DivergenceCategory::ParseEvidence:
+        return "PARSE_EVIDENCE";
     case DivergenceCategory::OperationResult:
         return "OPERATION_RESULT";
     case DivergenceCategory::Checkpoint:
@@ -512,6 +587,26 @@ std::string_view to_text(CanonicalDecimalError error) noexcept {
         return "INEXACT_SCALE";
     case CanonicalDecimalError::Overflow:
         return "OVERFLOW";
+    }
+    return "UNKNOWN";
+}
+
+std::string_view to_text(CanonicalBookSide side) noexcept {
+    switch (side) {
+    case CanonicalBookSide::Bid:
+        return "BID";
+    case CanonicalBookSide::Ask:
+        return "ASK";
+    }
+    return "UNKNOWN";
+}
+
+std::string_view to_text(CanonicalDecimalRole role) noexcept {
+    switch (role) {
+    case CanonicalDecimalRole::Price:
+        return "PRICE";
+    case CanonicalDecimalRole::Quantity:
+        return "QUANTITY";
     }
     return "UNKNOWN";
 }
@@ -813,6 +908,31 @@ std::string to_canonical_text(const OperationResult& result) {
     return "UNKNOWN_RESULT";
 }
 
+std::string to_canonical_text(const std::vector<CanonicalDecimalObservation>& observations) {
+    std::string text = "DECIMAL_EVIDENCE[";
+    for (std::size_t index = 0; index < observations.size(); ++index) {
+        if (index > 0) {
+            text += ";";
+        }
+        const auto& observation = observations[index];
+        text += "{side=" + std::string(to_text(observation.side));
+        text += " position=" + std::to_string(observation.level_position);
+        text += " role=" + std::string(to_text(observation.role));
+        if (const auto* value = std::get_if<CanonicalDecimalValue>(&observation.result)) {
+            text += " value=" + std::to_string(value->units);
+            text += " storage_scale=" + std::to_string(value->storage_scale);
+            text += " source_fraction_digits=" + std::to_string(value->source_fraction_digits);
+        } else {
+            const auto& failure = std::get<CanonicalDecimalFailure>(observation.result);
+            text += " error=" + std::string(to_text(failure.category));
+            text += " offset=" + std::to_string(failure.offset);
+        }
+        text += "}";
+    }
+    text += "]";
+    return text;
+}
+
 std::string to_canonical_text(const SemanticCheckpoint& checkpoint) {
     std::string text = "CHECKPOINT";
     text += " status=" + std::string(to_text(checkpoint.status));
@@ -926,6 +1046,11 @@ std::optional<Divergence> compare_observations(const OperationObservation& produ
                           to_canonical_text(reference.result),
                           std::string(fixture_identity),
                           source.canonical_line};
+    }
+
+    if (const auto nested =
+            compare_decimal_observations(production, reference, fixture_identity, source)) {
+        return nested;
     }
 
     if (production.result.value.index() != reference.result.value.index()) {

@@ -1,182 +1,167 @@
 #include "reference_decimal.hpp"
 
-#include <array>
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <string_view>
+#include <variant>
 
 namespace bmd_projection::m5::reference {
 namespace {
 
-constexpr std::array<std::int64_t, 19> kReferencePowersOfTen{
-    1,
-    10,
-    100,
-    1'000,
-    10'000,
-    100'000,
-    1'000'000,
-    10'000'000,
-    100'000'000,
-    1'000'000'000,
-    10'000'000'000,
-    100'000'000'000,
-    1'000'000'000'000,
-    10'000'000'000'000,
-    100'000'000'000'000,
-    1'000'000'000'000'000,
-    10'000'000'000'000'000,
-    100'000'000'000'000'000,
-    1'000'000'000'000'000'000,
+struct DecimalLexeme final {
+    std::string_view integer_digits;
+    std::string_view fractional_digits;
+    std::size_t fractional_offset{kReferenceNoErrorOffset};
 };
 
-struct ScannedCharacter final {
-    char value;
-    std::size_t offset;
-};
+using LexicalResult = std::variant<DecimalLexeme, ReferenceDecimalError>;
 
-struct ScanState final {
-    std::size_t target_fraction_digits{0};
-    std::int64_t units{0};
-    std::size_t source_fraction_digits{0};
-    std::size_t decimal_point_offset{kReferenceNoErrorOffset};
-    std::size_t overflow_offset{kReferenceNoErrorOffset};
-    std::size_t inexact_offset{kReferenceNoErrorOffset};
-    bool in_fraction{false};
-    bool overflow{false};
-};
-
-[[nodiscard]] bool is_ascii_digit(char value) noexcept { return value >= '0' && value <= '9'; }
-
-// A decimal point is rejected at the first position (no integer part) or when the
-// text already has one.
-[[nodiscard]] std::optional<ReferenceDecimalError> consume_decimal_point(ScanState& state,
-                                                                         std::size_t offset) {
-    if (state.in_fraction || offset == 0) {
-        return ReferenceDecimalError{ReferenceDecimalErrorCode::InvalidSyntax, offset};
-    }
-    state.in_fraction = true;
-    state.decimal_point_offset = offset;
-    return std::nullopt;
+[[nodiscard]] constexpr bool is_ascii_digit(char value) noexcept {
+    return value >= '0' && value <= '9';
 }
 
-// Fractional digits beyond the storage scale are discarded after zero-checking; the
-// first non-zero discarded digit is remembered as the inexact-scale evidence.
-[[nodiscard]] bool should_consume_digit(ScanState& state, ScannedCharacter character) noexcept {
-    if (!state.in_fraction) {
-        return true;
-    }
-    ++state.source_fraction_digits;
-    if (state.source_fraction_digits <= state.target_fraction_digits) {
-        return true;
-    }
-    if (character.value != '0' && state.inexact_offset == kReferenceNoErrorOffset) {
-        state.inexact_offset = character.offset;
-    }
-    return false;
-}
-
-void append_digit(ScanState& state, ScannedCharacter character) noexcept {
-    if (state.overflow) {
-        return;
-    }
-    constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
-    const auto digit = static_cast<std::int64_t>(character.value - '0');
-    if (state.units > (maximum - digit) / 10) {
-        state.overflow = true;
-        state.overflow_offset = character.offset;
-        return;
-    }
-    state.units = state.units * 10 + digit;
-}
-
-[[nodiscard]] std::optional<ReferenceDecimalError>
-consume_character(ScanState& state, std::string_view text, std::size_t offset) noexcept {
-    const ScannedCharacter character{text[offset], offset};
-    if (character.value == '.') {
-        return consume_decimal_point(state, offset);
-    }
-    if (!is_ascii_digit(character.value)) {
-        return ReferenceDecimalError{ReferenceDecimalErrorCode::InvalidSyntax, offset};
-    }
-    if (!state.in_fraction && offset > 0 && text.front() == '0') {
-        return ReferenceDecimalError{ReferenceDecimalErrorCode::LeadingZero, offset};
-    }
-    if (should_consume_digit(state, character)) {
-        append_digit(state, character);
-    }
-    return std::nullopt;
-}
-
-// Padding appends storage-scale zeros. Overflow here is final-zero-padding overflow,
-// which carries no digit offset.
-void pad_to_storage_scale(ScanState& state) noexcept {
-    if (state.overflow || state.source_fraction_digits >= state.target_fraction_digits) {
-        return;
-    }
-    constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
-    const auto scale_difference = state.target_fraction_digits - state.source_fraction_digits;
-    const auto multiplier = kReferencePowersOfTen.at(scale_difference);
-    if (state.units > maximum / multiplier) {
-        state.overflow = true;
-        return;
-    }
-    state.units *= multiplier;
-}
-
-// Single linear scan with deferred error reporting in the documented M1 precedence:
-// syntax first, then exact-scale representability, then overflow, then the zero
-// domain constraint.
-[[nodiscard]] ReferenceDecimalResult scan(std::string_view text, std::uint32_t target_scale,
-                                          bool allow_zero) noexcept {
+// Phase A: decompose syntax into integer and optional fractional substrings. No
+// numeric accumulator or target-scale state participates in lexical validation.
+[[nodiscard]] LexicalResult decompose(std::string_view text) noexcept {
     if (text.empty()) {
-        return ReferenceDecimalResult{
-            ReferenceDecimalError{ReferenceDecimalErrorCode::Empty, kReferenceNoErrorOffset}};
+        return ReferenceDecimalError{ReferenceDecimalErrorCode::Empty, kReferenceNoErrorOffset};
     }
     if (text.front() == '+' || text.front() == '-') {
-        return ReferenceDecimalResult{
-            ReferenceDecimalError{ReferenceDecimalErrorCode::SignNotAllowed, 0}};
+        return ReferenceDecimalError{ReferenceDecimalErrorCode::SignNotAllowed, 0};
     }
 
-    ScanState state{};
-    state.target_fraction_digits = static_cast<std::size_t>(target_scale);
-
-    for (std::size_t offset = 0; offset < text.size(); ++offset) {
-        const auto error = consume_character(state, text, offset);
-        if (error.has_value()) {
-            return ReferenceDecimalResult{*error};
+    const auto decimal_point = text.find('.');
+    const auto integer_end = decimal_point == std::string_view::npos ? text.size() : decimal_point;
+    if (integer_end == 0) {
+        return ReferenceDecimalError{ReferenceDecimalErrorCode::InvalidSyntax, 0};
+    }
+    for (std::size_t offset = 0; offset < integer_end; ++offset) {
+        if (!is_ascii_digit(text[offset])) {
+            return ReferenceDecimalError{ReferenceDecimalErrorCode::InvalidSyntax, offset};
+        }
+        if (offset > 0 && text.front() == '0') {
+            return ReferenceDecimalError{ReferenceDecimalErrorCode::LeadingZero, offset};
         }
     }
 
-    if (state.in_fraction && state.source_fraction_digits == 0) {
-        return ReferenceDecimalResult{ReferenceDecimalError{
-            ReferenceDecimalErrorCode::MissingFractionDigits, state.decimal_point_offset}};
+    if (decimal_point == std::string_view::npos) {
+        return DecimalLexeme{text, {}, kReferenceNoErrorOffset};
     }
-    if (state.inexact_offset != kReferenceNoErrorOffset) {
+    if (decimal_point + 1 == text.size()) {
+        return ReferenceDecimalError{ReferenceDecimalErrorCode::MissingFractionDigits,
+                                     decimal_point};
+    }
+    const auto fractional_offset = decimal_point + 1;
+    auto fractional_digits = text;
+    fractional_digits.remove_prefix(fractional_offset);
+    for (std::size_t index = 0; index < fractional_digits.size(); ++index) {
+        if (!is_ascii_digit(fractional_digits[index])) {
+            return ReferenceDecimalError{ReferenceDecimalErrorCode::InvalidSyntax,
+                                         fractional_offset + index};
+        }
+    }
+    auto integer_digits = text;
+    integer_digits.remove_suffix(text.size() - integer_end);
+    return DecimalLexeme{integer_digits, fractional_digits, fractional_offset};
+}
+
+struct CheckedMagnitude final {
+    std::int64_t value{};
+    std::optional<std::size_t> overflow_offset;
+};
+
+// Phase B: interpret the complete source magnitude (or the exact retained prefix
+// after a downscale) independently of target padding. The overflow test is phrased
+// as quotient/remainder comparison rather than production's subtraction formula.
+[[nodiscard]] CheckedMagnitude accumulate_segment(std::string_view digits,
+                                                  std::size_t source_offset,
+                                                  std::int64_t initial) noexcept {
+    constexpr auto maximum = static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max());
+    auto magnitude = static_cast<std::uint64_t>(initial);
+    for (std::size_t index = 0; index < digits.size(); ++index) {
+        const auto digit = static_cast<std::uint64_t>(digits[index] - '0');
+        if (magnitude > maximum / 10 || (magnitude == maximum / 10 && digit > maximum % 10)) {
+            return {initial, source_offset + index};
+        }
+        magnitude = magnitude * 10 + digit;
+    }
+    return {static_cast<std::int64_t>(magnitude), std::nullopt};
+}
+
+[[nodiscard]] CheckedMagnitude source_magnitude(const DecimalLexeme& lexeme,
+                                                std::size_t retained_fraction_digits) noexcept {
+    const auto integer = accumulate_segment(lexeme.integer_digits, 0, 0);
+    if (integer.overflow_offset.has_value()) {
+        return integer;
+    }
+    auto retained = lexeme.fractional_digits;
+    retained.remove_suffix(retained.size() - retained_fraction_digits);
+    return accumulate_segment(retained, lexeme.fractional_offset, integer.value);
+}
+
+[[nodiscard]] std::optional<std::size_t>
+first_nonzero_discarded(const DecimalLexeme& lexeme,
+                        std::size_t retained_fraction_digits) noexcept {
+    auto discarded = lexeme.fractional_digits;
+    discarded.remove_prefix(retained_fraction_digits);
+    for (std::size_t index = 0; index < discarded.size(); ++index) {
+        if (discarded[index] != '0') {
+            return lexeme.fractional_offset + retained_fraction_digits + index;
+        }
+    }
+    return std::nullopt;
+}
+
+// Phase C: upscale with checked multiplication, or downscale only after proving
+// exact divisibility from the discarded decimal suffix.
+[[nodiscard]] ReferenceDecimalResult rescale(const DecimalLexeme& lexeme,
+                                             std::uint32_t target_scale, bool allow_zero) noexcept {
+    const auto source_scale = lexeme.fractional_digits.size();
+    const auto target = static_cast<std::size_t>(target_scale);
+    const auto retained_fraction_digits = std::min(source_scale, target);
+    if (const auto inexact = first_nonzero_discarded(lexeme, retained_fraction_digits)) {
         return ReferenceDecimalResult{
-            ReferenceDecimalError{ReferenceDecimalErrorCode::InexactScale, state.inexact_offset}};
+            ReferenceDecimalError{ReferenceDecimalErrorCode::InexactScale, *inexact}};
     }
 
-    pad_to_storage_scale(state);
-    if (state.overflow) {
+    auto magnitude = source_magnitude(lexeme, retained_fraction_digits);
+    if (magnitude.overflow_offset.has_value()) {
         return ReferenceDecimalResult{
-            ReferenceDecimalError{ReferenceDecimalErrorCode::Overflow, state.overflow_offset}};
+            ReferenceDecimalError{ReferenceDecimalErrorCode::Overflow, *magnitude.overflow_offset}};
     }
-    if (!allow_zero && state.units == 0) {
+
+    constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
+    for (std::size_t scale = source_scale; scale < target; ++scale) {
+        if (magnitude.value > maximum / 10) {
+            return ReferenceDecimalResult{ReferenceDecimalError{ReferenceDecimalErrorCode::Overflow,
+                                                                kReferenceNoErrorOffset}};
+        }
+        magnitude.value *= 10;
+    }
+    if (!allow_zero && magnitude.value == 0) {
         return ReferenceDecimalResult{ReferenceDecimalError{
             ReferenceDecimalErrorCode::ZeroNotAllowed, kReferenceNoErrorOffset}};
     }
+    return ReferenceDecimalResult{ReferenceDecimalValue{magnitude.value, source_scale}};
+}
 
-    return ReferenceDecimalResult{ReferenceDecimalValue{
-        state.units, static_cast<std::uint32_t>(state.source_fraction_digits)}};
+[[nodiscard]] ReferenceDecimalResult parse(std::string_view text, std::uint32_t target_scale,
+                                           bool allow_zero) noexcept {
+    const auto lexical = decompose(text);
+    if (const auto* lexeme = std::get_if<DecimalLexeme>(&lexical)) {
+        return rescale(*lexeme, target_scale, allow_zero);
+    }
+    return ReferenceDecimalResult{*std::get_if<ReferenceDecimalError>(&lexical)};
 }
 
 } // namespace
 
 ReferenceDecimalResult parse_reference_decimal(std::string_view text, std::uint32_t target_scale,
                                                bool allow_zero) noexcept {
-    return scan(text, target_scale, allow_zero);
+    return parse(text, target_scale, allow_zero);
 }
 
 std::string reference_fixed(ReferenceFixedInput input) {

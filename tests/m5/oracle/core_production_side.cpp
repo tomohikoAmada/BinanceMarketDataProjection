@@ -3,16 +3,17 @@
 #include "canonical_convert.hpp"
 #include "divergence.hpp"
 #include "operation_observation.hpp"
+#include "production_decimal_observation.hpp"
 
 #include "replay_types.hpp"
 
-#include <binance_market_data/projection/v1/numeric/decimal_parse.hpp>
 #include <binance_market_data/projection/v1/numeric/decimal_scale.hpp>
-#include <binance_market_data/projection/v1/order_book/book_level.hpp>
 #include <binance_market_data/projection/v1/order_book/level_update.hpp>
 #include <binance_market_data/projection/v1/projection_state/book_projection.hpp>
 
 #include <cstdint>
+#include <exception>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -25,55 +26,29 @@ namespace {
 namespace core = binance_market_data::projection::v1;
 namespace replay = bmd_projection::m5::replay;
 
-// Parses one level token pair in input order. Returns nullopt on success and the
-// canonical decimal failure category on the first failing token.
-[[nodiscard]] std::optional<CanonicalDecimalError> parse_level(const replay::LevelInput& level,
-                                                               core::NumericSpec spec) {
-    const auto price = core::parse_price(level.price, spec.price_scale);
-    if (const auto* error = std::get_if<core::DecimalError>(&price)) {
-        return to_canonical(error->code);
+[[nodiscard]] core::DecimalScale required_scale(std::uint32_t value) {
+    const auto scale = core::DecimalScale::create(value);
+    if (!scale.has_value()) {
+        std::terminate();
     }
-    const auto quantity = core::parse_quantity(level.quantity, spec.quantity_scale);
-    if (const auto* error = std::get_if<core::DecimalError>(&quantity)) {
-        return to_canonical(error->code);
-    }
-    return std::nullopt;
+    return scale.value();
 }
 
-[[nodiscard]] std::optional<CanonicalDecimalError>
-parse_levels(const std::vector<replay::LevelInput>& levels, core::NumericSpec spec) {
-    for (const auto& level : levels) {
-        if (const auto failure = parse_level(level, spec)) {
-            return failure;
-        }
-    }
-    return std::nullopt;
-}
-
-[[nodiscard]] core::BookLevel make_book_level(const replay::LevelInput& level,
-                                              core::NumericSpec spec) {
-    return {
-        std::get<core::ParsedDecimal<core::PriceUnits>>(
-            core::parse_price(level.price, spec.price_scale))
-            .value,
-        std::get<core::ParsedDecimal<core::QuantityUnits>>(
-            core::parse_quantity(level.quantity, spec.quantity_scale))
-            .value,
-    };
+void append_decimals(std::vector<CanonicalDecimalObservation>& destination,
+                     std::vector<CanonicalDecimalObservation> source) {
+    destination.reserve(destination.size() + source.size());
+    destination.insert(destination.end(), std::make_move_iterator(source.begin()),
+                       std::make_move_iterator(source.end()));
 }
 
 } // namespace
 
-// Fixture scales are parser-validated to the 0..18 domain before this side is built.
-// NOLINTBEGIN(bugprone-unchecked-optional-access)
 CoreProductionSide::CoreProductionSide(const replay::ReplayFixture& fixture)
-    : projection_{
-          {core::DecimalScale::create(fixture.identity.numeric_spec.price_scale).value(),
-           core::DecimalScale::create(fixture.identity.numeric_spec.quantity_scale).value()},
-          fixture.identity.sequence_policy == replay::SequencePolicy::Spot
-              ? core::SequencePolicyKind::Spot
-              : core::SequencePolicyKind::UsdMPerpetual} {}
-// NOLINTEND(bugprone-unchecked-optional-access)
+    : projection_{{required_scale(fixture.identity.numeric_spec.price_scale),
+                   required_scale(fixture.identity.numeric_spec.quantity_scale)},
+                  fixture.identity.sequence_policy == replay::SequencePolicy::Spot
+                      ? core::SequencePolicyKind::Spot
+                      : core::SequencePolicyKind::UsdMPerpetual} {}
 
 std::optional<OperationObservation>
 CoreProductionSide::observe(const replay::Operation& operation) {
@@ -103,39 +78,38 @@ CoreProductionSide::observe_install(std::uint64_t last_update_id,
                                     const std::vector<replay::LevelInput>& bids_input,
                                     const std::vector<replay::LevelInput>& asks_input) {
     const auto spec = projection_.numeric_spec();
-    if (const auto failure = parse_levels(bids_input, spec)) {
-        return make_observation(DecimalErrorOutcome{*failure});
+    auto bids = observe_production_levels(bids_input, spec);
+    auto asks = observe_production_levels(asks_input, spec);
+    std::vector<CanonicalDecimalObservation> decimals;
+    append_decimals(decimals, std::move(bids.decimals));
+    append_decimals(decimals, std::move(asks.decimals));
+    if (bids.first_error.has_value()) {
+        return make_observation(DecimalErrorOutcome{bids.first_error.value()}, std::move(decimals));
     }
-    if (const auto failure = parse_levels(asks_input, spec)) {
-        return make_observation(DecimalErrorOutcome{*failure});
+    if (asks.first_error.has_value()) {
+        return make_observation(DecimalErrorOutcome{asks.first_error.value()}, std::move(decimals));
     }
-    std::vector<core::BookLevel> bids;
-    bids.reserve(bids_input.size());
-    for (const auto& level : bids_input) {
-        bids.push_back(make_book_level(level, spec));
-    }
-    std::vector<core::BookLevel> asks;
-    asks.reserve(asks_input.size());
-    for (const auto& level : asks_input) {
-        asks.push_back(make_book_level(level, spec));
-    }
-    const auto result = projection_.install_baseline({core::UpdateId{last_update_id}, bids, asks});
-    return make_observation(to_canonical(result));
+    const auto result =
+        projection_.install_baseline({core::UpdateId{last_update_id}, bids.levels, asks.levels});
+    return make_observation(to_canonical(result), std::move(decimals));
 }
 
 std::optional<OperationObservation>
 CoreProductionSide::observe_depth_update(const replay::DepthUpdateOp& operation) {
     const auto spec = projection_.numeric_spec();
-    if (const auto failure = parse_levels(operation.levels, spec)) {
-        return make_observation(DecimalErrorOutcome{*failure});
+    auto parsed = observe_production_levels(operation.levels, spec);
+    if (parsed.first_error.has_value()) {
+        return make_observation(DecimalErrorOutcome{parsed.first_error.value()},
+                                std::move(parsed.decimals));
     }
     if (operation.first_update_id > operation.final_update_id) {
-        return make_observation(RangeOutcome{false});
+        return make_observation(RangeOutcome{false}, std::move(parsed.decimals));
     }
     std::vector<core::LevelUpdate> levels;
-    levels.reserve(operation.levels.size());
-    for (const auto& level : operation.levels) {
-        const auto book_level = make_book_level(level, spec);
+    levels.reserve(parsed.levels.size());
+    for (std::size_t index = 0; index < operation.levels.size(); ++index) {
+        const auto& level = operation.levels.at(index);
+        const auto& book_level = parsed.levels.at(index);
         levels.push_back(
             {level.side == replay::Side::Bid ? core::BookSide::Bid : core::BookSide::Ask,
              book_level.price, book_level.quantity});
@@ -143,14 +117,14 @@ CoreProductionSide::observe_depth_update(const replay::DepthUpdateOp& operation)
     const auto range = core::UpdateRange::try_create(core::UpdateId{operation.first_update_id},
                                                      core::UpdateId{operation.final_update_id});
     if (!range.has_value()) {
-        return make_observation(RangeOutcome{false});
+        return make_observation(RangeOutcome{false}, std::move(parsed.decimals));
     }
     std::optional<core::UpdateId> previous;
     if (operation.previous_final.has_value()) {
-        previous = core::UpdateId{*operation.previous_final};
+        previous = core::UpdateId{operation.previous_final.value()};
     }
-    const auto result = projection_.apply({*range, previous, levels});
-    return make_observation(to_canonical(result));
+    const auto result = projection_.apply({range.value(), previous, levels});
+    return make_observation(to_canonical(result), std::move(parsed.decimals));
 }
 
 std::optional<OperationObservation> CoreProductionSide::observe_snapshot_request() {
@@ -198,9 +172,14 @@ SemanticCheckpoint CoreProductionSide::checkpoint() const {
 }
 
 std::optional<OperationObservation>
-CoreProductionSide::make_observation(OperationResultValue result) const {
-    return OperationObservation{0, replay::EventKind::InstallBaseline,
-                                OperationResult{std::move(result)}, checkpoint(), std::nullopt};
+CoreProductionSide::make_observation(OperationResultValue result,
+                                     std::vector<CanonicalDecimalObservation> decimals) const {
+    return OperationObservation{0,
+                                replay::EventKind::InstallBaseline,
+                                std::move(decimals),
+                                OperationResult{std::move(result)},
+                                checkpoint(),
+                                std::nullopt};
 }
 
 std::unique_ptr<ReplaySide> make_core_production_side(const replay::ReplayFixture& fixture) {

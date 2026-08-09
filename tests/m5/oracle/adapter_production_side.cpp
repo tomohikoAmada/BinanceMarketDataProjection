@@ -3,6 +3,7 @@
 #include "canonical_convert.hpp"
 #include "divergence.hpp"
 #include "operation_observation.hpp"
+#include "production_decimal_observation.hpp"
 
 #include "replay_types.hpp"
 
@@ -16,6 +17,8 @@
 #include <binance_market_data/projection_adapter/v1/proto_adapter.hpp>
 
 #include <cstdint>
+#include <exception>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <string>
@@ -40,14 +43,45 @@ using bmd_projection::m5::oracle::to_canonical;
 constexpr std::string_view kReplayProducer{"replay-driver"};
 constexpr std::string_view kReplayProducerVersion{"1"};
 
-[[nodiscard]] common_wire::Market wire_market(replay::SequencePolicy policy) noexcept {
-    switch (policy) {
-    case replay::SequencePolicy::Spot:
+[[nodiscard]] common_wire::Venue wire_venue(ScenarioVenue venue) noexcept {
+    return venue == ScenarioVenue::Binance ? common_wire::VENUE_BINANCE
+                                           : common_wire::VENUE_UNSPECIFIED;
+}
+
+[[nodiscard]] common_wire::Market wire_market(ScenarioMarket market) noexcept {
+    switch (market) {
+    case ScenarioMarket::Spot:
         return common_wire::MARKET_SPOT;
-    case replay::SequencePolicy::UsdMPerpetual:
+    case ScenarioMarket::UsdMPerpetual:
         return common_wire::MARKET_USD_M_PERPETUAL;
+    case ScenarioMarket::Unspecified:
+        return common_wire::MARKET_UNSPECIFIED;
     }
     return common_wire::MARKET_UNSPECIFIED;
+}
+
+[[nodiscard]] core::SequencePolicyKind core_policy(replay::SequencePolicy policy) noexcept {
+    return policy == replay::SequencePolicy::Spot ? core::SequencePolicyKind::Spot
+                                                  : core::SequencePolicyKind::UsdMPerpetual;
+}
+
+[[nodiscard]] core::DecimalScale required_scale(std::uint32_t value) {
+    const auto scale = core::DecimalScale::create(value);
+    if (!scale.has_value()) {
+        std::terminate();
+    }
+    return scale.value();
+}
+
+[[nodiscard]] core::NumericSpec core_numeric_spec(replay::NumericSpec spec) {
+    return {required_scale(spec.price_scale), required_scale(spec.quantity_scale)};
+}
+
+void append_decimals(std::vector<CanonicalDecimalObservation>& destination,
+                     std::vector<CanonicalDecimalObservation> source) {
+    destination.reserve(destination.size() + source.size());
+    destination.insert(destination.end(), std::make_move_iterator(source.begin()),
+                       std::make_move_iterator(source.end()));
 }
 
 // Explicit replay-to-M4 enum mapping for wire synthesis. The replay grammar and the
@@ -99,6 +133,18 @@ constexpr std::string_view kReplayProducerVersion{"1"};
         return adapter::GapRecoveryState::ResyncFailed;
     }
     return adapter::GapRecoveryState::Synchronized;
+}
+
+[[nodiscard]] adapter::SnapshotOrigin snapshot_origin(replay::SnapshotOrigin origin) noexcept {
+    switch (origin) {
+    case replay::SnapshotOrigin::GatewayLive:
+        return adapter::SnapshotOrigin::GatewayLive;
+    case replay::SnapshotOrigin::RecorderReplay:
+        return adapter::SnapshotOrigin::RecorderReplay;
+    case replay::SnapshotOrigin::HistoryReplay:
+        return adapter::SnapshotOrigin::HistoryReplay;
+    }
+    return adapter::SnapshotOrigin::GatewayLive;
 }
 
 [[nodiscard]] common_wire::QualityFlag wire_quality(replay::HostQualityFact fact) noexcept {
@@ -287,10 +333,6 @@ constexpr std::string_view kReplayProducerVersion{"1"};
         return CanonicalSnapshotSource::GatewayLive;
     case common_wire::SNAPSHOT_SOURCE_RECORDER_REPLAY:
         return CanonicalSnapshotSource::RecorderReplay;
-    case common_wire::SNAPSHOT_SOURCE_HISTORY_REPLAY:
-        return CanonicalSnapshotSource::HistoryReplay;
-    case common_wire::SNAPSHOT_SOURCE_UNSPECIFIED:
-        return CanonicalSnapshotSource::HistoryReplay;
     default:
         return CanonicalSnapshotSource::HistoryReplay;
     }
@@ -304,24 +346,14 @@ constexpr std::string_view kReplayProducerVersion{"1"};
         return CanonicalResyncState::ResyncInProgress;
     case common_wire::RESYNC_STATE_RESYNC_FAILED:
         return CanonicalResyncState::ResyncFailed;
-    case common_wire::RESYNC_STATE_SYNCHRONIZED:
-        return CanonicalResyncState::ResyncRequired;
-    case common_wire::RESYNC_STATE_RECOVERED:
-        return CanonicalResyncState::ResyncRequired;
-    case common_wire::RESYNC_STATE_UNSPECIFIED:
-        return CanonicalResyncState::ResyncRequired;
     default:
         return CanonicalResyncState::ResyncRequired;
     }
 }
 
 [[nodiscard]] CanonicalReasonCode to_canonical(common_wire::ReasonCode reason) noexcept {
-    switch (reason) {
-    case common_wire::REASON_CODE_SEQUENCE_GAP_DETECTED:
-        return CanonicalReasonCode::SequenceGapDetected;
-    default:
-        return CanonicalReasonCode::SequenceGapDetected;
-    }
+    static_cast<void>(reason);
+    return CanonicalReasonCode::SequenceGapDetected;
 }
 
 [[nodiscard]] AdapterErrorOutcome to_canonical(const adapter::AdapterError& error) noexcept {
@@ -379,8 +411,6 @@ snapshot_flag(const core::LocalOrderBookSnapshot& snapshot, int index) noexcept 
         return CanonicalQualityFlag::IdentityConflict;
     case common_wire::QUALITY_FLAG_CROSSED_BOOK:
         return CanonicalQualityFlag::CrossedBook;
-    case common_wire::QUALITY_FLAG_UNSPECIFIED:
-        return std::nullopt;
     default:
         return std::nullopt;
     }
@@ -426,47 +456,16 @@ extract_snapshot(const core::LocalOrderBookSnapshot& wire, core::SequencePolicyK
     return snapshot;
 }
 
-[[nodiscard]] core::BookLevel make_book_level(const replay::LevelInput& level,
-                                              core::DecimalScale price_scale,
-                                              core::DecimalScale quantity_scale) {
-    return {
-        std::get<core::ParsedDecimal<core::PriceUnits>>(core::parse_price(level.price, price_scale))
-            .value,
-        std::get<core::ParsedDecimal<core::QuantityUnits>>(
-            core::parse_quantity(level.quantity, quantity_scale))
-            .value};
-}
-
-// Core-level install used for REBASELINE in adapter mode; REBASELINE is an M3
-// lifecycle operation and does not cross the M4 boundary (documented in the M5
-// Phase-2 design record).
-[[nodiscard]] std::optional<CanonicalDecimalError>
-parse_levels(const std::vector<replay::LevelInput>& levels, core::DecimalScale price_scale,
-             core::DecimalScale quantity_scale) {
-    for (const auto& level : levels) {
-        const auto price = core::parse_price(level.price, price_scale);
-        if (const auto* error = std::get_if<core::DecimalError>(&price)) {
-            return to_canonical(error->code);
-        }
-        const auto quantity = core::parse_quantity(level.quantity, quantity_scale);
-        if (const auto* error = std::get_if<core::DecimalError>(&quantity)) {
-            return to_canonical(error->code);
-        }
-    }
-    return std::nullopt;
-}
-
 } // namespace
 
 AdapterProductionSide::AdapterProductionSide(const replay::ReplayFixture& fixture)
-    : projection_{{core::DecimalScale::create(fixture.identity.numeric_spec.price_scale).value(),
-                   core::DecimalScale::create(fixture.identity.numeric_spec.quantity_scale)
-                       .value()},
-                  fixture.identity.sequence_policy == replay::SequencePolicy::Spot
-                      ? core::SequencePolicyKind::Spot
-                      : core::SequencePolicyKind::UsdMPerpetual},
-      numeric_spec_{fixture.identity.numeric_spec}, policy_{fixture.identity.sequence_policy},
-      symbol_{fixture.identity.symbol} {}
+    : AdapterProductionSide{fixture, default_adapter_scenario(fixture)} {}
+
+AdapterProductionSide::AdapterProductionSide(const replay::ReplayFixture& /*fixture*/,
+                                             AdapterScenario scenario)
+    : projection_{core_numeric_spec(scenario.projection_numeric_spec),
+                  core_policy(scenario.projection_policy)},
+      scenario_{std::move(scenario)} {}
 
 std::optional<OperationObservation>
 AdapterProductionSide::observe(const replay::Operation& operation) {
@@ -477,27 +476,22 @@ AdapterProductionSide::observe(const replay::Operation& operation) {
         return observe_depth_update(*op);
     }
     if (const auto* op = std::get_if<replay::RebaselineOp>(&operation)) {
-        const auto price_scale = projection_.numeric_spec().price_scale;
-        const auto quantity_scale = projection_.numeric_spec().quantity_scale;
-        if (const auto failure = parse_levels(op->bids, price_scale, quantity_scale)) {
-            return make_observation(DecimalErrorOutcome{*failure});
+        auto bids = observe_production_levels(op->bids, projection_.numeric_spec());
+        auto asks = observe_production_levels(op->asks, projection_.numeric_spec());
+        std::vector<CanonicalDecimalObservation> decimals;
+        append_decimals(decimals, std::move(bids.decimals));
+        append_decimals(decimals, std::move(asks.decimals));
+        if (bids.first_error.has_value()) {
+            return make_observation(DecimalErrorOutcome{bids.first_error.value()},
+                                    std::move(decimals));
         }
-        if (const auto failure = parse_levels(op->asks, price_scale, quantity_scale)) {
-            return make_observation(DecimalErrorOutcome{*failure});
+        if (asks.first_error.has_value()) {
+            return make_observation(DecimalErrorOutcome{asks.first_error.value()},
+                                    std::move(decimals));
         }
-        std::vector<core::BookLevel> bids;
-        bids.reserve(op->bids.size());
-        for (const auto& level : op->bids) {
-            bids.push_back(make_book_level(level, price_scale, quantity_scale));
-        }
-        std::vector<core::BookLevel> asks;
-        asks.reserve(op->asks.size());
-        for (const auto& level : op->asks) {
-            asks.push_back(make_book_level(level, price_scale, quantity_scale));
-        }
-        const auto result =
-            projection_.install_baseline({core::UpdateId{op->last_update_id}, bids, asks});
-        return make_observation(to_canonical(result));
+        const auto result = projection_.install_baseline(
+            {core::UpdateId{op->last_update_id}, bids.levels, asks.levels});
+        return make_observation(to_canonical(result), std::move(decimals));
     }
     if (std::holds_alternative<replay::ResetOp>(operation)) {
         projection_.reset();
@@ -518,10 +512,16 @@ AdapterProductionSide::observe(const replay::Operation& operation) {
 
 std::optional<OperationObservation>
 AdapterProductionSide::observe_install(const replay::InstallBaselineOp& operation) {
+    const auto conversion_spec = core_numeric_spec(scenario_.conversion_numeric_spec);
+    auto bids = observe_production_levels(operation.bids, conversion_spec);
+    auto asks = observe_production_levels(operation.asks, conversion_spec);
+    std::vector<CanonicalDecimalObservation> decimals;
+    append_decimals(decimals, std::move(bids.decimals));
+    append_decimals(decimals, std::move(asks.decimals));
     market_wire::ExchangeDepthSnapshot wire;
-    wire.set_venue(common_wire::VENUE_BINANCE);
-    wire.set_market(wire_market(policy_));
-    wire.set_symbol(symbol_);
+    wire.set_venue(wire_venue(scenario_.wire_venue));
+    wire.set_market(wire_market(scenario_.wire_market));
+    wire.set_symbol(scenario_.wire_symbol);
     wire.set_schema_version("exchange-depth-snapshot.v1");
     wire.set_producer(std::string(kReplayProducer));
     wire.set_producer_version(std::string(kReplayProducerVersion));
@@ -542,33 +542,34 @@ AdapterProductionSide::observe_install(const replay::InstallBaselineOp& operatio
         wire_level->set_quantity(level.quantity);
     }
 
-    const adapter::ExpectedIdentity expected{
-        symbol_, policy_ == replay::SequencePolicy::Spot ? core::SequencePolicyKind::Spot
-                                                         : core::SequencePolicyKind::UsdMPerpetual};
-    auto adapted =
-        adapter::adapt_exchange_depth_snapshot(wire, projection_.numeric_spec(), expected);
+    const adapter::ExpectedIdentity expected{scenario_.expected_symbol,
+                                             core_policy(scenario_.expected_policy)};
+    auto adapted = adapter::adapt_exchange_depth_snapshot(wire, conversion_spec, expected);
     if (const auto* failure = std::get_if<adapter::AdapterError>(&adapted)) {
-        return make_observation(to_canonical(*failure));
+        return make_observation(to_canonical(*failure), std::move(decimals));
     }
     auto owner = std::move(std::get<adapter::AdaptedBookBaseline>(adapted));
     const auto observed = to_canonical_observed(owner.metadata());
     const auto installed = owner.install_into(projection_);
     if (const auto* failure = std::get_if<adapter::AdapterError>(&installed)) {
-        return make_observation(to_canonical(*failure));
+        return make_observation(to_canonical(*failure), std::move(decimals));
     }
     return make_observation(
         AdapterSuccessOutcome{std::variant<InstallOutcome, ApplyOutcome>{
                                   to_canonical(std::get<core::InstallResult>(installed))},
-                              observed});
+                              observed},
+        std::move(decimals));
 }
 
 std::optional<OperationObservation>
 AdapterProductionSide::observe_depth_update(const replay::DepthUpdateOp& operation) {
+    const auto conversion_spec = core_numeric_spec(scenario_.conversion_numeric_spec);
+    auto parsed = observe_production_levels(operation.levels, conversion_spec);
     market_wire::DepthUpdate wire;
     auto* metadata = wire.mutable_metadata();
-    metadata->set_venue(common_wire::VENUE_BINANCE);
-    metadata->set_market(wire_market(policy_));
-    metadata->set_symbol(symbol_);
+    metadata->set_venue(wire_venue(scenario_.wire_venue));
+    metadata->set_market(wire_market(scenario_.wire_market));
+    metadata->set_symbol(scenario_.wire_symbol);
     metadata->set_producer(std::string(kReplayProducer));
     metadata->set_producer_version(std::string(kReplayProducerVersion));
     metadata->set_connection_id("replay-connection-" +
@@ -590,23 +591,23 @@ AdapterProductionSide::observe_depth_update(const replay::DepthUpdateOp& operati
         wire_level->set_quantity(level.quantity);
     }
 
-    const adapter::ExpectedIdentity expected{
-        symbol_, policy_ == replay::SequencePolicy::Spot ? core::SequencePolicyKind::Spot
-                                                         : core::SequencePolicyKind::UsdMPerpetual};
-    auto adapted = adapter::adapt_depth_update(wire, projection_.numeric_spec(), expected);
+    const adapter::ExpectedIdentity expected{scenario_.expected_symbol,
+                                             core_policy(scenario_.expected_policy)};
+    auto adapted = adapter::adapt_depth_update(wire, conversion_spec, expected);
     if (const auto* failure = std::get_if<adapter::AdapterError>(&adapted)) {
-        return make_observation(to_canonical(*failure));
+        return make_observation(to_canonical(*failure), std::move(parsed.decimals));
     }
     auto owner = std::move(std::get<adapter::AdaptedDepthBatch>(adapted));
     const auto observed = to_canonical_observed(owner.metadata());
     const auto applied = owner.apply_to(projection_);
     if (const auto* failure = std::get_if<adapter::AdapterError>(&applied)) {
-        return make_observation(to_canonical(*failure));
+        return make_observation(to_canonical(*failure), std::move(parsed.decimals));
     }
     return make_observation(
         AdapterSuccessOutcome{std::variant<InstallOutcome, ApplyOutcome>{
                                   to_canonical(std::get<core::ApplyResult>(applied))},
-                              observed});
+                              observed},
+        std::move(parsed.decimals));
 }
 
 std::optional<OperationObservation>
@@ -623,25 +624,14 @@ AdapterProductionSide::observe_snapshot_request(const replay::SnapshotRequestOp&
     for (const auto fact : operation.host_quality_facts) {
         options.host_quality_facts.push_back(host_fact(fact));
     }
-    adapter::SnapshotContext context;
-    context.identity = {symbol_, policy_ == replay::SequencePolicy::Spot
-                                     ? core::SequencePolicyKind::Spot
-                                     : core::SequencePolicyKind::UsdMPerpetual};
-    context.producer = operation.producer;
-    context.producer_version = operation.producer_version;
-    switch (operation.source_origin) {
-    case replay::SnapshotOrigin::GatewayLive:
-        context.source = adapter::SnapshotOrigin::GatewayLive;
-        break;
-    case replay::SnapshotOrigin::RecorderReplay:
-        context.source = adapter::SnapshotOrigin::RecorderReplay;
-        break;
-    case replay::SnapshotOrigin::HistoryReplay:
-        context.source = adapter::SnapshotOrigin::HistoryReplay;
-        break;
-    }
-    context.generated_time_utc_ns = operation.generated_time_utc_ns;
-    context.generated_monotonic_ns = operation.generated_monotonic_ns;
+    adapter::SnapshotContext context{
+        {scenario_.expected_symbol, core_policy(scenario_.expected_policy)},
+        operation.producer,
+        operation.producer_version,
+        snapshot_origin(operation.source_origin),
+        operation.generated_time_utc_ns,
+        operation.generated_monotonic_ns,
+        std::nullopt};
     if (operation.current_gap.has_value()) {
         context.current_gap = adapter::CurrentGapContext{
             operation.current_gap->first, recovery_state(operation.current_gap->second)};
@@ -663,11 +653,11 @@ AdapterProductionSide::observe_snapshot_request(const replay::SnapshotRequestOp&
 SemanticCheckpoint AdapterProductionSide::checkpoint() const {
     SemanticCheckpoint result;
     result.status = to_canonical(projection_.status());
-    if (projection_.last_update_id().has_value()) {
-        result.last_update_id = projection_.last_update_id()->value();
+    if (const auto last_update_id = projection_.last_update_id()) {
+        result.last_update_id = last_update_id->value();
     }
-    if (projection_.last_gap().has_value()) {
-        result.last_gap = to_canonical(*projection_.last_gap());
+    if (const auto last_gap = projection_.last_gap()) {
+        result.last_gap = to_canonical(*last_gap);
     }
     result.synchronized_visible = projection_.synchronized_book().has_value();
     const auto& book = projection_.diagnostic_book();
@@ -683,19 +673,30 @@ SemanticCheckpoint AdapterProductionSide::checkpoint() const {
 }
 
 std::optional<OperationObservation>
-AdapterProductionSide::make_observation(OperationResultValue result) const {
-    return OperationObservation{0, replay::EventKind::InstallBaseline,
-                                OperationResult{std::move(result)}, checkpoint(), std::nullopt};
+AdapterProductionSide::make_observation(OperationResultValue result,
+                                        std::vector<CanonicalDecimalObservation> decimals) const {
+    return OperationObservation{0,
+                                replay::EventKind::InstallBaseline,
+                                std::move(decimals),
+                                OperationResult{std::move(result)},
+                                checkpoint(),
+                                std::nullopt};
 }
 
 std::optional<OperationObservation>
 AdapterProductionSide::make_snapshot_observation(const SnapshotOutcome& snapshot) const {
-    return OperationObservation{0, replay::EventKind::InstallBaseline, OperationResult{snapshot},
-                                checkpoint(), snapshot};
+    return OperationObservation{
+        0,       replay::EventKind::InstallBaseline, {}, OperationResult{snapshot}, checkpoint(),
+        snapshot};
 }
 
 std::unique_ptr<ReplaySide> make_adapter_production_side(const replay::ReplayFixture& fixture) {
     return std::make_unique<AdapterProductionSide>(fixture);
+}
+
+std::unique_ptr<ReplaySide> make_adapter_production_side(const replay::ReplayFixture& fixture,
+                                                         const AdapterScenario& scenario) {
+    return std::make_unique<AdapterProductionSide>(fixture, scenario);
 }
 
 } // namespace bmd_projection::m5::oracle

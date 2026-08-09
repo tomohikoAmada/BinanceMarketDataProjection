@@ -40,6 +40,30 @@ namespace replay = bmd_projection::m5::replay;
     });
 }
 
+[[nodiscard]] constexpr bool is_ascii_whitespace(char value) noexcept {
+    return value == ' ' || value == '\t' || value == '\n' || value == '\r' || value == '\f' ||
+           value == '\v';
+}
+
+[[nodiscard]] bool is_non_empty_text(std::string_view value) noexcept {
+    return !value.empty() && value.size() <= 256 && !is_ascii_whitespace(value.front()) &&
+           !is_ascii_whitespace(value.back());
+}
+
+[[nodiscard]] ReferencePolicy policy_for_market(ReferenceMarket market) noexcept {
+    return market == ReferenceMarket::Spot ? ReferencePolicy::Spot : ReferencePolicy::UsdMPerpetual;
+}
+
+[[nodiscard]] ReferencePolicy reference_policy(replay::SequencePolicy policy) noexcept {
+    return policy == replay::SequencePolicy::Spot ? ReferencePolicy::Spot
+                                                  : ReferencePolicy::UsdMPerpetual;
+}
+
+[[nodiscard]] ReferenceMarket reference_market(replay::SequencePolicy policy) noexcept {
+    return policy == replay::SequencePolicy::Spot ? ReferenceMarket::Spot
+                                                  : ReferenceMarket::UsdMPerpetual;
+}
+
 // R4 quality-ranking table for the combined output domain. This is the R4-owned
 // canonical rank; it is written from the M4 design's documented semantic rank.
 [[nodiscard]] std::size_t quality_rank(ReferenceQualityFlag flag) noexcept {
@@ -166,7 +190,7 @@ adapt_quantity(const std::string& text, ReferenceAdapterField field, std::uint32
 }
 
 [[nodiscard]] std::optional<ReferenceAdapterError> adapt_level(const replay::LevelInput& level,
-                                                               replay::NumericSpec numeric_spec) {
+                                                               ReferenceNumericSpec numeric_spec) {
     const bool bids = level.side == replay::Side::Bid;
     const auto price_field =
         bids ? ReferenceAdapterField::BidPrice : ReferenceAdapterField::AskPrice;
@@ -217,17 +241,64 @@ map_recovery(replay::GapRecoveryState state) noexcept {
 
 ReferenceAdapter::ReferenceAdapter(replay::SequencePolicy policy, std::string_view symbol,
                                    replay::NumericSpec numeric_spec)
-    : policy_{policy}, symbol_{symbol}, numeric_spec_{numeric_spec} {}
+    : ReferenceAdapter{
+          ReferenceAdapterDimensions{ReferenceVenue::Binance,
+                                     reference_market(policy),
+                                     std::string{symbol},
+                                     std::string{symbol},
+                                     reference_policy(policy),
+                                     {numeric_spec.price_scale, numeric_spec.quantity_scale},
+                                     {numeric_spec.price_scale, numeric_spec.quantity_scale},
+                                     reference_policy(policy)}} {}
 
-std::optional<ReferenceAdapterError> ReferenceAdapter::validate_identity() const {
-    // In replay, venue is fixed to Binance and market is derived from the header
-    // policy by the driver; R4 validates the representable identity surface.
-    if (!is_symbol(symbol_)) {
+ReferenceAdapter::ReferenceAdapter(ReferenceAdapterDimensions dimensions)
+    : dimensions_{std::move(dimensions)} {}
+
+std::optional<ReferenceAdapterError> ReferenceAdapter::validate_inbound_identity() const {
+    if (dimensions_.wire_venue == ReferenceVenue::Unspecified) {
+        return error(ReferenceAdapterErrorCode::UnspecifiedEnum, ReferenceAdapterField::Venue);
+    }
+    if (dimensions_.wire_market == ReferenceMarket::Unspecified) {
+        return error(ReferenceAdapterErrorCode::UnspecifiedEnum, ReferenceAdapterField::Market);
+    }
+    if (!is_symbol(dimensions_.wire_symbol)) {
         return error(ReferenceAdapterErrorCode::InvalidIdentifier, ReferenceAdapterField::Symbol);
     }
-    if (policy_ != replay::SequencePolicy::Spot &&
-        policy_ != replay::SequencePolicy::UsdMPerpetual) {
-        return error(ReferenceAdapterErrorCode::UnsupportedMarket, ReferenceAdapterField::Market);
+    if (!is_symbol(dimensions_.expected_symbol) ||
+        dimensions_.wire_symbol != dimensions_.expected_symbol) {
+        return error(ReferenceAdapterErrorCode::IdentityMismatch, ReferenceAdapterField::Symbol);
+    }
+    if (policy_for_market(dimensions_.wire_market) != dimensions_.expected_policy) {
+        return error(ReferenceAdapterErrorCode::IdentityMismatch, ReferenceAdapterField::Market);
+    }
+    return std::nullopt;
+}
+
+std::optional<ReferenceAdapterError> ReferenceAdapter::validate_snapshot_identity() const {
+    if (!is_symbol(dimensions_.expected_symbol)) {
+        return error(ReferenceAdapterErrorCode::InvalidIdentifier, ReferenceAdapterField::Symbol);
+    }
+    if (dimensions_.expected_policy != dimensions_.projection_policy) {
+        return error(ReferenceAdapterErrorCode::ProjectionPolicyMismatch,
+                     ReferenceAdapterField::ProjectionPolicy);
+    }
+    return std::nullopt;
+}
+
+std::optional<ReferenceAdapterError> ReferenceAdapter::validate_binding() const {
+    if (dimensions_.conversion_numeric_spec.price_scale !=
+        dimensions_.projection_numeric_spec.price_scale) {
+        return error(ReferenceAdapterErrorCode::ProjectionNumericSpecMismatch,
+                     ReferenceAdapterField::ProjectionPriceScale);
+    }
+    if (dimensions_.conversion_numeric_spec.quantity_scale !=
+        dimensions_.projection_numeric_spec.quantity_scale) {
+        return error(ReferenceAdapterErrorCode::ProjectionNumericSpecMismatch,
+                     ReferenceAdapterField::ProjectionQuantityScale);
+    }
+    if (policy_for_market(dimensions_.wire_market) != dimensions_.projection_policy) {
+        return error(ReferenceAdapterErrorCode::ProjectionPolicyMismatch,
+                     ReferenceAdapterField::ProjectionPolicy);
     }
     return std::nullopt;
 }
@@ -248,7 +319,7 @@ ReferenceAdapter::validate_depth_limit(const std::optional<std::uint32_t>& depth
 ReferenceBaselinePrediction ReferenceAdapter::predict_baseline_input(
     const replay::InstallBaselineOp& operation,
     const std::vector<replay::HostQualityFact>& inbound_facts) const {
-    if (const auto identity_error = validate_identity()) {
+    if (const auto identity_error = validate_inbound_identity()) {
         return *identity_error;
     }
     const auto level_result =
@@ -256,13 +327,16 @@ ReferenceBaselinePrediction ReferenceAdapter::predict_baseline_input(
     if (const auto* failure = std::get_if<ReferenceAdapterError>(&level_result)) {
         return *failure;
     }
+    if (const auto binding_error = validate_binding()) {
+        return *binding_error;
+    }
     return ReferenceInputPrediction{map_observed_quality(inbound_facts)};
 }
 
 ReferenceDepthPrediction ReferenceAdapter::predict_depth_update_input(
     const replay::DepthUpdateOp& operation,
     const std::vector<replay::HostQualityFact>& inbound_facts) const {
-    if (const auto identity_error = validate_identity()) {
+    if (const auto identity_error = validate_inbound_identity()) {
         return *identity_error;
     }
     if (operation.first_update_id > operation.final_update_id) {
@@ -272,6 +346,9 @@ ReferenceDepthPrediction ReferenceAdapter::predict_depth_update_input(
     const auto level_result = predict_update_levels(operation.levels, inbound_facts);
     if (const auto* failure = std::get_if<ReferenceAdapterError>(&level_result)) {
         return *failure;
+    }
+    if (const auto binding_error = validate_binding()) {
+        return *binding_error;
     }
     return ReferenceInputPrediction{map_observed_quality(inbound_facts)};
 }
@@ -285,11 +362,11 @@ ReferenceBaselinePrediction ReferenceAdapter::predict_baseline_levels(
         for (const auto& level : levels) {
             const auto price_field =
                 bids_side ? ReferenceAdapterField::BidPrice : ReferenceAdapterField::AskPrice;
-            if (const auto failure = adapt_level(level, numeric_spec_)) {
+            if (const auto failure = adapt_level(level, dimensions_.conversion_numeric_spec)) {
                 return failure;
             }
-            const auto price =
-                parse_reference_decimal(level.price, numeric_spec_.price_scale, false);
+            const auto price = parse_reference_decimal(
+                level.price, dimensions_.conversion_numeric_spec.price_scale, false);
             const auto units = std::get<ReferenceDecimalValue>(price.value).units;
             if (previous_price.has_value() &&
                 (bids_side ? units >= *previous_price : units <= *previous_price)) {
@@ -311,9 +388,13 @@ ReferenceBaselinePrediction ReferenceAdapter::predict_baseline_levels(
 ReferenceDepthPrediction ReferenceAdapter::predict_update_levels(
     const std::vector<replay::LevelInput>& levels,
     const std::vector<replay::HostQualityFact>& inbound_facts) const {
-    for (const auto& level : levels) {
-        if (const auto failure = adapt_level(level, numeric_spec_)) {
-            return *failure;
+    for (const auto side : {replay::Side::Bid, replay::Side::Ask}) {
+        for (const auto& level : levels) {
+            if (level.side == side) {
+                if (const auto failure = adapt_level(level, dimensions_.conversion_numeric_spec)) {
+                    return *failure;
+                }
+            }
         }
     }
     return ReferenceInputPrediction{map_observed_quality(inbound_facts)};
@@ -344,15 +425,18 @@ ReferenceAdapter::predict_snapshot(const bmd_projection_reference::ReferenceProj
         return error(ReferenceAdapterErrorCode::MissingLastUpdateId,
                      ReferenceAdapterField::LastUpdateId);
     }
-    if (const auto identity_error = validate_identity()) {
+    if (const auto identity_error = validate_snapshot_identity()) {
         return *identity_error;
     }
-    if (operation.producer.empty()) {
-        return error(ReferenceAdapterErrorCode::MissingRequiredField,
+    if (!is_non_empty_text(operation.producer)) {
+        return error(operation.producer.empty() ? ReferenceAdapterErrorCode::MissingRequiredField
+                                                : ReferenceAdapterErrorCode::InvalidIdentifier,
                      ReferenceAdapterField::Producer);
     }
-    if (operation.producer_version.empty()) {
-        return error(ReferenceAdapterErrorCode::MissingRequiredField,
+    if (!is_non_empty_text(operation.producer_version)) {
+        return error(operation.producer_version.empty()
+                         ? ReferenceAdapterErrorCode::MissingRequiredField
+                         : ReferenceAdapterErrorCode::InvalidIdentifier,
                      ReferenceAdapterField::ProducerVersion);
     }
     const bool needs_resync = status == bmd_projection_reference::Status::NeedsResync;
@@ -375,12 +459,11 @@ ReferenceAdapter::predict_snapshot(const bmd_projection_reference::ReferenceProj
 
     const auto& bids = projection.bids();
     const auto& asks = projection.asks();
-    std::size_t limit = bids.size();
-    if (operation.depth_limit.has_value()) {
-        limit = static_cast<std::size_t>(*operation.depth_limit);
-    }
     const auto select_levels = [&](const std::vector<bmd_projection_reference::RawLevel>& levels)
         -> std::vector<ReferenceSnapshotLevel> {
+        const auto limit = operation.depth_limit.has_value()
+                               ? static_cast<std::size_t>(*operation.depth_limit)
+                               : levels.size();
         std::vector<ReferenceSnapshotLevel> selected;
         selected.reserve(std::min(limit, levels.size()));
         std::size_t count = 0;
@@ -389,9 +472,10 @@ ReferenceAdapter::predict_snapshot(const bmd_projection_reference::ReferenceProj
                 break;
             }
             selected.push_back(
-                {reference_fixed(ReferenceFixedInput{level.price, numeric_spec_.price_scale}),
-                 reference_fixed(
-                     ReferenceFixedInput{level.quantity, numeric_spec_.quantity_scale})});
+                {reference_fixed(ReferenceFixedInput{
+                     level.price, dimensions_.projection_numeric_spec.price_scale}),
+                 reference_fixed(ReferenceFixedInput{
+                     level.quantity, dimensions_.projection_numeric_spec.quantity_scale})});
             ++count;
         }
         return selected;

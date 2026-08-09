@@ -22,7 +22,11 @@ using oracle::AdapterErrorOutcome;
 using oracle::ApplyOutcome;
 using oracle::CanonicalAdapterCode;
 using oracle::CanonicalAdapterField;
+using oracle::CanonicalBookSide;
 using oracle::CanonicalDecimalError;
+using oracle::CanonicalDecimalObservation;
+using oracle::CanonicalDecimalRole;
+using oracle::CanonicalDecimalValue;
 using oracle::CanonicalDisposition;
 using oracle::CanonicalGapEvidence;
 using oracle::CanonicalGapReason;
@@ -53,8 +57,8 @@ using oracle::SnapshotOutcome;
 }
 
 [[nodiscard]] OperationObservation observation(const OperationResult& result) {
-    return OperationObservation{0, replay::EventKind::InstallBaseline, result, checkpoint(),
-                                std::nullopt};
+    return OperationObservation{
+        0, replay::EventKind::InstallBaseline, {}, result, checkpoint(), std::nullopt};
 }
 
 [[nodiscard]] OperationObservation install_observation() {
@@ -92,6 +96,21 @@ TEST(OperationObservationTest, SemanticEqualityCoversResultCheckpointAndSnapshot
 
 TEST(OperationObservationTest, AgreeingObservationsProduceNoDivergence) {
     EXPECT_FALSE(compare(install_observation(), install_observation()).has_value());
+}
+
+TEST(OperationObservationTest, DecimalEvidenceMismatchIsComparedBeforeOperationResult) {
+    auto production = install_observation();
+    production.decimal_observations = {
+        CanonicalDecimalObservation{CanonicalBookSide::Bid, 0, CanonicalDecimalRole::Price,
+                                    CanonicalDecimalValue{10'000, 2, 1}}};
+    auto reference = production;
+    std::get<CanonicalDecimalValue>(reference.decimal_observations[0].result).units = 10'001;
+    reference.result.value = DecimalErrorOutcome{CanonicalDecimalError::Overflow};
+    const auto divergence = compare(production, reference);
+    ASSERT_TRUE(divergence.has_value());
+    EXPECT_EQ(divergence->category, oracle::DivergenceCategory::ParseEvidence);
+    EXPECT_EQ(divergence->layer, oracle::Layer::R1);
+    EXPECT_NE(divergence->detail.find("units"), std::string::npos);
 }
 
 TEST(OperationObservationTest, ResultKindMismatchIsAttributedToR1ForDecimal) {

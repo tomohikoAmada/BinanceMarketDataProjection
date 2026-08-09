@@ -134,7 +134,9 @@ TEST(ReferenceAdapterTest, PredictsDepthUpdateRangeAndDecimalFailures) {
     ASSERT_TRUE(std::holds_alternative<ref::ReferenceAdapterError>(zero_price));
     EXPECT_EQ(error_of(zero_price).code, ref::ReferenceAdapterErrorCode::NonPositivePrice);
     EXPECT_EQ(error_of(zero_price).field, ref::ReferenceAdapterField::BidPrice);
-    EXPECT_EQ(*error_of(zero_price).decimal_error, ref::ReferenceDecimalErrorCode::ZeroNotAllowed);
+    EXPECT_EQ(error_of(zero_price).decimal_error,
+              std::optional<ref::ReferenceDecimalErrorCode>{
+                  ref::ReferenceDecimalErrorCode::ZeroNotAllowed});
 
     const auto negative_price = adapter().predict_depth_update_input(
         update(10, 11, std::nullopt, {level(replay::Side::Bid, "-1", "1.0000")}), {});
@@ -151,15 +153,17 @@ TEST(ReferenceAdapterTest, PredictsDepthUpdateRangeAndDecimalFailures) {
         update(10, 11, std::nullopt, {level(replay::Side::Bid, "+1", "1.0000")}), {});
     ASSERT_TRUE(std::holds_alternative<ref::ReferenceAdapterError>(sign_not_allowed));
     EXPECT_EQ(error_of(sign_not_allowed).code, ref::ReferenceAdapterErrorCode::InvalidDecimal);
-    EXPECT_EQ(*error_of(sign_not_allowed).decimal_error,
-              ref::ReferenceDecimalErrorCode::SignNotAllowed);
+    EXPECT_EQ(error_of(sign_not_allowed).decimal_error,
+              std::optional<ref::ReferenceDecimalErrorCode>{
+                  ref::ReferenceDecimalErrorCode::SignNotAllowed});
 
     const auto overflow = adapter().predict_depth_update_input(
         update(10, 11, std::nullopt, {level(replay::Side::Bid, "9223372036854775808", "1.0000")}),
         {});
     ASSERT_TRUE(std::holds_alternative<ref::ReferenceAdapterError>(overflow));
     EXPECT_EQ(error_of(overflow).code, ref::ReferenceAdapterErrorCode::NumericOverflow);
-    EXPECT_EQ(*error_of(overflow).decimal_error, ref::ReferenceDecimalErrorCode::Overflow);
+    EXPECT_EQ(error_of(overflow).decimal_error, std::optional<ref::ReferenceDecimalErrorCode>{
+                                                    ref::ReferenceDecimalErrorCode::Overflow});
 }
 
 TEST(ReferenceAdapterTest, SnapshotEligibilityMatrix) {
@@ -217,12 +221,10 @@ TEST(ReferenceAdapterTest, SnapshotEligibilityMatrix) {
     ASSERT_TRUE(std::holds_alternative<ref::ReferenceSnapshotPrediction>(valid_recovery));
     const auto& recovered = snapshot_of(valid_recovery);
     EXPECT_FALSE(recovered.synchronized);
-    ASSERT_TRUE(recovered.gap_descriptor.has_value());
-    EXPECT_EQ(recovered.gap_descriptor->detected_at_utc_ns, 5500U);
-    EXPECT_EQ(recovered.gap_descriptor->previous_sequence, 51U);
-    EXPECT_EQ(recovered.gap_descriptor->next_sequence, 60U);
-    EXPECT_EQ(recovered.gap_descriptor->reason_code, ref::ReferenceReasonCode::SequenceGapDetected);
-    EXPECT_EQ(recovered.gap_descriptor->recovery_state, ref::ReferenceResyncState::ResyncRequired);
+    EXPECT_EQ(recovered.gap_descriptor,
+              (std::optional<ref::ReferenceGapDescriptor>{ref::ReferenceGapDescriptor{
+                  5500, 51, 60, ref::ReferenceReasonCode::SequenceGapDetected,
+                  ref::ReferenceResyncState::ResyncRequired}}));
     EXPECT_EQ(recovered.quality_flags,
               (std::vector<ref::ReferenceQualityFlag>{ref::ReferenceQualityFlag::SequenceGap,
                                                       ref::ReferenceQualityFlag::OrderBookResync}));
@@ -298,5 +300,3 @@ TEST(ReferenceAdapterTest, CrossedBookDerivesCoreQualityFlag) {
 }
 
 } // namespace
-
-// NOLINTEND(bugprone-unchecked-optional-access)

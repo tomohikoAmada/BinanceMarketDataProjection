@@ -76,6 +76,9 @@ run_with_mutated_reference(std::string_view fixture_name,
     return driver.run();
 }
 
+// GoogleTest assertion macros inflate the measured path count for this linear
+// fail-fast diagnostic assertion sequence.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST(FaultInjectionTest, DecimalResultMismatchStopsAtEventAndAttributesR1) {
     const auto outcome = run_with_mutated_reference(
         "spot_tiny", mutator_for(0, [](OperationObservation& observation) {

@@ -9,6 +9,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <limits>
 #include <optional>
 #include <string>
@@ -77,37 +78,74 @@ constexpr std::array kInvalidCases{
 }
 
 template <typename Production>
+[[nodiscard]] std::optional<std::pair<std::int64_t, std::size_t>>
+production_value(const Production& production) {
+    return std::visit(
+        [](const auto& parsed) -> std::optional<std::pair<std::int64_t, std::size_t>> {
+            using Parsed = std::decay_t<decltype(parsed)>;
+            if constexpr (std::is_same_v<Parsed, core::DecimalError>) {
+                return std::nullopt;
+            } else {
+                return std::pair{parsed.value.value(), parsed.source_fraction_digits};
+            }
+        },
+        production);
+}
+
+template <typename Production>
+void expect_matching_error(std::string_view text, std::uint32_t scale,
+                           const ref::ReferenceDecimalError& reference_error,
+                           const Production& production) {
+    ASSERT_TRUE(std::holds_alternative<core::DecimalError>(production));
+    const auto& production_error = std::get<core::DecimalError>(production);
+    EXPECT_EQ(to_reference(production_error.code), reference_error.code)
+        << "text=" << text << " scale=" << scale;
+    EXPECT_EQ(production_error.offset, reference_error.offset)
+        << "text=" << text << " scale=" << scale;
+}
+
+template <typename Production>
+void expect_matching_value(const ref::ReferenceDecimalValue& reference_value,
+                           const Production& production) {
+    const auto actual = production_value(production);
+    if (!actual.has_value()) {
+        FAIL() << "expected production decimal value";
+        return;
+    }
+    EXPECT_EQ(actual->first, reference_value.units);
+    EXPECT_EQ(actual->second, reference_value.source_fraction_digits);
+}
+
+template <typename Production>
 void expect_equivalent_impl(std::string_view text, std::uint32_t scale,
                             const ref::ReferenceDecimalResult& reference,
                             const Production& production) {
     if (const auto* reference_error = std::get_if<ref::ReferenceDecimalError>(&reference.value)) {
-        ASSERT_TRUE(std::holds_alternative<core::DecimalError>(production));
-        const auto& production_error = std::get<core::DecimalError>(production);
-        EXPECT_EQ(to_reference(production_error.code), reference_error->code)
-            << "text=" << text << " scale=" << scale;
-        EXPECT_EQ(production_error.offset, reference_error->offset)
-            << "text=" << text << " scale=" << scale;
+        expect_matching_error(text, scale, *reference_error, production);
         return;
     }
-    const auto& reference_value = std::get<ref::ReferenceDecimalValue>(reference.value);
-    std::int64_t units = 0;
-    std::size_t source_fraction_digits = 0;
-    std::visit(
-        [&](const auto& parsed) {
-            using Parsed = std::decay_t<decltype(parsed)>;
-            if constexpr (!std::is_same_v<Parsed, core::DecimalError>) {
-                units = parsed.value.value();
-                source_fraction_digits = parsed.source_fraction_digits;
-            }
-        },
-        production);
-    EXPECT_EQ(units, reference_value.units);
-    EXPECT_EQ(source_fraction_digits, reference_value.source_fraction_digits);
+    expect_matching_value(std::get<ref::ReferenceDecimalValue>(reference.value), production);
+}
+
+[[nodiscard]] core::DecimalScale required_scale(std::uint32_t scale) {
+    const auto result = core::DecimalScale::create(scale);
+    if (!result.has_value()) {
+        std::terminate();
+    }
+    return result.value();
+}
+
+[[nodiscard]] core::QuantityUnits required_quantity(std::int64_t units) {
+    const auto result = core::QuantityUnits::create(units);
+    if (!result.has_value()) {
+        std::terminate();
+    }
+    return result.value();
 }
 
 void expect_equivalent(std::string_view text, std::uint32_t scale, bool allow_zero) {
     const auto reference = ref::parse_reference_decimal(text, scale, allow_zero);
-    const auto storage_scale = core::DecimalScale::create(scale).value();
+    const auto storage_scale = required_scale(scale);
     if (allow_zero) {
         expect_equivalent_impl(text, scale, reference, core::parse_quantity(text, storage_scale));
     } else {
@@ -199,6 +237,44 @@ TEST(ReferenceDecimalTest, ExactRescaleAndTrailingZeros) {
     EXPECT_EQ(inexact_error.offset, 2U);
 }
 
+// GoogleTest assertions inflate the path count for this linear independently
+// derived boundary table.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST(ReferenceDecimalTest, IndependentExpectedValuesCoverRescaleAndSourceScale) {
+    struct Case final {
+        // Value-initialization keeps the local aggregate safe under the enabled
+        // Core Guidelines member-initialization check.
+        // NOLINTNEXTLINE(readability-redundant-member-init)
+        std::string_view text{};
+        std::uint32_t scale{};
+        std::int64_t expected_units{};
+        std::size_t expected_source_fraction_digits{};
+    };
+    constexpr std::array cases{
+        Case{"0", 0, 0, 0},
+        Case{"1", 4, 10'000, 0},
+        Case{"1.5", 2, 150, 1},
+        Case{"1.00", 1, 10, 2},
+        Case{"1.2300", 2, 123, 4},
+        Case{"0.000000000000000001", 18, 1, 18},
+        Case{"9.223372036854775807", 18, std::numeric_limits<std::int64_t>::max(), 18},
+    };
+    for (const auto& test_case : cases) {
+        const auto result = ref::parse_reference_decimal(test_case.text, test_case.scale, true);
+        ASSERT_TRUE(std::holds_alternative<ref::ReferenceDecimalValue>(result.value));
+        const auto& value = std::get<ref::ReferenceDecimalValue>(result.value);
+        EXPECT_EQ(value.units, test_case.expected_units);
+        EXPECT_EQ(value.source_fraction_digits, test_case.expected_source_fraction_digits);
+    }
+
+    const std::string long_exact = "1." + std::string(1000, '0');
+    const auto long_result = ref::parse_reference_decimal(long_exact, 4, true);
+    ASSERT_TRUE(std::holds_alternative<ref::ReferenceDecimalValue>(long_result.value));
+    const auto& long_value = std::get<ref::ReferenceDecimalValue>(long_result.value);
+    EXPECT_EQ(long_value.units, 10'000);
+    EXPECT_EQ(long_value.source_fraction_digits, 1000U);
+}
+
 TEST(ReferenceDecimalTest, FixedFormattingIsCanonical) {
     EXPECT_EQ(ref::reference_fixed(ref::ReferenceFixedInput{0, 2}), "0.00");
     EXPECT_EQ(ref::reference_fixed(ref::ReferenceFixedInput{1, 0}), "1");
@@ -238,7 +314,7 @@ TEST(ReferenceDecimalTest, DifferentialMatchesM1ForGeneratedTokens) {
     };
     for (std::size_t iteration = 0; iteration < 5000; ++iteration) {
         const auto random = next();
-        const std::uint32_t scale = static_cast<std::uint32_t>(random % 19U);
+        const auto scale = static_cast<std::uint32_t>(random % 19U);
         const auto digits = 1 + static_cast<std::uint32_t>(random % 15U);
         const auto fraction = static_cast<std::uint32_t>((random >> 8U) % 19U);
         const auto leading = static_cast<std::uint32_t>((random >> 16U) % 3U);
@@ -282,8 +358,8 @@ TEST(ReferenceDecimalTest, FixedFormattingDifferentialMatchesM1) {
         const auto scale = static_cast<std::uint32_t>(random % 19U);
         const auto units = static_cast<std::int64_t>(random % 100'000'000'000ULL);
         const auto formatted = ref::reference_fixed(ref::ReferenceFixedInput{units, scale});
-        const auto production = core::format_quantity_fixed(
-            core::QuantityUnits::create(units).value(), core::DecimalScale::create(scale).value());
+        const auto production =
+            core::format_quantity_fixed(required_quantity(units), required_scale(scale));
         ASSERT_TRUE(std::holds_alternative<std::string>(production));
         EXPECT_EQ(std::get<std::string>(production), formatted)
             << "units=" << units << " scale=" << scale;
@@ -291,5 +367,3 @@ TEST(ReferenceDecimalTest, FixedFormattingDifferentialMatchesM1) {
 }
 
 } // namespace
-
-// NOLINTEND(bugprone-unchecked-optional-access)

@@ -3,10 +3,11 @@
 // First-divergence comparison and layer attribution for OperationObservation.
 //
 // The comparison order is fixed by the M5 design:
-//   1. operation-result kind
-//   2. operation-result value/error fields
-//   3. post-operation SemanticCheckpoint
-//   4. snapshot semantic observation
+//   1. successful/error decimal parse evidence
+//   2. operation-result kind
+//   3. operation-result value/error fields
+//   4. post-operation SemanticCheckpoint
+//   5. snapshot semantic observation
 // Comparison stops at the first mismatch. Attribution names the earliest layer
 // whose independently observable semantic result differs: R1 (decimal), R2 (book
 // content), R3 (sequence/lifecycle), R4 (adapter/snapshot), D (composition).
@@ -40,6 +41,8 @@ struct Divergence final {
 [[nodiscard]] std::string_view to_text(CanonicalGapReason reason) noexcept;
 [[nodiscard]] std::string_view to_text(CanonicalPolicy policy) noexcept;
 [[nodiscard]] std::string_view to_text(CanonicalDecimalError error) noexcept;
+[[nodiscard]] std::string_view to_text(CanonicalBookSide side) noexcept;
+[[nodiscard]] std::string_view to_text(CanonicalDecimalRole role) noexcept;
 [[nodiscard]] std::string_view to_text(CanonicalAdapterCode code) noexcept;
 [[nodiscard]] std::string_view to_text(CanonicalAdapterField field) noexcept;
 [[nodiscard]] std::string_view to_text(CanonicalQualityFlag flag) noexcept;
@@ -50,6 +53,8 @@ struct Divergence final {
 
 // Deterministic canonical text used in divergence diagnostics. Not a digest input.
 [[nodiscard]] std::string to_canonical_text(const OperationResult& result);
+[[nodiscard]] std::string
+to_canonical_text(const std::vector<CanonicalDecimalObservation>& observations);
 [[nodiscard]] std::string to_canonical_text(const SemanticCheckpoint& checkpoint);
 [[nodiscard]] std::string to_canonical_text(const SnapshotOutcome& snapshot);
 

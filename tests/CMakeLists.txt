@@ -83,6 +83,7 @@ add_library(
     bmd_projection_m5_oracle_support
     m5/oracle/core_production_side.cpp
     m5/oracle/divergence.cpp
+    m5/oracle/production_decimal_observation.cpp
     m5/oracle/replay_driver.cpp
 )
 target_include_directories(

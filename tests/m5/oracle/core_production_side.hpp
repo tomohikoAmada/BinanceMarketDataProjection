@@ -14,6 +14,7 @@
 
 #include <memory>
 #include <optional>
+#include <vector>
 
 namespace bmd_projection::m5::oracle {
 
@@ -38,7 +39,8 @@ class CoreProductionSide final : public ReplaySide {
 
     [[nodiscard]] SemanticCheckpoint checkpoint() const;
     [[nodiscard]] std::optional<OperationObservation>
-    make_observation(OperationResultValue result) const;
+    make_observation(OperationResultValue result,
+                     std::vector<CanonicalDecimalObservation> decimals = {}) const;
 
     binance_market_data::projection::v1::BookProjection projection_;
 };

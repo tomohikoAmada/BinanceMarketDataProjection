@@ -25,6 +25,42 @@ class ReferenceProjection;
 
 namespace bmd_projection::m5::reference {
 
+enum class ReferenceVenue : std::uint8_t {
+    Binance,
+    Unspecified,
+};
+
+enum class ReferenceMarket : std::uint8_t {
+    Spot,
+    UsdMPerpetual,
+    Unspecified,
+};
+
+enum class ReferencePolicy : std::uint8_t {
+    Spot,
+    UsdMPerpetual,
+};
+
+struct ReferenceNumericSpec final {
+    std::uint32_t price_scale{};
+    std::uint32_t quantity_scale{};
+
+    friend bool operator==(const ReferenceNumericSpec&, const ReferenceNumericSpec&) = default;
+};
+
+// R4's own semantic input model. It intentionally does not contain production
+// Protobuf enums or adapter-owned production values.
+struct ReferenceAdapterDimensions final {
+    ReferenceVenue wire_venue{ReferenceVenue::Binance};
+    ReferenceMarket wire_market{ReferenceMarket::Spot};
+    std::string wire_symbol;
+    std::string expected_symbol;
+    ReferencePolicy expected_policy{ReferencePolicy::Spot};
+    ReferenceNumericSpec conversion_numeric_spec;
+    ReferenceNumericSpec projection_numeric_spec;
+    ReferencePolicy projection_policy{ReferencePolicy::Spot};
+};
+
 // Independent adapter error categories. Semantically aligned with the M4 adapter
 // error domain; the mapping to canonical names happens at the observation boundary.
 enum class ReferenceAdapterErrorCode : std::uint8_t {
@@ -171,6 +207,7 @@ class ReferenceAdapter final {
   public:
     ReferenceAdapter(replay::SequencePolicy policy, std::string_view symbol,
                      replay::NumericSpec numeric_spec);
+    explicit ReferenceAdapter(ReferenceAdapterDimensions dimensions);
 
     [[nodiscard]] ReferenceBaselinePrediction
     predict_baseline_input(const replay::InstallBaselineOp& operation,
@@ -198,7 +235,9 @@ class ReferenceAdapter final {
     [[nodiscard]] ReferenceDepthPrediction
     predict_update_levels(const std::vector<replay::LevelInput>& levels,
                           const std::vector<replay::HostQualityFact>& inbound_facts) const;
-    [[nodiscard]] std::optional<ReferenceAdapterError> validate_identity() const;
+    [[nodiscard]] std::optional<ReferenceAdapterError> validate_inbound_identity() const;
+    [[nodiscard]] std::optional<ReferenceAdapterError> validate_snapshot_identity() const;
+    [[nodiscard]] std::optional<ReferenceAdapterError> validate_binding() const;
     [[nodiscard]] static std::optional<ReferenceAdapterError>
     validate_depth_limit(const std::optional<std::uint32_t>& depth_limit);
 
@@ -211,9 +250,7 @@ class ReferenceAdapter final {
     predict_gap_descriptor(const bmd_projection_reference::ReferenceProjection& projection,
                            const replay::SnapshotRequestOp& operation);
 
-    replay::SequencePolicy policy_;
-    std::string symbol_;
-    replay::NumericSpec numeric_spec_;
+    ReferenceAdapterDimensions dimensions_;
 };
 
 } // namespace bmd_projection::m5::reference

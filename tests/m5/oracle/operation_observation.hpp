@@ -3,11 +3,12 @@
 // M5 differential observation model.
 //
 // OperationObservation is the fundamental unit of production/reference comparison:
-// event identity, the observable operation result, the post-operation semantic
-// checkpoint, and the optional snapshot semantic observation. All values here are
-// canonical (semantic) values produced at the observation boundary of each pipeline
-// side. Deterministic integer/unit values and stable enum names are used; no
-// addresses, ABI layout, compiler strings, or Protobuf bytes ever enter this model.
+// event identity, ordered pre-business decimal evidence, the observable operation
+// result, the post-operation semantic checkpoint, and the optional snapshot semantic
+// observation. All values here are canonical (semantic) values produced at the
+// observation boundary of each pipeline side. Deterministic integer/unit values and
+// stable enum names are used; no addresses, ABI layout, compiler strings, or
+// Protobuf bytes ever enter this model.
 
 #include "replay_types.hpp"
 
@@ -29,6 +30,7 @@ enum class Layer : std::uint8_t {
 };
 
 enum class DivergenceCategory : std::uint8_t {
+    ParseEvidence,
     OperationResult,
     Checkpoint,
     SnapshotObservation,
@@ -70,6 +72,41 @@ enum class CanonicalDecimalError : std::uint8_t {
     ZeroNotAllowed,
     InexactScale,
     Overflow,
+};
+
+enum class CanonicalBookSide : std::uint8_t { Bid, Ask };
+
+enum class CanonicalDecimalRole : std::uint8_t { Price, Quantity };
+
+struct CanonicalDecimalValue final {
+    std::int64_t units{};
+    std::uint32_t storage_scale{};
+    std::size_t source_fraction_digits{};
+
+    friend bool operator==(const CanonicalDecimalValue&, const CanonicalDecimalValue&) = default;
+};
+
+struct CanonicalDecimalFailure final {
+    CanonicalDecimalError category{};
+    std::size_t offset{};
+
+    friend bool operator==(const CanonicalDecimalFailure&,
+                           const CanonicalDecimalFailure&) = default;
+};
+
+using CanonicalDecimalResult = std::variant<CanonicalDecimalValue, CanonicalDecimalFailure>;
+
+// Pre-business M1 evidence for one replay decimal token. level_position is the
+// token's position in its normalized input collection; side and role retain its
+// semantic identity even when M3 later ignores or rejects the operation.
+struct CanonicalDecimalObservation final {
+    CanonicalBookSide side{};
+    std::size_t level_position{};
+    CanonicalDecimalRole role{};
+    CanonicalDecimalResult result;
+
+    friend bool operator==(const CanonicalDecimalObservation&,
+                           const CanonicalDecimalObservation&) = default;
 };
 
 enum class CanonicalAdapterCode : std::uint8_t {
@@ -312,6 +349,7 @@ struct SemanticCheckpoint final {
 struct OperationObservation final {
     std::size_t event_index{};
     replay::EventKind event_kind{};
+    std::vector<CanonicalDecimalObservation> decimal_observations;
     OperationResult result;
     SemanticCheckpoint checkpoint;
     std::optional<SnapshotOutcome> snapshot;

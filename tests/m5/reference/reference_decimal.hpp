@@ -3,8 +3,9 @@
 // R1 ReferenceDecimal: an independent decimal reference for M5 differential validation.
 //
 // This layer is written from the M1 numeric semantics document and the M1 unit-test
-// contract, not by calling production M1 functions. It implements its own digit scan,
-// checked powers of ten, exact rescale, error offsets, and canonical fixed formatting.
+// contract, not by calling production M1 functions. It decomposes the lexical token,
+// represents the complete source-scale magnitude as digit substrings, rescales that
+// magnitude independently, and then performs checked target-scale accumulation.
 
 #include <cstddef>
 #include <cstdint>
@@ -40,7 +41,7 @@ struct ReferenceDecimalError final {
 
 struct ReferenceDecimalValue final {
     std::int64_t units;
-    std::uint32_t source_fraction_digits;
+    std::size_t source_fraction_digits;
 
     friend constexpr bool operator==(const ReferenceDecimalValue&,
                                      const ReferenceDecimalValue&) noexcept = default;

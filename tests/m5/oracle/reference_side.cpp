@@ -10,6 +10,7 @@
 #include "replay_types.hpp"
 
 #include <cstdint>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -310,37 +311,107 @@ namespace replay = bmd_projection::m5::replay;
     return CanonicalSnapshotSource::HistoryReplay;
 }
 
-// R1-level parse of every level token in input order; returns the first failure
-// category or nullopt when all tokens parse.
-[[nodiscard]] std::optional<CanonicalDecimalError>
-parse_reference_levels(const std::vector<replay::LevelInput>& levels, replay::NumericSpec spec) {
-    for (const auto& level : levels) {
-        const auto price = ref::parse_reference_decimal(level.price, spec.price_scale, false);
-        if (const auto* failure = std::get_if<ref::ReferenceDecimalError>(&price.value)) {
-            return canonical(failure->code);
-        }
-        const auto quantity =
-            ref::parse_reference_decimal(level.quantity, spec.quantity_scale, true);
-        if (const auto* failure = std::get_if<ref::ReferenceDecimalError>(&quantity.value)) {
-            return canonical(failure->code);
-        }
-    }
-    return std::nullopt;
+struct ReferenceLevelObservation final {
+    std::vector<CanonicalDecimalObservation> decimals;
+    std::vector<reference::RawLevel> levels;
+    std::optional<CanonicalDecimalError> first_error;
+};
+
+[[nodiscard]] CanonicalBookSide canonical(replay::Side side) noexcept {
+    return side == replay::Side::Bid ? CanonicalBookSide::Bid : CanonicalBookSide::Ask;
 }
 
-[[nodiscard]] std::vector<reference::RawLevel>
-raw_levels(const std::vector<replay::LevelInput>& levels, replay::NumericSpec spec) {
-    std::vector<reference::RawLevel> result;
-    result.reserve(levels.size());
-    for (const auto& level : levels) {
+[[nodiscard]] CanonicalDecimalObservation
+reference_decimal_observation(const replay::LevelInput& level, std::size_t position,
+                              CanonicalDecimalRole role, const ref::ReferenceDecimalResult& parsed,
+                              std::uint32_t storage_scale) {
+    if (const auto* failure = std::get_if<ref::ReferenceDecimalError>(&parsed.value)) {
+        return {canonical(level.side), position, role,
+                CanonicalDecimalFailure{canonical(failure->code), failure->offset}};
+    }
+    const auto& value = std::get<ref::ReferenceDecimalValue>(parsed.value);
+    return {canonical(level.side), position, role,
+            CanonicalDecimalValue{value.units, storage_scale, value.source_fraction_digits}};
+}
+
+void record_first_error(ReferenceLevelObservation& observation,
+                        const ref::ReferenceDecimalResult& parsed) {
+    if (observation.first_error.has_value()) {
+        return;
+    }
+    if (const auto* failure = std::get_if<ref::ReferenceDecimalError>(&parsed.value)) {
+        observation.first_error = canonical(failure->code);
+    }
+}
+
+[[nodiscard]] ReferenceLevelObservation
+observe_reference_levels(const std::vector<replay::LevelInput>& levels, replay::NumericSpec spec) {
+    ReferenceLevelObservation observation;
+    observation.decimals.reserve(levels.size() * 2);
+    observation.levels.reserve(levels.size());
+    for (std::size_t position = 0; position < levels.size(); ++position) {
+        const auto& level = levels[position];
         const auto price = ref::parse_reference_decimal(level.price, spec.price_scale, false);
         const auto quantity =
             ref::parse_reference_decimal(level.quantity, spec.quantity_scale, true);
-        result.push_back({level.side == replay::Side::Bid,
-                          std::get<ref::ReferenceDecimalValue>(price.value).units,
-                          std::get<ref::ReferenceDecimalValue>(quantity.value).units});
+        observation.decimals.push_back(reference_decimal_observation(
+            level, position, CanonicalDecimalRole::Price, price, spec.price_scale));
+        observation.decimals.push_back(reference_decimal_observation(
+            level, position, CanonicalDecimalRole::Quantity, quantity, spec.quantity_scale));
+        record_first_error(observation, price);
+        record_first_error(observation, quantity);
+        if (const auto* price_value = std::get_if<ref::ReferenceDecimalValue>(&price.value)) {
+            if (const auto* quantity_value =
+                    std::get_if<ref::ReferenceDecimalValue>(&quantity.value)) {
+                observation.levels.push_back(
+                    {level.side == replay::Side::Bid, price_value->units, quantity_value->units});
+            }
+        }
     }
-    return result;
+    return observation;
+}
+
+void append_decimals(std::vector<CanonicalDecimalObservation>& destination,
+                     std::vector<CanonicalDecimalObservation> source) {
+    destination.reserve(destination.size() + source.size());
+    destination.insert(destination.end(), std::make_move_iterator(source.begin()),
+                       std::make_move_iterator(source.end()));
+}
+
+[[nodiscard]] ref::ReferencePolicy reference_policy(replay::SequencePolicy policy) noexcept {
+    return policy == replay::SequencePolicy::Spot ? ref::ReferencePolicy::Spot
+                                                  : ref::ReferencePolicy::UsdMPerpetual;
+}
+
+[[nodiscard]] ref::ReferenceVenue reference_venue(ScenarioVenue venue) noexcept {
+    return venue == ScenarioVenue::Binance ? ref::ReferenceVenue::Binance
+                                           : ref::ReferenceVenue::Unspecified;
+}
+
+[[nodiscard]] ref::ReferenceMarket reference_market(ScenarioMarket market) noexcept {
+    switch (market) {
+    case ScenarioMarket::Spot:
+        return ref::ReferenceMarket::Spot;
+    case ScenarioMarket::UsdMPerpetual:
+        return ref::ReferenceMarket::UsdMPerpetual;
+    case ScenarioMarket::Unspecified:
+        return ref::ReferenceMarket::Unspecified;
+    }
+    return ref::ReferenceMarket::Unspecified;
+}
+
+[[nodiscard]] ref::ReferenceAdapterDimensions
+reference_dimensions(const AdapterScenario& scenario) {
+    return {reference_venue(scenario.wire_venue),
+            reference_market(scenario.wire_market),
+            scenario.wire_symbol,
+            scenario.expected_symbol,
+            reference_policy(scenario.expected_policy),
+            {scenario.conversion_numeric_spec.price_scale,
+             scenario.conversion_numeric_spec.quantity_scale},
+            {scenario.projection_numeric_spec.price_scale,
+             scenario.projection_numeric_spec.quantity_scale},
+            reference_policy(scenario.projection_policy)};
 }
 
 [[nodiscard]] AdapterErrorOutcome canonical(const ref::ReferenceAdapterError& error) noexcept {
@@ -364,13 +435,18 @@ canonical_quality(const std::vector<ref::ReferenceQualityFlag>& flags) {
 } // namespace
 
 ReferenceSide::ReferenceSide(const replay::ReplayFixture& fixture, ReplayMode mode)
-    : projection_{fixture.identity.sequence_policy == replay::SequencePolicy::Spot
+    : ReferenceSide{fixture, mode, default_adapter_scenario(fixture)} {}
+
+ReferenceSide::ReferenceSide(const replay::ReplayFixture& /*fixture*/, ReplayMode mode,
+                             const AdapterScenario& scenario)
+    : projection_{scenario.projection_policy == replay::SequencePolicy::Spot
                       ? reference::Policy::Spot
                       : reference::Policy::UsdM},
-      adapter_{fixture.identity.sequence_policy, fixture.identity.symbol,
-               fixture.identity.numeric_spec},
-      numeric_spec_{fixture.identity.numeric_spec}, policy_{fixture.identity.sequence_policy},
-      symbol_{fixture.identity.symbol}, mode_{mode} {}
+      adapter_{reference_dimensions(scenario)},
+      conversion_numeric_spec_{scenario.conversion_numeric_spec},
+      projection_numeric_spec_{scenario.projection_numeric_spec},
+      projection_policy_{scenario.projection_policy}, expected_symbol_{scenario.expected_symbol},
+      mode_{mode} {}
 
 std::optional<OperationObservation> ReferenceSide::observe(const replay::Operation& operation) {
     if (const auto* op = std::get_if<replay::InstallBaselineOp>(&operation)) {
@@ -401,78 +477,90 @@ ReferenceSide::observe_install(std::uint64_t last_update_id,
     // REBASELINE is an M3 lifecycle operation; it does not cross the M4 boundary in
     // either mode, so R4 is not exercised for it.
     if (rebaseline) {
-        if (const auto failure = parse_reference_levels(bids_input, numeric_spec_)) {
-            return make_observation(DecimalErrorOutcome{*failure});
+        auto bids = observe_reference_levels(bids_input, projection_numeric_spec_);
+        auto asks = observe_reference_levels(asks_input, projection_numeric_spec_);
+        std::vector<CanonicalDecimalObservation> decimals;
+        append_decimals(decimals, std::move(bids.decimals));
+        append_decimals(decimals, std::move(asks.decimals));
+        if (bids.first_error.has_value()) {
+            return make_observation(DecimalErrorOutcome{bids.first_error.value()},
+                                    std::move(decimals));
         }
-        if (const auto failure = parse_reference_levels(asks_input, numeric_spec_)) {
-            return make_observation(DecimalErrorOutcome{*failure});
+        if (asks.first_error.has_value()) {
+            return make_observation(DecimalErrorOutcome{asks.first_error.value()},
+                                    std::move(decimals));
         }
-        auto bids = raw_levels(bids_input, numeric_spec_);
-        auto asks = raw_levels(asks_input, numeric_spec_);
         std::vector<reference::RawLevel> levels;
-        levels.reserve(bids.size() + asks.size());
-        levels.insert(levels.end(), bids.begin(), bids.end());
-        levels.insert(levels.end(), asks.begin(), asks.end());
-        return make_observation(canonical(projection_.install(last_update_id, levels)));
+        levels.reserve(bids.levels.size() + asks.levels.size());
+        levels.insert(levels.end(), bids.levels.begin(), bids.levels.end());
+        levels.insert(levels.end(), asks.levels.begin(), asks.levels.end());
+        return make_observation(canonical(projection_.install(last_update_id, levels)),
+                                std::move(decimals));
     }
+    auto bids = observe_reference_levels(bids_input, conversion_numeric_spec_);
+    auto asks = observe_reference_levels(asks_input, conversion_numeric_spec_);
+    std::vector<CanonicalDecimalObservation> decimals;
+    append_decimals(decimals, std::move(bids.decimals));
+    append_decimals(decimals, std::move(asks.decimals));
     if (mode_ == ReplayMode::AdapterEnabled) {
         const replay::InstallBaselineOp operation{replay::SourceLocation{}, last_update_id,
                                                   bids_input, asks_input};
         const auto prediction = adapter_.predict_baseline_input(operation, pending_metadata_);
         pending_metadata_.clear();
         if (const auto* failure = std::get_if<ref::ReferenceAdapterError>(&prediction)) {
-            return make_observation(canonical(*failure));
+            return make_observation(canonical(*failure), std::move(decimals));
         }
         const auto& input = std::get<ref::ReferenceInputPrediction>(prediction);
-        auto bids = raw_levels(bids_input, numeric_spec_);
-        auto asks = raw_levels(asks_input, numeric_spec_);
         std::vector<reference::RawLevel> levels;
-        levels.reserve(bids.size() + asks.size());
-        levels.insert(levels.end(), bids.begin(), bids.end());
-        levels.insert(levels.end(), asks.begin(), asks.end());
+        levels.reserve(bids.levels.size() + asks.levels.size());
+        levels.insert(levels.end(), bids.levels.begin(), bids.levels.end());
+        levels.insert(levels.end(), asks.levels.begin(), asks.levels.end());
         const auto core_result = canonical(projection_.install(last_update_id, levels));
         return make_observation(
             AdapterSuccessOutcome{std::variant<InstallOutcome, ApplyOutcome>{core_result},
-                                  canonical_quality(input.observed_quality)});
+                                  canonical_quality(input.observed_quality)},
+            std::move(decimals));
     }
-    if (const auto failure = parse_reference_levels(bids_input, numeric_spec_)) {
-        return make_observation(DecimalErrorOutcome{*failure});
+    if (bids.first_error.has_value()) {
+        return make_observation(DecimalErrorOutcome{bids.first_error.value()}, std::move(decimals));
     }
-    if (const auto failure = parse_reference_levels(asks_input, numeric_spec_)) {
-        return make_observation(DecimalErrorOutcome{*failure});
+    if (asks.first_error.has_value()) {
+        return make_observation(DecimalErrorOutcome{asks.first_error.value()}, std::move(decimals));
     }
-    auto bids = raw_levels(bids_input, numeric_spec_);
-    auto asks = raw_levels(asks_input, numeric_spec_);
     std::vector<reference::RawLevel> levels;
-    levels.reserve(bids.size() + asks.size());
-    levels.insert(levels.end(), bids.begin(), bids.end());
-    levels.insert(levels.end(), asks.begin(), asks.end());
-    return make_observation(canonical(projection_.install(last_update_id, levels)));
+    levels.reserve(bids.levels.size() + asks.levels.size());
+    levels.insert(levels.end(), bids.levels.begin(), bids.levels.end());
+    levels.insert(levels.end(), asks.levels.begin(), asks.levels.end());
+    return make_observation(canonical(projection_.install(last_update_id, levels)),
+                            std::move(decimals));
 }
 
 std::optional<OperationObservation>
 ReferenceSide::observe_depth_update(const replay::DepthUpdateOp& operation) {
+    auto parsed = observe_reference_levels(operation.levels, conversion_numeric_spec_);
     if (mode_ == ReplayMode::AdapterEnabled) {
         const auto prediction = adapter_.predict_depth_update_input(operation, pending_metadata_);
         pending_metadata_.clear();
         if (const auto* failure = std::get_if<ref::ReferenceAdapterError>(&prediction)) {
-            return make_observation(canonical(*failure));
+            return make_observation(canonical(*failure), std::move(parsed.decimals));
         }
         const auto& input = std::get<ref::ReferenceInputPrediction>(prediction);
-        const auto levels = raw_levels(operation.levels, numeric_spec_);
         const auto core_result =
             canonical(projection_.apply(operation.first_update_id, operation.final_update_id,
-                                        operation.previous_final, levels));
+                                        operation.previous_final, parsed.levels));
         return make_observation(
             AdapterSuccessOutcome{std::variant<InstallOutcome, ApplyOutcome>{core_result},
-                                  canonical_quality(input.observed_quality)});
+                                  canonical_quality(input.observed_quality)},
+            std::move(parsed.decimals));
     }
-    if (const auto failure = parse_reference_levels(operation.levels, numeric_spec_)) {
-        return make_observation(DecimalErrorOutcome{*failure});
+    if (parsed.first_error.has_value()) {
+        return make_observation(DecimalErrorOutcome{parsed.first_error.value()},
+                                std::move(parsed.decimals));
     }
-    const auto levels = raw_levels(operation.levels, numeric_spec_);
-    return make_observation(canonical(projection_.apply(
-        operation.first_update_id, operation.final_update_id, operation.previous_final, levels)));
+    return make_observation(
+        canonical(projection_.apply(operation.first_update_id, operation.final_update_id,
+                                    operation.previous_final, parsed.levels)),
+        std::move(parsed.decimals));
 }
 
 std::optional<OperationObservation>
@@ -486,9 +574,10 @@ ReferenceSide::observe_snapshot_request(const replay::SnapshotRequestOp& operati
     }
     const auto predicted = std::get<ref::ReferenceSnapshotPrediction>(prediction);
     SnapshotOutcome snapshot;
-    snapshot.policy = policy_ == replay::SequencePolicy::Spot ? CanonicalPolicy::Spot
-                                                              : CanonicalPolicy::UsdMPerpetual;
-    snapshot.symbol = symbol_;
+    snapshot.policy = projection_policy_ == replay::SequencePolicy::Spot
+                          ? CanonicalPolicy::Spot
+                          : CanonicalPolicy::UsdMPerpetual;
+    snapshot.symbol = expected_symbol_;
     snapshot.producer = operation.producer;
     snapshot.producer_version = operation.producer_version;
     snapshot.source = canonical(operation.source_origin);
@@ -546,26 +635,37 @@ SemanticCheckpoint ReferenceSide::checkpoint() const {
     for (const auto& level : projection_.asks()) {
         result.asks.push_back({level.price, level.quantity});
     }
-    result.price_scale = numeric_spec_.price_scale;
-    result.quantity_scale = numeric_spec_.quantity_scale;
+    result.price_scale = projection_numeric_spec_.price_scale;
+    result.quantity_scale = projection_numeric_spec_.quantity_scale;
     return result;
 }
 
 std::optional<OperationObservation>
-ReferenceSide::make_observation(OperationResultValue result) const {
-    return OperationObservation{0, replay::EventKind::InstallBaseline,
-                                OperationResult{std::move(result)}, checkpoint(), std::nullopt};
+ReferenceSide::make_observation(OperationResultValue result,
+                                std::vector<CanonicalDecimalObservation> decimals) const {
+    return OperationObservation{0,
+                                replay::EventKind::InstallBaseline,
+                                std::move(decimals),
+                                OperationResult{std::move(result)},
+                                checkpoint(),
+                                std::nullopt};
 }
 
 std::optional<OperationObservation>
 ReferenceSide::make_snapshot_observation(const SnapshotOutcome& snapshot) const {
-    return OperationObservation{0, replay::EventKind::InstallBaseline, OperationResult{snapshot},
-                                checkpoint(), snapshot};
+    return OperationObservation{
+        0,       replay::EventKind::InstallBaseline, {}, OperationResult{snapshot}, checkpoint(),
+        snapshot};
 }
 
 std::unique_ptr<ReplaySide> make_reference_side(const replay::ReplayFixture& fixture,
                                                 ReplayMode mode) {
     return std::make_unique<ReferenceSide>(fixture, mode);
+}
+
+std::unique_ptr<ReplaySide> make_reference_side(const replay::ReplayFixture& fixture,
+                                                ReplayMode mode, const AdapterScenario& scenario) {
+    return std::make_unique<ReferenceSide>(fixture, mode, scenario);
 }
 
 } // namespace bmd_projection::m5::oracle

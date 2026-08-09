@@ -6,6 +6,7 @@
 // production Core-only side); in AdapterEnabled mode every M4-boundary event is
 // predicted by R4 independently.
 
+#include "adapter_scenario.hpp"
 #include "operation_observation.hpp"
 #include "replay_driver.hpp"
 #include "replay_side.hpp"
@@ -17,6 +18,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace bmd_projection::m5::oracle {
@@ -24,6 +26,8 @@ namespace bmd_projection::m5::oracle {
 class ReferenceSide final : public ReplaySide {
   public:
     ReferenceSide(const replay::ReplayFixture& fixture, ReplayMode mode);
+    ReferenceSide(const replay::ReplayFixture& fixture, ReplayMode mode,
+                  const AdapterScenario& scenario);
 
     [[nodiscard]] std::optional<OperationObservation>
     observe(const replay::Operation& operation) override;
@@ -44,20 +48,25 @@ class ReferenceSide final : public ReplaySide {
 
     [[nodiscard]] SemanticCheckpoint checkpoint() const;
     [[nodiscard]] std::optional<OperationObservation>
-    make_observation(OperationResultValue result) const;
+    make_observation(OperationResultValue result,
+                     std::vector<CanonicalDecimalObservation> decimals = {}) const;
     [[nodiscard]] std::optional<OperationObservation>
     make_snapshot_observation(const SnapshotOutcome& snapshot) const;
 
     bmd_projection_reference::ReferenceProjection projection_;
     reference::ReferenceAdapter adapter_;
-    replay::NumericSpec numeric_spec_;
-    replay::SequencePolicy policy_{};
-    std::string symbol_;
+    replay::NumericSpec conversion_numeric_spec_;
+    replay::NumericSpec projection_numeric_spec_;
+    replay::SequencePolicy projection_policy_{};
+    std::string expected_symbol_;
     std::vector<replay::HostQualityFact> pending_metadata_;
     ReplayMode mode_;
 };
 
 [[nodiscard]] std::unique_ptr<ReplaySide> make_reference_side(const replay::ReplayFixture& fixture,
                                                               ReplayMode mode);
+[[nodiscard]] std::unique_ptr<ReplaySide> make_reference_side(const replay::ReplayFixture& fixture,
+                                                              ReplayMode mode,
+                                                              const AdapterScenario& scenario);
 
 } // namespace bmd_projection::m5::oracle

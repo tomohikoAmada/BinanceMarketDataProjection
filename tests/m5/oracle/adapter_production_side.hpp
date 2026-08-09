@@ -2,10 +2,12 @@
 
 // Production adapter-enabled pipeline side: synthesizes Contracts wire messages
 // from normalized replay operations and drives the real M4 ProtoAdapter through its
-// public API. Non-semantic wire identity fields (producer, producer version,
-// request/connection identifiers) are fixed driver constants and are outside the
-// differential scope. This side is compiled only in the adapter-enabled test target.
+// public API. Inbound producer and request/connection identifiers are fixed driver
+// constants outside differential scope; snapshot producer and producer-version
+// semantics come from replay operations. This side is compiled only in the
+// adapter-enabled test target.
 
+#include "adapter_scenario.hpp"
 #include "operation_observation.hpp"
 #include "replay_side.hpp"
 
@@ -21,6 +23,7 @@ namespace bmd_projection::m5::oracle {
 class AdapterProductionSide final : public ReplaySide {
   public:
     explicit AdapterProductionSide(const replay::ReplayFixture& fixture);
+    AdapterProductionSide(const replay::ReplayFixture& fixture, AdapterScenario scenario);
 
     [[nodiscard]] std::optional<OperationObservation>
     observe(const replay::Operation& operation) override;
@@ -35,18 +38,19 @@ class AdapterProductionSide final : public ReplaySide {
 
     [[nodiscard]] SemanticCheckpoint checkpoint() const;
     [[nodiscard]] std::optional<OperationObservation>
-    make_observation(OperationResultValue result) const;
+    make_observation(OperationResultValue result,
+                     std::vector<CanonicalDecimalObservation> decimals = {}) const;
     [[nodiscard]] std::optional<OperationObservation>
     make_snapshot_observation(const SnapshotOutcome& snapshot) const;
 
     binance_market_data::projection::v1::BookProjection projection_;
-    replay::NumericSpec numeric_spec_;
-    replay::SequencePolicy policy_{};
-    std::string symbol_;
+    AdapterScenario scenario_;
     std::vector<replay::HostQualityFact> pending_metadata_;
 };
 
 [[nodiscard]] std::unique_ptr<ReplaySide>
 make_adapter_production_side(const replay::ReplayFixture& fixture);
+[[nodiscard]] std::unique_ptr<ReplaySide>
+make_adapter_production_side(const replay::ReplayFixture& fixture, const AdapterScenario& scenario);
 
 } // namespace bmd_projection::m5::oracle
