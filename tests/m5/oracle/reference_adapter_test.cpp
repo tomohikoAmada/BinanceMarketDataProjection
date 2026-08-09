@@ -258,7 +258,7 @@ TEST(ReferenceAdapterTest, EnforcesDepthLimitAndHostFactStateRules) {
               (std::vector<ref::ReferenceQualityFlag>{ref::ReferenceQualityFlag::RecoveredTail}));
 
     // In AwaitingBridge the same fact is rejected.
-    static_cast<void>(projection.reset());
+    projection.reset();
     static_cast<void>(
         projection.install(60, {{true, 1'000'000, 10'000}, {false, 1'005'000, 20'000}}));
     const auto wrong_state_tail = adapter().predict_snapshot(
@@ -298,3 +298,5 @@ TEST(ReferenceAdapterTest, CrossedBookDerivesCoreQualityFlag) {
 }
 
 } // namespace
+
+// NOLINTEND(bugprone-unchecked-optional-access)

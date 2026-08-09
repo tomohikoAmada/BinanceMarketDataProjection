@@ -52,7 +52,7 @@ using oracle::SnapshotOutcome;
     return value;
 }
 
-[[nodiscard]] OperationObservation observation(OperationResult result) {
+[[nodiscard]] OperationObservation observation(const OperationResult& result) {
     return OperationObservation{0, replay::EventKind::InstallBaseline, result, checkpoint(),
                                 std::nullopt};
 }

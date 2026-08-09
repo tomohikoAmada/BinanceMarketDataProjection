@@ -84,8 +84,8 @@ enum class ReferenceAdapterField : std::uint8_t {
 };
 
 struct ReferenceAdapterError final {
-    ReferenceAdapterErrorCode code;
-    ReferenceAdapterField field;
+    ReferenceAdapterErrorCode code{};
+    ReferenceAdapterField field{};
     std::optional<ReferenceDecimalErrorCode> decimal_error;
 
     friend bool operator==(const ReferenceAdapterError&, const ReferenceAdapterError&) = default;

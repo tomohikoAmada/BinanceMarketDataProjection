@@ -291,3 +291,5 @@ TEST(ReferenceDecimalTest, FixedFormattingDifferentialMatchesM1) {
 }
 
 } // namespace
+
+// NOLINTEND(bugprone-unchecked-optional-access)
