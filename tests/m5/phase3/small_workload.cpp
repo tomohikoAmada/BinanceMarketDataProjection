@@ -23,6 +23,11 @@ struct GeneratedWorkload final {
     std::vector<std::string> events;
 };
 
+struct GenerationState final {
+    std::uint64_t last_update_id;
+    std::size_t snapshot_ordinal;
+};
+
 [[nodiscard]] std::string snapshot_line(std::size_t ordinal, bool gap) {
     const auto timestamp = 1'000'000U + ordinal;
     std::string line = "SNAPSHOT_REQUEST 20 ";
@@ -33,30 +38,29 @@ struct GeneratedWorkload final {
     return line;
 }
 
-void append_spot_transition(std::vector<std::string>& events, std::uint64_t& last_update_id,
-                            std::size_t& snapshot_ordinal) {
-    events.push_back("DEPTH_UPDATE " + std::to_string(last_update_id - 2U) + " " +
-                     std::to_string(last_update_id - 1U) + " pu=- B:98.00,1.000");
-    events.push_back("DEPTH_UPDATE " + std::to_string(last_update_id) + " " +
-                     std::to_string(last_update_id) + " pu=- A:102.00,2.000");
-    ++last_update_id;
-    events.push_back("DEPTH_UPDATE " + std::to_string(last_update_id) + " " +
-                     std::to_string(last_update_id) + " pu=- A:100.00,1.000");
-    events.push_back(snapshot_line(snapshot_ordinal++, false));
-    ++last_update_id;
-    events.push_back("DEPTH_UPDATE " + std::to_string(last_update_id) + " " +
-                     std::to_string(last_update_id) + " pu=- A:99.50,1.250");
-    events.push_back(snapshot_line(snapshot_ordinal++, false));
-    events.push_back("DEPTH_UPDATE " + std::to_string(last_update_id + 2U) + " " +
-                     std::to_string(last_update_id + 2U) + " pu=- B:97.00,3.000");
-    events.push_back(snapshot_line(snapshot_ordinal++, true));
+void append_spot_transition(std::vector<std::string>& events, GenerationState& state) {
+    events.push_back("DEPTH_UPDATE " + std::to_string(state.last_update_id - 2U) + " " +
+                     std::to_string(state.last_update_id - 1U) + " pu=- B:98.00,1.000");
+    events.push_back("DEPTH_UPDATE " + std::to_string(state.last_update_id) + " " +
+                     std::to_string(state.last_update_id) + " pu=- A:102.00,2.000");
+    ++state.last_update_id;
+    events.push_back("DEPTH_UPDATE " + std::to_string(state.last_update_id) + " " +
+                     std::to_string(state.last_update_id) + " pu=- A:100.00,1.000");
+    events.push_back(snapshot_line(state.snapshot_ordinal++, false));
+    ++state.last_update_id;
+    events.push_back("DEPTH_UPDATE " + std::to_string(state.last_update_id) + " " +
+                     std::to_string(state.last_update_id) + " pu=- A:99.50,1.250");
+    events.push_back(snapshot_line(state.snapshot_ordinal++, false));
+    events.push_back("DEPTH_UPDATE " + std::to_string(state.last_update_id + 2U) + " " +
+                     std::to_string(state.last_update_id + 2U) + " pu=- B:97.00,3.000");
+    events.push_back(snapshot_line(state.snapshot_ordinal++, true));
     events.emplace_back("RESET");
-    const auto baseline = last_update_id + 100U;
+    const auto baseline = state.last_update_id + 100U;
     events.push_back("REBASELINE " + std::to_string(baseline) +
                      " B:100.00,1.000|B:99.00,2.000 A:101.00,1.500|A:102.00,2.500");
     events.push_back("DEPTH_UPDATE " + std::to_string(baseline - 1U) + " " +
                      std::to_string(baseline + 1U) + " pu=- B:100.00,1.125");
-    last_update_id = baseline + 1U;
+    state.last_update_id = baseline + 1U;
 }
 
 [[nodiscard]] GeneratedWorkload generate_spot() {
@@ -69,13 +73,12 @@ void append_spot_transition(std::vector<std::string>& events, std::uint64_t& las
     events.emplace_back("DEPTH_UPDATE 99999 100001 pu=- B:100.00,1.125");
     events.push_back(snapshot_line(0, false));
 
-    std::uint64_t last_update_id = 100'001;
-    std::size_t snapshot_ordinal = 1;
+    GenerationState state{100'001, 1};
     std::size_t normal_updates = 0;
     while (events.size() < kSmallWorkloadEventCount) {
         if (normal_updates != 0U && normal_updates % 350U == 0U &&
             events.size() + 11U <= kSmallWorkloadEventCount) {
-            append_spot_transition(events, last_update_id, snapshot_ordinal);
+            append_spot_transition(events, state);
             ++normal_updates;
             continue;
         }
@@ -85,7 +88,7 @@ void append_spot_transition(std::vector<std::string>& events, std::uint64_t& las
         if (events.size() >= kSmallWorkloadEventCount) {
             break;
         }
-        ++last_update_id;
+        ++state.last_update_id;
         const auto price_minor = 9'500U + normal_updates % 401U;
         const auto quantity_minor = 1U + normal_updates % 997U;
         const char side = normal_updates % 2U == 0U ? 'B' : 'A';
@@ -96,40 +99,47 @@ void append_spot_transition(std::vector<std::string>& events, std::uint64_t& las
                               (quantity_minor % 1000U < 100U ? "0" : "") +
                               (quantity_minor % 1000U < 10U ? "0" : "") +
                               std::to_string(quantity_minor % 1000U);
-        events.push_back("DEPTH_UPDATE " + std::to_string(last_update_id) + " " +
-                         std::to_string(last_update_id) + " pu=- " + side + ":" + price + "," +
-                         quantity);
+        std::string event = "DEPTH_UPDATE ";
+        event += std::to_string(state.last_update_id);
+        event += ' ';
+        event += std::to_string(state.last_update_id);
+        event += " pu=- ";
+        event += side;
+        event += ':';
+        event += price;
+        event += ',';
+        event += quantity;
+        events.push_back(std::move(event));
         ++normal_updates;
     }
     return workload;
 }
 
-void append_usdm_transition(std::vector<std::string>& events, std::uint64_t& last_update_id,
-                            std::size_t& snapshot_ordinal) {
-    events.push_back("DEPTH_UPDATE " + std::to_string(last_update_id - 2U) + " " +
-                     std::to_string(last_update_id - 1U) + " pu=" + std::to_string(last_update_id) +
-                     " B:98.00,1.000");
-    events.push_back("DEPTH_UPDATE " + std::to_string(last_update_id) + " " +
-                     std::to_string(last_update_id) + " pu=" + std::to_string(last_update_id) +
-                     " A:102.00,2.000");
-    const auto previous = last_update_id;
-    ++last_update_id;
-    events.push_back("DEPTH_UPDATE " + std::to_string(last_update_id) + " " +
-                     std::to_string(last_update_id) + " pu=" + std::to_string(previous) +
+void append_usdm_transition(std::vector<std::string>& events, GenerationState& state) {
+    events.push_back("DEPTH_UPDATE " + std::to_string(state.last_update_id - 2U) + " " +
+                     std::to_string(state.last_update_id - 1U) +
+                     " pu=" + std::to_string(state.last_update_id) + " B:98.00,1.000");
+    events.push_back("DEPTH_UPDATE " + std::to_string(state.last_update_id) + " " +
+                     std::to_string(state.last_update_id) +
+                     " pu=" + std::to_string(state.last_update_id) + " A:102.00,2.000");
+    const auto previous = state.last_update_id;
+    ++state.last_update_id;
+    events.push_back("DEPTH_UPDATE " + std::to_string(state.last_update_id) + " " +
+                     std::to_string(state.last_update_id) + " pu=" + std::to_string(previous) +
                      " A:100.00,1.000");
-    events.push_back(snapshot_line(snapshot_ordinal++, false));
-    events.push_back("DEPTH_UPDATE " + std::to_string(last_update_id + 1U) + " " +
-                     std::to_string(last_update_id + 1U) +
-                     " pu=" + std::to_string(last_update_id - 1U) + " B:97.00,3.000");
-    events.push_back(snapshot_line(snapshot_ordinal++, true));
+    events.push_back(snapshot_line(state.snapshot_ordinal++, false));
+    events.push_back("DEPTH_UPDATE " + std::to_string(state.last_update_id + 1U) + " " +
+                     std::to_string(state.last_update_id + 1U) +
+                     " pu=" + std::to_string(state.last_update_id - 1U) + " B:97.00,3.000");
+    events.push_back(snapshot_line(state.snapshot_ordinal++, true));
     events.emplace_back("RESET");
-    const auto baseline = last_update_id + 100U;
+    const auto baseline = state.last_update_id + 100U;
     events.push_back("REBASELINE " + std::to_string(baseline) +
                      " B:100.00,1.000|B:99.00,2.000 A:101.00,1.500|A:102.00,2.500");
     events.push_back("DEPTH_UPDATE " + std::to_string(baseline - 1U) + " " +
                      std::to_string(baseline + 1U) + " pu=" + std::to_string(baseline) +
                      " B:100.00,1.125");
-    last_update_id = baseline + 1U;
+    state.last_update_id = baseline + 1U;
 }
 
 [[nodiscard]] GeneratedWorkload generate_usdm() {
@@ -142,13 +152,12 @@ void append_usdm_transition(std::vector<std::string>& events, std::uint64_t& las
     events.emplace_back("DEPTH_UPDATE 499999 500001 pu=500000 B:100.00,1.125");
     events.push_back(snapshot_line(0, false));
 
-    std::uint64_t last_update_id = 500'001;
-    std::size_t snapshot_ordinal = 1;
+    GenerationState state{500'001, 1};
     std::size_t normal_updates = 0;
     while (events.size() < kSmallWorkloadEventCount) {
         if (normal_updates != 0U && normal_updates % 350U == 0U &&
             events.size() + 9U <= kSmallWorkloadEventCount) {
-            append_usdm_transition(events, last_update_id, snapshot_ordinal);
+            append_usdm_transition(events, state);
             ++normal_updates;
             continue;
         }
@@ -158,8 +167,8 @@ void append_usdm_transition(std::vector<std::string>& events, std::uint64_t& las
         if (events.size() >= kSmallWorkloadEventCount) {
             break;
         }
-        const auto previous = last_update_id;
-        ++last_update_id;
+        const auto previous = state.last_update_id;
+        ++state.last_update_id;
         const auto price_minor = 9'500U + normal_updates % 401U;
         const auto quantity_minor = 1U + normal_updates % 997U;
         const char side = normal_updates % 2U == 0U ? 'B' : 'A';
@@ -170,9 +179,19 @@ void append_usdm_transition(std::vector<std::string>& events, std::uint64_t& las
                               (quantity_minor % 1000U < 100U ? "0" : "") +
                               (quantity_minor % 1000U < 10U ? "0" : "") +
                               std::to_string(quantity_minor % 1000U);
-        events.push_back("DEPTH_UPDATE " + std::to_string(last_update_id) + " " +
-                         std::to_string(last_update_id) + " pu=" + std::to_string(previous) + " " +
-                         side + ":" + price + "," + quantity);
+        std::string event = "DEPTH_UPDATE ";
+        event += std::to_string(state.last_update_id);
+        event += ' ';
+        event += std::to_string(state.last_update_id);
+        event += " pu=";
+        event += std::to_string(previous);
+        event += ' ';
+        event += side;
+        event += ':';
+        event += price;
+        event += ',';
+        event += quantity;
+        events.push_back(std::move(event));
         ++normal_updates;
     }
     return workload;
@@ -209,7 +228,7 @@ void append_usdm_transition(std::vector<std::string>& events, std::uint64_t& las
              << "provenance_generator=" << kSmallGeneratorVersion << '\n'
              << "provenance_seed=548746690337\n"
              << "provenance_source=synthetic\n";
-    const auto loaded = replay::load_fixture(replay_log, manifest.str());
+    const auto loaded = replay::load_fixture(replay::FixtureBytes{replay_log, manifest.str()});
     if (!std::holds_alternative<replay::ReplayFixture>(loaded)) {
         std::abort();
     }

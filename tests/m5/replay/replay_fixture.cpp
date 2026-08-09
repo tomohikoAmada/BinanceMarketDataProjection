@@ -74,13 +74,12 @@ namespace {
 
 } // namespace
 
-Result<ReplayFixture> load_fixture(std::string_view replay_log_bytes,
-                                   std::string_view manifest_bytes) {
-    const auto manifest = parse_manifest(manifest_bytes);
+Result<ReplayFixture> load_fixture(FixtureBytes bytes) {
+    const auto manifest = parse_manifest(bytes.manifest);
     if (std::holds_alternative<ParseError>(manifest)) {
         return std::get<ParseError>(manifest);
     }
-    return validate_fixture(replay_log_bytes, std::get<ReplayManifest>(manifest));
+    return validate_fixture(bytes.replay_log, std::get<ReplayManifest>(manifest));
 }
 
 Result<ReplayFixture> load_fixture(const std::filesystem::path& directory) {

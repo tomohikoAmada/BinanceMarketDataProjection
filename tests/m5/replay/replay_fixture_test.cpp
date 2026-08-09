@@ -46,8 +46,8 @@ TEST(M5ReplayFixtureTest, InMemoryLoaderUsesTheSameIdentityBoundary) {
         bytes << input.rdbuf();
         return bytes.str();
     };
-    const auto from_memory =
-        replay::load_fixture(read(directory / "replay.log"), read(directory / "manifest.txt"));
+    const auto from_memory = replay::load_fixture(
+        replay::FixtureBytes{read(directory / "replay.log"), read(directory / "manifest.txt")});
     ASSERT_TRUE(std::holds_alternative<replay::ReplayFixture>(from_memory));
     EXPECT_EQ(std::get<replay::ReplayFixture>(from_directory),
               std::get<replay::ReplayFixture>(from_memory));
