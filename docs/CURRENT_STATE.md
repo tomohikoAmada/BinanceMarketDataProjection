@@ -34,7 +34,7 @@ orientation only.
 
 - PR #13, `Implement M5 deterministic replay validation`, is OPEN and DRAFT.
 - Branch: `feat/m5-deterministic-replay-validation`.
-- Current candidate head: `cd67b8988f6f7698c0f8ca0b7004c266ee7071db`.
+- Current candidate head: `3a678ebf8c064775839c21c73b753bf79f4c6f62`.
 - PR #13 is not merged and must not be described as main or approved.
 
 ## Deployed State
@@ -98,11 +98,11 @@ accepted Spot bootstrap rule `U <= L < u`. Contracts owns neither rule.
 
 ## Current Validation / CI Evidence
 
-- Exact-head CI for the current candidate: run `31389180996` for head
-  `cd67b8988f6f7698c0f8ca0b7004c266ee7071db`, status `queued` at query time.
-- The prior exact-head run `31386405720` for head `719d8bf…` was cancelled when this documentation
-  commit was pushed; prompt-time run `31380230614` for older head `f9061963…` completed `failure`.
-  Neither older run is evidence for the current head.
+- Exact-head CI for the current candidate: run `31389252990` for head
+  `3a678ebf8c064775839c21c73b753bf79f4c6f62`, status `queued` at query time.
+- Older exact-head runs `31389180996` and `31386405720` were cancelled by later pushes; prompt-time
+  run `31380230614` for older head `f9061963…` completed `failure`. None is evidence for the current
+  head after a later push.
 - PR #13 body records the current Phase 3 disposition and says independent re-review is required;
   it is not an approval or merge record.
 
