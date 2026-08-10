@@ -25,6 +25,11 @@
 #include <variant>
 #include <vector>
 
+// ASSERT_TRUE is the guard for every optional access in these tests but
+// clang-tidy cannot trace through gtest control-flow macros, so unchecked-
+// optional-access verification is delegated to the tests' own assertions.
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
+
 namespace {
 
 namespace oracle = bmd_projection::m5::oracle;
@@ -320,7 +325,7 @@ TEST(MediumValidityTest, JsonIntentReaderAcceptsCanonicalProvenance) {
         R"({"bootstrap_bridge":{"final_update_id":104},"event_count":5,"final_selected_update_id":104,"selected_live_updates_after_synchronization":3,"source_raw_chunks":[]})");
     const auto target = phase3::read_target_live_updates(temporary.path());
     ASSERT_TRUE(target.has_value());
-    EXPECT_EQ(*target, 3U);
+    EXPECT_EQ(target.value(), 3U);
 }
 
 TEST(MediumValidityTest, JsonIntentReaderFailsClosed) {
@@ -359,3 +364,5 @@ TEST(MediumValidityTest, JsonIntentReaderFailsClosed) {
     write_provenance(path, "[]");
     EXPECT_FALSE(phase3::read_target_live_updates(path).has_value());
 }
+
+// NOLINTEND(bugprone-unchecked-optional-access)
