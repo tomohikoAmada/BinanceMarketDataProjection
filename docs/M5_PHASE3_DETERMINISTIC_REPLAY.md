@@ -8,13 +8,33 @@
   `75c619dd683ff2a3893f9535e206231e7bfecc41`, main CI `31315421548` — PASS 16/16)
 - Phase 2 final review: **APPROVED**; P0: 0; P1: 0; M5-P2-IR-001 through
   M5-P2-IR-007 and M5-P2-RR-001 CLOSED
-- Phase 3: **IMPLEMENTED / PENDING INDEPENDENT REVIEW** (PR #13)
+- Phase 3: **PARTIAL / BLOCKED BY SPOT RECORDED-SOURCE INELIGIBILITY**
+  (technical corrections complete and validated; mandatory Spot medium corpus is
+  not producible from the pinned authoritative source under the accepted
+  Projection Spot bootstrap contract)
 - Phase 4: **NOT STARTED**
 - M6: **NOT STARTED**
 
 Phase 3 remains test/tool-only. `include/**`, `src/**`, production Core, production ProtoAdapter,
 Contracts, Recorder, Conan, and CI workflows are unchanged. No medium payload or source Raw archive
 is committed.
+
+## PR #13 review record
+
+- Initial Phase-3 implementation head: `1139101` foundation, review **PARTIAL / BLOCKED** with
+  P0: 0, P1: 3, P2: 2.
+- Rejected head: `ea2afc599f1f4257be06c35d07a1b0df2ba93167`; rejected exact-head CI
+  `31356548799` — PASS 16/16 but semantic review rejected (CI PASS is necessary but not
+  sufficient).
+- Blocking findings and dispositions:
+
+| Finding | Disposition |
+|---|---|
+| M5-P3-IR-001 — Spot materializer changed accepted Projection bootstrap semantics from `U <= L < u` to `U <= L+1 <= u` | **CORRECTED** — contains-`L` bootstrap restored, exact-next bootstrap rejected |
+| M5-P3-IR-002 — medium validators proved only production/reference equality and could PASS a workload that immediately enters NeedsResync | **CORRECTED** — medium lifecycle validity gate enforced by both validators |
+| M5-P3-IR-003 — USD-M materialization claimed a continuous 100k post-sync pu chain but committed evidence recorded final NeedsResync | **CORRECTED** — regenerated evidence shows bridge Applied / Synchronized, 100,001 Applied, final Synchronized; the previously recorded NEEDS_RESYNC checkpoint was stale and has been replaced by actual current program output |
+| M5-P3-IR-004 — string-based snapshot-retry error classification | **CORRECTED** — structured `BridgeEligibilityError` retry category; post-bridge live failures are never retried as snapshot errors |
+| M5-P3-IR-005 — stale PR/README/MILESTONES lifecycle status | **CORRECTED** — status documentation synchronized with the actual disposition |
 
 ## Base gate
 
@@ -61,6 +81,83 @@ This work minimally supplies source-line context for the level-vector path natur
 scaled diagnostics (the permitted M5-P2-IR-009 incidental correction). M5-P2-IR-009 otherwise
 remains deferred/non-blocking; M5-P2-IR-008 is unchanged.
 
+## Medium lifecycle validity gate
+
+### Contract
+
+A mandatory materializer-generated medium corpus must be judged valid only when BOTH hold:
+
+1. **differential equality** — production and reference agree on every event in the accepted
+   Phase-2 first-divergence order; and
+2. **medium lifecycle validity** — the emitted corpus itself satisfies the intended lifecycle.
+
+Differential equality on its own is NOT medium validity: a run where both sides agree on
+`GapDetected`/`NeedsResync`/`RejectedWrongState` is a FAILED corpus, not a PASS.
+
+The emitted Replay_V1 shape for the mandatory medium corpus is:
+
+```text
+1 INSTALL_BASELINE
+1 selected bootstrap bridge
+N selected post-bridge advancing live updates    (N = target_live_updates)
+```
+
+The lifecycle gate therefore requires (for `target_live_updates = 100000`):
+
+| Invariant | Required value |
+|---|---|
+| Baseline install result | `Installed`, status after `AwaitingBridge` |
+| First emitted DEPTH_UPDATE (bridge) | `Applied`, status after `Synchronized` |
+| Every emitted DEPTH_UPDATE | `Applied`, status after `Synchronized` |
+| `Applied` count | 100,001 (1 bridge + 100,000 live) |
+| `GapDetected` count | 0 |
+| `RejectedWrongState` count | 0 |
+| Adapter errors | 0 |
+| Final status | `Synchronized` |
+| Final accepted update ID | last selected source diff `final_update_id` |
+
+### Implementation
+
+- `ReplayDriver` accumulates a neutral compact `ExecutionSummary` (typed dispositions/statuses and
+  deterministic counters only) AFTER production/reference equality for each event is established.
+  It contains no Spot/USD-M classification, decimal parsing, book mutation, or adapter mapping;
+  `RetainNone` still omits full historical observations.
+- `tests/m5/phase3/medium_validity.{hpp,cpp}` implements the deterministic lifecycle gate
+  `check_medium_validity` over the already-compared typed observations and the fixture's own
+  operation sequence, plus a strict minimal reader for the materializer's canonical
+  `corpus_provenance.json` intent (`selected_live_updates_after_synchronization`).
+- `tests/m5/phase3/corpus_validation_common.hpp` shares the validator body between the Core-only
+  and adapter validator executables; the Core validator still never links ProtoAdapter.
+- Both validators emit per-run lifecycle evidence
+  (`baseline_result`, `status_after_baseline`, `bridge_result`, `status_after_bridge`,
+  `applied_count`, `ignored_stale_count`, `ignored_duplicate_count`, `gap_detected_count`,
+  `rejected_wrong_state_count`, `adapter_error_count`, `final_status`,
+  `final_accepted_update_id`, `last_selected_diff_final_update_id`) and fail with a stable typed
+  reason such as `bridge-not-applied`, `depth-update-not-applied`, `final-status-NeedsResync`,
+  or `unexpected-applied-count`.
+- Differential failure still stops at the existing earliest-divergence gate; the lifecycle gate
+  never hides or replaces a differential failure.
+- The materializer corpus provenance now additionally records `bootstrap_bridge` (bridge diff
+  identity plus its `U`/`u`) and `final_selected_update_id`, so the emitted intent is checkable
+  against validator evidence.
+
+### Negative tests
+
+`medium_validity_test.cpp` (Core) and `medium_validity_adapter_test.cpp` (adapter) prove:
+
+- equal-but-invalid lifecycle (baseline installs, first depth GapDetected, remaining
+  RejectedWrongState; production/reference agree) FAILS with stable reason `bridge-not-applied`
+  in both modes;
+- valid bridge followed by a live gap FAILS;
+- valid bridge followed by RejectedWrongState FAILS;
+- final status NeedsResync FAILS;
+- wrong expected applied count FAILS;
+- final accepted ID not equal to last selected diff final ID FAILS;
+- differential mismatch still fails at the earliest-divergence event;
+- `RetainNone` still accumulates an identical summary;
+- stale/duplicate typed results are counted but never silently accepted in the emitted chain
+  (the materializer filters them during selection).
+
 ## Offline Recorder materializer
 
 `tools/m5_recorded_corpus_materializer.py` is an independent standard-library offline reader for
@@ -89,44 +186,47 @@ For every requested market the tool:
 8. proves every advancing live continuation while ignoring only semantically stale/duplicate Raw
    records;
 9. emits exact canonical Replay_V1 bytes, `manifest.txt`, and `corpus_provenance.json`;
-10. invokes each explicitly supplied Phase-1/differential validator and fails on any rejection.
+10. invokes each explicitly supplied validator and fails on any rejection.
 
-The corpus provenance includes all required authority, source stream/chunk identities and hashes,
-event count, materializer/replay versions, replay SHA-256, NumericSpec/policy, baseline and first/
-last retained diff identities, actual consumed receive interval, and an explicit metadata-only
-conversion timestamp. Repeating with a different conversion timestamp leaves replay bytes,
-manifest, and every other provenance field identical.
+### Accepted bootstrap authority (restored)
 
-Example manual invocation after building both validation modes:
+Baseline selection follows the accepted M3/ADR-0005 contract (SOT-002/SOT-003; the Phase-1
+`classify_spot_bootstrap` decision table):
 
-```bash
-python3 tools/m5_recorded_corpus_materializer.py \
-  --source-root /immutable/source/root \
-  --source-inventory /immutable/source/root/m5_source_inventory.json \
-  --output build/m5-corpus/M5-REC-SPOT-BTCUSDT-V1 \
-  --market spot \
-  --target-live-updates 100000 \
-  --price-scale 8 \
-  --quantity-scale 8 \
-  --conversion-timestamp 2026-08-09T00:00:00Z \
-  --validator build/release/cmake/tests/bmd_projection_m5_corpus_validate \
-  --validator build/release/cmake/tests/bmd_projection_m5_adapter_corpus_validate
-```
+- **Spot**: bootstrap target is the snapshot `lastUpdateId` (`L`). `u < L` is stale and
+  discarded; `u == L` is a non-advancing duplicate and cannot form a bridge; the first advancing
+  bridge must contain `L`: `U <= L < u`. An advancing candidate with `U > L`, including the
+  exact-next range beginning at `L + 1`, is `SpotBootstrapForwardGap`. `L == UINT64_MAX` can
+  never form an advancing bridge and no successor arithmetic is performed. Source update IDs are
+  bounded to the uint64 domain at the materializer boundary.
+- **USD-M**: `u < L` is discarded; the first relevant bridge satisfies `U <= L <= u` and carries
+  `pu`; afterwards every advancing event requires `pu == previous accepted u`.
+- A snapshot that cannot establish any bridge (including one received outside the formal source
+  interval) is skipped in receive order and the next recorded snapshot is tried; the first
+  eligibility failure is reported if no snapshot synchronizes. A live continuity failure after a
+  proven bridge is NEVER retried against another snapshot: it propagates immediately
+  (regression test `test_post_bridge_live_failure_is_not_retried_as_snapshot_error`).
 
-The output directory must not already exist. Medium output belongs under an explicit local/build
-corpus directory and must not be committed.
+The Phase-3 `U <= L+1 <= u` regression (a materializer/Recorder-authority mismatch that mirrored
+Recorder R-034, an open historical semantic conflict) has been removed. Recorder reconstructor
+behavior explains how the recorded bytes look; it does not override the accepted Projection M3
+sequence policy, and the materializer now reproduces the projection's accepted semantics.
 
 ### Deterministic archive tests
 
-Fifteen standard-library tests build independent minimal Raw-v1 archives. They cover valid Spot
+Twenty-six standard-library tests build independent minimal Raw-v1 archives. They cover valid Spot
 and USD-M materialization across a chunk boundary, stale/duplicate input, repeatability,
 metadata-only conversion time, compressed zstd source where available, CRC32C known vector,
 outer-hash corruption, CRC corruption with matching outer hashes, missing chunks, incomplete
-inventory, missing snapshot, wrong symbol, wrong market, missing authority metadata, Spot missing
-bridge/forward gap, USD-M missing/incorrect `pu`, source ordering inversion, truncation,
-existing-output refusal, validator rejection without publishing partial output, and the
-production/test-source gate. Each valid fixture is passed to the compiled Phase-1 loader and Core
-differential validator.
+inventory, missing snapshot, wrong symbol, wrong market, missing authority metadata, Spot
+contains-`L` bridge acceptance (`U=99,u=101` and `U=100,u=101` against `L=100`), Spot exact-next
+bootstrap rejection (`U=101,u=101` and `U=101,u=103` against `L=100`), Spot stale/duplicate
+non-bridging, Spot `L == UINT64_MAX` non-bridging, source IDs outside uint64, Spot live exact-next
+validity after a bridge, Spot and USD-M snapshot skipping (too old / outside formal interval),
+post-bridge live failure propagation, USD-M missing/incorrect `pu`, source ordering inversion,
+truncation, existing-output refusal, validator rejection without publishing partial output, and
+the production/test-source gate. Each valid fixture is passed to the compiled Phase-1 loader and
+Core differential validator.
 
 ## Authoritative source availability
 
@@ -169,75 +269,78 @@ the planned-rotation window. Every artifact's stored SHA-256 and every manifest 
 verified source-to-staging and staging-to-local with zero mismatches. The inventory's Catalog SHA-256
 is `f7289fcc3383063c5e3b83e65201df29503cf7c9bba227dbb8298dcdb4805d8c`.
 
-### First-run rejection and materializer correction
+## Spot recorded-source eligibility (accepted semantics)
 
-The first authoritative run was rejected fail-closed:
+A re-scan of the SAME pinned authoritative source using the accepted Projection Spot bootstrap
+predicate found exactly two Spot `depth_snapshot` records:
+
+| Snapshot | Receive time | `L` | In formal interval | Bridge evidence |
+|---|---|---|---|---|
+| `f49af519-2332-47cc-9b19-692f77574281` | `2026-08-06T06:43:24.441592Z` | `98288147167` | yes | only advancing candidate is the resumed diff `U=98288147168 u=98288147175` — exact-next, does NOT contain `L` |
+| `f49af519-2332-47cc-9b19-692f77574281` | `2026-08-07T06:33:35.555641Z` | `98326157481` | no (outside formal interval) | not usable |
+
+The in-window snapshot's bridge diff begins exactly at `L + 1` (`U = 98288147168 > L`), which is a
+Spot bootstrap forward gap under the accepted `U <= L < u` contract. No other in-window baseline
+exists, and no contains-`L` event exists in the source for this baseline. The materializer therefore
+fails closed:
 
 ```text
 materialization=FAIL reason=Spot bootstrap forward gap before valid bridge
 ```
 
-Diagnosis against the actual source showed the recorded data follows the Recorder reconstructor's
-documented bootstrap authority at commit `cf1e749c` (R-034 open conflict):
-
 ```text
-Spot  accepts U <= snapshot.last_update_id + 1 <= u
-USD-M accepts U <= snapshot.last_update_id <= u
+SPOT AUTHORITATIVE CORPUS:
+INELIGIBLE UNDER ACCEPTED PROJECTION SPOT BOOTSTRAP POLICY
 ```
 
-The planned-rotation resync at `2026-08-06T06:43:11Z..06:43:23Z` recorded its REST baselines after
-the rotated diff stream resumed, so the first baseline's bridge diff covers the successor
-(`U = last_update_id + 1` for Spot) rather than the snapshot's own `last_update_id`. The USD-M
-resync retried with four snapshots (`06:43:25.936Z`, `06:43:27.475Z`, `06:43:29.845Z`,
-`06:43:34.164Z`); only the second and later snapshots can bridge the resumed diff chain
-(the first is `SNAPSHOT_TOO_OLD` in Recorder terms).
+No alternative semantics were invented, no snapshot was forced, and no synthetic contains-`L`
+event was created. The exact-next `U = L + 1` sequence is NOT valid Projection Spot bootstrap
+evidence (the successor rule belongs only to the already-synchronized LIVE state).
 
-This is a materializer/Recorder-authority mismatch (the "Case C" class), not corrupt or missing
-source. The minimum correction in `tools/m5_recorded_corpus_materializer.py`:
+## USD-M authoritative materialization and validation
 
-- Spot bootstrap target is now `last_update_id + 1` (mirroring R-034);
-- the baseline is the first recorded snapshot whose bridge can be proven, skipping
-  `SNAPSHOT_TOO_OLD` snapshots in receive order and failing closed when none can synchronize.
+`M5-REC-USDM-BTCUSDT-V1` materialized PASS from the pinned authoritative source
+(price/quantity scale 8/8, 100,000 target live updates):
 
-USD-M U/u/pu bridge and live semantics were already correct and are unchanged. Fail-closed behavior
-is preserved and covered by updated/added unit tests (17 tests, including both compiled validators).
+| Evidence | Value |
+|---|---|
+| Baseline snapshot | `3e1802ac-350b-4fb1-af3d-df7120ecd7d3`, receive `2026-08-06T06:43:27.475072Z` |
+| Baseline `lastUpdateId` (`L`) | `11224041769040` |
+| Bridge diff | `06f632bc-4b4c-4ebd-98ca-7fbe7fd172ad`, `U=11224041767914 u=11224041776042 pu=11224041767810` (`U <= L <= u`) |
+| First retained diff chunk | `06f632bc-4b4c-4ebd-98ca-7fbe7fd172ad` |
+| Last retained diff chunk | `0fd08708-bcb9-400c-a317-13e84ab7c01b` |
+| Source chunks consumed | 172 |
+| Total replay operations | 100,002 (1 baseline + 1 bridge + 100,000 live) |
+| Replay log SHA-256 | `d28ffe19e134e4d5d1c4d57a60762e8884dee676c858587224aebf8afed29afc` |
+| Final selected update ID | `11224984048179` |
+| Core validator | differential PASS, **medium_validation PASS** |
+| Adapter validator | differential PASS, **medium_validation PASS** |
 
-### Mandatory medium fixtures
+Validator lifecycle evidence (identical for Core and Adapter runs):
 
-Both medium fixtures materialized PASS from the authoritative source (price/quantity scale 8/8,
-100,000 target live updates after synchronization):
+```text
+baseline_result=INSTALLED            status_after_baseline=AWAITING_BRIDGE
+bridge_result=APPLIED                status_after_bridge=SYNCHRONIZED
+installed_count=1                    applied_count=100001
+ignored_stale_count=0                ignored_duplicate_count=0
+gap_detected_count=0                 rejected_wrong_state_count=0
+adapter_error_count=0                final_status=SYNCHRONIZED
+final_accepted_update_id=11224984048179
+last_selected_diff_final_update_id=11224984048179
+```
 
-| Fixture | Target live updates | Total replay operations | Replay log SHA-256 |
-|---|---:|---:|---|
-| `M5-REC-SPOT-BTCUSDT-V1` | 100,000 | 100,002 | `9e9831231192938ac1bd21c90b157ec17e8e2d4e8034131eb21ba57c99b2cc9d` |
-| `M5-REC-USDM-BTCUSDT-V1` | 100,000 | 100,002 | `d28ffe19e134e4d5d1c4d57a60762e8884dee676c858587224aebf8afed29afc` |
-
-Total replay operations = 1 baseline + 1 synchronization bridge + 100,000 live updates; the extra
-operations over 100,000 are the accepted baseline/bridge events and are not a count defect.
-
-| Evidence | Spot | USD-M |
-|---|---|---|
-| Baseline snapshot receive | 2026-08-06T06:43:24.441592Z | 2026-08-06T06:43:27.475072Z |
-| Baseline source chunk | `f49af519-2332-47cc-9b19-692f77574281` | `3e1802ac-350b-4fb1-af3d-df7120ecd7d3` |
-| Baseline `lastUpdateId` | 98288147167 | 11224041769040 |
-| First retained diff chunk | `20ed2f72-7cb8-4132-9275-4b4d748589c5` | `06f632bc-4b4c-4ebd-98ca-7fbe7fd172ad` |
-| Last retained diff chunk | `52edda7b-bd56-4129-82aa-eb5a38c04bf0` | `0fd08708-bcb9-400c-a317-13e84ab7c01b` |
-| Source chunks consumed | 169 | 172 |
-| Actual consumed interval | 06:43:24.441Z .. 09:30:40.066Z | 06:43:27.475Z .. 09:53:28.883Z |
-| Core differential | **PASS** | **PASS** |
-| Adapter differential | **PASS** | **PASS** |
-| Final checkpoint | `CHECKPOINT NEEDS_RESYNC last_update_id=98288147167` `last_gap={first=98288147168 final=98288147175 reason=SPOT_BOOTSTRAP_FORWARD_GAP}` | `CHECKPOINT NEEDS_RESYNC last_update_id=11224984048179` |
-
-Repeated materialization with different metadata-only conversion timestamps produced byte-identical
-`replay.log`, `manifest.txt`, and provenance (only the explicitly metadata-only
-`conversion_timestamp` differs) for both markets — **Materializer Determinism: PASS**. Repeated
-Core/Adapter replay over the repeated outputs shows no divergence, identical event counts, identical
-replay SHA-256, and the same final checkpoints — **repeatability: PASS**.
+The earlier report row `CHECKPOINT NEEDS_RESYNC last_update_id=11224984048179` was stale and
+inaccurate; actual current program output proves the regenerated corpus ends Synchronized with
+100,001 Applied operations and zero gaps. Repeated materialization with a different metadata-only
+conversion timestamp produced byte-identical `replay.log`, `manifest.txt`, and provenance (only the
+explicitly metadata-only `conversion_timestamp` differs) — **Materializer Determinism: PASS**.
+Repeated Core/Adapter validation over the repeated output shows no divergence, identical counts,
+identical replay SHA-256, and identical final checkpoints — **repeatability: PASS**.
 
 All authoritative/staged corpus data remains outside Git history under the ignored `build/`
 directory; no medium payload, Raw chunk, Catalog copy, or source manifest is committed.
 
-### Rotation diagnostic
+## Rotation diagnostic
 
 Requested interval: approximately `2026-08-06T06:43:11Z` through `2026-08-06T06:43:23Z`, with a
 design source window from `2026-08-06T06:33:11Z` through `2026-08-06T06:53:23Z`. Actual source
@@ -248,21 +351,57 @@ coverage and depth/generation records were inspected from the authoritative arch
   `06:43:04.693506Z -> 06:43:25.993641Z` (21.3 s, chunk `5b24ec2a` -> `06f632bc`), aligned with the
   planned rotation and matching a single connection/generation transition per market
   (Spot `a9109cc1` -> `a781779c`; USD-M `ed09a5b6` -> `5fba1a1c`).
-- REST resync snapshots immediately follow the gap: Spot one snapshot at `06:43:24.441592Z`
-  (`lastUpdateId=98288147167`); USD-M four resync-retry snapshots at `06:43:25.936749Z`,
-  `06:43:27.475072Z`, `06:43:29.845209Z`, `06:43:34.164671Z`.
-- Both bridges are proven by the materializer itself: Spot `U = lastUpdateId + 1`
-  (R-034 rule), USD-M first valid snapshot `U <= lastUpdateId <= u` with continuous `pu` chain
-  afterwards; the 100,000-live-update selection then proves post-resync diff continuity.
-- The USD-M `book_ticker` backpressure recovery events (pre-window `13:44:08`/`14:12:18`/`14:35:26`
-  and formal-window gen5 `13:46:28`/gen6 `14:48:33`) do not create any diff-depth gap and are not
-  used to manufacture a gap or rebaseline.
+- REST resync snapshots immediately follow the gap: Spot one in-window snapshot at
+  `06:43:24.441592Z` (`lastUpdateId=98288147167`); USD-M resync-retry snapshots at
+  `06:43:25.936749Z` (ineligible), `06:43:27.475072Z` (selected baseline
+  `lastUpdateId=11224041769040`), `06:43:29.845209Z`, `06:43:34.164671Z`.
+- The USD-M bridge is proven by the materializer under the accepted USD-M rule
+  (`U <= L <= u` with present `pu`) and the 100,000-live-update selection proves continuous `pu`
+  continuity afterwards; the strengthened validators prove every selected operation was Applied
+  with the projection Synchronized.
+- The Spot rotation bridge is NOT valid under the accepted Projection Spot bootstrap rule: the
+  resumed diff stream begins at `U = L + 1`, which the projection classifies as
+  `SpotBootstrapForwardGap`. The exact-next range is only a valid LIVE successor, not a bootstrap
+  bridge, so no Projection-valid Spot rotation rebaseline exists in this source.
 
-Eligibility: **ELIGIBLE**. The rotation window shows the planned depth resync with authoritative
-snapshot/diff records and materializer-proven bridges; no gap or rebaseline is manufactured.
+Eligibility:
+
+```text
+Rotation Spot:  NOT ELIGIBLE  (no valid Projection Spot bootstrap/rebaseline bridge in source)
+Rotation USD-M: ELIGIBLE      (materializer-proven bridge; validator-proven continuous pu chain)
+```
+
+The two market results are NOT combined into an unqualified global ELIGIBLE claim. The USD-M
+`book_ticker` backpressure recovery events (pre-window `13:44:08`/`14:12:18`/`14:35:26` and
+formal-window gen5 `13:46:28`/gen6 `14:48:33`) do not create any diff-depth gap and are not
+used to manufacture a gap or rebaseline.
 
 ## Strict phase boundary
 
 Phase 4 semantic observation serialization/digests/manifests and cross-compiler artifact transport
 are not implemented. Phase 5 fuzzing, Phase 6+ benchmarks/allocation/container work, Phase 10 CI
 jobs/workflows, and M6 remain not started. M4-IIR-3 remains DEFERRED / NON-BLOCKING.
+M5-P2-IR-008 and M5-P2-IR-009 remain DEFERRED / NON-BLOCKING (except the permitted incidental
+source-line context). M5-P3-IR-004 is resolved by the structured retry-error correction.
+
+## Phase 3 disposition
+
+```text
+Phase 3:
+PARTIAL / BLOCKED BY SPOT RECORDED-SOURCE INELIGIBILITY
+
+Spot medium:   INELIGIBLE UNDER ACCEPTED PROJECTION SPOT BOOTSTRAP CONTRACT
+Spot 100k:     NOT ESTABLISHED
+USD-M medium:  VALID (bridge Applied / Synchronized, 100,001 Applied, final Synchronized)
+USD-M 100k:    ESTABLISHED (100,000 post-synchronization live updates all Applied)
+
+M5-P3-IR-001:  CODE REGRESSION CORRECTED
+M5-P3-IR-002:  CORRECTED
+M5-P3-IR-003:  CORRECTED
+M5-P3-IR-004:  CORRECTED (structured retry error category)
+M5-P3-IR-005:  CORRECTED (status documentation synchronized)
+```
+
+No ADR amendment was created and no production semantic change was made. The mandatory Spot
+corpus requires a source that records a contains-`L` Spot bootstrap bridge; the pinned
+authoritative source does not contain one.

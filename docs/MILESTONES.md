@@ -268,7 +268,8 @@ No M5 production change or container migration is authorized by the design.
 OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions and CI policy
 are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
 M5 implementation is authorized. Phases 1 and 2 are complete and merged; Phase 3 is partial and
-blocked on the authoritative recorded-source archive. Later phases remain separate.
+blocked by Spot recorded-source ineligibility under the accepted Spot bootstrap contract. Later
+phases remain separate.
 
 Phase 1 canonical replay infrastructure is **COMPLETE / MERGED** (PR #11, merge
 `5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — PASS 16/16). It
@@ -283,12 +284,18 @@ with layer attribution) is **COMPLETE / MERGED** (PR #12, merge
 CI `31315421548` — PASS 16/16). M5-P2-IR-001 through M5-P2-IR-007 and M5-P2-RR-001 are CLOSED;
 M5-P2-IR-008 and M5-P2-IR-009 remain DEFERRED / NON-BLOCKING.
 
-Phase 3 is **PARTIAL / BLOCKED ON RECORDED SOURCE EVIDENCE**. Deterministic 2,048-event small-tier
-Spot and USD-M workloads, per-event scaled differential comparison, bounded observation retention,
-stable first-divergence diagnostics, and the independent offline Recorder Raw-v1 materializer are
-implemented. The exact OD-M5-001 24-hour archive is not locally accessible, so the mandatory Spot
-and USD-M 100k materializations, replay/repeatability evidence, and rotation eligibility assessment
-remain blocked. See `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`. Phase 4 is NOT STARTED.
+Phase 3 is **PARTIAL / BLOCKED BY SPOT RECORDED-SOURCE INELIGIBILITY**. Deterministic 2,048-event
+small-tier Spot and USD-M workloads, per-event scaled differential comparison, bounded observation
+retention, stable first-divergence diagnostics, the independent offline Recorder Raw-v1
+materializer, and validator-enforced medium lifecycle validity are implemented. The mandatory
+USD-M 100k corpus (`M5-REC-USDM-BTCUSDT-V1`) is validated PASS (bridge Applied / Synchronized,
+100,001 Applied, final Synchronized, zero gaps). The mandatory Spot 100k corpus is NOT ESTABLISHED:
+the pinned authoritative source's only in-window Spot baseline has only an exact-next
+(`U = L + 1`) bridge candidate, which the accepted Projection Spot bootstrap contract
+(`U <= L < u`) classifies as a bootstrap forward gap. The Phase-3 Spot bootstrap regression
+(M5-P3-IR-001), the medium-validity gate regression (M5-P3-IR-002), and the USD-M evidence
+correction (M5-P3-IR-003) are corrected. See `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`.
+Phase 4 is NOT STARTED.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 
