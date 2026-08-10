@@ -204,7 +204,7 @@ Phase 3 and later phases remain not started.
 
 | ID | Disposition |
 |---|---|
-| M5-P1-IR-1 | **CLOSED** - Spot bootstrap bridge follows the accepted M3/ADR-0005 contains-`L` rule |
+| M5-P1-IR-1 | **CLOSED** (semantics superseded) - Spot bootstrap bridge uses successor coverage `U <= L + 1` per ADR-0008; the earlier accepted M3/ADR-0005 contains-`L` rule is superseded by the official 2025-11-12 correction |
 | M5-P1-IR-2 | **CLOSED** |
 | M5-PIR-001 | **CLOSED** - explicit Spot/USD-M bootstrap and bridge materializer contract |
 | M5-PIR-002 | **DEFERRED / NON-BLOCKING** |

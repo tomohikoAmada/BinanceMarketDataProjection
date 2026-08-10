@@ -4,6 +4,16 @@ All notable changes will be recorded here.
 
 ## [Unreleased]
 
+### Changed
+
+- Corrected the M3 Spot bootstrap predicate to successor coverage (`U <= L + 1`, overflow-guarded)
+  per the official Binance 2025-11-12 correction of the Spot local-order-book instructions.
+  Exact-next bootstrap input is now a valid bridge; a true forward gap is `U > L + 1`.
+  ADR-0008 (`PROPOSED / PENDING INDEPENDENT REVIEW`) supersedes the Spot-bootstrap portion of
+  ADR-0005; USD-M semantics are unchanged. Production classifier, independent reference model,
+  unit/property/fuzz coverage, M5 replay classification, and semantic documentation were aligned.
+  M5 Phase-3 (PR #13) remains blocked pending review of this correction.
+
 ### Added
 
 - M5 architecture approval recorded: independent M5 architecture review **APPROVED**

@@ -12,6 +12,20 @@
 The accepted API and semantics in this document are implemented on `main` through merged PR #6.
 M3 is complete on main; M4 and later milestones remain separate future work.
 
+## Semantic correction record (2026-08-10)
+
+The **Spot bootstrap** semantics in this document were corrected after the official Binance Spot
+instructions changed on 2025-11-12 (commit `114929f2bff403e8f62067f6993aa9c2c957e5d3`). The
+corrected apply-time rule is: an advancing event is continuous iff `U <= local_update_id + 1 <= u`;
+an exact-next range beginning at `L + 1` is a valid bootstrap bridge, and a true forward gap is
+`U > L + 1`. The original M3 proposal (`1ebe809c`) selected successor coverage; the review
+correction (`58dfcb82`) changed bootstrap to contains-`L`; the corrected upstream evidence now
+supersedes that decision for Spot bootstrap via
+[ADR-0008](adr/ADR-0008-spot-bootstrap-successor-coverage.md) (`PROPOSED / PENDING INDEPENDENT
+REVIEW`). USD-M semantics are unchanged. Sections below that describe Spot bootstrap behavior are
+updated to the corrected rule; historical contains-`L` wording remains recorded in the ADR-0005
+decision history and is not silently rewritten.
+
 ## Design acceptance
 
 - External architecture review round 1: CHANGES REQUESTED
@@ -152,7 +166,7 @@ official pages; it does not copy their text as a substitute for the sources.
 | Difference | Evidence | M3 interpretation | Reason and tests |
 |---|---|---|---|
 | Spot bootstrap uses `u <= L` as stale, while Spot live handling says ignore only `u < current`. | Current official Spot instructions. | During `AwaitingBridge`, `u < L` is `IgnoredStale` and `u == L` is `IgnoredDuplicate`; both remain unsynchronized. During live operation the same two outcomes remain distinct and equality is not reapplied. | The split preserves the official bootstrap discard set, avoids allowing same-ID/different-content input to rewrite accepted state while identity is TBD, and gives stable observability for equality. Tests lock both branches. |
-| Spot bootstrap requires the first surviving interval to contain `L`, while Spot live continuity permits an event beginning exactly at `current + 1`. | Current official Spot instructions. The fixed Contracts handoff fixture records only one `update_id` field after snapshot 500 and cannot establish the original `U/u` interval; it is not evidence for an exact-next bootstrap bridge. | Bootstrap and live are separate rules. A Spot bridge requires `u > L` and `U <= L <= u`; an advancing bootstrap candidate with `U > L` is a gap. Once synchronized, an advancing range is accepted when `U` is no later than the overflow-safe successor of current. | This follows the official contains-`L` bootstrap rule without importing the distinct live predicate. Tests reject `[501,501]` and `[501,502]` against `L=500` during bootstrap, while accepting exact-next during live operation. |
+| Spot bootstrap requires the first surviving interval to contain `L`, while Spot live continuity permits an event beginning exactly at `current + 1`. | Current official Spot instructions. The fixed Contracts handoff fixture records only one `update_id` field after snapshot 500 and cannot establish the original `U/u` interval; it is not evidence for an exact-next bootstrap bridge. | Superseded by the 2025-11-12 official correction (commit `114929f2bff403e8f62067f6993aa9c2c957e5d3`) and the official example predicate `U <= last_update_id + 1 <= u`: bootstrap and live share successor coverage. A Spot bridge requires `u > L` and `U <= L + 1`; an advancing bootstrap candidate with `U > L + 1` is `SpotBootstrapForwardGap`. | The corrected rule treats the normal successor (exact-next) as continuous; only a start later than the successor is a gap. Tests accept `[501,501]` and `[501,502]` against `L=500` during bootstrap and reject `[502,502]`. Historical contains-`L` decision recorded in ADR-0005 and superseded by ADR-0008. |
 | A USD-M bridge may end exactly at `L`, and Binance snapshots have a finite depth limit. | Official USD-M bootstrap and absolute-quantity rules; the official pages warn that snapshot depth is limited. | A relevant USD-M event satisfying `U <= L == u` applies every absolute-quantity level transactionally, keeps the accepted ID at `L`, and enters `Synchronized` only after commit. | A bridge can carry a changed price outside the retained snapshot depth. Skipping its levels could omit valid state. Focused book-content and allocation-failure tests lock the equality case. |
 | Spot live continuity uses an interval; USD-M live continuity uses `pu`. | Official product pages. | Spot uses successor coverage. USD-M requires a present `previous_final_update_id` equal to the last accepted `u`; no additional Spot interval-continuity rule is imposed on USD-M live events. | `pu` is the product-specific continuity anchor for batched Futures intervals. Cross-policy tests ensure the rules cannot be accidentally unified. |
 
@@ -238,7 +252,7 @@ M3 selects a closed, immutable value policy at `BookProjection` construction:
 
 | Policy kind | Product | Bootstrap anchor | Live continuity anchor | `previous_final_update_id` |
 |---|---|---|---|---|
-| `Spot` | Binance Spot | Advancing range contains `L`: `U <= L < u` | Advancing range starts no later than the overflow-safe successor of current | Ignored whether absent or present |
+| `Spot` | Binance Spot | Advancing range covers the successor of `L`: `U <= L + 1` (overflow-guarded) | Advancing range starts no later than the overflow-safe successor of current | Ignored whether absent or present |
 | `UsdMPerpetual` | Binance USD(S)-M perpetual | Range contains `L` | Present `pu == current` for every advancing batch | Required for relevant bridge/live candidates |
 
 The implementation will use the market-facing enum and small internal pure classification
@@ -286,7 +300,7 @@ book exactly unchanged. Every `DepthBatch` in this matrix already contains a val
 | `AwaitingBridge` | Install newer baseline | Same rules | Atomically replaces pending baseline | Replace `L` | `AwaitingBridge` / `Installed` | Strong |
 | `NeedsResync` | Install new baseline after gap | Same rules | Atomically replaces preserved stale book | Replace accepted ID with new `L`; retain last-gap evidence | `AwaitingBridge` / `Installed` | Strong |
 | `Synchronized` | Install baseline without reset | Wrong lifecycle | No | No | `Synchronized` / `RejectedWrongState` install result | No-throw result |
-| `AwaitingBridge` | Accept Spot bridge | `u > L` and range contains `L`: `U <= L <= u` | Apply all levels atomically | Set accepted ID to `u` | `Synchronized` / `Applied` | Strong |
+| `AwaitingBridge` | Accept Spot bridge | `u > L` and range covers the successor of `L`: `U <= L + 1` | Apply all levels atomically | Set accepted ID to `u` | `Synchronized` / `Applied` | Strong |
 | `AwaitingBridge` | Accept Futures bridge with `u > L` | Valid range contains `L`; relevant `pu` present | Apply all levels atomically | Set accepted ID to `u` | `Synchronized` / `Applied` | Strong |
 | `AwaitingBridge` | Accept USD-M equality bridge with `u == L` | Range contains `L`; relevant `pu` present | Apply all absolute-quantity levels atomically | ID remains `L`; bridge becomes established only after commit | `Synchronized` / `Applied` | Strong; failure leaves the exact baseline and `AwaitingBridge` state |
 | `Synchronized` | Accept live update | Policy continuity succeeds | Apply all levels atomically, including an empty level set | Advance accepted ID to `u` | `Synchronized` / `Applied` | Strong |
@@ -338,16 +352,20 @@ reveals pending state only to callers that opt into diagnostic semantics.
 
 1. Ignore `u < L` as stale and `u == L` as a sequence duplicate; both leave the projection in
    `AwaitingBridge`.
-2. For the first candidate with `u > L`, require the inclusive interval to contain the snapshot
-   ID: `U <= L <= u`. Because `u > L` is already established, the bridge predicate can also be
-   written `U <= L < u` and requires no successor arithmetic.
-3. If the interval contains `L`, atomically apply all absolute-quantity levels, set the accepted ID
-   to `u`, and enter `Synchronized`.
-4. If `U > L`, record `SpotBootstrapForwardGap`, enter `NeedsResync`, and preserve the baseline.
+2. For the first candidate with `u > L`, require the inclusive interval to cover the successor of
+   the snapshot ID: `U <= L + 1` with the guarded successor predicate (never evaluates
+   `UINT64_MAX + 1`). Because `u > L` is already established, the bridge predicate can also be
+   written `U <= L + 1 < u` or `U == L + 1` for exact-next input.
+3. If the interval covers the successor, atomically apply all absolute-quantity levels, set the
+   accepted ID to `u`, and enter `Synchronized`.
+4. If `U > L + 1`, record `SpotBootstrapForwardGap`, enter `NeedsResync`, and preserve the
+   baseline.
 
-An exact-next range beginning at `L + 1` is therefore a Spot bootstrap gap even though an exact-next
-range is valid after the projection is synchronized. Bootstrap contains-`L` and live successor
-coverage are deliberately different official rules.
+An exact-next range beginning at `L + 1` is therefore a valid Spot bootstrap bridge: the official
+2025-11-12 correction and the official example predicate `U <= last_update_id + 1 <= u` treat it
+as the normal successor. A true forward gap is a start later than `L + 1`. Bootstrap and live
+successor coverage share the same predicate; lifecycle-specific gap reasons remain distinct.
+Historical contains-`L` decision: ADR-0005, superseded by ADR-0008.
 
 ### USD-M Futures bootstrap
 
@@ -784,7 +802,7 @@ path.
 | Area | Required cases |
 |---|---|
 | Update ID/range | IDs zero and max; ranges `[0,0]`, `[0,max]`, `[max,max]`, and `first < final` construct successfully; `try_create(first > final)` returns `nullopt`; range accessors/equality; guarded live successor at max |
-| Spot bootstrap | `L=500`: `[499,501]` and `[500,501]` apply; `[501,501]` and `[501,502]` detect `SpotBootstrapForwardGap`; `u=500` is duplicate; `u=499` is stale; empty-level contains-`L` bridge; `L=max` cannot advance |
+| Spot bootstrap | `L=500`: `[499,501]`, `[500,501]`, `[501,501]`, and `[501,502]` apply; `[502,502]` and `[502,503]` detect `SpotBootstrapForwardGap`; `u=500` is duplicate; `u=499` is stale; empty-level successor-coverage bridge; `L=max` cannot advance |
 | Spot live | exact-next, overlap, stale, equality duplicate, forward gap, max final, previous-final present but ignored |
 | USD-M bootstrap | contains-`L` bridge with `u > L`; `U <= L == u` applies every level; equality bridge adds a deeper price absent from the limited baseline; ID remains `L`; missing `pu`; range miss; exact-next range miss; allocation failure preserves the exact pending baseline |
 | USD-M live | present `pu == current`; missing `pu`; mismatched `pu`; stale and duplicate classified before `pu`; empty advancing update |
@@ -811,9 +829,9 @@ Deterministic generators will produce:
 
 - legal continuous Spot and USD-M sequences;
 - valid batch intervals and overlapping ranges;
-- Spot bootstrap intervals that contain `L` and exact-next bootstrap intervals that must gap;
+- Spot bootstrap intervals that contain `L` or start at the successor `L + 1` (both continuous);
 - stale and equality-duplicate batches;
-- Spot forward gaps;
+- Spot forward gaps (start later than the successor);
 - USD-M missing/mismatched `pu` and equality bridges whose levels change the reference book without
   advancing the ID;
 - reset and new-baseline operations;
@@ -846,7 +864,7 @@ abort on any mismatch.
 
 An independent range-factory fuzz input may exercise arbitrary `(first, final)` pairs, but a failed
 factory result is never forwarded to projection apply. Seed corpus categories will include: empty
-baseline, zero/max IDs, Spot contains-`L` overlap bridge, Spot exact-next bootstrap gap, Spot
+baseline, zero/max IDs, Spot contains-`L` overlap bridge, Spot exact-next bootstrap bridge, Spot
 exact-next live acceptance, USD-M `u > L` bridge, USD-M equality bridge that adds a
 snapshot-depth-excluded price, multi-ID live ranges, empty advancing update, duplicate, stale,
 forward gap, `pu` mismatch, missing `pu`, reset/rebaseline, crossed book, zero delete, missing delete,
@@ -855,7 +873,7 @@ duplicate price, and query in every state.
 ### Replay determinism
 
 Each curated Spot and USD-M transcript is replayed into two fresh projections. The corpus includes
-a Spot exact-next bootstrap gap, a Spot exact-next live update, and a USD-M equality bridge whose
+a Spot exact-next bootstrap bridge, a Spot exact-next live update, and a USD-M equality bridge whose
 levels change the book while its ID remains `L`. The complete result sequence and every checkpoint
 listed in the determinism invariants must compare equal. A second test resets and replays into the
 same projection and compares with a fresh instance.

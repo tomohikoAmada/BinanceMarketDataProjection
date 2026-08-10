@@ -37,8 +37,9 @@ production pipeline and the reference pipeline through their public APIs.
   runtime, never as a cross-toolchain correctness claim.
 - Cross-toolchain correctness is proven by identical SHA-256 semantic digests over the
   canonical OperationObservation stream.
-- A production order-book container change requires a separate, later decision (proposed as
-  ADR-0008 at migration time) backed by the benchmark evidence and decision criteria defined in the
+- A production order-book container change requires a separate, later decision (a dedicated ADR
+  at migration time; the ADR-0008 number is taken by the Spot bootstrap successor-coverage
+  correction) backed by the benchmark evidence and decision criteria defined in the
   M5 design.
 
 ## Consequences

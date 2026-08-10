@@ -280,6 +280,16 @@ neutral ReplayDriver, OperationObservation, semantic checkpoints, first-divergen
 with layer attribution) is **IMPLEMENTED / PENDING INDEPENDENT REVIEW** — see
 `docs/M5_PHASE2_DIFFERENTIAL_ORACLE.md`. Phase 3 and later work is not started.
 
+### M3 semantic correction blocking PR #13 (2026-08-10)
+
+The M5 Phase-3 continuation (PR #13) is **blocked pending the M3 Spot bootstrap semantic
+correction** recorded in [ADR-0008](adr/ADR-0008-spot-bootstrap-successor-coverage.md)
+(`PROPOSED / PENDING INDEPENDENT REVIEW`), not by proven Spot source ineligibility. The earlier
+claim that the pinned in-window Spot archive is ineligible rested on the superseded contains-`L`
+predicate; under the corrected successor-coverage rule an advancing candidate beginning at
+`L + 1` is a valid bootstrap bridge, so the Spot corpus gate must be re-evaluated after the
+correction is reviewed and merged. This branch changes no M5 Phase-3 materializer code.
+
 ### Deferred M4 P2 findings
 
 The three deferred M4 P2 findings remain open and non-blocking. M5 design dispositions:

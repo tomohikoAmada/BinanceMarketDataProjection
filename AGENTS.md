@@ -3,6 +3,22 @@
 Before changing this repository, read `README.md`, `ARCHITECTURE.md`, `docs/MILESTONES.md`, and all
 relevant files under `docs/adr/`.
 
+## Source-of-truth precedence
+
+Evidence hierarchy for semantic decisions:
+
+1. **External protocol facts** — official upstream Binance documentation and official Binance
+   reference implementations, inspected directly (commit diffs and checked-out files), override
+   local interpretation when they conflict.
+2. **Local implementation facts** — checked-out code, Git history, tests, and build/CI evidence.
+3. **Accepted ADRs** — govern local deliberate behavior unless contradicted by a higher-authority
+   upstream protocol fact; such a conflict requires an explicit ADR correction (new ADR or
+   amendment) and independent review. Never silently rewrite an accepted ADR's history.
+
+Local documentation, PR bodies, Recorder behavior, and unmerged branches are evidence only and
+must not define exchange semantics. A live web page is never a build dependency; verified protocol
+facts are recorded in an ADR before code changes rely on them.
+
 - Do not manually edit generated files. `conan.lock` is updated through Conan; generated dependency
   and CMake files belong under ignored build/cache directories.
 - Do not add networking, storage, threads, system-time reads, logging, or host runtime concerns to
