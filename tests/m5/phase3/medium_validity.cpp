@@ -100,7 +100,7 @@ class Parser final {
         return std::nullopt;
     }
 
-    [[nodiscard]] int hex_value(char character) noexcept {
+    [[nodiscard]] static int hex_value(char character) noexcept {
         if (character >= '0' && character <= '9') {
             return character - '0';
         }
@@ -113,7 +113,7 @@ class Parser final {
         return -1;
     }
 
-    void append_utf8(std::string& out, std::uint32_t code_point) {
+    static void append_utf8(std::string& out, std::uint32_t code_point) {
         if (code_point < 0x80) {
             out.push_back(static_cast<char>(code_point));
         } else if (code_point < 0x800) {
@@ -123,6 +123,61 @@ class Parser final {
             out.push_back(static_cast<char>(0xE0 | (code_point >> 12)));
             out.push_back(static_cast<char>(0x80 | ((code_point >> 6) & 0x3F)));
             out.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
+        }
+    }
+
+    // Decodes one backslash escape into out. Returns false on a malformed
+    // escape; the caller then fails closed.
+    [[nodiscard]] bool parse_escape(std::string& out) {
+        if (offset_ >= text_.size()) {
+            return false;
+        }
+        const char escape = text_[offset_++];
+        switch (escape) {
+        case '"':
+            out.push_back('"');
+            return true;
+        case '\\':
+            out.push_back('\\');
+            return true;
+        case '/':
+            out.push_back('/');
+            return true;
+        case 'b':
+            out.push_back('\b');
+            return true;
+        case 'f':
+            out.push_back('\f');
+            return true;
+        case 'n':
+            out.push_back('\n');
+            return true;
+        case 'r':
+            out.push_back('\r');
+            return true;
+        case 't':
+            out.push_back('\t');
+            return true;
+        case 'u': {
+            if (offset_ + 4 > text_.size()) {
+                return false;
+            }
+            std::uint32_t code_point = 0;
+            for (int index = 0; index < 4; ++index) {
+                const int digit = hex_value(text_[offset_++]);
+                if (digit < 0) {
+                    return false;
+                }
+                code_point = code_point * 16 + static_cast<std::uint32_t>(digit);
+            }
+            if (code_point >= 0xD800 && code_point <= 0xDFFF) {
+                return false;
+            }
+            append_utf8(out, code_point);
+            return true;
+        }
+        default:
+            return false;
         }
     }
 
@@ -143,54 +198,7 @@ class Parser final {
                 out.push_back(character);
                 continue;
             }
-            if (offset_ >= text_.size()) {
-                return std::nullopt;
-            }
-            const char escape = text_[offset_++];
-            switch (escape) {
-            case '"':
-                out.push_back('"');
-                break;
-            case '\\':
-                out.push_back('\\');
-                break;
-            case '/':
-                out.push_back('/');
-                break;
-            case 'b':
-                out.push_back('\b');
-                break;
-            case 'f':
-                out.push_back('\f');
-                break;
-            case 'n':
-                out.push_back('\n');
-                break;
-            case 'r':
-                out.push_back('\r');
-                break;
-            case 't':
-                out.push_back('\t');
-                break;
-            case 'u': {
-                if (offset_ + 4 > text_.size()) {
-                    return std::nullopt;
-                }
-                std::uint32_t code_point = 0;
-                for (int index = 0; index < 4; ++index) {
-                    const int digit = hex_value(text_[offset_++]);
-                    if (digit < 0) {
-                        return std::nullopt;
-                    }
-                    code_point = code_point * 16 + static_cast<std::uint32_t>(digit);
-                }
-                if (code_point >= 0xD800 && code_point <= 0xDFFF) {
-                    return std::nullopt;
-                }
-                append_utf8(out, code_point);
-                break;
-            }
-            default:
+            if (!parse_escape(out)) {
                 return std::nullopt;
             }
         }
@@ -316,10 +324,25 @@ class Parser final {
 
 [[nodiscard]] std::optional<std::uint64_t>
 last_selected_diff_final_update_id(const replay::ReplayFixture& fixture) {
-    for (auto iterator = fixture.replay.operations.rbegin();
-         iterator != fixture.replay.operations.rend(); ++iterator) {
-        if (const auto* depth = std::get_if<replay::DepthUpdateOp>(&*iterator)) {
-            return depth->final_update_id;
+    const auto found =
+        std::find_if(fixture.replay.operations.rbegin(), fixture.replay.operations.rend(),
+                     [](const replay::Operation& operation) {
+                         return std::holds_alternative<replay::DepthUpdateOp>(operation);
+                     });
+    if (found == fixture.replay.operations.rend()) {
+        return std::nullopt;
+    }
+    return std::get<replay::DepthUpdateOp>(*found).final_update_id;
+}
+
+// First emitted depth result that violates the medium contract (not Applied
+// while Synchronized); the caller reports the stable reason and event index.
+[[nodiscard]] std::optional<oracle::CompactDepthResult>
+first_depth_violation(const oracle::ExecutionSummary& summary) {
+    for (const auto& depth : summary.depth_results) {
+        if (depth.disposition != oracle::CanonicalDisposition::Applied ||
+            depth.status_after != oracle::CanonicalStatus::Synchronized) {
+            return depth;
         }
     }
     return std::nullopt;
@@ -417,15 +440,11 @@ MediumValidityReport check_medium_validity(const oracle::ReplayOutcome& outcome,
     if (summary.depth_events != expected_depth_events) {
         return fail("unexpected-depth-event-count");
     }
-    for (const auto& depth : summary.depth_results) {
-        if (depth.disposition != CanonicalDisposition::Applied ||
-            depth.status_after != CanonicalStatus::Synchronized) {
-            if (report.first_depth_update.has_value() &&
-                depth.event_index == report.first_depth_update->event_index) {
-                return fail("bridge-not-applied", depth.event_index);
-            }
-            return fail("depth-update-not-applied", depth.event_index);
-        }
+    if (const auto violation = first_depth_violation(summary)) {
+        const bool is_bridge = report.first_depth_update.has_value() &&
+                               violation->event_index == report.first_depth_update->event_index;
+        return fail(is_bridge ? "bridge-not-applied" : "depth-update-not-applied",
+                    violation->event_index);
     }
     if (report.gap_detected_count != 0) {
         return fail("gap-detected");
