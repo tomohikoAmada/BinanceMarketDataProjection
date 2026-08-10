@@ -42,3 +42,8 @@ code changes rely on them.
 - Do not use system-global package installation. Keep virtual environments, caches, and builds in
   this repository.
 - Preserve single-writer determinism and keep Core independent of Gateway and History.
+
+Recommended AI/reviewer reading order: `docs/CURRENT_STATE.md`, `AGENTS.md`, `README.md`,
+`ARCHITECTURE.md`, the current milestone/M5 implementation document, relevant accepted ADRs, actual
+code/tests, and the active PR body plus exact-head CI. `docs/CURRENT_STATE.md` is orientation only;
+accepted ADRs and semantic designs remain authoritative.

@@ -8,7 +8,7 @@
   `5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — PASS 16/16)
 - Phase 2 status: **COMPLETE / MERGED** (PR #12, merge
   `75c619dd683ff2a3893f9535e206231e7bfecc41`, post-merge main CI `31315421548` — PASS 16/16)
-- Phase 3 status: **PARTIAL / BLOCKED ON RECORDED SOURCE EVIDENCE** — see
+- Phase 3 status: **PARTIAL / BLOCKED BY SPOT RECORDED-SOURCE INELIGIBILITY** — see
   `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`
 - ADR status: **ACCEPTED** (ADR-0007)
 - Design date: 2026-08-08

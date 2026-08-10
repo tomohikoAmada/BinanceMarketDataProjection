@@ -198,10 +198,12 @@ Phase 1 is **COMPLETE / MERGED** (PR #11, merge `5e8629a7ff825f8ea941304d9b09be1
 post-merge main CI `31264500905` — PASS 16/16). Phase 2 (independent differential oracle:
 R1 promoted, R4 new, neutral ReplayDriver, OperationObservation, layer attribution) is
 **COMPLETE / MERGED** (PR #12, merge `75c619dd683ff2a3893f9535e206231e7bfecc41`, post-merge main
-CI `31315421548` — PASS 16/16). Phase 3 is **PARTIAL / BLOCKED ON RECORDED SOURCE EVIDENCE**:
-the deterministic small-tier, scaled-comparison, diagnostic, and Raw-v1 materializer foundation is
-implemented, while both mandatory medium corpora and the rotation assessment await the exact
-authoritative archive. Phase 4 and later phases remain not started. See
+CI `31315421548` — PASS 16/16). Phase 3 is **PARTIAL / BLOCKED BY SPOT RECORDED-SOURCE INELIGIBILITY**:
+the deterministic small-tier, scaled-comparison, diagnostic, Raw-v1 materializer, and medium
+lifecycle-validation foundation is implemented. The authoritative archive was found and validated;
+the mandatory Spot source is ineligible under the accepted contains-`L` bootstrap rule, while the
+USD-M medium corpus is validated and the USD-M rotation evidence is eligible. Phase 4 and later
+phases remain not started. See
 `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`.
 
 ## Phase 1 Review Dispositions

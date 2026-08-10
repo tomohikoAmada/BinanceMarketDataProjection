@@ -3,7 +3,16 @@
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. M1 through M4 are complete on `main`; M5 (Differential Validation and
 Performance) implementation is in progress (Phases 1 and 2 merged, Phase 3 foundation implemented
-but blocked on the authoritative recorded-source archive).
+but Phase 3 is partial because the pinned authoritative Spot source is ineligible under the accepted
+Projection bootstrap policy; the USD-M medium corpus is validated.
+
+## For AI agents and independent reviewers
+
+Start with [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md), then read [`AGENTS.md`](AGENTS.md),
+this README, [`ARCHITECTURE.md`](ARCHITECTURE.md), the current milestone and M5 phase documents,
+the relevant accepted ADRs, actual code/tests, and finally PR #13 plus its exact-head CI. The
+orientation file is a summary only; accepted ADRs/designs and current GitHub/code state remain
+authoritative.
 
 This is an unofficial project and is not affiliated with, endorsed by, or sponsored by Binance.
 This module does not connect to Binance, use API keys, place orders, or contain trading strategies.
