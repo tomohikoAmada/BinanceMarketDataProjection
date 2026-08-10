@@ -33,13 +33,15 @@ TEST(M5ReplayFixtureTest, LoadsSpotUsdMAndRecoveryTinyFixtures) {
     }
 }
 
-TEST(M5ReplayFixtureTest, SpotBootstrapBridgeFollowsAcceptedM3ContainsLRule) {
+TEST(M5ReplayFixtureTest, SpotBootstrapBridgeUsesSuccessorCoverage) {
     using enum replay::SpotBootstrapOutcome;
     const std::vector<SpotBootstrapCase> cases = {
         {500, {499, 501}, BridgeCandidate},
         {500, {500, 501}, BridgeCandidate},
-        {500, {501, 501}, ForwardGap},
-        {500, {501, 502}, ForwardGap},
+        {500, {501, 501}, BridgeCandidate},
+        {500, {501, 502}, BridgeCandidate},
+        {500, {502, 502}, ForwardGap},
+        {500, {502, 503}, ForwardGap},
         {500, {400, 500}, NonAdvancingDuplicate},
         {500, {499, 500}, NonAdvancingDuplicate},
         {500, {400, 499}, Stale},
@@ -63,11 +65,11 @@ TEST(M5ReplayFixtureTest, SpotBootstrapBridgeFollowsAcceptedM3ContainsLRule) {
 TEST(M5ReplayFixtureTest, EncodesExplicitBootstrapBridgeContracts) {
     const auto spot = replay::spot_materializer_contract();
     EXPECT_EQ(spot.snapshot_identity, "REST depth snapshot lastUpdateId=L");
-    EXPECT_EQ(spot.first_bridge_rule, "first advancing bridge satisfies U <= L < u");
+    EXPECT_EQ(spot.first_bridge_rule, "first advancing bridge covers the successor: U <= L + 1");
     EXPECT_EQ(spot.discard_rule,
               "stale: u < L; duplicate/non-advancing: u == L and cannot form a bridge");
-    EXPECT_EQ(spot.first_bridge_rule.find("L+1"), std::string::npos);
-    EXPECT_EQ(spot.discard_rule.find("L+1"), std::string::npos);
+    EXPECT_NE(spot.first_bridge_rule.find("L + 1"), std::string::npos);
+    EXPECT_EQ(spot.discard_rule.find("L + 1"), std::string::npos);
     EXPECT_NE(spot.post_bridge_rule.find("local_last_update_id+1"), std::string::npos);
     EXPECT_NE(spot.buffer_window.find("snapshot acquisition"), std::string::npos);
     EXPECT_NE(spot.failure_rule.find("rejects"), std::string::npos);

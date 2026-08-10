@@ -314,8 +314,9 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
                 const auto current = model.last().value();
                 if (spot) {
                     if (current < UINT64_MAX) {
+                        const bool exact_next = (operation[7] & 1U) != 0;
                         const auto first = model.status() == reference::Status::AwaitingBridge
-                                               ? current
+                                               ? (exact_next ? current + 1U : current)
                                                : current + 1U;
                         apply_valid(production, model, first, current + 1U, std::nullopt, raw);
                     }

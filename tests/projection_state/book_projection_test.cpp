@@ -194,12 +194,12 @@ class SpotBootstrapTableTest
 
 TEST_P(SpotBootstrapTableTest, AppliesAcceptedIntervalsAndClassifiesOthers) {
     const auto [first, final, disposition, status, reason] = GetParam();
-    auto projection = make_spot_at_bridge();
+    auto projection = make_spot_at_bridge(100);
     const auto result = helper::apply(projection, first, final, 999);
     EXPECT_EQ(result.disposition, disposition);
     EXPECT_EQ(result.status_after, status);
     if (reason.has_value()) {
-        expect_gap(projection, result, reason.value(), bmd::SequencePolicyKind::Spot, 500, first,
+        expect_gap(projection, result, reason.value(), bmd::SequencePolicyKind::Spot, 100, first,
                    final, 999);
     } else {
         EXPECT_FALSE(result.gap.has_value());
@@ -207,22 +207,28 @@ TEST_P(SpotBootstrapTableTest, AppliesAcceptedIntervalsAndClassifiesOthers) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    ApprovedIntervals, SpotBootstrapTableTest,
+    SpotBootstrapMatrix, SpotBootstrapTableTest,
     ::testing::Values(
-        std::make_tuple(499U, 501U, bmd::ApplyDisposition::Applied,
-                        bmd::ProjectionStatus::Synchronized, std::optional<bmd::GapReason>{}),
-        std::make_tuple(500U, 501U, bmd::ApplyDisposition::Applied,
-                        bmd::ProjectionStatus::Synchronized, std::optional<bmd::GapReason>{}),
-        std::make_tuple(501U, 501U, bmd::ApplyDisposition::GapDetected,
-                        bmd::ProjectionStatus::NeedsResync,
-                        std::optional{bmd::GapReason::SpotBootstrapForwardGap}),
-        std::make_tuple(501U, 502U, bmd::ApplyDisposition::GapDetected,
-                        bmd::ProjectionStatus::NeedsResync,
-                        std::optional{bmd::GapReason::SpotBootstrapForwardGap}),
-        std::make_tuple(400U, 499U, bmd::ApplyDisposition::IgnoredStale,
+        std::make_tuple(90U, 99U, bmd::ApplyDisposition::IgnoredStale,
                         bmd::ProjectionStatus::AwaitingBridge, std::optional<bmd::GapReason>{}),
-        std::make_tuple(499U, 500U, bmd::ApplyDisposition::IgnoredDuplicate,
-                        bmd::ProjectionStatus::AwaitingBridge, std::optional<bmd::GapReason>{})));
+        std::make_tuple(99U, 100U, bmd::ApplyDisposition::IgnoredDuplicate,
+                        bmd::ProjectionStatus::AwaitingBridge, std::optional<bmd::GapReason>{}),
+        std::make_tuple(100U, 100U, bmd::ApplyDisposition::IgnoredDuplicate,
+                        bmd::ProjectionStatus::AwaitingBridge, std::optional<bmd::GapReason>{}),
+        std::make_tuple(99U, 101U, bmd::ApplyDisposition::Applied,
+                        bmd::ProjectionStatus::Synchronized, std::optional<bmd::GapReason>{}),
+        std::make_tuple(100U, 101U, bmd::ApplyDisposition::Applied,
+                        bmd::ProjectionStatus::Synchronized, std::optional<bmd::GapReason>{}),
+        std::make_tuple(101U, 101U, bmd::ApplyDisposition::Applied,
+                        bmd::ProjectionStatus::Synchronized, std::optional<bmd::GapReason>{}),
+        std::make_tuple(101U, 103U, bmd::ApplyDisposition::Applied,
+                        bmd::ProjectionStatus::Synchronized, std::optional<bmd::GapReason>{}),
+        std::make_tuple(102U, 102U, bmd::ApplyDisposition::GapDetected,
+                        bmd::ProjectionStatus::NeedsResync,
+                        std::optional{bmd::GapReason::SpotBootstrapForwardGap}),
+        std::make_tuple(102U, 103U, bmd::ApplyDisposition::GapDetected,
+                        bmd::ProjectionStatus::NeedsResync,
+                        std::optional{bmd::GapReason::SpotBootstrapForwardGap})));
 
 TEST(BookProjectionSpotBootstrapTest, AcceptedBridgeAppliesLevelsAndIgnoresPreviousFinal) {
     auto projection = make_spot_at_bridge();
@@ -238,6 +244,23 @@ TEST(BookProjectionSpotBootstrapTest, AcceptedBridgeAppliesLevelsAndIgnoresPrevi
     EXPECT_EQ(projection.synchronized_book()->get().best_bid()->quantity, helper::quantity(3));
 }
 
+TEST(BookProjectionSpotBootstrapTest, ExactNextBridgeAppliesLevelsAndAdvancesToFinal) {
+    auto projection = make_spot_at_bridge(100);
+    const std::array levels = {
+        bmd::LevelUpdate{bmd::BookSide::Bid, helper::price(100), helper::quantity(7)},
+    };
+    const auto result = helper::apply(projection, 101, 101, 42, levels);
+
+    EXPECT_EQ(result.disposition, bmd::ApplyDisposition::Applied);
+    EXPECT_EQ(result.status_after, bmd::ProjectionStatus::Synchronized);
+    EXPECT_EQ(result.last_update_id_after, bmd::UpdateId{101});
+    ASSERT_TRUE(projection.synchronized_book().has_value());
+    EXPECT_EQ(
+        projection.synchronized_book()->get().quantity_at(bmd::BookSide::Bid, helper::price(100)),
+        helper::quantity(7));
+    EXPECT_EQ(helper::apply(projection, 102, 102).disposition, bmd::ApplyDisposition::Applied);
+}
+
 TEST(BookProjectionSpotBootstrapTest, MaxBaselineCannotAdvance) {
     auto projection = make_spot_at_bridge(std::numeric_limits<std::uint64_t>::max());
     expect_ignored(helper::apply(projection, UINT64_MAX, UINT64_MAX),
@@ -246,6 +269,22 @@ TEST(BookProjectionSpotBootstrapTest, MaxBaselineCannotAdvance) {
     expect_ignored(helper::apply(projection, UINT64_MAX - 1U, UINT64_MAX - 1U),
                    bmd::ApplyDisposition::IgnoredStale, bmd::ProjectionStatus::AwaitingBridge,
                    UINT64_MAX);
+    expect_ignored(helper::apply(projection, UINT64_MAX - 1U, UINT64_MAX),
+                   bmd::ApplyDisposition::IgnoredDuplicate, bmd::ProjectionStatus::AwaitingBridge,
+                   UINT64_MAX);
+    EXPECT_EQ(projection.last_update_id(), bmd::UpdateId{UINT64_MAX});
+}
+
+TEST(BookProjectionSpotLiveTest, SuccessorCoverageAcceptsExactNextAndRejectsLaterStart) {
+    auto accepted = make_spot_synchronized(100, 101);
+    EXPECT_EQ(helper::apply(accepted, 102, 102).disposition, bmd::ApplyDisposition::Applied);
+    EXPECT_EQ(accepted.last_update_id(), bmd::UpdateId{102});
+
+    auto gapped = make_spot_synchronized(100, 101);
+    const auto gap = helper::apply(gapped, 103, 103);
+    expect_gap(gapped, gap, bmd::GapReason::SpotLiveForwardGap, bmd::SequencePolicyKind::Spot, 101,
+               103, 103);
+    EXPECT_EQ(gapped.last_update_id(), bmd::UpdateId{101});
 }
 
 TEST(BookProjectionSpotLiveTest, AcceptsOverlapExactNextWideAndEmptyUpdates) {
