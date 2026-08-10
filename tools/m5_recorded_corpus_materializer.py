@@ -5,6 +5,12 @@ This tool independently implements the minimal accepted Recorder Raw profile use
 M5 Phase 3. It never imports Recorder internals and never writes the source archive.
 Production archives must be zstd-compressed Recorder sealed chunks. Uncompressed Raw
 chunks are accepted only with the explicit deterministic-test-archive gate.
+
+The baseline selection mirrors the Recorder reconstructor bootstrap authority at
+commit cf1e749c: Spot bootstrap target is ``last_update_id + 1`` (R-034 open
+conflict); USD-M bootstrap target is ``last_update_id``. Recorded snapshots that
+are too old to bridge the diff stream are skipped in receive order, and the first
+valid baseline is selected.
 """
 
 from __future__ import annotations
@@ -771,59 +777,54 @@ def _depth_line(depth: ParsedDepth) -> str:
     return f"DEPTH_UPDATE {depth.first_update_id} {depth.final_update_id} pu={pu} {levels or '-'}"
 
 
-def _select_operations(
-    records: Sequence[SourceRecord], config: MarketConfig, target_live_updates: int
-) -> tuple[ParsedSnapshot, list[ParsedDepth]]:
-    snapshots = sorted(
-        (
-            _parse_snapshot(record, config)
-            for record in records
-            if record.envelope["stream"] == "depth_snapshot"
-            and record.envelope["receive_time_utc_ns"] >= SOURCE_START_NS
-        ),
-        key=lambda item: item.record.order_key(),
-    )
-    _require(snapshots, "no valid REST baseline exists at or after T0")
-    snapshot = snapshots[0]
-    _require(
-        snapshot.record.envelope["receive_time_utc_ns"] < SOURCE_END_NS,
-        "baseline is outside formal source interval",
-    )
-    depths = sorted(
-        (
-            _parse_depth(record, config)
-            for record in records
-            if record.envelope["stream"] == "diff_depth"
-            and SOURCE_START_NS <= record.envelope["receive_time_utc_ns"] < SOURCE_END_NS
-        ),
-        key=lambda item: item.record.order_key(),
-    )
-    _require(depths, "required ordered diff-depth stream is missing")
+def _synchronize_from_snapshot(
+    snapshot: ParsedSnapshot,
+    depths: Sequence[ParsedDepth],
+    config: MarketConfig,
+    target_live_updates: int,
+) -> list[ParsedDepth]:
+    """Attempt one snapshot baseline per the Recorder bootstrap authority.
 
-    selected: list[ParsedDepth] = []
+    Mirrors Recorder reconstructor bootstrap at commit cf1e749c: Spot bootstrap
+    target is ``last_update_id + 1`` (R-034 open conflict); USD-M target is
+    ``last_update_id``. A recorded diff must cover the bootstrap target; when
+    only older diffs exist the snapshot is too old (SNAPSHOT_TOO_OLD) and the
+    caller retries with the next recorded baseline.
+    """
+
     local = snapshot.last_update_id
+    bootstrap_target = (
+        local + 1 if config.inventory_market == "spot" else local
+    )
+    selected: list[ParsedDepth] = []
     bridge_found = False
     live_count = 0
     for depth in depths:
         if not bridge_found:
             if config.inventory_market == "spot":
-                if depth.final_update_id < local:
+                if depth.final_update_id < bootstrap_target:
                     continue
-                if depth.final_update_id == local:
-                    continue
-                if depth.first_update_id > local:
-                    raise MaterializationError("Spot bootstrap forward gap before valid bridge")
+                if depth.first_update_id > bootstrap_target:
+                    raise MaterializationError(
+                        "Spot bootstrap forward gap before valid bridge"
+                    )
                 _require(
-                    depth.first_update_id <= local < depth.final_update_id,
+                    depth.first_update_id
+                    <= bootstrap_target
+                    <= depth.final_update_id,
                     "Spot bootstrap bridge cannot be proven",
                 )
             else:
-                if depth.final_update_id < local:
+                if depth.final_update_id < bootstrap_target:
                     continue
-                if depth.first_update_id > local:
-                    raise MaterializationError("USD-M bootstrap forward gap before valid bridge")
+                if depth.first_update_id > bootstrap_target:
+                    raise MaterializationError(
+                        "USD-M bootstrap forward gap before valid bridge"
+                    )
                 _require(
-                    depth.first_update_id <= local <= depth.final_update_id,
+                    depth.first_update_id
+                    <= bootstrap_target
+                    <= depth.final_update_id,
                     "USD-M bootstrap bridge cannot be proven",
                 )
             selected.append(depth)
@@ -852,12 +853,62 @@ def _select_operations(
         live_count += 1
         if live_count == target_live_updates:
             break
-    _require(bridge_found, "required bootstrap bridge was not found")
+    if not bridge_found:
+        raise MaterializationError("required bootstrap bridge was not found")
     _require(
         live_count == target_live_updates,
         f"source ended before {target_live_updates} live updates after synchronization",
     )
-    return snapshot, selected
+    return selected
+
+
+def _select_operations(
+    records: Sequence[SourceRecord], config: MarketConfig, target_live_updates: int
+) -> tuple[ParsedSnapshot, list[ParsedDepth]]:
+    snapshots = sorted(
+        (
+            _parse_snapshot(record, config)
+            for record in records
+            if record.envelope["stream"] == "depth_snapshot"
+            and record.envelope["receive_time_utc_ns"] >= SOURCE_START_NS
+        ),
+        key=lambda item: item.record.order_key(),
+    )
+    _require(snapshots, "no valid REST baseline exists at or after T0")
+    depths = sorted(
+        (
+            _parse_depth(record, config)
+            for record in records
+            if record.envelope["stream"] == "diff_depth"
+            and SOURCE_START_NS <= record.envelope["receive_time_utc_ns"] < SOURCE_END_NS
+        ),
+        key=lambda item: item.record.order_key(),
+    )
+    _require(depths, "required ordered diff-depth stream is missing")
+
+    last_bridge_error: MaterializationError | None = None
+    for snapshot in snapshots:
+        _require(
+            snapshot.record.envelope["receive_time_utc_ns"] < SOURCE_END_NS,
+            "baseline is outside formal source interval",
+        )
+        try:
+            selected = _synchronize_from_snapshot(
+                snapshot, depths, config, target_live_updates
+            )
+        except MaterializationError as error:
+            if str(error).endswith("before valid bridge") or str(
+                error
+            ).endswith("bridge cannot be proven") or str(error).endswith(
+                "required bootstrap bridge was not found"
+            ):
+                last_bridge_error = error
+                continue
+            raise
+        return snapshot, selected
+    raise last_bridge_error or MaterializationError(
+        "required bootstrap bridge was not found"
+    )
 
 
 def _token(value: str, field: str) -> str:

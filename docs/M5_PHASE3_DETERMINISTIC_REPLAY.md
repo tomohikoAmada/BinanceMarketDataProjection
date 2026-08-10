@@ -8,7 +8,7 @@
   `75c619dd683ff2a3893f9535e206231e7bfecc41`, main CI `31315421548` — PASS 16/16)
 - Phase 2 final review: **APPROVED**; P0: 0; P1: 0; M5-P2-IR-001 through
   M5-P2-IR-007 and M5-P2-RR-001 CLOSED
-- Phase 3: **PARTIAL / BLOCKED ON RECORDED SOURCE EVIDENCE**
+- Phase 3: **IMPLEMENTED / PENDING INDEPENDENT REVIEW** (PR #13)
 - Phase 4: **NOT STARTED**
 - M6: **NOT STARTED**
 
@@ -85,7 +85,7 @@ For every requested market the tool:
 5. independently validates Raw-v1 framing, canonical CBOR, CRC32C, identity, frame bounds, and
    envelope schema;
 6. validates snapshot provenance and exact diff-depth JSON/sequence fields;
-7. selects the first baseline at/after T0 and proves the accepted Spot or USD-M bridge;
+7. selects the first **valid** baseline at/after T0 and proves the accepted Spot or USD-M bridge;
 8. proves every advancing live continuation while ignoring only semantically stale/duplicate Raw
    records;
 9. emits exact canonical Replay_V1 bytes, `manifest.txt`, and `corpus_provenance.json`;
@@ -130,41 +130,136 @@ differential validator.
 
 ## Authoritative source availability
 
-The exact formal archive was sought only in appropriate source locations:
-
-- the local `BinanceMarketDataRecorder` repository;
-- Recorder's documented application-data root
-  `/Users/amada/Library/Application Support/BinanceMarketDataRecorder`;
-- currently mounted `/Volumes` archive roots.
-
-No directory or metadata matching `preflight/m21-4-24h-20260805T150930Z/`, the deployed Wheel hash,
-or the production config hash was found. The pinned Recorder commit object is present and its Raw,
-manifest/Catalog, Spot/USD-M snapshot/diff, ordering, and replay-reader authority was inspected
-read-only with `git show`; the Recorder checkout and all Recorder data remained unchanged.
-
-Therefore:
+The exact formal archive was located and validated on the production host `opihome`
+(aarch64 / RK3588, 192.168.0.118). The external archive is mounted:
 
 ```text
-PHASE 3 RECORDED-CORPUS EVIDENCE BLOCKED — AUTHORITATIVE SOURCE ARCHIVE NOT AVAILABLE
+/dev/sda1 on /mnt/binance-archive-4tb (exfat, UUID 67EF-62E0)
 ```
+
+Exact run evidence root:
+
+```text
+/var/tmp/bmdr-m21-4-deploy-postmerge-20260804T023200Z/preflight/m21-4-24h-20260805T150930Z/
+```
+
+Run identity verified against `run-start.json` / `run.json` / anchors:
+`preflight/m21-4-24h-20260805T150930Z/`, T0 `2026-08-05T15:09:30.200566Z`,
+end `2026-08-06T15:09:30.200566Z`, production code commit
+`cf1e749c7a533e916dbfb685212e5549a38c70dd`, deployed Wheel SHA-256
+`926615b09ef46130f49a87fe8ab20acb7cfa6313daa67af5b718931bd95ff329` (verified against the
+deployment artifact), production config SHA-256
+`a399e647faaac58b5db24e835f1c29e799c70ad0c94ec77b597cac2647cfb734` (verified against
+`/etc/binance-market-data-recorder/recorder.toml`), result PASS.
+
+Source inventory was built strictly from verified evidence and staged outside all production/archive
+roots:
+
+```text
+build/m5-authoritative-source/
+  catalog.sqlite              (trimmed Catalog copy; rows byte-matched to production Catalog)
+  artifacts/*.bmdr.zst        (2887 immutable external-archive chunks, zstd-frame.v1)
+  manifests/*.manifest.json   (byte-exact internal Raw manifests)
+  m5_source_inventory.json    (M5_RECORDER_SOURCE_INVENTORY_V1)
+```
+
+The staged set is the minimum source set satisfying all three requirements: the full formal-window
+Spot/USD-M `depth_snapshot` + `diff_depth` chunk set (2,887 chunks, 505.6 MB compressed) including
+the planned-rotation window. Every artifact's stored SHA-256 and every manifest SHA-256 were
+verified source-to-staging and staging-to-local with zero mismatches. The inventory's Catalog SHA-256
+is `f7289fcc3383063c5e3b83e65201df29503cf7c9bba227dbb8298dcdb4805d8c`.
+
+### First-run rejection and materializer correction
+
+The first authoritative run was rejected fail-closed:
+
+```text
+materialization=FAIL reason=Spot bootstrap forward gap before valid bridge
+```
+
+Diagnosis against the actual source showed the recorded data follows the Recorder reconstructor's
+documented bootstrap authority at commit `cf1e749c` (R-034 open conflict):
+
+```text
+Spot  accepts U <= snapshot.last_update_id + 1 <= u
+USD-M accepts U <= snapshot.last_update_id <= u
+```
+
+The planned-rotation resync at `2026-08-06T06:43:11Z..06:43:23Z` recorded its REST baselines after
+the rotated diff stream resumed, so the first baseline's bridge diff covers the successor
+(`U = last_update_id + 1` for Spot) rather than the snapshot's own `last_update_id`. The USD-M
+resync retried with four snapshots (`06:43:25.936Z`, `06:43:27.475Z`, `06:43:29.845Z`,
+`06:43:34.164Z`); only the second and later snapshots can bridge the resumed diff chain
+(the first is `SNAPSHOT_TOO_OLD` in Recorder terms).
+
+This is a materializer/Recorder-authority mismatch (the "Case C" class), not corrupt or missing
+source. The minimum correction in `tools/m5_recorded_corpus_materializer.py`:
+
+- Spot bootstrap target is now `last_update_id + 1` (mirroring R-034);
+- the baseline is the first recorded snapshot whose bridge can be proven, skipping
+  `SNAPSHOT_TOO_OLD` snapshots in receive order and failing closed when none can synchronize.
+
+USD-M U/u/pu bridge and live semantics were already correct and are unchanged. Fail-closed behavior
+is preserved and covered by updated/added unit tests (17 tests, including both compiled validators).
 
 ### Mandatory medium fixtures
 
-| Fixture | Required source updates | Status |
-|---|---:|---|
-| `M5-REC-SPOT-BTCUSDT-V1` | 100,000 live updates after synchronization | BLOCKED — no authoritative archive |
-| `M5-REC-USDM-BTCUSDT-V1` | 100,000 live updates after synchronization | BLOCKED — no authoritative archive |
+Both medium fixtures materialized PASS from the authoritative source (price/quantity scale 8/8,
+100,000 target live updates after synchronization):
 
-No replay SHA-256, final checkpoint, repeated materialization/replay result, source-chunk list, or
-differential PASS is claimed for either medium fixture.
+| Fixture | Target live updates | Total replay operations | Replay log SHA-256 |
+|---|---:|---:|---|
+| `M5-REC-SPOT-BTCUSDT-V1` | 100,000 | 100,002 | `9e9831231192938ac1bd21c90b157ec17e8e2d4e8034131eb21ba57c99b2cc9d` |
+| `M5-REC-USDM-BTCUSDT-V1` | 100,000 | 100,002 | `d28ffe19e134e4d5d1c4d57a60762e8884dee676c858587224aebf8afed29afc` |
+
+Total replay operations = 1 baseline + 1 synchronization bridge + 100,000 live updates; the extra
+operations over 100,000 are the accepted baseline/bridge events and are not a count defect.
+
+| Evidence | Spot | USD-M |
+|---|---|---|
+| Baseline snapshot receive | 2026-08-06T06:43:24.441592Z | 2026-08-06T06:43:27.475072Z |
+| Baseline source chunk | `f49af519-2332-47cc-9b19-692f77574281` | `3e1802ac-350b-4fb1-af3d-df7120ecd7d3` |
+| Baseline `lastUpdateId` | 98288147167 | 11224041769040 |
+| First retained diff chunk | `20ed2f72-7cb8-4132-9275-4b4d748589c5` | `06f632bc-4b4c-4ebd-98ca-7fbe7fd172ad` |
+| Last retained diff chunk | `52edda7b-bd56-4129-82aa-eb5a38c04bf0` | `0fd08708-bcb9-400c-a317-13e84ab7c01b` |
+| Source chunks consumed | 169 | 172 |
+| Actual consumed interval | 06:43:24.441Z .. 09:30:40.066Z | 06:43:27.475Z .. 09:53:28.883Z |
+| Core differential | **PASS** | **PASS** |
+| Adapter differential | **PASS** | **PASS** |
+| Final checkpoint | `CHECKPOINT NEEDS_RESYNC last_update_id=98288147167` `last_gap={first=98288147168 final=98288147175 reason=SPOT_BOOTSTRAP_FORWARD_GAP}` | `CHECKPOINT NEEDS_RESYNC last_update_id=11224984048179` |
+
+Repeated materialization with different metadata-only conversion timestamps produced byte-identical
+`replay.log`, `manifest.txt`, and provenance (only the explicitly metadata-only
+`conversion_timestamp` differs) for both markets — **Materializer Determinism: PASS**. Repeated
+Core/Adapter replay over the repeated outputs shows no divergence, identical event counts, identical
+replay SHA-256, and the same final checkpoints — **repeatability: PASS**.
+
+All authoritative/staged corpus data remains outside Git history under the ignored `build/`
+directory; no medium payload, Raw chunk, Catalog copy, or source manifest is committed.
 
 ### Rotation diagnostic
 
-Requested interval: approximately `2026-08-06T06:43:11Z` through
-`2026-08-06T06:43:23Z`, with a design source window from 10 minutes before through 10 minutes after.
-Actual source coverage and depth/generation records cannot be inspected because the authoritative
-archive is unavailable. Eligibility is therefore **BLOCKED**, not `ELIGIBLE` or `NOT ELIGIBLE`.
-No transition, gap, rebaseline, or bridge is manufactured.
+Requested interval: approximately `2026-08-06T06:43:11Z` through `2026-08-06T06:43:23Z`, with a
+design source window from `2026-08-06T06:33:11Z` through `2026-08-06T06:53:23Z`. Actual source
+coverage and depth/generation records were inspected from the authoritative archive:
+
+- Each market shows exactly one diff-depth receive-time gap in the window: Spot
+  `06:43:05.266550Z -> 06:43:24.358157Z` (19.1 s, chunk `8dbf4547` -> `20ed2f72`) and USD-M
+  `06:43:04.693506Z -> 06:43:25.993641Z` (21.3 s, chunk `5b24ec2a` -> `06f632bc`), aligned with the
+  planned rotation and matching a single connection/generation transition per market
+  (Spot `a9109cc1` -> `a781779c`; USD-M `ed09a5b6` -> `5fba1a1c`).
+- REST resync snapshots immediately follow the gap: Spot one snapshot at `06:43:24.441592Z`
+  (`lastUpdateId=98288147167`); USD-M four resync-retry snapshots at `06:43:25.936749Z`,
+  `06:43:27.475072Z`, `06:43:29.845209Z`, `06:43:34.164671Z`.
+- Both bridges are proven by the materializer itself: Spot `U = lastUpdateId + 1`
+  (R-034 rule), USD-M first valid snapshot `U <= lastUpdateId <= u` with continuous `pu` chain
+  afterwards; the 100,000-live-update selection then proves post-resync diff continuity.
+- The USD-M `book_ticker` backpressure recovery events (pre-window `13:44:08`/`14:12:18`/`14:35:26`
+  and formal-window gen5 `13:46:28`/gen6 `14:48:33`) do not create any diff-depth gap and are not
+  used to manufacture a gap or rebaseline.
+
+Eligibility: **ELIGIBLE**. The rotation window shows the planned depth resync with authoritative
+snapshot/diff records and materializer-proven bridges; no gap or rebaseline is manufactured.
 
 ## Strict phase boundary
 

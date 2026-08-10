@@ -538,9 +538,64 @@ class MaterializerTest(unittest.TestCase):
 
         gap = ArchiveBuilder(self.root / "gap", "spot")
         gap.add_chunk(1, "depth_snapshot", [_snapshot("spot", start + 100)])
-        gap.add_chunk(2, "diff_depth", [_depth("spot", start + 110, 101, 101, None)])
+        gap.add_chunk(2, "diff_depth", [_depth("spot", start + 110, 102, 102, None)])
         gap.finish()
         self._expect_failure(gap, "spot", "Spot bootstrap forward gap", "gap-output")
+
+    def test_spot_accepts_successor_baseline_bridge(self) -> None:
+        start = materializer.SOURCE_START_NS
+        builder = ArchiveBuilder(self.root / "successor-bridge", "spot")
+        builder.add_chunk(1, "depth_snapshot", [_snapshot("spot", start + 100)])
+        builder.add_chunk(
+            2,
+            "diff_depth",
+            [
+                _depth("spot", start + 110, 90, 99, None),
+                _depth("spot", start + 120, 101, 103, None),
+                _depth("spot", start + 130, 104, 104, None),
+                _depth("spot", start + 140, 105, 105, None),
+                _depth("spot", start + 150, 106, 106, None),
+            ],
+        )
+        builder.finish()
+        result = self._materialize(builder, "spot", "successor-output")
+        self.assertEqual(result.event_count, 5)
+        provenance = json.loads(
+            (result.output_directory / "corpus_provenance.json").read_text()
+        )
+        self.assertEqual(provenance["baseline_source"]["last_update_id"], 100)
+        self.assertEqual(
+            provenance["first_retained_diff"]["chunk_id"],
+            str(builder.entries[1]["chunk_id"]),
+        )
+
+    def test_usdm_skips_too_old_baseline_and_uses_first_valid(self) -> None:
+        start = materializer.SOURCE_START_NS
+        builder = ArchiveBuilder(self.root / "too-old", "um_perpetual")
+        builder.add_chunk(1, "depth_snapshot", [_snapshot("um_perpetual", start + 100)])
+        builder.add_chunk(
+            2,
+            "depth_snapshot",
+            [_snapshot("um_perpetual", start + 110, last_update_id=105)],
+        )
+        builder.add_chunk(
+            3,
+            "diff_depth",
+            [
+                _depth("um_perpetual", start + 120, 90, 99, 98),
+                _depth("um_perpetual", start + 130, 105, 106, 104),
+                _depth("um_perpetual", start + 140, 107, 108, 106),
+                _depth("um_perpetual", start + 150, 109, 109, 108),
+                _depth("um_perpetual", start + 160, 110, 111, 109),
+            ],
+        )
+        builder.finish()
+        result = self._materialize(builder, "usdm", "too-old-output")
+        self.assertEqual(result.event_count, 5)
+        provenance = json.loads(
+            (result.output_directory / "corpus_provenance.json").read_text()
+        )
+        self.assertEqual(provenance["baseline_source"]["last_update_id"], 105)
 
     def test_usdm_missing_and_incorrect_pu_fail_closed(self) -> None:
         start = materializer.SOURCE_START_NS
