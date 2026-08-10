@@ -2,6 +2,7 @@
 
 #include "divergence.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <fstream>
 #include <map>
@@ -348,6 +349,28 @@ first_depth_violation(const oracle::ExecutionSummary& summary) {
     return std::nullopt;
 }
 
+// Tail checks: the final state and final accepted ID must match the emitted
+// contract. Returns a stable failure reason and event index, or nullopt when
+// the tail is valid.
+[[nodiscard]] std::optional<std::pair<std::string, std::size_t>>
+final_state_failure(const MediumValidityReport& report, const oracle::ReplayOutcome& outcome) {
+    if (!outcome.final_observation.has_value()) {
+        return std::make_pair(std::string{"no-final-observation"}, std::size_t{0});
+    }
+    if (report.final_status != oracle::CanonicalStatus::Synchronized) {
+        return std::make_pair("final-status-" + std::string(oracle::to_text(report.final_status)),
+                              std::size_t{0});
+    }
+    if (!report.final_accepted_update_id.has_value()) {
+        return std::make_pair(std::string{"final-id-missing"}, std::size_t{0});
+    }
+    if (!report.last_selected_diff_final_update_id.has_value() ||
+        report.final_accepted_update_id != report.last_selected_diff_final_update_id) {
+        return std::make_pair(std::string{"final-id-mismatch"}, std::size_t{0});
+    }
+    return std::nullopt;
+}
+
 } // namespace
 
 std::optional<std::uint64_t> read_target_live_updates(const std::filesystem::path& directory) {
@@ -440,7 +463,7 @@ MediumValidityReport check_medium_validity(const oracle::ReplayOutcome& outcome,
     if (summary.depth_events != expected_depth_events) {
         return fail("unexpected-depth-event-count");
     }
-    if (const auto violation = first_depth_violation(summary)) {
+    if (const auto violation = first_depth_violation(summary); violation.has_value()) {
         const bool is_bridge = report.first_depth_update.has_value() &&
                                violation->event_index == report.first_depth_update->event_index;
         return fail(is_bridge ? "bridge-not-applied" : "depth-update-not-applied",
@@ -462,18 +485,8 @@ MediumValidityReport check_medium_validity(const oracle::ReplayOutcome& outcome,
     if (outcome.processed_events != expected_event_count) {
         return fail("unexpected-event-count");
     }
-    if (!outcome.final_observation.has_value()) {
-        return fail("no-final-observation");
-    }
-    if (report.final_status != CanonicalStatus::Synchronized) {
-        return fail("final-status-" + std::string(oracle::to_text(report.final_status)), 0);
-    }
-    if (!report.final_accepted_update_id.has_value()) {
-        return fail("final-id-missing");
-    }
-    if (!report.last_selected_diff_final_update_id.has_value() ||
-        report.final_accepted_update_id != report.last_selected_diff_final_update_id) {
-        return fail("final-id-mismatch");
+    if (const auto failure = final_state_failure(report, outcome); failure.has_value()) {
+        return fail(failure->first, failure->second);
     }
     const std::uint64_t expected_applied = target_live_updates + 1;
     if (summary.applied_count != expected_applied) {
