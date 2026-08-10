@@ -141,6 +141,11 @@ class TempDirectory final {
         std::filesystem::create_directories(path_);
     }
 
+    TempDirectory(const TempDirectory&) = delete;
+    TempDirectory& operator=(const TempDirectory&) = delete;
+    TempDirectory(TempDirectory&&) = delete;
+    TempDirectory& operator=(TempDirectory&&) = delete;
+
     ~TempDirectory() { std::filesystem::remove_all(path_); }
 
     [[nodiscard]] const std::filesystem::path& path() const noexcept { return path_; }
@@ -172,15 +177,17 @@ TEST(MediumValidityTest, ValidSpotCorpusPassesLifecycleGate) {
     EXPECT_EQ(report.rejected_wrong_state_count, 0U);
     EXPECT_EQ(report.final_status, oracle::CanonicalStatus::Synchronized);
     ASSERT_TRUE(report.final_accepted_update_id.has_value());
-    EXPECT_EQ(*report.final_accepted_update_id, 104U);
+    EXPECT_EQ(report.final_accepted_update_id.value(), 104U);
     ASSERT_TRUE(report.last_selected_diff_final_update_id.has_value());
-    EXPECT_EQ(*report.last_selected_diff_final_update_id, 104U);
+    EXPECT_EQ(report.last_selected_diff_final_update_id.value(), 104U);
     ASSERT_TRUE(report.first_install.has_value());
-    EXPECT_EQ(report.first_install->disposition, oracle::CanonicalDisposition::Installed);
-    EXPECT_EQ(report.first_install->status_after, oracle::CanonicalStatus::AwaitingBridge);
+    const auto& first_install = report.first_install.value();
+    EXPECT_EQ(first_install.disposition, oracle::CanonicalDisposition::Installed);
+    EXPECT_EQ(first_install.status_after, oracle::CanonicalStatus::AwaitingBridge);
     ASSERT_TRUE(report.first_depth_update.has_value());
-    EXPECT_EQ(report.first_depth_update->disposition, oracle::CanonicalDisposition::Applied);
-    EXPECT_EQ(report.first_depth_update->status_after, oracle::CanonicalStatus::Synchronized);
+    const auto& first_depth_update = report.first_depth_update.value();
+    EXPECT_EQ(first_depth_update.disposition, oracle::CanonicalDisposition::Applied);
+    EXPECT_EQ(first_depth_update.status_after, oracle::CanonicalStatus::Synchronized);
 }
 
 TEST(MediumValidityTest, ValidUsdMCorpusPassesLifecycleGate) {
@@ -191,7 +198,7 @@ TEST(MediumValidityTest, ValidUsdMCorpusPassesLifecycleGate) {
     EXPECT_TRUE(report.valid);
     EXPECT_EQ(report.applied_count, 4U);
     ASSERT_TRUE(report.final_accepted_update_id.has_value());
-    EXPECT_EQ(*report.final_accepted_update_id, 103U);
+    EXPECT_EQ(report.final_accepted_update_id.value(), 103U);
     EXPECT_EQ(report.final_status, oracle::CanonicalStatus::Synchronized);
 }
 
@@ -250,9 +257,9 @@ TEST(MediumValidityTest, FinalAcceptedIdMismatchFails) {
     const auto report = phase3::check_medium_validity(outcome, fixture, 3);
     EXPECT_FALSE(report.valid);
     ASSERT_TRUE(report.final_accepted_update_id.has_value());
-    EXPECT_EQ(*report.final_accepted_update_id, 103U);
+    EXPECT_EQ(report.final_accepted_update_id.value(), 103U);
     ASSERT_TRUE(report.last_selected_diff_final_update_id.has_value());
-    EXPECT_EQ(*report.last_selected_diff_final_update_id, 101U);
+    EXPECT_EQ(report.last_selected_diff_final_update_id.value(), 101U);
 }
 
 TEST(MediumValidityTest, DifferentialDivergenceIsNotHiddenByLifecycleGate) {
@@ -270,7 +277,7 @@ TEST(MediumValidityTest, DifferentialDivergenceIsNotHiddenByLifecycleGate) {
                                 std::move(mutating), oracle::ObservationRetention::RetainNone};
     const auto outcome = driver.run();
     ASSERT_TRUE(outcome.first_divergence.has_value());
-    EXPECT_EQ(outcome.first_divergence->event_index, 3U);
+    EXPECT_EQ(outcome.first_divergence.value().event_index, 3U);
     const auto report = phase3::check_medium_validity(outcome, fixture, 3);
     EXPECT_FALSE(report.valid);
     EXPECT_EQ(report.reason, "differential-divergence");
@@ -319,7 +326,8 @@ TEST(MediumValidityTest, JsonIntentReaderAcceptsCanonicalProvenance) {
 TEST(MediumValidityTest, JsonIntentReaderFailsClosed) {
     TempDirectory temporary;
     const auto& path = temporary.path();
-    const auto canonical = R"({"selected_live_updates_after_synchronization":3,"other":"x"})";
+    const auto* const canonical =
+        R"({"selected_live_updates_after_synchronization":3,"other":"x"})";
     EXPECT_FALSE(phase3::read_target_live_updates(path).has_value());
 
     write_provenance(path, canonical);
