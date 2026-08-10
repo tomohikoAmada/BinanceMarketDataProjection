@@ -33,10 +33,58 @@ enum class ObservationRetention : std::uint8_t {
     RetainNone,
 };
 
+// Compact typed-result records used by ExecutionSummary. The driver fills these
+// AFTER production/reference equality for an event has been established; they
+// observe typed dispositions and statuses only and carry no decimal evidence,
+// book state, or adapter-mapped values.
+struct CompactInstallResult final {
+    std::size_t event_index{};
+    CanonicalDisposition disposition{};
+    CanonicalStatus status_after{};
+
+    friend bool operator==(const CompactInstallResult&, const CompactInstallResult&) = default;
+};
+
+struct CompactDepthResult final {
+    std::size_t event_index{};
+    CanonicalDisposition disposition{};
+    CanonicalStatus status_after{};
+
+    friend bool operator==(const CompactDepthResult&, const CompactDepthResult&) = default;
+};
+
+// Neutral compact execution summary accumulated by ReplayDriver::run(). It is
+// derived only from already-compared typed OperationObservation values; it
+// contains no Spot/USD-M classification, decimal parsing, book mutation, or
+// adapter mapping. RetainNone retains full observations omitted but this
+// summary is always accumulated.
+struct ExecutionSummary final {
+    std::size_t processed_events{};
+    std::size_t install_events{};
+    std::size_t depth_events{};
+    std::optional<CompactInstallResult> first_install;
+    std::optional<CompactDepthResult> first_depth_update;
+    std::vector<CompactDepthResult> depth_results;
+    std::size_t installed_count{};
+    std::size_t applied_count{};
+    std::size_t ignored_stale_count{};
+    std::size_t ignored_duplicate_count{};
+    std::size_t gap_detected_count{};
+    std::size_t rejected_wrong_state_count{};
+    std::size_t adapter_error_count{};
+    std::size_t decimal_error_count{};
+    std::size_t other_events_count{};
+    std::optional<std::size_t> first_other_event_index;
+    std::optional<std::size_t> first_adapter_error_index;
+
+    friend bool operator==(const ExecutionSummary&, const ExecutionSummary&) = default;
+};
+
 struct ReplayOutcome final {
     std::vector<OperationObservation> observations;
     std::optional<OperationObservation> final_observation;
     std::optional<Divergence> first_divergence;
+    ExecutionSummary summary;
     std::size_t processed_events{};
 
     friend bool operator==(const ReplayOutcome&, const ReplayOutcome&) = default;

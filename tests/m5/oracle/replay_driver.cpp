@@ -43,6 +43,87 @@ namespace {
     return "fixture_id=" + identity.fixture_id + " log_sha256=" + identity.replay_log_sha256;
 }
 
+void accumulate_install(ExecutionSummary& summary, std::size_t event_index,
+                        const InstallOutcome& install) noexcept {
+    ++summary.install_events;
+    if (!summary.first_install.has_value()) {
+        summary.first_install =
+            CompactInstallResult{event_index, install.disposition, install.status_after};
+    }
+    if (install.disposition == CanonicalDisposition::Installed) {
+        ++summary.installed_count;
+    } else if (install.disposition == CanonicalDisposition::RejectedWrongState) {
+        ++summary.rejected_wrong_state_count;
+    }
+}
+
+void accumulate_apply(ExecutionSummary& summary, std::size_t event_index,
+                      const ApplyOutcome& apply) noexcept {
+    ++summary.depth_events;
+    if (!summary.first_depth_update.has_value()) {
+        summary.first_depth_update =
+            CompactDepthResult{event_index, apply.disposition, apply.status_after};
+    }
+    summary.depth_results.push_back(
+        CompactDepthResult{event_index, apply.disposition, apply.status_after});
+    switch (apply.disposition) {
+    case CanonicalDisposition::Applied:
+        ++summary.applied_count;
+        break;
+    case CanonicalDisposition::IgnoredStale:
+        ++summary.ignored_stale_count;
+        break;
+    case CanonicalDisposition::IgnoredDuplicate:
+        ++summary.ignored_duplicate_count;
+        break;
+    case CanonicalDisposition::GapDetected:
+        ++summary.gap_detected_count;
+        break;
+    case CanonicalDisposition::RejectedWrongState:
+        ++summary.rejected_wrong_state_count;
+        break;
+    case CanonicalDisposition::Installed:
+        break;
+    }
+}
+
+// Aggregation observes typed results only. AdapterSuccessOutcome is unwrapped to
+// its underlying typed Core result; the quality vector is not aggregated.
+void accumulate_summary(ExecutionSummary& summary, std::size_t event_index,
+                        const OperationResult& result) noexcept {
+    if (const auto* install = std::get_if<InstallOutcome>(&result.value)) {
+        accumulate_install(summary, event_index, *install);
+        return;
+    }
+    if (const auto* apply = std::get_if<ApplyOutcome>(&result.value)) {
+        accumulate_apply(summary, event_index, *apply);
+        return;
+    }
+    if (const auto* success = std::get_if<AdapterSuccessOutcome>(&result.value)) {
+        if (const auto* inner_install = std::get_if<InstallOutcome>(&success->core_result)) {
+            accumulate_install(summary, event_index, *inner_install);
+        } else {
+            accumulate_apply(summary, event_index, std::get<ApplyOutcome>(success->core_result));
+        }
+        return;
+    }
+    if (std::holds_alternative<AdapterErrorOutcome>(result.value)) {
+        ++summary.adapter_error_count;
+        if (!summary.first_adapter_error_index.has_value()) {
+            summary.first_adapter_error_index = event_index;
+        }
+        return;
+    }
+    if (std::holds_alternative<DecimalErrorOutcome>(result.value)) {
+        ++summary.decimal_error_count;
+        return;
+    }
+    ++summary.other_events_count;
+    if (!summary.first_other_event_index.has_value()) {
+        summary.first_other_event_index = event_index;
+    }
+}
+
 } // namespace
 
 ReplayDriver::ReplayDriver(const replay::ReplayFixture& fixture,
@@ -90,6 +171,7 @@ ReplayOutcome ReplayDriver::run() {
             return outcome;
         }
         outcome.final_observation = *production;
+        accumulate_summary(outcome.summary, index, outcome.final_observation->result);
         if (retention_ == ObservationRetention::RetainAll) {
             outcome.observations.push_back(std::move(*production));
         }

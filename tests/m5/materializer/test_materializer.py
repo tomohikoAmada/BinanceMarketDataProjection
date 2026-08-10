@@ -128,25 +128,65 @@ def _depth(
     *,
     symbol: str = "BTCUSDT",
 ) -> dict[str, object]:
-    payload: dict[str, object] = {
-        "e": "depthUpdate",
-        "s": symbol,
-        "U": first,
-        "u": final,
-        "b": [["100.00", "1.125"]],
-        "a": [["101.00", "0.000"]],
+        payload: dict[str, object] = {
+            "e": "depthUpdate",
+            "s": symbol,
+            "U": first,
+            "u": final,
+            "b": [["100.00", "1.125"]],
+            "a": [["101.00", "0.000"]],
+        }
+        sequence = {"U": first, "u": final}
+        if market == "um_perpetual" and previous is not None:
+            payload["pu"] = previous
+            sequence["pu"] = previous
+        return _envelope(
+            market=market,
+            stream="diff_depth",
+            timestamp=timestamp,
+            payload=payload,
+            sequence=sequence,
+            symbol=symbol,
+        )
+
+
+def _overflow_payload_depth(
+    market: str, timestamp: int, first: int, final: int
+) -> dict[str, object]:
+    """A diff envelope whose JSON payload carries update IDs outside uint64.
+
+    The envelope source_sequence stays within the canonical CBOR uint64 range;
+    the materializer must fail on the payload's uint64 domain bound before any
+    sequence comparison is reached.
+    """
+    depth = _depth(market, timestamp, 90, 99, None)
+    payload = json.loads(depth["raw_payload"])
+    payload["U"] = first
+    payload["u"] = final
+    depth["raw_payload"] = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return depth
+
+
+def _overflow_payload_snapshot(market: str, timestamp: int, last_update_id: int) -> dict[str, object]:
+    """A snapshot envelope whose JSON model carries lastUpdateId outside uint64."""
+    schema = (
+        "binance-spot-depth-snapshot-provenance.v2"
+        if market == "spot"
+        else "binance-usdm-depth-snapshot-provenance.v1"
+    )
+    model = {
+        "lastUpdateId": last_update_id,
+        "bids": [["100.00", "1.000"], ["99.00", "2.000"]],
+        "asks": [["101.00", "1.500"], ["102.00", "2.500"]],
     }
-    sequence = {"U": first, "u": final}
-    if market == "um_perpetual" and previous is not None:
-        payload["pu"] = previous
-        sequence["pu"] = previous
+    payload = {"schema_version": schema, "response": {"model": model}}
     return _envelope(
         market=market,
-        stream="diff_depth",
+        stream="depth_snapshot",
         timestamp=timestamp,
         payload=payload,
-        sequence=sequence,
-        symbol=symbol,
+        sequence={"lastUpdateId": 100},
+        connection="rest-1",
     )
 
 
@@ -542,31 +582,227 @@ class MaterializerTest(unittest.TestCase):
         gap.finish()
         self._expect_failure(gap, "spot", "Spot bootstrap forward gap", "gap-output")
 
-    def test_spot_accepts_successor_baseline_bridge(self) -> None:
+    def test_spot_contains_l_bridge_cases(self) -> None:
         start = materializer.SOURCE_START_NS
-        builder = ArchiveBuilder(self.root / "successor-bridge", "spot")
+
+        bridge_cases = [
+            ("contains-l", 99, 101),
+            ("equal-first-l", 100, 101),
+        ]
+        for name, first, final in bridge_cases:
+            with self.subTest(name=name):
+                builder = ArchiveBuilder(self.root / f"bridge-{name}", "spot")
+                builder.add_chunk(1, "depth_snapshot", [_snapshot("spot", start + 100)])
+                builder.add_chunk(
+                    2,
+                    "diff_depth",
+                    [
+                        _depth("spot", start + 110, first, final, None),
+                        _depth("spot", start + 120, 102, 102, None),
+                        _depth("spot", start + 130, 103, 103, None),
+                    ],
+                )
+                builder.finish()
+                result = self._materialize(
+                    builder, "spot", f"bridge-{name}-output", target=2
+                )
+                self.assertEqual(result.event_count, 4)
+                self.assertEqual(result.final_update_id, 103)
+
+        gap_cases = [
+            ("exact-next", 101, 101),
+            ("exact-next-wide", 101, 103),
+        ]
+        for name, first, final in gap_cases:
+            with self.subTest(name=name):
+                builder = ArchiveBuilder(self.root / f"gap-{name}", "spot")
+                builder.add_chunk(1, "depth_snapshot", [_snapshot("spot", start + 100)])
+                builder.add_chunk(
+                    2, "diff_depth", [_depth("spot", start + 110, first, final, None)]
+                )
+                builder.finish()
+                self._expect_failure(
+                    builder, "spot", "Spot bootstrap forward gap", f"gap-{name}-output"
+                )
+
+    def test_spot_stale_and_duplicate_do_not_bridge(self) -> None:
+        start = materializer.SOURCE_START_NS
+        stale = ArchiveBuilder(self.root / "stale-only", "spot")
+        stale.add_chunk(1, "depth_snapshot", [_snapshot("spot", start + 100)])
+        stale.add_chunk(2, "diff_depth", [_depth("spot", start + 110, 90, 99, None)])
+        stale.finish()
+        self._expect_failure(stale, "spot", "required bootstrap bridge was not found", "stale")
+
+        duplicate = ArchiveBuilder(self.root / "duplicate-only", "spot")
+        duplicate.add_chunk(1, "depth_snapshot", [_snapshot("spot", start + 100)])
+        duplicate.add_chunk(2, "diff_depth", [_depth("spot", start + 110, 99, 100, None)])
+        duplicate.finish()
+        self._expect_failure(
+            duplicate, "spot", "required bootstrap bridge was not found", "duplicate"
+        )
+
+    def test_spot_max_uint64_baseline_cannot_bridge(self) -> None:
+        start = materializer.SOURCE_START_NS
+        maximum = 0xFFFFFFFFFFFFFFFF
+        builder = ArchiveBuilder(self.root / "max-id", "spot")
+        builder.add_chunk(
+            1, "depth_snapshot", [_snapshot("spot", start + 100, last_update_id=maximum)]
+        )
+        builder.add_chunk(
+            2,
+            "diff_depth",
+            [
+                _depth("spot", start + 110, maximum - 1, maximum - 1, None),
+                _depth("spot", start + 120, maximum, maximum, None),
+            ],
+        )
+        builder.finish()
+        self._expect_failure(builder, "spot", "required bootstrap bridge was not found", "max-id")
+
+    def test_source_ids_outside_uint64_fail_closed(self) -> None:
+        start = materializer.SOURCE_START_NS
+        outside = 0x10000000000000000
+        overflow_depth = ArchiveBuilder(self.root / "overflow-depth", "spot")
+        overflow_depth.add_chunk(1, "depth_snapshot", [_snapshot("spot", start + 100)])
+        overflow_depth.add_chunk(
+            2,
+            "diff_depth",
+            [_overflow_payload_depth("spot", start + 110, outside, outside)],
+        )
+        overflow_depth.finish()
+        self._expect_failure(
+            overflow_depth, "spot", "canonical uint64", "overflow-depth-output"
+        )
+
+        overflow_snapshot = ArchiveBuilder(self.root / "overflow-snapshot", "spot")
+        overflow_snapshot.add_chunk(
+            1,
+            "depth_snapshot",
+            [_overflow_payload_snapshot("spot", start + 100, outside)],
+        )
+        overflow_snapshot.add_chunk(
+            2, "diff_depth", [_depth("spot", start + 110, 99, 101, None)]
+        )
+        overflow_snapshot.finish()
+        self._expect_failure(
+            overflow_snapshot, "spot", "canonical uint64", "overflow-snapshot-output"
+        )
+
+    def test_spot_exact_next_live_update_after_bridge_remains_valid(self) -> None:
+        start = materializer.SOURCE_START_NS
+        builder = ArchiveBuilder(self.root / "live-successor", "spot")
         builder.add_chunk(1, "depth_snapshot", [_snapshot("spot", start + 100)])
         builder.add_chunk(
             2,
             "diff_depth",
             [
-                _depth("spot", start + 110, 90, 99, None),
-                _depth("spot", start + 120, 101, 103, None),
-                _depth("spot", start + 130, 104, 104, None),
-                _depth("spot", start + 140, 105, 105, None),
-                _depth("spot", start + 150, 106, 106, None),
+                _depth("spot", start + 110, 99, 101, None),
+                _depth("spot", start + 120, 102, 102, None),
+                _depth("spot", start + 130, 103, 103, None),
+                _depth("spot", start + 140, 104, 104, None),
             ],
         )
         builder.finish()
-        result = self._materialize(builder, "spot", "successor-output")
+        result = self._materialize(builder, "spot", "live-successor-output")
+        self.assertEqual(result.event_count, 5)
+        self.assertEqual(result.final_update_id, 104)
+
+    def test_spot_skips_unbridgeable_baseline_and_uses_first_valid(self) -> None:
+        start = materializer.SOURCE_START_NS
+        builder = ArchiveBuilder(self.root / "spot-too-old", "spot")
+        builder.add_chunk(1, "depth_snapshot", [_snapshot("spot", start + 100)])
+        builder.add_chunk(
+            2, "depth_snapshot", [_snapshot("spot", start + 110, last_update_id=105)]
+        )
+        builder.add_chunk(
+            3,
+            "diff_depth",
+            [
+                _depth("spot", start + 120, 90, 99, None),
+                _depth("spot", start + 130, 104, 106, None),
+                _depth("spot", start + 140, 107, 107, None),
+                _depth("spot", start + 150, 108, 108, None),
+                _depth("spot", start + 160, 109, 109, None),
+            ],
+        )
+        builder.finish()
+        result = self._materialize(builder, "spot", "spot-too-old-output")
+        self.assertEqual(result.event_count, 5)
+        self.assertEqual(result.final_update_id, 109)
+        provenance = json.loads(
+            (result.output_directory / "corpus_provenance.json").read_text()
+        )
+        self.assertEqual(provenance["baseline_source"]["last_update_id"], 105)
+
+    def test_out_of_window_baseline_is_skipped_and_first_bridge_error_reported(self) -> None:
+        start = materializer.SOURCE_START_NS
+        end = materializer.SOURCE_END_NS
+        outside_gap = ArchiveBuilder(self.root / "outside-gap", "spot")
+        outside_gap.add_chunk(1, "depth_snapshot", [_snapshot("spot", start + 100)])
+        outside_gap.add_chunk(
+            2, "depth_snapshot", [_snapshot("spot", end + 500, last_update_id=200)]
+        )
+        outside_gap.add_chunk(
+            3,
+            "diff_depth",
+            [
+                _depth("spot", start + 110, 102, 102, None),
+                _depth("spot", end + 600, 201, 202, None),
+            ],
+        )
+        outside_gap.finish()
+        self._expect_failure(
+            outside_gap, "spot", "Spot bootstrap forward gap", "outside-gap-output"
+        )
+
+        outside_first = ArchiveBuilder(self.root / "outside-first", "spot")
+        outside_first.add_chunk(
+            1, "depth_snapshot", [_snapshot("spot", end + 500, last_update_id=200)]
+        )
+        outside_first.add_chunk(
+            2, "depth_snapshot", [_snapshot("spot", start + 100)]
+        )
+        outside_first.add_chunk(
+            3,
+            "diff_depth",
+            [
+                _depth("spot", start + 110, 99, 101, None),
+                _depth("spot", start + 120, 102, 102, None),
+                _depth("spot", start + 130, 103, 103, None),
+                _depth("spot", start + 140, 104, 104, None),
+            ],
+        )
+        outside_first.finish()
+        result = self._materialize(outside_first, "spot", "outside-first-output")
         self.assertEqual(result.event_count, 5)
         provenance = json.loads(
             (result.output_directory / "corpus_provenance.json").read_text()
         )
         self.assertEqual(provenance["baseline_source"]["last_update_id"], 100)
-        self.assertEqual(
-            provenance["first_retained_diff"]["chunk_id"],
-            str(builder.entries[1]["chunk_id"]),
+
+    def test_post_bridge_live_failure_is_not_retried_as_snapshot_error(self) -> None:
+        start = materializer.SOURCE_START_NS
+        builder = ArchiveBuilder(self.root / "post-bridge-live-failure", "spot")
+        builder.add_chunk(1, "depth_snapshot", [_snapshot("spot", start + 100)])
+        builder.add_chunk(
+            2, "depth_snapshot", [_snapshot("spot", start + 500, last_update_id=200)]
+        )
+        builder.add_chunk(
+            3,
+            "diff_depth",
+            [
+                _depth("spot", start + 110, 99, 101, None),
+                _depth("spot", start + 120, 102, 102, None),
+                _depth("spot", start + 130, 105, 105, None),
+                _depth("spot", start + 600, 201, 202, None),
+            ],
+        )
+        builder.finish()
+        self._expect_failure(
+            builder,
+            "spot",
+            "Spot live sequence discontinuity",
+            "post-bridge-live-failure-output",
         )
 
     def test_usdm_skips_too_old_baseline_and_uses_first_valid(self) -> None:
@@ -683,6 +919,73 @@ class MaterializerTest(unittest.TestCase):
                 allow_test_archive=True,
             )
         self.assertFalse(output.exists())
+
+    def _write_equal_but_invalid_corpus(self, root: Path) -> Path:
+        """Baseline installs; first depth is a bootstrap forward gap; the rest are
+        rejected. Production and reference agree, so differential passes and only
+        the medium lifecycle gate can reject it."""
+        replay_log = (
+            "REPLAY_V1 market=Spot symbol=BTCUSDT price_scale=2 quantity_scale=3 "
+            "policy=Spot fixture_id=med-equal-invalid\n"
+            "INSTALL_BASELINE 100 B:100.00,1.000|B:99.00,2.000 A:101.00,1.500|A:102.00,2.500\n"
+            "DEPTH_UPDATE 102 102 pu=- B:100.00,1.125\n"
+            "DEPTH_UPDATE 103 103 pu=- A:101.00,1.000\n"
+        )
+        directory = root / "equal-but-invalid"
+        directory.mkdir()
+        (directory / "replay.log").write_text(replay_log, encoding="utf-8")
+        replay_sha = hashlib.sha256(replay_log.encode("utf-8")).hexdigest()
+        manifest = (
+            "MANIFEST_V1\n"
+            "fixture_id=med-equal-invalid\n"
+            "schema_version=REPLAY_V1\n"
+            f"log_sha256={replay_sha}\n"
+            "market=Spot\n"
+            "symbol=BTCUSDT\n"
+            "price_scale=2\n"
+            "quantity_scale=3\n"
+            "policy=Spot\n"
+            "event_count=3\n"
+        )
+        (directory / "manifest.txt").write_text(manifest, encoding="utf-8")
+        provenance = {
+            "selected_live_updates_after_synchronization": 1,
+            "event_count": 3,
+            "fixture_id": "med-equal-invalid",
+        }
+        (directory / "corpus_provenance.json").write_text(
+            json.dumps(provenance, sort_keys=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
+        return directory
+
+    def test_core_validator_rejects_equal_but_invalid_lifecycle(self) -> None:
+        if self.validator is None:
+            self.skipTest("core corpus validator not supplied")
+        directory = self._write_equal_but_invalid_corpus(self.root)
+        completed = subprocess.run(
+            [str(self.validator), str(directory)],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("bridge-not-applied", completed.stderr)
+
+    def test_adapter_validator_rejects_equal_but_invalid_lifecycle(self) -> None:
+        if self.adapter_validator is None:
+            self.skipTest("adapter corpus validator not supplied")
+        directory = self._write_equal_but_invalid_corpus(self.root)
+        completed = subprocess.run(
+            [str(self.adapter_validator), str(directory)],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("bridge-not-applied", completed.stderr)
 
 
 if __name__ == "__main__":

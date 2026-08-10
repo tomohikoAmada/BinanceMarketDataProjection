@@ -6,11 +6,14 @@ M5 Phase 3. It never imports Recorder internals and never writes the source arch
 Production archives must be zstd-compressed Recorder sealed chunks. Uncompressed Raw
 chunks are accepted only with the explicit deterministic-test-archive gate.
 
-The baseline selection mirrors the Recorder reconstructor bootstrap authority at
-commit cf1e749c: Spot bootstrap target is ``last_update_id + 1`` (R-034 open
-conflict); USD-M bootstrap target is ``last_update_id``. Recorded snapshots that
-are too old to bridge the diff stream are skipped in receive order, and the first
-valid baseline is selected.
+The baseline selection follows the accepted M3/ADR-0005 bootstrap authority
+(docs/M5_PHASE1_CANONICAL_REPLAY.md): for Spot the bootstrap target is the
+snapshot ``last_update_id`` (``L``) itself and the advancing bridge must contain
+it (``U <= L < u``); for USD-M the first relevant bridge satisfies
+``U <= L <= u``. Recorded snapshots that cannot bridge the diff stream are
+skipped in receive order, and the first valid baseline is selected. A live
+continuity failure after a proven bridge is never retried against another
+snapshot.
 """
 
 from __future__ import annotations
@@ -68,6 +71,16 @@ TOKEN_CHARS = frozenset(
 
 class MaterializationError(RuntimeError):
     """A stable fail-closed source/materialization rejection."""
+
+
+class BridgeEligibilityError(MaterializationError):
+    """One snapshot baseline cannot establish any bootstrap bridge.
+
+    Raised only while the projection is still awaiting its first bridge. The
+    caller may skip this baseline and retry the next recorded snapshot. Any
+    failure after a bridge has been proven is a plain MaterializationError and
+    must never be retried as if the baseline had been invalid.
+    """
 
 
 @dataclass(frozen=True)
@@ -211,7 +224,12 @@ def _exact_keys(value: dict[str, Any], keys: set[str], label: str) -> None:
 
 
 def _canonical_uint(value: object, field: str) -> int:
-    _require(isinstance(value, int) and not isinstance(value, bool) and value >= 0, field)
+    _require(
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and 0 <= value <= 0xFFFFFFFFFFFFFFFF,
+        f"{field} must be a canonical uint64",
+    )
     return value
 
 
@@ -783,48 +801,52 @@ def _synchronize_from_snapshot(
     config: MarketConfig,
     target_live_updates: int,
 ) -> list[ParsedDepth]:
-    """Attempt one snapshot baseline per the Recorder bootstrap authority.
+    """Attempt one snapshot baseline under the accepted M3 bootstrap authority.
 
-    Mirrors Recorder reconstructor bootstrap at commit cf1e749c: Spot bootstrap
-    target is ``last_update_id + 1`` (R-034 open conflict); USD-M target is
-    ``last_update_id``. A recorded diff must cover the bootstrap target; when
-    only older diffs exist the snapshot is too old (SNAPSHOT_TOO_OLD) and the
-    caller retries with the next recorded baseline.
+    Spot bootstrap target is the snapshot ``last_update_id`` (``L``): events with
+    ``u < L`` are stale and discarded, ``u == L`` is a non-advancing duplicate,
+    and the first advancing bridge must contain ``L`` (``U <= L < u``). An
+    advancing candidate with ``U > L``, including the exact-next range beginning
+    at ``L + 1``, is a Spot bootstrap forward gap. ``L == UINT64_MAX`` can never
+    form an advancing Spot bridge (no successor arithmetic is performed).
+
+    USD-M bootstrap target is ``L`` with ``U <= L <= u``; the equality bridge
+    ``u == L`` is valid and carries ``pu``.
+
+    A baseline that cannot establish any bridge raises BridgeEligibilityError so
+    the caller can retry the next recorded snapshot. Every failure after a bridge
+    has been proven (live discontinuity, pu mismatch, source exhaustion) is a
+    plain MaterializationError and propagates.
     """
 
     local = snapshot.last_update_id
-    bootstrap_target = (
-        local + 1 if config.inventory_market == "spot" else local
-    )
     selected: list[ParsedDepth] = []
     bridge_found = False
     live_count = 0
     for depth in depths:
         if not bridge_found:
             if config.inventory_market == "spot":
-                if depth.final_update_id < bootstrap_target:
+                if depth.final_update_id < local:
                     continue
-                if depth.first_update_id > bootstrap_target:
-                    raise MaterializationError(
+                if depth.final_update_id == local:
+                    continue
+                if depth.first_update_id > local:
+                    raise BridgeEligibilityError(
                         "Spot bootstrap forward gap before valid bridge"
                     )
                 _require(
-                    depth.first_update_id
-                    <= bootstrap_target
-                    <= depth.final_update_id,
+                    depth.first_update_id <= local < depth.final_update_id,
                     "Spot bootstrap bridge cannot be proven",
                 )
             else:
-                if depth.final_update_id < bootstrap_target:
+                if depth.final_update_id < local:
                     continue
-                if depth.first_update_id > bootstrap_target:
-                    raise MaterializationError(
+                if depth.first_update_id > local:
+                    raise BridgeEligibilityError(
                         "USD-M bootstrap forward gap before valid bridge"
                     )
                 _require(
-                    depth.first_update_id
-                    <= bootstrap_target
-                    <= depth.final_update_id,
+                    depth.first_update_id <= local <= depth.final_update_id,
                     "USD-M bootstrap bridge cannot be proven",
                 )
             selected.append(depth)
@@ -854,7 +876,7 @@ def _synchronize_from_snapshot(
         if live_count == target_live_updates:
             break
     if not bridge_found:
-        raise MaterializationError("required bootstrap bridge was not found")
+        raise BridgeEligibilityError("required bootstrap bridge was not found")
     _require(
         live_count == target_live_updates,
         f"source ended before {target_live_updates} live updates after synchronization",
@@ -886,27 +908,24 @@ def _select_operations(
     )
     _require(depths, "required ordered diff-depth stream is missing")
 
-    last_bridge_error: MaterializationError | None = None
+    first_bridge_error: BridgeEligibilityError | None = None
     for snapshot in snapshots:
-        _require(
-            snapshot.record.envelope["receive_time_utc_ns"] < SOURCE_END_NS,
-            "baseline is outside formal source interval",
-        )
+        if snapshot.record.envelope["receive_time_utc_ns"] >= SOURCE_END_NS:
+            if first_bridge_error is None:
+                first_bridge_error = BridgeEligibilityError(
+                    "baseline is outside formal source interval"
+                )
+            continue
         try:
             selected = _synchronize_from_snapshot(
                 snapshot, depths, config, target_live_updates
             )
-        except MaterializationError as error:
-            if str(error).endswith("before valid bridge") or str(
-                error
-            ).endswith("bridge cannot be proven") or str(error).endswith(
-                "required bootstrap bridge was not found"
-            ):
-                last_bridge_error = error
-                continue
-            raise
+        except BridgeEligibilityError as error:
+            if first_bridge_error is None:
+                first_bridge_error = error
+            continue
         return snapshot, selected
-    raise last_bridge_error or MaterializationError(
+    raise first_bridge_error or BridgeEligibilityError(
         "required bootstrap bridge was not found"
     )
 
@@ -1007,12 +1026,18 @@ def _render_corpus_provenance(
             **snapshot.record.identity(),
             "last_update_id": snapshot.last_update_id,
         },
+        "bootstrap_bridge": {
+            **depths[0].record.identity(),
+            "first_update_id": depths[0].first_update_id,
+            "final_update_id": depths[0].final_update_id,
+        },
         "canonical_replay_log_sha256": replay_sha256,
         "conversion_timestamp": conversion_timestamp,
         "conversion_timestamp_semantic": False,
         "corpus_schema_version": CORPUS_SCHEMA_VERSION,
         "deployed_wheel_sha256": RECORDER_WHEEL_SHA256,
         "event_count": event_count,
+        "final_selected_update_id": depths[-1].final_update_id,
         "first_retained_diff": depths[0].record.identity(),
         "fixture_id": config.fixture_id,
         "last_retained_diff": depths[-1].record.identity(),

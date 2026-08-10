@@ -24,6 +24,7 @@ bmd_projection_apply_project_options(bmd_projection_m5_replay_support)
 
 add_library(
     bmd_projection_m5_phase3_support
+    m5/phase3/medium_validity.cpp
     m5/phase3/small_workload.cpp
 )
 target_include_directories(
@@ -32,7 +33,7 @@ target_include_directories(
 )
 target_link_libraries(
     bmd_projection_m5_phase3_support
-    PUBLIC bmd_projection_m5_replay_support
+    PUBLIC bmd_projection_m5_oracle_support
 )
 set_target_properties(
     bmd_projection_m5_phase3_support
@@ -134,6 +135,7 @@ add_executable(
     m5/oracle/operation_observation_test.cpp
     m5/oracle/reference_adapter_test.cpp
     m5/oracle/reference_decimal_test.cpp
+    m5/phase3/medium_validity_test.cpp
     m5/phase3/small_replay_test.cpp
 )
 target_compile_definitions(
@@ -165,6 +167,7 @@ target_link_libraries(
     bmd_projection_m5_corpus_validate
     PRIVATE
         bmd_projection_m5_oracle_support
+        bmd_projection_m5_phase3_support
         bmd_projection_m5_reference_support
 )
 set_target_properties(
@@ -294,6 +297,7 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
         bmd_projection_m5_adapter_differential_tests
         m5/oracle/adapter_differential_test.cpp
         m5/oracle/adapter_production_side.cpp
+        m5/phase3/medium_validity_adapter_test.cpp
         m5/phase3/small_adapter_replay_test.cpp
     )
     target_compile_definitions(
@@ -328,6 +332,7 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
         PRIVATE
             BinanceMarketDataProjection::ProtoAdapter
             bmd_projection_m5_oracle_support
+            bmd_projection_m5_phase3_support
             bmd_projection_m5_reference_support
     )
     set_target_properties(
