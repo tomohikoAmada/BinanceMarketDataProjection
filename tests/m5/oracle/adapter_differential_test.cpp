@@ -161,18 +161,35 @@ TEST(AdapterDifferentialReplayTest, SpotTinyAdapterBoundaryAgrees) {
                                                   CanonicalDecimalError::SignNotAllowed)}));
     EXPECT_EQ(failed_update.checkpoint.status, CanonicalStatus::AwaitingBridge);
 
-    const auto& gap_update = observation(outcome, 3);
-    const auto& adapted = std::get<AdapterSuccessOutcome>(gap_update.result.value);
+    const auto& bridge_update = observation(outcome, 3);
+    const auto& adapted = std::get<AdapterSuccessOutcome>(bridge_update.result.value);
     const auto& apply = std::get<ApplyOutcome>(adapted.core_result);
-    EXPECT_EQ(apply.disposition, CanonicalDisposition::GapDetected);
-    ASSERT_TRUE(apply.gap.has_value());
-    EXPECT_EQ(apply.gap->reason, CanonicalGapReason::SpotBootstrapForwardGap);
+    EXPECT_EQ(apply.disposition, CanonicalDisposition::Applied);
+    EXPECT_EQ(apply.status_after, CanonicalStatus::Synchronized);
+    EXPECT_EQ(apply.last_update_id_after, std::optional<std::uint64_t>{101});
+    EXPECT_FALSE(apply.gap.has_value());
     EXPECT_TRUE(adapted.observed_quality.empty());
 
     const auto& snapshot = observation(outcome, 4);
-    EXPECT_EQ(snapshot.result.value, (oracle::OperationResultValue{
-                                         error(CanonicalAdapterCode::MissingRequiredField,
-                                               CanonicalAdapterField::CurrentGap, std::nullopt)}));
+    const auto& semantic = std::get<SnapshotOutcome>(snapshot.result.value);
+    EXPECT_EQ(semantic.policy, CanonicalPolicy::Spot);
+    EXPECT_EQ(semantic.symbol, "BTCUSDT");
+    EXPECT_EQ(semantic.producer, "fixture");
+    EXPECT_EQ(semantic.producer_version, "1.0");
+    EXPECT_EQ(semantic.source, CanonicalSnapshotSource::RecorderReplay);
+    EXPECT_EQ(semantic.generated_time_utc_ns, 1000U);
+    EXPECT_EQ(semantic.generated_monotonic_ns, std::optional<std::uint64_t>{});
+    EXPECT_EQ(semantic.last_update_id, std::optional<std::uint64_t>{101});
+    EXPECT_TRUE(semantic.synchronized);
+    EXPECT_EQ(semantic.bids, (std::vector<SnapshotLevel>{{"100.00000000", "1.50000000"},
+                                                         {"99.00000000", "2.00000000"}}));
+    EXPECT_EQ(semantic.asks, (std::vector<SnapshotLevel>{{"101.00000000", "1.00000000"}}));
+    EXPECT_EQ(semantic.quality_flags,
+              flags({CanonicalQualityFlag::Duplicate, CanonicalQualityFlag::OutOfOrder}));
+    EXPECT_FALSE(semantic.depth_limit.has_value());
+    EXPECT_FALSE(semantic.gap_descriptor.has_value());
+    ASSERT_TRUE(snapshot.snapshot.has_value());
+    EXPECT_EQ(*snapshot.snapshot, semantic);
 
     const auto& malformed = observation(outcome, 7);
     ASSERT_TRUE(std::holds_alternative<RangeOutcome>(malformed.result.value));

@@ -1,6 +1,7 @@
 #include "replay_types.hpp"
 
 #include <algorithm>
+#include <limits>
 
 namespace bmd_projection::m5::replay {
 
@@ -12,7 +13,10 @@ SpotBootstrapOutcome classify_spot_bootstrap(std::uint64_t snapshot_last_update_
     if (range.final_update_id == snapshot_last_update_id) {
         return SpotBootstrapOutcome::NonAdvancingDuplicate;
     }
-    if (range.first_update_id <= snapshot_last_update_id) {
+    if (snapshot_last_update_id == std::numeric_limits<std::uint64_t>::max()) {
+        return SpotBootstrapOutcome::ForwardGap;
+    }
+    if (range.first_update_id <= snapshot_last_update_id + 1U) {
         return SpotBootstrapOutcome::BridgeCandidate;
     }
     return SpotBootstrapOutcome::ForwardGap;
@@ -23,7 +27,7 @@ MaterializerContract spot_materializer_contract() {
             "REST depth snapshot lastUpdateId=L",
             "all diff-depth events received from stream start through snapshot acquisition",
             "stale: u < L; duplicate/non-advancing: u == L and cannot form a bridge",
-            "first advancing bridge satisfies U <= L < u",
+            "first advancing bridge covers the successor: U <= L + 1",
             "after synchronization, each live event must cover local_last_update_id+1 per the "
             "accepted M3 Spot live policy, then advance to u",
             "snapshot-too-old, forward gap, integrity, or provenance failure rejects the fixture "

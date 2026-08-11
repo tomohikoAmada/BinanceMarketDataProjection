@@ -119,16 +119,14 @@ class ReferenceProjection final {
             if (final == current) {
                 return simple(Disposition::IgnoredDuplicate);
             }
+            const bool starts_at_successor =
+                current != UINT64_MAX && first == current + std::uint64_t{1};
             if (status_ == Status::AwaitingBridge) {
-                if (first > current) {
+                if (first > current && !starts_at_successor) {
                     return gap(first, final, previous, GapReason::SpotBootstrapForwardGap);
                 }
-            } else {
-                const bool starts_at_successor =
-                    current != UINT64_MAX && first == current + std::uint64_t{1};
-                if (first > current && !starts_at_successor) {
-                    return gap(first, final, previous, GapReason::SpotLiveForwardGap);
-                }
+            } else if (first > current && !starts_at_successor) {
+                return gap(first, final, previous, GapReason::SpotLiveForwardGap);
             }
         } else if (status_ == Status::AwaitingBridge) {
             if (first > current) {

@@ -35,6 +35,15 @@ struct Classification final {
     return {SequenceDecision::Gap, reason};
 }
 
+[[nodiscard]] constexpr bool covers_successor(UpdateId current, UpdateId first) noexcept {
+    if (first <= current) {
+        return true;
+    }
+    const auto current_value = current.value();
+    return current_value != std::numeric_limits<std::uint64_t>::max() &&
+           first.value() == current_value + 1U;
+}
+
 [[nodiscard]] constexpr Classification classify_spot_bootstrap(UpdateId current,
                                                                UpdateRange range) noexcept {
     if (range.final() < current) {
@@ -43,7 +52,7 @@ struct Classification final {
     if (range.final() == current) {
         return duplicate_decision();
     }
-    if (range.first() <= current) {
+    if (covers_successor(current, range.first())) {
         return apply_decision();
     }
     return gap_decision(GapReason::SpotBootstrapForwardGap);
@@ -57,13 +66,7 @@ struct Classification final {
     if (range.final() == current) {
         return duplicate_decision();
     }
-    if (range.first() <= current) {
-        return apply_decision();
-    }
-
-    const auto current_value = current.value();
-    if (current_value != std::numeric_limits<std::uint64_t>::max() &&
-        range.first().value() == current_value + 1U) {
+    if (covers_successor(current, range.first())) {
         return apply_decision();
     }
     return gap_decision(GapReason::SpotLiveForwardGap);

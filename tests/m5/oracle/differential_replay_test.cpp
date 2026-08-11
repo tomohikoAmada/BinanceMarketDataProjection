@@ -60,16 +60,6 @@ using oracle::SnapshotNotProducedOutcome;
     return outcome.observations.at(index);
 }
 
-[[nodiscard]] CanonicalGapEvidence spot_bootstrap_gap(std::uint64_t last, std::uint64_t first,
-                                                      std::uint64_t final) {
-    return {last,
-            first,
-            final,
-            std::nullopt,
-            CanonicalGapReason::SpotBootstrapForwardGap,
-            CanonicalPolicy::Spot};
-}
-
 TEST(CoreOnlyDifferentialReplayTest, SpotTinyAgreesAndCoversFailureGapAndRangeEvents) {
     const auto outcome = run_core_only("spot_tiny");
     ASSERT_FALSE(outcome.first_divergence.has_value());
@@ -95,15 +85,21 @@ TEST(CoreOnlyDifferentialReplayTest, SpotTinyAgreesAndCoversFailureGapAndRangeEv
               oracle::CanonicalDecimalError::SignNotAllowed);
     EXPECT_EQ(failed_update.checkpoint.status, CanonicalStatus::AwaitingBridge);
 
-    const auto& gap_update = observation(outcome, 3);
-    const auto& apply = std::get<ApplyOutcome>(gap_update.result.value);
-    EXPECT_EQ(apply.disposition, CanonicalDisposition::GapDetected);
-    EXPECT_EQ(apply.status_after, CanonicalStatus::NeedsResync);
-    EXPECT_EQ(apply.last_update_id_after, std::optional<std::uint64_t>{100});
-    ASSERT_TRUE(apply.gap.has_value());
-    EXPECT_EQ(*apply.gap, spot_bootstrap_gap(100, 101, 101));
-    EXPECT_EQ(gap_update.checkpoint.status, CanonicalStatus::NeedsResync);
-    EXPECT_TRUE(gap_update.checkpoint.last_gap.has_value());
+    const auto& bridge_update = observation(outcome, 3);
+    const auto& apply = std::get<ApplyOutcome>(bridge_update.result.value);
+    EXPECT_EQ(apply.disposition, CanonicalDisposition::Applied);
+    EXPECT_EQ(apply.status_after, CanonicalStatus::Synchronized);
+    EXPECT_EQ(apply.last_update_id_after, std::optional<std::uint64_t>{101});
+    EXPECT_FALSE(apply.gap.has_value());
+    EXPECT_EQ(bridge_update.checkpoint.status, CanonicalStatus::Synchronized);
+    EXPECT_EQ(bridge_update.checkpoint.last_update_id, std::optional<std::uint64_t>{101});
+    EXPECT_FALSE(bridge_update.checkpoint.last_gap.has_value());
+    EXPECT_EQ(
+        bridge_update.checkpoint.bids,
+        (std::vector<CanonicalLevel>{{10'000'000'000, 150'000'000}, {9'900'000'000, 200'000'000}}));
+    EXPECT_EQ(bridge_update.checkpoint.asks,
+              (std::vector<CanonicalLevel>{{10'100'000'000, 100'000'000}}));
+    EXPECT_TRUE(bridge_update.checkpoint.synchronized_visible);
 
     EXPECT_TRUE(
         std::holds_alternative<SnapshotNotProducedOutcome>(observation(outcome, 4).result.value));

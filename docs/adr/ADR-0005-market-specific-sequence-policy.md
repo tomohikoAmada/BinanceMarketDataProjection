@@ -15,6 +15,14 @@ The proposed architecture received independent external review.
 This acceptance covers the design decision only. M3 implementation has not started and requires a
 separate implementation branch, validation cycle, and external code review.
 
+## Supersession note (2026-08-10)
+
+The **Spot-bootstrap portion** of this ADR (the contains-`L` bridge rule below) is superseded by
+[ADR-0008](ADR-0008-spot-bootstrap-successor-coverage.md) following the official
+Binance 2025-11-12 correction of the Spot local-order-book instructions. ADR-0008 is
+`ACCEPTED`; this ADR's historical contains-`L` decision remains
+recorded exactly as accepted. All USD-M decisions in this ADR are unaffected.
+
 ## Context
 
 M2 owns deterministic absolute-quantity order-book mutation but has no Binance update IDs,
@@ -240,7 +248,8 @@ supplies time and performs network recovery. Gateway `session_sequence`, `connec
 Implementation review must explicitly evaluate:
 
 - Spot versus Futures policy correctness;
-- Spot bootstrap contains-`L` correctness and its separation from live successor coverage;
+- Spot bootstrap successor coverage per proposed ADR-0008 (superseding the contains-`L` rule) and
+  its separation from live successor coverage;
 - stale/equality duplicate ordering;
 - USD-M equality-bridge level application and `pu` behavior;
 - Contracts-aligned public policy scope;

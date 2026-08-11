@@ -41,6 +41,13 @@ production pipeline and the reference pipeline through their public APIs.
   ADR-0008 at migration time) backed by the benchmark evidence and decision criteria defined in the
   M5 design.
 
+## Numbering note (2026-08-10)
+
+At the time ADR-0007 was accepted, the future container-migration decision was expected to use
+ADR-0008. ADR-0008 was subsequently allocated to the Spot bootstrap successor-coverage
+correction. Any future production-container migration must therefore use the next available ADR
+number. This numbering change does not alter ADR-0007's accepted architecture.
+
 ## Consequences
 
 ### Positive

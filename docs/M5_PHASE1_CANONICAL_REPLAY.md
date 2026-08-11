@@ -7,8 +7,9 @@
   post-merge main CI `31264500905` — PASS 16/16)
 - Phase 2: **IMPLEMENTED / PENDING INDEPENDENT REVIEW** — see
   `docs/M5_PHASE2_DIFFERENTIAL_ORACLE.md`
-- M5-P1-IR-1: **CLOSED** - Spot bootstrap bridge follows the accepted M3/ADR-0005 contains-`L`
-  rule `U <= L < u`
+- M5-P1-IR-1: **CLOSED** (semantics superseded) - Spot bootstrap bridge follows the corrected
+  successor-coverage rule `U <= L + 1` per ADR-0008; the earlier contains-`L` reading `U <= L < u`
+  is superseded by the official 2025-11-12 correction and no longer authoritative
 - M5-P1-IR-2: **CLOSED**
 - M5-PIR-001: **CLOSED**
 - M5-PIR-002: **DEFERRED / NON-BLOCKING**
@@ -97,16 +98,17 @@ Recorder immutable live Raw -> verified source manifest/catalog -> offline mater
 -> canonical replay-log v1 -> provenance manifest
 ```
 
-Spot uses the accepted M3/ADR-0005 `L` bridge contract. The REST depth snapshot lastUpdateId is
-`L`, and the buffer holds all diff-depth events received from stream start through snapshot
-acquisition. Pre-bridge classification is: `u < L` is stale and discarded; `u == L` is a
-duplicate/non-advancing event and cannot form a bridge. The first advancing bridge must contain
-`L` and advance beyond it: `U <= L < u`. An advancing candidate with `U > L` (including the
-exact-next range beginning at `L + 1`) is a forward gap. `L == UINT64_MAX` cannot form an
-advancing bridge. Bootstrap semantics are distinct from the post-synchronization live successor
-rule: after bridging, each live event must cover `local_last_update_id + 1` per the accepted M3
-live Spot policy and then advance to its `u`. A missing bridge, forward gap, source integrity
-failure, or provenance failure rejects the fixture and requires resync/rebaseline.
+Spot uses the M3 Spot bridge contract corrected by the official 2025-11-12 instruction change and
+recorded in ADR-0008 (superseding the contains-`L` Spot-bootstrap portion of ADR-0005). The REST
+depth snapshot lastUpdateId is `L`, and the buffer holds all diff-depth events received from
+stream start through snapshot acquisition. Pre-bridge classification is: `u < L` is stale and
+discarded; `u == L` is a duplicate/non-advancing event and cannot form a bridge. The first
+advancing bridge must cover the successor of `L`: `U <= L + 1` (overflow-guarded); exact-next input
+beginning at `L + 1` is continuous. An advancing candidate with `U > L + 1` is a forward gap.
+`L == UINT64_MAX` cannot form an advancing bridge. After bridging, each live event must cover
+`local_last_update_id + 1` per the accepted M3 live Spot policy and then advance to its `u`. A
+missing bridge, forward gap, source integrity failure, or provenance failure rejects the fixture
+and requires resync/rebaseline.
 
 USD-M retains the buffered `U/u/pu` stream through snapshot acquisition, discards events with
 `u < L`, accepts the first event satisfying `U <= L <= u`, then requires `pu == local_last_update_id`
