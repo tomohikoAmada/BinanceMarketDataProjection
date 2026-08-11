@@ -26,11 +26,6 @@
 #include <variant>
 #include <vector>
 
-// ASSERT_TRUE is the guard for every optional access in these tests but
-// clang-tidy cannot trace through gtest control-flow macros, so unchecked-
-// optional-access verification is delegated to the tests' own assertions.
-// NOLINTBEGIN(bugprone-unchecked-optional-access)
-
 namespace {
 
 namespace oracle = bmd_projection::m5::oracle;
@@ -200,14 +195,18 @@ TEST(MediumValidityTest, ValidSpotCorpusPassesLifecycleGate) {
     EXPECT_EQ(report.rejected_wrong_state_count, 0U);
     EXPECT_EQ(report.final_status, oracle::CanonicalStatus::Synchronized);
     ASSERT_TRUE(report.final_accepted_update_id.has_value());
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
     EXPECT_EQ(report.final_accepted_update_id.value(), 104U);
     ASSERT_TRUE(report.last_selected_diff_final_update_id.has_value());
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
     EXPECT_EQ(report.last_selected_diff_final_update_id.value(), 104U);
     ASSERT_TRUE(report.first_install.has_value());
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
     const auto& first_install = report.first_install.value();
     EXPECT_EQ(first_install.disposition, oracle::CanonicalDisposition::Installed);
     EXPECT_EQ(first_install.status_after, oracle::CanonicalStatus::AwaitingBridge);
     ASSERT_TRUE(report.first_depth_update.has_value());
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
     const auto& first_depth_update = report.first_depth_update.value();
     EXPECT_EQ(first_depth_update.disposition, oracle::CanonicalDisposition::Applied);
     EXPECT_EQ(first_depth_update.status_after, oracle::CanonicalStatus::Synchronized);
@@ -221,6 +220,7 @@ TEST(MediumValidityTest, ValidUsdMCorpusPassesLifecycleGate) {
     EXPECT_TRUE(report.valid);
     EXPECT_EQ(report.applied_count, 4U);
     ASSERT_TRUE(report.final_accepted_update_id.has_value());
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
     EXPECT_EQ(report.final_accepted_update_id.value(), 103U);
     EXPECT_EQ(report.final_status, oracle::CanonicalStatus::Synchronized);
 }
@@ -280,8 +280,10 @@ TEST(MediumValidityTest, FinalAcceptedIdMismatchFails) {
     const auto report = phase3::check_medium_validity(outcome, fixture, 3);
     EXPECT_FALSE(report.valid);
     ASSERT_TRUE(report.final_accepted_update_id.has_value());
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
     EXPECT_EQ(report.final_accepted_update_id.value(), 103U);
     ASSERT_TRUE(report.last_selected_diff_final_update_id.has_value());
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
     EXPECT_EQ(report.last_selected_diff_final_update_id.value(), 101U);
 }
 
@@ -300,6 +302,7 @@ TEST(MediumValidityTest, DifferentialDivergenceIsNotHiddenByLifecycleGate) {
                                 std::move(mutating), oracle::ObservationRetention::RetainNone};
     const auto outcome = driver.run();
     ASSERT_TRUE(outcome.first_divergence.has_value());
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
     EXPECT_EQ(outcome.first_divergence.value().event_index, 3U);
     const auto report = phase3::check_medium_validity(outcome, fixture, 3);
     EXPECT_FALSE(report.valid);
@@ -394,7 +397,9 @@ TEST(MediumValidityTest, DirectSpotExactNextLiveSuccessorLocked) {
     EXPECT_EQ(outcome.summary.applied_count, 3U);
     EXPECT_EQ(outcome.summary.gap_detected_count, 0U);
     ASSERT_TRUE(outcome.final_observation.has_value());
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
     EXPECT_EQ(outcome.final_observation->checkpoint.status, oracle::CanonicalStatus::Synchronized);
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
     EXPECT_EQ(outcome.final_observation->checkpoint.last_update_id, 503U);
 }
 
@@ -405,6 +410,7 @@ TEST(MediumValidityTest, JsonIntentReaderAcceptsCanonicalProvenance) {
         R"({"bootstrap_bridge":{"final_update_id":104},"event_count":5,"final_selected_update_id":104,"selected_live_updates_after_synchronization":3,"source_raw_chunks":[]})");
     const auto target = phase3::read_target_live_updates(temporary.path());
     ASSERT_TRUE(target.has_value());
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
     EXPECT_EQ(target.value(), 3U);
 }
 
@@ -453,6 +459,7 @@ TEST(MediumValidityTest, JsonUint64BoundaryAcceptsMaximumAndRejectsOverflow) {
                      R"({"selected_live_updates_after_synchronization":18446744073709551615})");
     const auto maximum = phase3::read_target_live_updates(path);
     ASSERT_TRUE(maximum.has_value());
+    // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
     EXPECT_EQ(maximum.value(), std::numeric_limits<std::uint64_t>::max());
 
     write_provenance(path,
@@ -469,4 +476,30 @@ TEST(MediumValidityTest, JsonUint64BoundaryAcceptsMaximumAndRejectsOverflow) {
     EXPECT_FALSE(phase3::read_target_live_updates(path).has_value());
 }
 
-// NOLINTEND(bugprone-unchecked-optional-access)
+TEST(MediumValidityTest, TargetOverflowBoundaryFailsClosed) {
+    const auto fixture = valid_spot_corpus();
+    const auto outcome = run_core(fixture);
+
+    {
+        const auto report = phase3::check_medium_validity(
+            outcome, fixture, std::numeric_limits<std::uint64_t>::max());
+        EXPECT_FALSE(report.valid);
+        EXPECT_EQ(report.reason, "invalid-target");
+    }
+
+    {
+        const auto report = phase3::check_medium_validity(
+            outcome, fixture, std::numeric_limits<std::uint64_t>::max() - 1U);
+        EXPECT_FALSE(report.valid);
+        EXPECT_EQ(report.reason, "invalid-target");
+    }
+
+    {
+        const auto report = phase3::check_medium_validity(
+            outcome, fixture, std::numeric_limits<std::uint64_t>::max() - 2U);
+        EXPECT_FALSE(report.valid);
+        EXPECT_NE(report.reason, "invalid-target");
+    }
+
+    EXPECT_TRUE(phase3::check_medium_validity(outcome, fixture, 3U).valid);
+}

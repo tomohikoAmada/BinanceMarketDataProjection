@@ -461,6 +461,10 @@ MediumValidityReport check_medium_validity(const oracle::ReplayOutcome& outcome,
     if (report.first_install->status_after != CanonicalStatus::AwaitingBridge) {
         return fail("baseline-status-unexpected", report.first_install->event_index);
     }
+    constexpr auto kMaxTarget = std::numeric_limits<std::uint64_t>::max();
+    if (target_live_updates > kMaxTarget - 2U) {
+        return fail("invalid-target");
+    }
     const std::uint64_t expected_depth_events = target_live_updates + 1;
     if (summary.depth_events != expected_depth_events) {
         return fail("unexpected-depth-event-count");
