@@ -8,8 +8,10 @@
   `75c619dd683ff2a3893f9535e206231e7bfecc41`, main CI `31315421548` — PASS 16/16)
 - Phase 2 final review: **APPROVED**; P0: 0; P1: 0; M5-P2-IR-001 through
   M5-P2-IR-007 and M5-P2-RR-001 CLOSED
-- Phase 3: **IMPLEMENTED / PENDING INDEPENDENT REVIEW** (rebase onto accepted
-  M3 successor-coverage semantics complete; authoritative Spot and USD-M 100k
+- Phase 3: **COMPLETE / MERGED** (PR #13; final approved Head
+  `a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354`; exact-head CI `31491615547` — PASS 16/16; squash
+  merge `473a907eba2001d18926c57d6c8d16b10c7505be`; rebased onto accepted
+  M3 successor-coverage semantics; authoritative Spot and USD-M 100k
   corpora validated PASS under ADR-0008 authority)
 - Phase 4: **NOT STARTED**
 - M6: **NOT STARTED**
@@ -34,6 +36,37 @@ is committed.
 | M5-P3-IR-003 — USD-M materialization claimed a continuous 100k post-sync pu chain but committed evidence recorded final NeedsResync | **CORRECTED** — regenerated evidence shows bridge Applied / Synchronized, 100,001 Applied, final Synchronized; the previously recorded NEEDS_RESYNC checkpoint was stale and has been replaced by actual current program output |
 | M5-P3-IR-004 — string-based snapshot-retry error classification | **CORRECTED** — structured `BridgeEligibilityError` retry category; post-bridge live failures are never retried as snapshot errors |
 | M5-P3-IR-005 — stale PR/README/MILESTONES lifecycle status | **CORRECTED** — status documentation synchronized with the actual disposition |
+
+## Final review and merge record
+
+```text
+PR #13:
+APPROVED
+P0: 0
+P1: 0
+New blocking regression: NONE
+
+M5-P3-RR2-001:
+CLOSED
+
+M5-P3-RR2-002:
+PARTIALLY CLOSED / ACCEPTED NON-BLOCKING P2
+
+Final approved PR Head:
+a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354
+
+Exact-head CI:
+31491615547 — PASS 16/16
+
+Squash merge:
+473a907eba2001d18926c57d6c8d16b10c7505be
+
+PR #13:
+SQUASH MERGED / CLOSED
+```
+
+M5-P3-RR2-002 remains an accepted non-blocking P2 (narrow `NOLINTNEXTLINE` instances); it does not
+block Phase 3 completion and is not fixed by this phase.
 
 ## Base gate
 
@@ -442,8 +475,10 @@ source-line context). M5-P3-IR-004 is resolved by the structured retry-error cor
 
 ```text
 Phase 3:
-IMPLEMENTED / PENDING INDEPENDENT REVIEW
-(rebased onto accepted ADR-0008 successor coverage; Spot and USD-M 100k corpora validated)
+COMPLETE / MERGED
+(PR #13, final approved Head a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354,
+ exact-head CI 31491615547 — PASS 16/16, squash merge 473a907eba2001d18926c57d6c8d16b10c7505be;
+ rebased onto accepted ADR-0008 successor coverage; Spot and USD-M 100k corpora validated)
 
 Spot medium:   VALID (exact-next bridge Applied / Synchronized under ADR-0008)
 Spot 100k:     ESTABLISHED (bridge U=98288147168 u=98288147175 against L=98288147167;
@@ -456,9 +491,12 @@ M5-P3-IR-002:  CORRECTED
 M5-P3-IR-003:  CORRECTED
 M5-P3-IR-004:  CORRECTED (structured retry error category)
 M5-P3-IR-005:  CORRECTED (status documentation synchronized)
+M5-P3-RR2-001: CLOSED
+M5-P3-RR2-002: PARTIALLY CLOSED / ACCEPTED NON-BLOCKING P2
 ```
 
 The Phase-3 code changes remain test/tool-only. ADR-0008 acceptance is recorded on `main` (PR
-#14); this PR rebased onto that accepted main and changed no production Core or ProtoAdapter
+#14); Phase 3 rebased onto that accepted main and changed no production Core or ProtoAdapter
 code. The mandatory Spot and USD-M medium corpora are both established from the pinned
-authoritative source; final Phase-3 acceptance requires independent review of this PR Head.
+authoritative source; Phase 3 was independently approved (P0: 0, P1: 0) and merged through
+PR #13 at `473a907eba2001d18926c57d6c8d16b10c7505be`.

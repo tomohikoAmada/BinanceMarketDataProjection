@@ -5,9 +5,11 @@
 - M5 implementation: **IN PROGRESS**
 - Phase 1: **COMPLETE / MERGED** (PR #11, merge `5e8629a7ff825f8ea941304d9b09be1670643e8a`,
   post-merge main CI `31264500905` — PASS 16/16)
-- Phase 2: **IMPLEMENTED / PENDING INDEPENDENT REVIEW** — see
+- Phase 2: **COMPLETE / MERGED** (PR #12, merge `75c619dd683ff2a3893f9535e206231e7bfecc41`,
+  post-merge main CI `31315421548` — PASS 16/16) — see
   `docs/M5_PHASE2_DIFFERENTIAL_ORACLE.md`
-- Phase 3: **IMPLEMENTED / PENDING INDEPENDENT REVIEW** — see
+- Phase 3: **COMPLETE / MERGED** (PR #13, merge
+  `473a907eba2001d18926c57d6c8d16b10c7505be`) — see
   `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`
 - M5-P1-IR-1: **CLOSED** (semantics superseded) - Spot bootstrap bridge follows the corrected
   successor-coverage rule `U <= L + 1` per ADR-0008; the earlier contains-`L` reading `U <= L < u`

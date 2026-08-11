@@ -2,9 +2,8 @@
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. M1 through M4 are complete on `main`; M5 (Differential Validation and
-Performance) implementation is in progress (Phases 1 and 2 merged, Phase 3 foundation implemented
-but Phase 3 is partial because the pinned authoritative Spot source is ineligible under the accepted
-Projection bootstrap policy; the USD-M medium corpus is validated.
+Performance) implementation is in progress (Phases 1, 2, and 3 merged; Phase 4 and later not
+started).
 
 ## For AI agents and independent reviewers
 
@@ -242,10 +241,12 @@ M1, M2, M3, and M4 are COMPLETE. M4 was merged through PR #8 at
 `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4` with post-merge main CI `31242162782` — 16/16 PASS.
 M5 (Differential Validation and Performance) is **APPROVED / MERGED / IN PROGRESS**: Phase 1
 canonical replay infrastructure is COMPLETE / MERGED (PR #11, merge
-`5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — 16/16 PASS) and
+`5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — 16/16 PASS),
 Phase 2 (independent differential oracle foundation) is COMPLETE / MERGED (PR #12, merge
-`75c619dd683ff2a3893f9535e206231e7bfecc41`, post-merge main CI `31315421548` — 16/16 PASS).
-Phase 3 is IMPLEMENTED / PENDING INDEPENDENT REVIEW in PR #13: deterministic 2,048-event Spot
+`75c619dd683ff2a3893f9535e206231e7bfecc41`, post-merge main CI `31315421548` — 16/16 PASS), and
+Phase 3 is COMPLETE / MERGED (PR #13, final approved Head
+`a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354`, exact-head CI `31491615547` — 16/16 PASS, squash
+merge `473a907eba2001d18926c57d6c8d16b10c7505be`): deterministic 2,048-event Spot
 and USD-M small workloads, scalable differential replay, failure diagnostics, the offline Raw-v1
 materializer, and validator-enforced medium lifecycle validity are implemented, rebased onto the
 accepted M3 Spot successor-coverage semantics (ADR-0008). Both mandatory 100k corpora are
@@ -266,9 +267,9 @@ The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
 - The repository includes numeric primitives, a deterministic L2 market-by-price order book, the
   completed M3 sequence/projection implementation, and the merged optional M4 Protobuf adapter on
   `main`.
-- M5 is **APPROVED / MERGED / IN PROGRESS**; Phases 1 and 2 are COMPLETE / MERGED, and Phase 3 is
-  IMPLEMENTED / PENDING INDEPENDENT REVIEW in PR #13 (Spot and USD-M 100k corpora validated PASS
-  from the pinned authoritative source under ADR-0008 successor coverage). Phase 4 and M6 are not
+- M5 is **APPROVED / MERGED / IN PROGRESS**; Phases 1, 2, and 3 are COMPLETE / MERGED (Phase 3
+  Spot and USD-M 100k corpora validated PASS from the pinned authoritative source under ADR-0008
+  successor coverage). Phase 4 and M6 are not
   started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.

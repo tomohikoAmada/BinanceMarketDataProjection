@@ -267,8 +267,7 @@ No M5 production change or container migration is authorized by the design.
 
 OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions and CI policy
 are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
-M5 implementation is authorized. Phases 1 and 2 are complete and merged; Phase 3 is implemented
-in PR #13 and pending independent review. Later
+M5 implementation is authorized. Phases 1, 2, and 3 are complete and merged; later
 phases remain separate.
 
 Phase 1 canonical replay infrastructure is **COMPLETE / MERGED** (PR #11, merge
@@ -284,7 +283,9 @@ with layer attribution) is **COMPLETE / MERGED** (PR #12, merge
 CI `31315421548` — PASS 16/16). M5-P2-IR-001 through M5-P2-IR-007 and M5-P2-RR-001 are CLOSED;
 M5-P2-IR-008 and M5-P2-IR-009 remain DEFERRED / NON-BLOCKING.
 
-Phase 3 is **IMPLEMENTED / PENDING INDEPENDENT REVIEW** in PR #13, rebased onto the accepted M3
+Phase 3 is **COMPLETE / MERGED** via PR #13 (final approved Head
+`a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354`; exact-head CI `31491615547` — PASS 16/16; P0: 0;
+P1: 0; squash merge `473a907eba2001d18926c57d6c8d16b10c7505be`), rebased onto the accepted M3
 Spot successor-coverage semantics (ADR-0008). Deterministic 2,048-event
 small-tier Spot and USD-M workloads, per-event scaled differential comparison, bounded observation
 retention, stable first-divergence diagnostics, the independent offline Recorder Raw-v1
@@ -295,7 +296,8 @@ Synchronized, zero gaps). The mandatory
 USD-M 100k corpus (`M5-REC-USDM-BTCUSDT-V1`) is validated PASS (bridge Applied / Synchronized,
 100,001 Applied, final Synchronized, zero gaps). The Phase-3 corrections (M5-P3-IR-001 through
 M5-P3-IR-005) are recorded; M5-P3-IR-001's historical contains-`L` restoration was itself
-superseded by ADR-0008 acceptance. See `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`.
+superseded by ADR-0008 acceptance. Residual M5-P3-RR2-002 remains PARTIALLY CLOSED / ACCEPTED
+NON-BLOCKING P2. See `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`.
 Phase 4 is NOT STARTED.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
@@ -308,11 +310,12 @@ passed 16/16. ADR-0008 is **ACCEPTED**, superseding only the Spot-bootstrap cont
 portion of ADR-0005; USD-M semantics are unchanged. PR #14 merged at main
 `8bc71f2ae457cf3d15a9dcb4ea659a9c3f85a569` (squash merge, 2026-08-11).
 
-The M5 Phase-3 continuation (PR #13) has been rebased onto the corrected main and the mandatory
-Spot corpus gate has been re-evaluated: under the accepted successor-coverage rule the pinned
+The M5 Phase-3 continuation (PR #13) was rebased onto the corrected main and the mandatory
+Spot corpus gate was re-evaluated: under the accepted successor-coverage rule the pinned
 in-window Spot archive's exact-next candidate (`U = L + 1`) is a valid bootstrap bridge, and the
-Spot 100k corpus is validated PASS. PR #13 remains OPEN / DRAFT pending independent review. This
-branch changes no M5 Phase-3 production materializer dependency: the correction is test/tool-only
+Spot 100k corpus is validated PASS. At that time PR #13 remained OPEN / DRAFT pending independent
+review; it has since been independently approved and merged (see Phase 3 acceptance above). This
+branch changed no M5 Phase-3 production materializer dependency: the correction is test/tool-only
 on top of the accepted main semantics.
 
 ### Deferred M4 P2 findings

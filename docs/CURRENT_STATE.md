@@ -25,10 +25,10 @@ orientation only.
 
 ## Current Main
 
-- `origin/main`: `8bc71f2ae457cf3d15a9dcb4ea659a9c3f85a569` (M3 Spot successor-coverage
-  correction PR #14 merged at this SHA).
+- `origin/main`: `473a907eba2001d18926c57d6c8d16b10c7505be` (M5 Phase 3 deterministic replay
+  validation, PR #13 squash-merged at this SHA).
 - M0-M4 are complete on main.
-- M5 Phase 1 and Phase 2 are complete/merged on main.
+- M5 Phase 1, Phase 2, and Phase 3 are complete/merged on main.
 - ADR-0008 is ACCEPTED: Spot bootstrap uses successor coverage (`U <= L + 1 <= u`,
   overflow-guarded); exact-next `[L+1, ...]` is a valid bridge; `U > L + 1` is the true gap.
   ADR-0008 supersedes only the Spot-bootstrap contains-`L` portion of ADR-0005; USD-M semantics
@@ -36,11 +36,11 @@ orientation only.
 
 ## Active Candidate / Pull Request
 
-- PR #13, `Implement M5 deterministic replay validation`, is OPEN and DRAFT.
-- Branch: `feat/m5-deterministic-replay-validation`.
-- The branch has been rebased onto the accepted M3 successor-coverage main and re-validated:
-  both mandatory 100k corpora are established from the pinned authoritative source.
-- PR #13 is not merged and must not be described as main or approved.
+- No active Phase-3 candidate: PR #13, `Implement M5 deterministic replay validation`, is
+  MERGED (squash merge `473a907eba2001d18926c57d6c8d16b10c7505be`). Its remote branch
+  `feat/m5-deterministic-replay-validation` has been deleted.
+- Final approved PR #13 head: `a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354`.
+- M5 Phase 4 has not started; no candidate exists yet.
 
 ## Deployed State
 
@@ -52,9 +52,12 @@ artifact is a separate identity and remains outside Projection ownership.
 - M0-M4: COMPLETE / MERGED.
 - M5 Phase 1: COMPLETE / MERGED (PR #11).
 - M5 Phase 2: COMPLETE / MERGED (PR #12).
-- Active PR #13 Phase 3 candidate: small-tier replay, scaled differential diagnostics, offline
-  Recorder Raw-v1 materialization, medium lifecycle validation, direct ADR-0008 Spot conformance
-  coverage, ReplayDriver noexcept and uint64 JSON parser hardening.
+- M5 Phase 3: COMPLETE / MERGED (PR #13, merge
+  `473a907eba2001d18926c57d6c8d16b10c7505be`; final approved Head
+  `a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354`; exact-head CI `31491615547` — PASS 16/16).
+  Delivered: deterministic 2,048-event small-tier replay, scaled differential diagnostics,
+  the offline Recorder Raw-v1 materializer, medium lifecycle validation, direct ADR-0008 Spot
+  conformance coverage, ReplayDriver exception hardening, and uint64 JSON parser hardening.
 - Spot mandatory 100k evidence is validated lifecycle-valid under ADR-0008: exact-next bridge
   `U=98288147168 u=98288147175` against `L=98288147167` Applied/Synchronized, 100,001 Applied
   operations, zero gaps, final Synchronized.
@@ -63,19 +66,16 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Not Implemented
 
-- M5 Phase 3 is IMPLEMENTED / PENDING INDEPENDENT REVIEW in PR #13; it is not approved or merged.
-- Phase 4 semantic observation serialization/digests/manifests and cross-compiler transport are
-  NOT STARTED.
+- M5 Phase 4 (semantic observation serialization/digests/manifests, cross-compiler transport,
+  fuzzing, benchmarks, allocation instrumentation, container spike) is NOT STARTED.
 - M6 Gateway integration is NOT STARTED.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading remain outside the implemented Projection scope.
 
 ## Current Blockers
 
-- None on the Phase-3 corpus gates: both mandatory medium corpora are established. PR #13 still
-  requires independent review of its exact Head before Ready/merge.
-- Exact-head CI for the current candidate must be reported from GitHub and must not be inferred
-  from older runs.
+- None: both mandatory Phase-3 medium corpora are established and PR #13 is merged. No blocker
+  prevents Phase-4 implementation once authorized.
 
 ## Accepted Semantic Authorities
 
@@ -107,17 +107,17 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 
 ## Current Validation / CI Evidence
 
-- Exact-head CI must be queried for the live current candidate head. The last observed prior-head run
-  was `31389252990` for `3a678eb…`, `in_progress` at the final pre-update query; later pushes
-  supersede it. Prompt-time run `31380230614` for older head `f9061963…` completed `failure` and is
-  not evidence for the current head.
-- PR #13 body records the current Phase 3 disposition and says independent re-review is required;
-  it is not an approval or merge record.
+- PR #13 exact-head CI run `31491615547` for the final approved head
+  `a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354` completed `success` — 16/16 jobs PASS.
+- Post-merge main push run `31500884832` at merge `473a907eba2001d18926c57d6c8d16b10c7505be`
+  was queued at last query; its result must be read from GitHub, not inferred.
 
 ## Next Authorized Step
 
-Keep PR #13 DRAFT and unmerged. Obtain focused independent review and exact-head CI for the current
-candidate; do not mark Ready, merge, start Phase 4, or invent alternate Spot bootstrap semantics.
+The next authorized implementation phase is M5 Phase 4 (semantic observation
+serialization/digests/manifests and cross-compiler transport), which remains NOT STARTED. Do not
+start Phase-4 implementation in this state-sync task; do not invent alternate Spot bootstrap
+semantics.
 
 ## AI / Reviewer Reading Order
 
@@ -130,4 +130,5 @@ with its exact-head CI. Do not trust this file alone for independent review.
 `docs/M5_PREIMPLEMENTATION_DECISIONS.md`, `docs/M5_PHASE1_CANONICAL_REPLAY.md`,
 `docs/M5_PHASE2_DIFFERENTIAL_ORACLE.md`, and `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md` preserve
 implementation and review evidence from their respective phases. Their historical evidence must
-not be rewritten into a claim that Phase 3 or Phase 4 is approved or merged.
+not be rewritten; Phase-3 merge completion is recorded here and in the milestone/status documents,
+not by altering phase history.
