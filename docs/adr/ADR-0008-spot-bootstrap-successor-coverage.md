@@ -1,18 +1,53 @@
 # ADR-0008: Spot Bootstrap Successor Coverage
 
-- Status: PROPOSED / PENDING INDEPENDENT REVIEW
+- Status: ACCEPTED
 - Date: 2026-08-10
 - Supersedes: the Spot-bootstrap portion of ADR-0005 only
 - Motivation: official Binance Spot operational instruction corrected on 2025-11-12
 
 ## Status note
 
-This ADR is **not ACCEPTED**. Repository workflow requires independent external review before an
-ADR-0005 amendment becomes effective. Until review, the reviewed production code, tests, reference
-model, and fuzz in this branch follow the corrected rule recorded below, and this document is the
-governance evidence for that correction. ADR-0005's `Status: ACCEPTED` remains historically true
-for its contains-`L` decision; this ADR records why that decision no longer matches verified
-upstream protocol facts.
+This ADR is **ACCEPTED**. Independent focused re-review approved the corrected semantics recorded
+below; the reviewed production code, tests, reference model, and fuzz implement the corrected rule,
+and this document is the governance evidence for that correction. Acceptance supersedes **only**
+the Spot-bootstrap contains-`L` portion of ADR-0005. All USD-M semantics remain unchanged, and
+Binance Host snapshot/buffer orchestration remains outside M3 Core; acceptance does not claim that
+Binance Host orchestration and Core continuity are identical. ADR-0005's historical `Status:
+ACCEPTED` remains true for its contains-`L` decision; this ADR records why that decision no longer
+matches verified upstream protocol facts.
+
+## Acceptance record
+
+Independent focused re-review: **APPROVED**
+
+Reviewed implementation Head:
+
+```text
+5195a5cf639989ef073d908dfbf5ec5be1e3cc40
+```
+
+Reviewed exact-head CI:
+
+```text
+31446514958 — PASS 16/16
+```
+
+```text
+P0:
+0
+
+P1:
+0
+
+Blocking findings:
+0
+```
+
+Findings M3-SC-RR-001 through M3-SC-RR-005: **CLOSED**.
+
+Acceptance supersedes only the Spot-bootstrap contains-`L` portion of ADR-0005. USD-M semantics are
+unchanged. Binance Host snapshot/buffer orchestration remains outside M3 Core. Acceptance does not
+claim that Binance Host orchestration and Core continuity are identical.
 
 ## Context
 
@@ -232,9 +267,10 @@ normal successor pattern.
   (contains-`L` bridge).
 - Superseded local decision: ADR-0005 "Spot interval policy" bootstrap bullets only.
 
-## Required independent review
+## Independent review
 
-Before acceptance, an independent external reviewer must evaluate:
+Independent focused re-review of the corrected head is recorded above in the Acceptance record.
+The review evaluated:
 
 - the corrected official rule against the local decision, including the example predicate;
 - INV-002 through INV-010, especially UINT64_MAX determinism and gap-reason separation;

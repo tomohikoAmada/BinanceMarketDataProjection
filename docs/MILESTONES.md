@@ -280,15 +280,22 @@ neutral ReplayDriver, OperationObservation, semantic checkpoints, first-divergen
 with layer attribution) is **IMPLEMENTED / PENDING INDEPENDENT REVIEW** — see
 `docs/M5_PHASE2_DIFFERENTIAL_ORACLE.md`. Phase 3 and later work is not started.
 
-### M3 semantic correction blocking PR #13 (2026-08-10)
+### M3 Spot successor-coverage correction (2026-08-10)
 
-The M5 Phase-3 continuation (PR #13) is **blocked pending the M3 Spot bootstrap semantic
-correction** recorded in [ADR-0008](adr/ADR-0008-spot-bootstrap-successor-coverage.md)
-(`PROPOSED / PENDING INDEPENDENT REVIEW`), not by proven Spot source ineligibility. The earlier
-claim that the pinned in-window Spot archive is ineligible rested on the superseded contains-`L`
-predicate; under the corrected successor-coverage rule an advancing candidate beginning at
-`L + 1` is a valid bootstrap bridge, so the Spot corpus gate must be re-evaluated after the
-correction is reviewed and merged. This branch changes no M5 Phase-3 materializer code.
+The M3 Spot bootstrap successor-coverage correction (PR #14, ADR-0008) is **APPROVED /
+PENDING MERGE**. Independent focused re-review of implementation head
+`5195a5cf639989ef073d908dfbf5ec5be1e3cc40` was **APPROVED** (P0: 0, P1: 0, blocking findings:
+0; findings M3-SC-RR-001 through M3-SC-RR-005: **CLOSED**); exact-head CI run `31446514958`
+passed 16/16. ADR-0008 is **ACCEPTED**, superseding only the Spot-bootstrap contains-`L`
+portion of ADR-0005; USD-M semantics are unchanged.
+
+The M5 Phase-3 continuation (PR #13) remains **blocked only until this M3 correction merges**,
+not by proven Spot source ineligibility. The earlier claim that the pinned in-window Spot archive
+is ineligible rested on the superseded contains-`L` predicate; under the corrected
+successor-coverage rule an advancing candidate beginning at `L + 1` is a valid bootstrap bridge,
+so the Spot corpus gate must be re-evaluated after the correction merges. PR #13 Spot 100k
+validation is not yet claimed and M5 Phase 3 is not complete. This branch changes no M5 Phase-3
+materializer code.
 
 ### Deferred M4 P2 findings
 

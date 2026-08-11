@@ -17,10 +17,10 @@ separate implementation branch, validation cycle, and external code review.
 
 ## Supersession note (2026-08-10)
 
-The **Spot-bootstrap portion** of this ADR (the contains-`L` bridge rule below) is proposed to be
-superseded by [ADR-0008](ADR-0008-spot-bootstrap-successor-coverage.md) following the official
+The **Spot-bootstrap portion** of this ADR (the contains-`L` bridge rule below) is superseded by
+[ADR-0008](ADR-0008-spot-bootstrap-successor-coverage.md) following the official
 Binance 2025-11-12 correction of the Spot local-order-book instructions. ADR-0008 is
-`PROPOSED / PENDING INDEPENDENT REVIEW`; this ADR's historical contains-`L` decision remains
+`ACCEPTED`; this ADR's historical contains-`L` decision remains
 recorded exactly as accepted. All USD-M decisions in this ADR are unaffected.
 
 ## Context
