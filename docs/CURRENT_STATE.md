@@ -25,18 +25,21 @@ orientation only.
 
 ## Current Main
 
-- `origin/main`: `75c619dd683ff2a3893f9535e206231e7bfecc41`.
+- `origin/main`: `8bc71f2ae457cf3d15a9dcb4ea659a9c3f85a569` (M3 Spot successor-coverage
+  correction PR #14 merged at this SHA).
 - M0-M4 are complete on main.
-- M5 Phase 1 and Phase 2 are complete/merged on main; Phase 2 merged at this SHA.
-- Main CI: run `31315421548`, completed `success` (16/16).
+- M5 Phase 1 and Phase 2 are complete/merged on main.
+- ADR-0008 is ACCEPTED: Spot bootstrap uses successor coverage (`U <= L + 1 <= u`,
+  overflow-guarded); exact-next `[L+1, ...]` is a valid bridge; `U > L + 1` is the true gap.
+  ADR-0008 supersedes only the Spot-bootstrap contains-`L` portion of ADR-0005; USD-M semantics
+  are unchanged.
 
 ## Active Candidate / Pull Request
 
 - PR #13, `Implement M5 deterministic replay validation`, is OPEN and DRAFT.
 - Branch: `feat/m5-deterministic-replay-validation`.
-- Current candidate head: verify the live GitHub PR head and
-  `origin/feat/m5-deterministic-replay-validation`; the last observed head before this final
-  orientation bookkeeping update was `3a678ebf8c064775839c21c73b753bf79f4c6f62`.
+- The branch has been rebased onto the accepted M3 successor-coverage main and re-validated:
+  both mandatory 100k corpora are established from the pinned authoritative source.
 - PR #13 is not merged and must not be described as main or approved.
 
 ## Deployed State
@@ -48,15 +51,19 @@ artifact is a separate identity and remains outside Projection ownership.
 
 - M0-M4: COMPLETE / MERGED.
 - M5 Phase 1: COMPLETE / MERGED (PR #11).
-- M5 Phase 2: COMPLETE / MERGED (PR #12 at main SHA above).
+- M5 Phase 2: COMPLETE / MERGED (PR #12).
 - Active PR #13 Phase 3 candidate: small-tier replay, scaled differential diagnostics, offline
-  Recorder Raw-v1 materialization, and medium lifecycle validation are implemented in the candidate.
+  Recorder Raw-v1 materialization, medium lifecycle validation, direct ADR-0008 Spot conformance
+  coverage, ReplayDriver noexcept and uint64 JSON parser hardening.
+- Spot mandatory 100k evidence is validated lifecycle-valid under ADR-0008: exact-next bridge
+  `U=98288147168 u=98288147175` against `L=98288147167` Applied/Synchronized, 100,001 Applied
+  operations, zero gaps, final Synchronized.
 - USD-M mandatory 100k evidence is validated lifecycle-valid: bridge Applied/Synchronized,
   100,001 Applied operations, zero gaps, final Synchronized.
 
 ## Not Implemented
 
-- M5 Phase 3 is not complete because the mandatory Spot 100k corpus is not established.
+- M5 Phase 3 is IMPLEMENTED / PENDING INDEPENDENT REVIEW in PR #13; it is not approved or merged.
 - Phase 4 semantic observation serialization/digests/manifests and cross-compiler transport are
   NOT STARTED.
 - M6 Gateway integration is NOT STARTED.
@@ -65,28 +72,28 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Current Blockers
 
-- The authoritative Recorder archive was found and validated, but its pinned in-window Spot source
-  has no Projection-valid bootstrap bridge under the accepted contains-`L` predicate. Its only
-  advancing candidate begins at `L + 1`, so Spot 100k is NOT ESTABLISHED / source INELIGIBLE.
-- USD-M medium evidence is valid; this does not remove the mandatory Spot corpus gate.
-- Exact-head CI for the current candidate must be reported from GitHub and must not be inferred from
-  older runs.
+- None on the Phase-3 corpus gates: both mandatory medium corpora are established. PR #13 still
+  requires independent review of its exact Head before Ready/merge.
+- Exact-head CI for the current candidate must be reported from GitHub and must not be inferred
+  from older runs.
 
 ## Accepted Semantic Authorities
 
-ADR-0005 is the accepted market-specific sequence authority. For Projection Spot bootstrap:
+ADR-0005 is the accepted market-specific sequence authority, with its Spot-bootstrap contains-`L`
+portion superseded by ACCEPTED ADR-0008. For Projection Spot bootstrap:
 
-> `u < L` stale; `u == L` duplicate/non-advancing; `U <= L < u` valid advancing bridge; `U > L`
-> is `SpotBootstrapForwardGap`.
+> `u < L` stale; `u == L` duplicate/non-advancing; `U <= L + 1 <= u` valid advancing bridge
+> (overflow-guarded); `U > L + 1` is `SpotBootstrapForwardGap`.
 
-Bootstrap and live successor semantics are distinct. ADR-0007 is the accepted M5 differential
-validation architecture. This file does not override accepted ADRs or design documents.
+USD-M bootstrap (`U <= L <= u`) and live (`pu == current`) semantics are unchanged. ADR-0007 is
+the accepted M5 differential validation architecture. This file does not override accepted ADRs
+or design documents.
 
 ## Known Semantic Conflicts
 
 Recorder R-034 remains OPEN: Recorder's local reconstruction behavior uses `lastUpdateId + 1`.
-That Recorder-local rule is not portable as Projection authority and does not replace Projection's
-accepted Spot bootstrap rule `U <= L < u`. Contracts owns neither rule.
+ADR-0008 records the independently reviewed official 2025-11-12 Spot correction; the Projection
+Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 
 ## Cross-Repository Relationships
 
@@ -111,13 +118,11 @@ accepted Spot bootstrap rule `U <= L < u`. Contracts owns neither rule.
 
 Keep PR #13 DRAFT and unmerged. Obtain focused independent review and exact-head CI for the current
 candidate; do not mark Ready, merge, start Phase 4, or invent alternate Spot bootstrap semantics.
-If the candidate is accepted, Phase 3 still requires an authorized resolution of the Spot corpus
-eligibility gate before Phase 4 work.
 
 ## AI / Reviewer Reading Order
 
 Read `docs/CURRENT_STATE.md`, `AGENTS.md`, `README.md`, `ARCHITECTURE.md`, `docs/MILESTONES.md`,
-the M5 phase/design documents, accepted ADR-0005 and ADR-0007, actual code/tests, and then PR #13
+the M5 phase/design documents, accepted ADR-0007 and ADR-0008, actual code/tests, and then PR #13
 with its exact-head CI. Do not trust this file alone for independent review.
 
 ## Historical Documents
@@ -125,4 +130,4 @@ with its exact-head CI. Do not trust this file alone for independent review.
 `docs/M5_PREIMPLEMENTATION_DECISIONS.md`, `docs/M5_PHASE1_CANONICAL_REPLAY.md`,
 `docs/M5_PHASE2_DIFFERENTIAL_ORACLE.md`, and `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md` preserve
 implementation and review evidence from their respective phases. Their historical evidence must
-not be rewritten into a claim that Phase 3 or Phase 4 is complete.
+not be rewritten into a claim that Phase 3 or Phase 4 is approved or merged.

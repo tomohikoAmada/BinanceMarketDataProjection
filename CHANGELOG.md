@@ -12,15 +12,26 @@ All notable changes will be recorded here.
   ADR-0008 (`ACCEPTED`) supersedes the Spot-bootstrap portion of
   ADR-0005; USD-M semantics are unchanged. Production classifier, independent reference model,
   unit/property/fuzz coverage, M5 replay classification, and semantic documentation were aligned.
-  M5 Phase-3 (PR #13) remains blocked pending merge of this correction.
 
 - M3 Spot successor-coverage correction acceptance recorded: ADR-0008 is **ACCEPTED**.
   Independent focused re-review **APPROVED** (reviewed implementation head
   `5195a5cf639989ef073d908dfbf5ec5be1e3cc40`; exact-head CI `31446514958` — PASS 16/16;
   P0: 0; P1: 0; blocking findings: 0; M3-SC-RR-001 through M3-SC-RR-005: **CLOSED**).
   Acceptance supersedes only the Spot-bootstrap contains-`L` portion of ADR-0005; USD-M semantics
-  unchanged; Binance Host snapshot/buffer orchestration remains outside M3 Core. PR #14 is
-  approved pending merge; PR #13 remains blocked only until the correction merges.
+  unchanged; Binance Host snapshot/buffer orchestration remains outside M3 Core. PR #14 merged at
+  main `8bc71f2ae457cf3d15a9dcb4ea659a9c3f85a569`.
+
+- M5 Phase-3 rebased onto the accepted M3 successor-coverage main and re-validated: the Spot
+  materializer now bridges the pinned authoritative source's exact-next candidate
+  (`L=98288147167`, bridge `U=98288147168 u=98288147175`) under ADR-0008, and both mandatory
+  100k corpora are validated PASS (Spot `M5-REC-SPOT-BTCUSDT-V1` SHA-256
+  `9e983123…2cc9d`; USD-M `M5-REC-USDM-BTCUSDT-V1` SHA-256 `d28ffe19…29afc`; 100,001 Applied,
+  zero gaps, final Synchronized; Core and Adapter validators agree; deterministic repeat PASS).
+  Direct Spot successor-conformance coverage (exact-next acceptance, true-gap rejection,
+  `C=500` table) locks ADR-0008 semantics independently of production/reference equality;
+  the ReplayDriver summary accumulators no longer mark allocation-capable paths `noexcept`; the
+  minimal JSON uint64 parser uses a checked-before-multiply overflow guard. Phase 3 is
+  IMPLEMENTED / PENDING INDEPENDENT REVIEW in PR #13; Phase 4 is NOT STARTED.
 
 ### Added
 

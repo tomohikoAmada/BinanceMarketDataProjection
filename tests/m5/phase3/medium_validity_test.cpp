@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -75,6 +76,9 @@ struct FixtureSpec final {
 
 constexpr std::string_view kBaseline =
     "INSTALL_BASELINE 100 B:100.00,1.000|B:99.00,2.000 A:101.00,1.500|A:102.00,2.500";
+
+constexpr std::string_view kBaseline500 =
+    "INSTALL_BASELINE 500 B:100.00,1.000|B:99.00,2.000 A:101.00,1.500|A:102.00,2.500";
 
 [[nodiscard]] replay::ReplayFixture valid_spot_corpus() {
     return build_fixture(
@@ -162,6 +166,20 @@ class TempDirectory final {
 void write_provenance(const std::filesystem::path& directory, std::string_view body) {
     std::ofstream stream{directory / "corpus_provenance.json"};
     stream << body;
+}
+
+void expect_spot_bridge_applied(const oracle::ReplayOutcome& outcome, std::string_view range) {
+    EXPECT_EQ(outcome.summary.depth_results.front().status_after,
+              oracle::CanonicalStatus::Synchronized)
+        << range;
+    EXPECT_EQ(outcome.summary.applied_count, 1U) << range;
+}
+
+void expect_spot_bootstrap_gap(const oracle::ReplayOutcome& outcome, std::string_view range) {
+    EXPECT_EQ(outcome.summary.gap_detected_count, 1U) << range;
+    EXPECT_EQ(outcome.summary.depth_results.front().status_after,
+              oracle::CanonicalStatus::NeedsResync)
+        << range;
 }
 
 } // namespace
@@ -318,6 +336,68 @@ TEST(MediumValidityTest, SummaryCountsStaleAndDuplicateTypedResults) {
     EXPECT_EQ(outcome.summary.depth_events, 6U);
 }
 
+TEST(MediumValidityTest, DirectSpotSuccessorConformanceTable) {
+    // DIRECT protocol-conformance table (ADR-0008): expected outcomes are
+    // encoded here explicitly, independently of production/reference equality.
+    // This test fails if BOTH production and reference models are changed back
+    // to contains-L, because exact-next bootstrap input would then be reported
+    // as a gap instead of the Applied dispositions asserted below.
+    struct ConformanceCase final {
+        std::string_view range;
+        oracle::CanonicalDisposition expected;
+    };
+    const std::vector<ConformanceCase> cases = {
+        {"DEPTH_UPDATE 400 499 pu=- B:100.00,1.125", oracle::CanonicalDisposition::IgnoredStale},
+        {"DEPTH_UPDATE 499 500 pu=- B:100.00,1.125",
+         oracle::CanonicalDisposition::IgnoredDuplicate},
+        {"DEPTH_UPDATE 500 500 pu=- B:100.00,1.125",
+         oracle::CanonicalDisposition::IgnoredDuplicate},
+        {"DEPTH_UPDATE 499 501 pu=- B:100.00,1.125", oracle::CanonicalDisposition::Applied},
+        {"DEPTH_UPDATE 500 501 pu=- B:100.00,1.125", oracle::CanonicalDisposition::Applied},
+        {"DEPTH_UPDATE 501 501 pu=- B:100.00,1.125", oracle::CanonicalDisposition::Applied},
+        {"DEPTH_UPDATE 501 502 pu=- B:100.00,1.125", oracle::CanonicalDisposition::Applied},
+        {"DEPTH_UPDATE 499 502 pu=- B:100.00,1.125", oracle::CanonicalDisposition::Applied},
+        {"DEPTH_UPDATE 502 502 pu=- B:100.00,1.125", oracle::CanonicalDisposition::GapDetected},
+        {"DEPTH_UPDATE 502 503 pu=- B:100.00,1.125", oracle::CanonicalDisposition::GapDetected},
+    };
+    for (const auto& test_case : cases) {
+        const auto fixture =
+            build_fixture({"Spot",
+                           "Spot",
+                           "med-conformance",
+                           {std::string{kBaseline500}, std::string{test_case.range}}});
+        const auto outcome = run_core(fixture);
+        ASSERT_FALSE(outcome.first_divergence.has_value()) << test_case.range;
+        ASSERT_EQ(outcome.summary.depth_results.size(), 1U) << test_case.range;
+        EXPECT_EQ(outcome.summary.depth_results.front().disposition, test_case.expected)
+            << test_case.range;
+        if (test_case.expected == oracle::CanonicalDisposition::Applied) {
+            expect_spot_bridge_applied(outcome, test_case.range);
+        }
+        if (test_case.expected == oracle::CanonicalDisposition::GapDetected) {
+            expect_spot_bootstrap_gap(outcome, test_case.range);
+        }
+    }
+}
+
+TEST(MediumValidityTest, DirectSpotExactNextLiveSuccessorLocked) {
+    // Against C=500 the exact-next live successor is [501,501]; a later live
+    // event beginning at C+1 remains valid after synchronization.
+    const auto fixture = build_fixture(
+        {"Spot",
+         "Spot",
+         "med-live-exact-next",
+         {std::string{kBaseline500}, "DEPTH_UPDATE 501 501 pu=- B:100.00,1.125",
+          "DEPTH_UPDATE 502 502 pu=- A:101.00,1.000", "DEPTH_UPDATE 503 503 pu=- B:99.50,2.000"}});
+    const auto outcome = run_core(fixture);
+    EXPECT_FALSE(outcome.first_divergence.has_value());
+    EXPECT_EQ(outcome.summary.applied_count, 3U);
+    EXPECT_EQ(outcome.summary.gap_detected_count, 0U);
+    ASSERT_TRUE(outcome.final_observation.has_value());
+    EXPECT_EQ(outcome.final_observation->checkpoint.status, oracle::CanonicalStatus::Synchronized);
+    EXPECT_EQ(outcome.final_observation->checkpoint.last_update_id, 503U);
+}
+
 TEST(MediumValidityTest, JsonIntentReaderAcceptsCanonicalProvenance) {
     TempDirectory temporary;
     write_provenance(
@@ -362,6 +442,30 @@ TEST(MediumValidityTest, JsonIntentReaderFailsClosed) {
     EXPECT_FALSE(phase3::read_target_live_updates(path).has_value());
 
     write_provenance(path, "[]");
+    EXPECT_FALSE(phase3::read_target_live_updates(path).has_value());
+}
+
+TEST(MediumValidityTest, JsonUint64BoundaryAcceptsMaximumAndRejectsOverflow) {
+    TempDirectory temporary;
+    const auto& path = temporary.path();
+
+    write_provenance(path,
+                     R"({"selected_live_updates_after_synchronization":18446744073709551615})");
+    const auto maximum = phase3::read_target_live_updates(path);
+    ASSERT_TRUE(maximum.has_value());
+    EXPECT_EQ(maximum.value(), std::numeric_limits<std::uint64_t>::max());
+
+    write_provenance(path,
+                     R"({"selected_live_updates_after_synchronization":18446744073709551616})");
+    EXPECT_FALSE(phase3::read_target_live_updates(path).has_value());
+
+    write_provenance(path,
+                     R"({"selected_live_updates_after_synchronization":36893488147419103231})");
+    EXPECT_FALSE(phase3::read_target_live_updates(path).has_value());
+
+    write_provenance(
+        path,
+        R"({"selected_live_updates_after_synchronization":9999999999999999999999999999999999})");
     EXPECT_FALSE(phase3::read_target_live_updates(path).has_value());
 }
 

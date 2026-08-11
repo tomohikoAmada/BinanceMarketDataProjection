@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
+#include <limits>
 #include <map>
 #include <set>
 #include <sstream>
@@ -235,12 +236,13 @@ class Parser final {
         }
         const std::string_view digits = text_.substr(start_offset_, offset_ - start_offset_);
         std::uint64_t magnitude = 0;
+        constexpr std::uint64_t maximum = std::numeric_limits<std::uint64_t>::max();
         for (const char digit : digits.substr(digits[0] == '-' ? 1 : 0)) {
-            const std::uint64_t next = magnitude * 10 + static_cast<std::uint64_t>(digit - '0');
-            if (next < magnitude) {
+            const auto value = static_cast<std::uint64_t>(digit - '0');
+            if (magnitude > (maximum - value) / 10) {
                 return std::nullopt;
             }
-            magnitude = next;
+            magnitude = magnitude * 10 + value;
         }
         if (negative) {
             return std::nullopt;

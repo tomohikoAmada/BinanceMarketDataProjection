@@ -44,11 +44,11 @@ performance evidence are recorded separately. The M5 architecture was independen
 and APPROVED (ADR-0007 ACCEPTED); pre-implementation decisions OD-M5-001 and OD-M5-002 are
 CLOSED. Phases 1 and 2 are COMPLETE / MERGED; Phase 2 is PR #12 at merge
 `75c619dd683ff2a3893f9535e206231e7bfecc41` with post-merge main CI `31315421548` — PASS 16/16.
-Phase 3 remains test/tool-only and is PARTIAL / BLOCKED BY SPOT RECORDED-SOURCE INELIGIBILITY: its
+Phase 3 remains test/tool-only and is IMPLEMENTED / PENDING INDEPENDENT REVIEW in PR #13: its
 small-tier, scalable comparison, deterministic diagnostics, offline Raw-v1 materializer, and
 medium lifecycle validation are implemented. The pinned authoritative archive was located and
-validated; its Spot source has no valid in-window contains-`L` bootstrap bridge, while the USD-M
-medium corpus is validated. See `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`.
+validated; under the accepted ADR-0008 successor-coverage rule both the Spot and the USD-M
+mandatory 100k medium corpora are validated PASS. See `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`.
 OD-M5-003 remains SPIKE-RESOLVABLE.
 
 Adapter owners are bound to the conversion `NumericSpec` and sequence policy and must check both

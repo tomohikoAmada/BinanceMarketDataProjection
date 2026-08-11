@@ -245,14 +245,14 @@ canonical replay infrastructure is COMPLETE / MERGED (PR #11, merge
 `5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — 16/16 PASS) and
 Phase 2 (independent differential oracle foundation) is COMPLETE / MERGED (PR #12, merge
 `75c619dd683ff2a3893f9535e206231e7bfecc41`, post-merge main CI `31315421548` — 16/16 PASS).
-Phase 3 is PARTIAL / BLOCKED BY SPOT RECORDED-SOURCE INELIGIBILITY: deterministic 2,048-event Spot
+Phase 3 is IMPLEMENTED / PENDING INDEPENDENT REVIEW in PR #13: deterministic 2,048-event Spot
 and USD-M small workloads, scalable differential replay, failure diagnostics, the offline Raw-v1
-materializer, and validator-enforced medium lifecycle validity are implemented. The mandatory
-USD-M 100k corpus (`M5-REC-USDM-BTCUSDT-V1`) is validated PASS (bridge Applied / Synchronized,
-100,001 Applied, final Synchronized). The mandatory Spot 100k corpus is NOT ESTABLISHED: the pinned
-authoritative source's only in-window Spot baseline has only an exact-next (`U = L + 1`) bridge
-candidate, which the accepted Projection Spot bootstrap contract (`U <= L < u`) classifies as a
-bootstrap forward gap. See
+materializer, and validator-enforced medium lifecycle validity are implemented, rebased onto the
+accepted M3 Spot successor-coverage semantics (ADR-0008). Both mandatory 100k corpora are
+validated PASS from the pinned authoritative source: Spot `M5-REC-SPOT-BTCUSDT-V1` (exact-next
+bridge `U=98288147168 u=98288147175` against `L=98288147167`; 100,001 Applied, final
+Synchronized) and USD-M `M5-REC-USDM-BTCUSDT-V1` (bridge Applied / Synchronized, 100,001
+Applied, final Synchronized). See
 [M5 Phase 3](docs/M5_PHASE3_DETERMINISTIC_REPLAY.md).
 Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
@@ -267,9 +267,9 @@ The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
   completed M3 sequence/projection implementation, and the merged optional M4 Protobuf adapter on
   `main`.
 - M5 is **APPROVED / MERGED / IN PROGRESS**; Phases 1 and 2 are COMPLETE / MERGED, and Phase 3 is
-  PARTIAL / BLOCKED BY SPOT RECORDED-SOURCE INELIGIBILITY (USD-M medium corpus validated; the
-  mandatory Spot medium corpus is not producible from the pinned source under the accepted Spot
-  bootstrap contract). Phase 4 and M6 are not started.
+  IMPLEMENTED / PENDING INDEPENDENT REVIEW in PR #13 (Spot and USD-M 100k corpora validated PASS
+  from the pinned authoritative source under ADR-0008 successor coverage). Phase 4 and M6 are not
+  started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.
 - Tick-size, step-size, signed-decimal, and symbol-metadata validation remain outside the implemented

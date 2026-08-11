@@ -582,14 +582,16 @@ class MaterializerTest(unittest.TestCase):
         gap.finish()
         self._expect_failure(gap, "spot", "Spot bootstrap forward gap", "gap-output")
 
-    def test_spot_contains_l_bridge_cases(self) -> None:
+    def test_spot_bridge_cases_use_successor_coverage(self) -> None:
         start = materializer.SOURCE_START_NS
 
         bridge_cases = [
-            ("contains-l", 99, 101),
-            ("equal-first-l", 100, 101),
+            ("contains-l", 99, 101, 103),
+            ("equal-first-l", 100, 101, 103),
+            ("exact-next", 101, 101, 103),
+            ("exact-next-wide", 101, 103, 105),
         ]
-        for name, first, final in bridge_cases:
+        for name, first, final, expected_final in bridge_cases:
             with self.subTest(name=name):
                 builder = ArchiveBuilder(self.root / f"bridge-{name}", "spot")
                 builder.add_chunk(1, "depth_snapshot", [_snapshot("spot", start + 100)])
@@ -598,8 +600,8 @@ class MaterializerTest(unittest.TestCase):
                     "diff_depth",
                     [
                         _depth("spot", start + 110, first, final, None),
-                        _depth("spot", start + 120, 102, 102, None),
-                        _depth("spot", start + 130, 103, 103, None),
+                        _depth("spot", start + 120, expected_final - 1, expected_final - 1, None),
+                        _depth("spot", start + 130, expected_final, expected_final, None),
                     ],
                 )
                 builder.finish()
@@ -607,11 +609,11 @@ class MaterializerTest(unittest.TestCase):
                     builder, "spot", f"bridge-{name}-output", target=2
                 )
                 self.assertEqual(result.event_count, 4)
-                self.assertEqual(result.final_update_id, 103)
+                self.assertEqual(result.final_update_id, expected_final)
 
         gap_cases = [
-            ("exact-next", 101, 101),
-            ("exact-next-wide", 101, 103),
+            ("true-gap", 102, 102),
+            ("true-gap-wide", 102, 103),
         ]
         for name, first, final in gap_cases:
             with self.subTest(name=name):
@@ -624,6 +626,37 @@ class MaterializerTest(unittest.TestCase):
                 self._expect_failure(
                     builder, "spot", "Spot bootstrap forward gap", f"gap-{name}-output"
                 )
+
+    def test_spot_authoritative_exact_next_bridge_is_accepted(self) -> None:
+        start = materializer.SOURCE_START_NS
+        # Pinned authoritative Spot source (see docs/M5_PHASE3_DETERMINISTIC_REPLAY.md):
+        # snapshot L = 98288147167 and the resumed diff bridge
+        # U = 98288147168, u = 98288147175 is exact-next (L + 1) and must be a
+        # valid bridge under ADR-0008 successor coverage.
+        snapshot_l = 98288147167
+        bridge_first = 98288147168
+        bridge_final = 98288147175
+        builder = ArchiveBuilder(self.root / "authoritative-exact-next", "spot")
+        builder.add_chunk(
+            1,
+            "depth_snapshot",
+            [_snapshot("spot", start + 100, last_update_id=snapshot_l)],
+        )
+        builder.add_chunk(
+            2,
+            "diff_depth",
+            [
+                _depth("spot", start + 110, bridge_first, bridge_final, None),
+                _depth("spot", start + 120, bridge_final + 1, bridge_final + 1, None),
+                _depth("spot", start + 130, bridge_final + 2, bridge_final + 2, None),
+            ],
+        )
+        builder.finish()
+        result = self._materialize(
+            builder, "spot", "authoritative-exact-next-output", target=2
+        )
+        self.assertEqual(result.event_count, 4)
+        self.assertEqual(result.final_update_id, bridge_final + 2)
 
     def test_spot_stale_and_duplicate_do_not_bridge(self) -> None:
         start = materializer.SOURCE_START_NS

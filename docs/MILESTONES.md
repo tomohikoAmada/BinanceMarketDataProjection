@@ -267,8 +267,8 @@ No M5 production change or container migration is authorized by the design.
 
 OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions and CI policy
 are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
-M5 implementation is authorized. Phases 1 and 2 are complete and merged; Phase 3 is partial and
-blocked by Spot recorded-source ineligibility under the accepted Spot bootstrap contract. Later
+M5 implementation is authorized. Phases 1 and 2 are complete and merged; Phase 3 is implemented
+in PR #13 and pending independent review. Later
 phases remain separate.
 
 Phase 1 canonical replay infrastructure is **COMPLETE / MERGED** (PR #11, merge
@@ -284,35 +284,36 @@ with layer attribution) is **COMPLETE / MERGED** (PR #12, merge
 CI `31315421548` — PASS 16/16). M5-P2-IR-001 through M5-P2-IR-007 and M5-P2-RR-001 are CLOSED;
 M5-P2-IR-008 and M5-P2-IR-009 remain DEFERRED / NON-BLOCKING.
 
-Phase 3 is **PARTIAL / BLOCKED BY SPOT RECORDED-SOURCE INELIGIBILITY**. Deterministic 2,048-event
+Phase 3 is **IMPLEMENTED / PENDING INDEPENDENT REVIEW** in PR #13, rebased onto the accepted M3
+Spot successor-coverage semantics (ADR-0008). Deterministic 2,048-event
 small-tier Spot and USD-M workloads, per-event scaled differential comparison, bounded observation
 retention, stable first-divergence diagnostics, the independent offline Recorder Raw-v1
 materializer, and validator-enforced medium lifecycle validity are implemented. The mandatory
+Spot 100k corpus (`M5-REC-SPOT-BTCUSDT-V1`) is validated PASS (exact-next bridge
+`U=98288147168 u=98288147175` against `L=98288147167` under ADR-0008; 100,001 Applied, final
+Synchronized, zero gaps). The mandatory
 USD-M 100k corpus (`M5-REC-USDM-BTCUSDT-V1`) is validated PASS (bridge Applied / Synchronized,
-100,001 Applied, final Synchronized, zero gaps). The mandatory Spot 100k corpus is NOT ESTABLISHED:
-the pinned authoritative source's only in-window Spot baseline has only an exact-next
-(`U = L + 1`) bridge candidate, which the accepted Projection Spot bootstrap contract
-(`U <= L < u`) classifies as a bootstrap forward gap. The Phase-3 Spot bootstrap regression
-(M5-P3-IR-001), the medium-validity gate regression (M5-P3-IR-002), and the USD-M evidence
-correction (M5-P3-IR-003) are corrected. See `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`.
+100,001 Applied, final Synchronized, zero gaps). The Phase-3 corrections (M5-P3-IR-001 through
+M5-P3-IR-005) are recorded; M5-P3-IR-001's historical contains-`L` restoration was itself
+superseded by ADR-0008 acceptance. See `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`.
 Phase 4 is NOT STARTED.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 
-The M3 Spot bootstrap successor-coverage correction (PR #14, ADR-0008) is **APPROVED /
-PENDING MERGE**. Independent focused re-review of implementation head
+The M3 Spot bootstrap successor-coverage correction (PR #14, ADR-0008) is **MERGED**.
+Independent focused re-review of implementation head
 `5195a5cf639989ef073d908dfbf5ec5be1e3cc40` was **APPROVED** (P0: 0, P1: 0, blocking findings:
 0; findings M3-SC-RR-001 through M3-SC-RR-005: **CLOSED**); exact-head CI run `31446514958`
 passed 16/16. ADR-0008 is **ACCEPTED**, superseding only the Spot-bootstrap contains-`L`
-portion of ADR-0005; USD-M semantics are unchanged.
+portion of ADR-0005; USD-M semantics are unchanged. PR #14 merged at main
+`8bc71f2ae457cf3d15a9dcb4ea659a9c3f85a569` (squash merge, 2026-08-11).
 
-The M5 Phase-3 continuation (PR #13) remains **blocked only until this M3 correction merges**,
-not by proven Spot source ineligibility. The earlier claim that the pinned in-window Spot archive
-is ineligible rested on the superseded contains-`L` predicate; under the corrected
-successor-coverage rule an advancing candidate beginning at `L + 1` is a valid bootstrap bridge,
-so the Spot corpus gate must be re-evaluated after the correction merges. PR #13 Spot 100k
-validation is not yet claimed and M5 Phase 3 is not complete. This branch changes no M5 Phase-3
-materializer code.
+The M5 Phase-3 continuation (PR #13) has been rebased onto the corrected main and the mandatory
+Spot corpus gate has been re-evaluated: under the accepted successor-coverage rule the pinned
+in-window Spot archive's exact-next candidate (`U = L + 1`) is a valid bootstrap bridge, and the
+Spot 100k corpus is validated PASS. PR #13 remains OPEN / DRAFT pending independent review. This
+branch changes no M5 Phase-3 production materializer dependency: the correction is test/tool-only
+on top of the accepted main semantics.
 
 ### Deferred M4 P2 findings
 

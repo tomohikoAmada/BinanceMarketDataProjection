@@ -58,7 +58,7 @@ void accumulate_install(ExecutionSummary& summary, std::size_t event_index,
 }
 
 void accumulate_apply(ExecutionSummary& summary, std::size_t event_index,
-                      const ApplyOutcome& apply) noexcept {
+                      const ApplyOutcome& apply) {
     ++summary.depth_events;
     if (!summary.first_depth_update.has_value()) {
         summary.first_depth_update =
@@ -89,8 +89,11 @@ void accumulate_apply(ExecutionSummary& summary, std::size_t event_index,
 
 // Aggregation observes typed results only. AdapterSuccessOutcome is unwrapped to
 // its underlying typed Core result; the quality vector is not aggregated.
+// These accumulators are not noexcept: accumulation may allocate (for example
+// ExecutionSummary::depth_results::push_back), and termination on allocation
+// failure under noexcept would be wrong for test/tool code.
 void accumulate_summary(ExecutionSummary& summary, std::size_t event_index,
-                        const OperationResult& result) noexcept {
+                        const OperationResult& result) {
     if (const auto* install = std::get_if<InstallOutcome>(&result.value)) {
         accumulate_install(summary, event_index, *install);
         return;

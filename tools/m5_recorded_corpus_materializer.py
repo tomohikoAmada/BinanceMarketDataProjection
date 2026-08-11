@@ -6,12 +6,14 @@ M5 Phase 3. It never imports Recorder internals and never writes the source arch
 Production archives must be zstd-compressed Recorder sealed chunks. Uncompressed Raw
 chunks are accepted only with the explicit deterministic-test-archive gate.
 
-The baseline selection follows the accepted M3/ADR-0005 bootstrap authority
-(docs/M5_PHASE1_CANONICAL_REPLAY.md): for Spot the bootstrap target is the
-snapshot ``last_update_id`` (``L``) itself and the advancing bridge must contain
-it (``U <= L < u``); for USD-M the first relevant bridge satisfies
-``U <= L <= u``. Recorded snapshots that cannot bridge the diff stream are
-skipped in receive order, and the first valid baseline is selected. A live
+The baseline selection follows the accepted Spot bootstrap authority
+(ADR-0008, superseding the contains-`L` portion of ADR-0005; see
+docs/M5_PHASE1_CANONICAL_REPLAY.md): for Spot the bootstrap target is the
+snapshot ``last_update_id`` (``L``) and the advancing bridge must cover the
+overflow-safe successor of ``L`` (``U <= L + 1 <= u``); exact-next input
+beginning at ``L + 1`` is a valid bridge; for USD-M the first relevant bridge
+satisfies ``U <= L <= u``. Recorded snapshots that cannot bridge the diff stream
+are skipped in receive order, and the first valid baseline is selected. A live
 continuity failure after a proven bridge is never retried against another
 snapshot.
 """
@@ -801,14 +803,15 @@ def _synchronize_from_snapshot(
     config: MarketConfig,
     target_live_updates: int,
 ) -> list[ParsedDepth]:
-    """Attempt one snapshot baseline under the accepted M3 bootstrap authority.
+    """Attempt one snapshot baseline under the accepted Spot bootstrap authority.
 
     Spot bootstrap target is the snapshot ``last_update_id`` (``L``): events with
     ``u < L`` are stale and discarded, ``u == L`` is a non-advancing duplicate,
-    and the first advancing bridge must contain ``L`` (``U <= L < u``). An
-    advancing candidate with ``U > L``, including the exact-next range beginning
-    at ``L + 1``, is a Spot bootstrap forward gap. ``L == UINT64_MAX`` can never
-    form an advancing Spot bridge (no successor arithmetic is performed).
+    and the first advancing bridge must cover the overflow-safe successor of
+    ``L`` (``U <= L + 1 <= u``); exact-next input beginning at ``L + 1`` is a
+    valid bridge. An advancing candidate with ``U > L + 1`` is a Spot bootstrap
+    forward gap. ``L == UINT64_MAX`` can never form an advancing Spot bridge (no
+    successor arithmetic is performed).
 
     USD-M bootstrap target is ``L`` with ``U <= L <= u``; the equality bridge
     ``u == L`` is valid and carries ``pu``.
@@ -830,12 +833,17 @@ def _synchronize_from_snapshot(
                     continue
                 if depth.final_update_id == local:
                     continue
-                if depth.first_update_id > local:
+                _require(
+                    local != 0xFFFFFFFFFFFFFFFF,
+                    "Spot bootstrap successor would overflow",
+                )
+                successor = local + 1
+                if depth.first_update_id > successor:
                     raise BridgeEligibilityError(
                         "Spot bootstrap forward gap before valid bridge"
                     )
                 _require(
-                    depth.first_update_id <= local < depth.final_update_id,
+                    depth.first_update_id <= successor <= depth.final_update_id,
                     "Spot bootstrap bridge cannot be proven",
                 )
             else:

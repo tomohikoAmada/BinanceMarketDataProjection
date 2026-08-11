@@ -3,15 +3,14 @@
 ## Status
 
 - Phase 1: **COMPLETE / MERGED** (PR #11, merge
-  `5e8629a7ff825f8ea941304d9b09be1670643e8a`, main CI `31264500905` — PASS 16/16)
+  `5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — PASS 16/16)
 - Phase 2: **COMPLETE / MERGED** (PR #12, merge
   `75c619dd683ff2a3893f9535e206231e7bfecc41`, main CI `31315421548` — PASS 16/16)
 - Phase 2 final review: **APPROVED**; P0: 0; P1: 0; M5-P2-IR-001 through
   M5-P2-IR-007 and M5-P2-RR-001 CLOSED
-- Phase 3: **PARTIAL / BLOCKED BY SPOT RECORDED-SOURCE INELIGIBILITY**
-  (technical corrections complete and validated; mandatory Spot medium corpus is
-  not producible from the pinned authoritative source under the accepted
-  Projection Spot bootstrap contract)
+- Phase 3: **IMPLEMENTED / PENDING INDEPENDENT REVIEW** (rebase onto accepted
+  M3 successor-coverage semantics complete; authoritative Spot and USD-M 100k
+  corpora validated PASS under ADR-0008 authority)
 - Phase 4: **NOT STARTED**
 - M6: **NOT STARTED**
 
@@ -30,7 +29,7 @@ is committed.
 
 | Finding | Disposition |
 |---|---|
-| M5-P3-IR-001 — Spot materializer changed accepted Projection bootstrap semantics from `U <= L < u` to `U <= L+1 <= u` | **CORRECTED** — contains-`L` bootstrap restored, exact-next bootstrap rejected |
+| M5-P3-IR-001 — Spot materializer changed accepted Projection bootstrap semantics from `U <= L < u` to `U <= L+1 <= u` | **CORRECTED / SUPERSEDED BY ADR-0008** — the historical contains-`L` restoration itself was superseded when the official 2025-11-12 Spot correction was independently reviewed: ADR-0008 is ACCEPTED and successor coverage (`U <= L + 1 <= u`, overflow-guarded) is the authoritative Spot bootstrap rule. The materializer now implements successor coverage, and the Phase-3 exact-next regression is restored and extended. |
 | M5-P3-IR-002 — medium validators proved only production/reference equality and could PASS a workload that immediately enters NeedsResync | **CORRECTED** — medium lifecycle validity gate enforced by both validators |
 | M5-P3-IR-003 — USD-M materialization claimed a continuous 100k post-sync pu chain but committed evidence recorded final NeedsResync | **CORRECTED** — regenerated evidence shows bridge Applied / Synchronized, 100,001 Applied, final Synchronized; the previously recorded NEEDS_RESYNC checkpoint was stale and has been replaced by actual current program output |
 | M5-P3-IR-004 — string-based snapshot-retry error classification | **CORRECTED** — structured `BridgeEligibilityError` retry category; post-bridge live failures are never retried as snapshot errors |
@@ -157,6 +156,17 @@ The lifecycle gate therefore requires (for `target_live_updates = 100000`):
 - `RetainNone` still accumulates an identical summary;
 - stale/duplicate typed results are counted but never silently accepted in the emitted chain
   (the materializer filters them during selection).
+- a DIRECT Spot successor-conformance table locks, independently of production/reference
+  equality, every ADR-0008 classification against `C=500`: stale `[400,499]`, duplicates
+  `[499,500]`/`[500,500]`, bridges `[499,501]`/`[500,501]`/`[501,501]`/`[501,502]`/`[499,502]`
+  (all Applied/Synchronized), and true gaps `[502,502]`/`[502,503]` (GapDetected/NeedsResync).
+  The exact-next `[501,501]` row fails the test if BOTH production and reference models are
+  reverted to contains-`L`;
+- a live exact-next chain after a `[501,501]` bridge (`[502,502]`, `[503,503]`) remains
+  Applied/Synchronized with zero gaps;
+- the strict minimal JSON reader accepts `18446744073709551615` (UINT64_MAX) and rejects
+  `18446744073709551616`, `36893488147419103231`, and very large decimal integers
+  (checked-before-multiply uint64 overflow guard).
 
 ## Offline Recorder materializer
 
@@ -188,29 +198,36 @@ For every requested market the tool:
 9. emits exact canonical Replay_V1 bytes, `manifest.txt`, and `corpus_provenance.json`;
 10. invokes each explicitly supplied validator and fails on any rejection.
 
-### Accepted bootstrap authority (restored)
+### Accepted bootstrap authority (ADR-0008)
 
-Baseline selection follows the accepted M3/ADR-0005 contract (SOT-002/SOT-003; the Phase-1
-`classify_spot_bootstrap` decision table):
+Baseline selection follows the accepted M3/ADR-0008 contract (SOT-001/SOT-002/SOT-003; the
+Phase-1 `classify_spot_bootstrap` decision table):
 
 - **Spot**: bootstrap target is the snapshot `lastUpdateId` (`L`). `u < L` is stale and
-  discarded; `u == L` is a non-advancing duplicate and cannot form a bridge; the first advancing
-  bridge must contain `L`: `U <= L < u`. An advancing candidate with `U > L`, including the
-  exact-next range beginning at `L + 1`, is `SpotBootstrapForwardGap`. `L == UINT64_MAX` can
-  never form an advancing bridge and no successor arithmetic is performed. Source update IDs are
-  bounded to the uint64 domain at the materializer boundary.
+  discarded; `u == L` is a non-advancing duplicate and cannot form a bridge; the first
+  advancing bridge must cover the overflow-safe successor of `L`: `U <= L + 1 <= u`.
+  Exact-next input beginning at `L + 1` is a valid bridge. An advancing candidate with
+  `U > L + 1` is `SpotBootstrapForwardGap`. `L == UINT64_MAX` can never form an advancing
+  bridge and no successor arithmetic is performed (`L + 1` is never evaluated). Source update
+  IDs are bounded to the uint64 domain at the materializer boundary.
 - **USD-M**: `u < L` is discarded; the first relevant bridge satisfies `U <= L <= u` and carries
-  `pu`; afterwards every advancing event requires `pu == previous accepted u`.
+  `pu`; afterwards every advancing event requires `pu == previous accepted u`. USD-M semantics
+  are unchanged by ADR-0008.
 - A snapshot that cannot establish any bridge (including one received outside the formal source
   interval) is skipped in receive order and the next recorded snapshot is tried; the first
   eligibility failure is reported if no snapshot synchronizes. A live continuity failure after a
   proven bridge is NEVER retried against another snapshot: it propagates immediately
   (regression test `test_post_bridge_live_failure_is_not_retried_as_snapshot_error`).
 
-The Phase-3 `U <= L+1 <= u` regression (a materializer/Recorder-authority mismatch that mirrored
-Recorder R-034, an open historical semantic conflict) has been removed. Recorder reconstructor
-behavior explains how the recorded bytes look; it does not override the accepted Projection M3
-sequence policy, and the materializer now reproduces the projection's accepted semantics.
+Historical note: the earlier Phase-3 iteration that "restored" the contains-`L` rule
+(`U <= L < u`, exact-next rejected) mirrored the then-current review correction of ADR-0005 and
+Recorder R-034. That restoration was itself superseded: the official 2025-11-12 Spot
+instruction correction and the official example predicate `U <= last_update_id + 1 <= u` were
+independently reviewed and recorded in ADR-0008 (ACCEPTED), which supersedes only the
+Spot-bootstrap contains-`L` portion of ADR-0005. USD-M semantics are unchanged. Recorder
+reconstructor behavior explains how the recorded bytes look; it does not override the accepted
+Projection M3 sequence policy, and the materializer now reproduces the projection's accepted
+successor-coverage semantics.
 
 ### Deterministic archive tests
 
@@ -219,8 +236,10 @@ and USD-M materialization across a chunk boundary, stale/duplicate input, repeat
 metadata-only conversion time, compressed zstd source where available, CRC32C known vector,
 outer-hash corruption, CRC corruption with matching outer hashes, missing chunks, incomplete
 inventory, missing snapshot, wrong symbol, wrong market, missing authority metadata, Spot
-contains-`L` bridge acceptance (`U=99,u=101` and `U=100,u=101` against `L=100`), Spot exact-next
-bootstrap rejection (`U=101,u=101` and `U=101,u=103` against `L=100`), Spot stale/duplicate
+successor-coverage bridge acceptance (`U=99,u=101`, `U=100,u=101`, exact-next `U=101,u=101`,
+and exact-next-wide `U=101,u=103` against `L=100`), Spot true bootstrap gap rejection
+(`U=102,u=102` and `U=102,u=103` against `L=100`), the authoritative pinned Spot exact-next
+case (`L=98288147167`, bridge `U=98288147168 u=98288147175` accepted), Spot stale/duplicate
 non-bridging, Spot `L == UINT64_MAX` non-bridging, source IDs outside uint64, Spot live exact-next
 validity after a bridge, Spot and USD-M snapshot skipping (too old / outside formal interval),
 post-bridge live failure propagation, USD-M missing/incorrect `pu`, source ordering inversion,
@@ -269,33 +288,66 @@ the planned-rotation window. Every artifact's stored SHA-256 and every manifest 
 verified source-to-staging and staging-to-local with zero mismatches. The inventory's Catalog SHA-256
 is `f7289fcc3383063c5e3b83e65201df29503cf7c9bba227dbb8298dcdb4805d8c`.
 
-## Spot recorded-source eligibility (accepted semantics)
+## Spot authoritative materialization and validation
 
-A re-scan of the SAME pinned authoritative source using the accepted Projection Spot bootstrap
-predicate found exactly two Spot `depth_snapshot` records:
+The same pinned authoritative source was re-scanned under the accepted ADR-0008 successor-coverage
+Spot bootstrap predicate. The in-window Spot `depth_snapshot` baseline is:
 
 | Snapshot | Receive time | `L` | In formal interval | Bridge evidence |
 |---|---|---|---|---|
-| `f49af519-2332-47cc-9b19-692f77574281` | `2026-08-06T06:43:24.441592Z` | `98288147167` | yes | only advancing candidate is the resumed diff `U=98288147168 u=98288147175` — exact-next, does NOT contain `L` |
+| `f49af519-2332-47cc-9b19-692f77574281` | `2026-08-06T06:43:24.441592Z` | `98288147167` | yes | resumed diff `U=98288147168 u=98288147175` — exact-next (`U = L + 1`), valid bridge under ADR-0008 |
 | `f49af519-2332-47cc-9b19-692f77574281` | `2026-08-07T06:33:35.555641Z` | `98326157481` | no (outside formal interval) | not usable |
 
-The in-window snapshot's bridge diff begins exactly at `L + 1` (`U = 98288147168 > L`), which is a
-Spot bootstrap forward gap under the accepted `U <= L < u` contract. No other in-window baseline
-exists, and no contains-`L` event exists in the source for this baseline. The materializer therefore
-fails closed:
+The in-window snapshot's bridge diff begins exactly at `L + 1` (`U = 98288147168`), which is a
+valid exact-next Spot bootstrap bridge under the accepted `U <= L + 1 <= u` contract. The
+historical contains-`L` rejection of this case (`SpotBootstrapForwardGap`) is superseded by
+ADR-0008; the materializer therefore now materializes PASS:
 
 ```text
-materialization=FAIL reason=Spot bootstrap forward gap before valid bridge
+materialization=PASS fixture_id=M5-REC-SPOT-BTCUSDT-V1
+event_count=100002
+replay_log_sha256=9e9831231192938ac1bd21c90b157ec17e8e2d4e8034131eb21ba57c99b2cc9d
 ```
+
+`M5-REC-SPOT-BTCUSDT-V1` materialized PASS from the pinned authoritative source
+(price/quantity scale 8/8, 100,000 target live updates):
+
+| Evidence | Value |
+|---|---|
+| Baseline snapshot | `f49af519-2332-47cc-9b19-692f77574281`, receive `2026-08-06T06:43:24.441592Z` |
+| Baseline `lastUpdateId` (`L`) | `98288147167` |
+| Bridge diff | `U=98288147168 u=98288147175` — exact-next (`U = L + 1`), valid bridge under ADR-0008 successor coverage |
+| Total replay operations | 100,002 (1 baseline + 1 bridge + 100,000 live) |
+| Replay log SHA-256 | `9e9831231192938ac1bd21c90b157ec17e8e2d4e8034131eb21ba57c99b2cc9d` |
+| Final selected update ID | `98291309925` |
+| Core validator | differential PASS, **medium_validation PASS** |
+| Adapter validator | differential PASS, **medium_validation PASS** |
+
+Validator lifecycle evidence (identical for Core and Adapter runs):
 
 ```text
-SPOT AUTHORITATIVE CORPUS:
-INELIGIBLE UNDER ACCEPTED PROJECTION SPOT BOOTSTRAP POLICY
+baseline_result=INSTALLED            status_after_baseline=AWAITING_BRIDGE
+bridge_result=APPLIED                status_after_bridge=SYNCHRONIZED
+installed_count=1                    applied_count=100001
+ignored_stale_count=0                ignored_duplicate_count=0
+gap_detected_count=0                 rejected_wrong_state_count=0
+adapter_error_count=0                final_status=SYNCHRONIZED
+final_accepted_update_id=98291309925
+last_selected_diff_final_update_id=98291309925
 ```
 
-No alternative semantics were invented, no snapshot was forced, and no synthetic contains-`L`
-event was created. The exact-next `U = L + 1` sequence is NOT valid Projection Spot bootstrap
-evidence (the successor rule belongs only to the already-synchronized LIVE state).
+The earlier claim that the pinned in-window Spot archive is INELIGIBLE (because the only
+advancing candidate was exact-next `U = L + 1`) rested on the superseded contains-`L` predicate
+and is no longer valid. No alternative semantics were invented, no snapshot was forced, and no
+synthetic event was created: the exact-next `U = L + 1` sequence is the exchange's own normal
+successor pattern and is valid Spot bootstrap evidence under ADR-0008.
+
+Repeatability: a second materialization of the same immutable source with a different
+metadata-only conversion timestamp produced byte-identical `replay.log`, `manifest.txt`, and
+provenance (only the explicitly metadata-only `conversion_timestamp` differs) — **Materializer
+Determinism: PASS**. Repeated Core/Adapter validation over the repeated output shows no
+divergence, identical counts, identical replay SHA-256, and identical final checkpoints —
+**repeatability: PASS**.
 
 ## USD-M authoritative materialization and validation
 
@@ -359,16 +411,18 @@ coverage and depth/generation records were inspected from the authoritative arch
   (`U <= L <= u` with present `pu`) and the 100,000-live-update selection proves continuous `pu`
   continuity afterwards; the strengthened validators prove every selected operation was Applied
   with the projection Synchronized.
-- The Spot rotation bridge is NOT valid under the accepted Projection Spot bootstrap rule: the
-  resumed diff stream begins at `U = L + 1`, which the projection classifies as
-  `SpotBootstrapForwardGap`. The exact-next range is only a valid LIVE successor, not a bootstrap
-  bridge, so no Projection-valid Spot rotation rebaseline exists in this source.
+- The Spot rotation bridge is valid under the accepted ADR-0008 successor-coverage rule: the
+  resumed diff stream begins exactly at `U = L + 1` (`U=98288147168 u=98288147175`), which is the
+  exchange's normal successor pattern and a valid bootstrap bridge. The same source produced the
+  Spot 100k corpus validated PASS (see Spot authoritative materialization above).
+  Historical note: the earlier contains-`L` interpretation classified this as
+  `SpotBootstrapForwardGap`; that interpretation was superseded by ADR-0008.
 
 Eligibility:
 
 ```text
-Rotation Spot:  NOT ELIGIBLE  (no valid Projection Spot bootstrap/rebaseline bridge in source)
-Rotation USD-M: ELIGIBLE      (materializer-proven bridge; validator-proven continuous pu chain)
+Rotation Spot:  ELIGIBLE   (ADR-0008 successor-coverage bridge; validator-proven continuous chain)
+Rotation USD-M: ELIGIBLE   (materializer-proven bridge; validator-proven continuous pu chain)
 ```
 
 The two market results are NOT combined into an unqualified global ELIGIBLE claim. The USD-M
@@ -388,20 +442,23 @@ source-line context). M5-P3-IR-004 is resolved by the structured retry-error cor
 
 ```text
 Phase 3:
-PARTIAL / BLOCKED BY SPOT RECORDED-SOURCE INELIGIBILITY
+IMPLEMENTED / PENDING INDEPENDENT REVIEW
+(rebased onto accepted ADR-0008 successor coverage; Spot and USD-M 100k corpora validated)
 
-Spot medium:   INELIGIBLE UNDER ACCEPTED PROJECTION SPOT BOOTSTRAP CONTRACT
-Spot 100k:     NOT ESTABLISHED
+Spot medium:   VALID (exact-next bridge Applied / Synchronized under ADR-0008)
+Spot 100k:     ESTABLISHED (bridge U=98288147168 u=98288147175 against L=98288147167;
+             100,000 post-synchronization live updates all Applied)
 USD-M medium:  VALID (bridge Applied / Synchronized, 100,001 Applied, final Synchronized)
 USD-M 100k:    ESTABLISHED (100,000 post-synchronization live updates all Applied)
 
-M5-P3-IR-001:  CODE REGRESSION CORRECTED
+M5-P3-IR-001:  CORRECTED / SUPERSEDED BY ADR-0008 (successor coverage accepted)
 M5-P3-IR-002:  CORRECTED
 M5-P3-IR-003:  CORRECTED
 M5-P3-IR-004:  CORRECTED (structured retry error category)
 M5-P3-IR-005:  CORRECTED (status documentation synchronized)
 ```
 
-No ADR amendment was created and no production semantic change was made. The mandatory Spot
-corpus requires a source that records a contains-`L` Spot bootstrap bridge; the pinned
-authoritative source does not contain one.
+The Phase-3 code changes remain test/tool-only. ADR-0008 acceptance is recorded on `main` (PR
+#14); this PR rebased onto that accepted main and changed no production Core or ProtoAdapter
+code. The mandatory Spot and USD-M medium corpora are both established from the pinned
+authoritative source; final Phase-3 acceptance requires independent review of this PR Head.
