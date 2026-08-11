@@ -198,8 +198,9 @@ Phase 1 is **COMPLETE / MERGED** (PR #11, merge `5e8629a7ff825f8ea941304d9b09be1
 post-merge main CI `31264500905` — PASS 16/16). Phase 2 (independent differential oracle:
 R1 promoted, R4 new, neutral ReplayDriver, OperationObservation, layer attribution) is
 **COMPLETE / MERGED** (PR #12, merge `75c619dd683ff2a3893f9535e206231e7bfecc41`, post-merge main
-CI `31315421548` — PASS 16/16). Phase 3 is **IMPLEMENTED / PENDING INDEPENDENT REVIEW**:
-the deterministic small-tier, scaled-comparison, diagnostic, Raw-v1 materializer, and medium
+CI `31315421548` — PASS 16/16). Phase 3 is **COMPLETE / MERGED** (PR #13, final approved Head
+`a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354`, exact-head CI `31491615547` — PASS 16/16, merge
+`473a907eba2001d18926c57d6c8d16b10c7505be`): the deterministic small-tier, scaled-comparison, diagnostic, Raw-v1 materializer, and medium
 lifecycle-validation foundation is implemented. The authoritative archive was found and validated;
 under the accepted ADR-0008 successor-coverage rule both the mandatory Spot and USD-M 100k
 corpora are validated PASS. Phase 4 and later

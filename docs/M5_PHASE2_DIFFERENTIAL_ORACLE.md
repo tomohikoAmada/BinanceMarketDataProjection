@@ -13,7 +13,9 @@
 - M5-P2-IR-008: **DEFERRED / NON-BLOCKING**
 - M5-P2-IR-009: **DEFERRED / NON-BLOCKING**; Phase 3 adds only the minimum missing
   source-line context needed by scaled failure diagnostics
-- Phase 3: **PARTIAL / BLOCKED ON RECORDED SOURCE EVIDENCE**
+- Phase 3: **COMPLETE / MERGED** (PR #13, merge
+  `473a907eba2001d18926c57d6c8d16b10c7505be`) — see
+  `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`
 - Phase 4: **NOT STARTED**
 - OD-M5-003: **SPIKE-RESOLVABLE**
 - M6: **NOT STARTED**

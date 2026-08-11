@@ -31,7 +31,17 @@ All notable changes will be recorded here.
   `C=500` table) locks ADR-0008 semantics independently of production/reference equality;
   the ReplayDriver summary accumulators no longer mark allocation-capable paths `noexcept`; the
   minimal JSON uint64 parser uses a checked-before-multiply overflow guard. Phase 3 is
-  IMPLEMENTED / PENDING INDEPENDENT REVIEW in PR #13; Phase 4 is NOT STARTED.
+  COMPLETE / MERGED via PR #13 (merge `473a907eba2001d18926c57d6c8d16b10c7505be`, final approved
+  Head `a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354`, exact-head CI `31491615547` — PASS 16/16);
+  Phase 4 is NOT STARTED.
+
+- M5 Phase 3 merged via PR #13 at main `473a907eba2001d18926c57d6c8d16b10c7505be`
+  (squash merge). Final approved PR head: `a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354`; exact-head
+  CI `31491615547` — PASS 16/16; final independent review APPROVED (P0: 0, P1: 0; M5-P3-RR2-001
+  CLOSED; M5-P3-RR2-002 PARTIALLY CLOSED / ACCEPTED NON-BLOCKING P2). Delivered at summary level:
+  deterministic large replay validation (2,048-event small tier), Spot/USD-M authoritative medium
+  validation, direct Spot successor-conformance guard (ADR-0008), medium lifecycle validation,
+  ReplayDriver exception hardening, and uint64 validation hardening.
 
 ### Added
 
