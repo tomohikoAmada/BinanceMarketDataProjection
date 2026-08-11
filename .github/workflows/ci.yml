@@ -69,14 +69,17 @@ jobs:
             os: ubuntu-latest
             cc: gcc
             cxx: g++
+            artifact-label: ubuntu-gcc
           - name: Ubuntu Clang
             os: ubuntu-latest
             cc: clang
             cxx: clang++
+            artifact-label: ubuntu-clang
           - name: macOS AppleClang
             os: macos-latest
             cc: clang
             cxx: clang++
+            artifact-label: macos-appleclang
     runs-on: ${{ matrix.os }}
     env:
       CC: ${{ matrix.cc }}
@@ -86,14 +89,33 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Compute short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
       - name: Bootstrap repository-local Conan
         run: bash scripts/bootstrap.sh
+      - name: Bootstrap pinned Contracts package
+        run: bash scripts/bootstrap-contracts.sh
       - name: Configure
-        run: bash scripts/configure.sh release -DBMD_PROJECTION_ENABLE_WERROR=ON
+        run: >-
+          bash scripts/configure.sh release
+          -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON
+          -DBMD_PROJECTION_ENABLE_WERROR=ON
       - name: Build
         run: bash scripts/build.sh release
       - name: Test
         run: bash scripts/test.sh release
+      - name: Produce semantic manifest
+        run: >-
+          build/release/cmake/tests/bmd_projection_m5_semantic_manifest
+          --output build/release/cmake/tests/m5-semantic-manifest.json
+          --head-sha ${{ github.sha }}
+      - name: Upload semantic manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: m5-semantic-manifest-${{ matrix.artifact-label }}-${{ steps.sha.outputs.short }}
+          path: build/release/cmake/tests/m5-semantic-manifest.json
+          retention-days: 3
       - name: Staged install consumer
         run: bash scripts/install-consumer-test.sh
 
@@ -272,3 +294,119 @@ jobs:
         run: bash scripts/test.sh release
       - name: Shared installed consumer and symbol ownership
         run: bash scripts/install-adapter-consumer-test.sh
+
+  m5-replay:
+    name: m5-replay (Ubuntu Clang)
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bootstrap repository-local Conan
+        run: bash scripts/bootstrap.sh
+      - name: Bootstrap pinned Contracts package
+        run: bash scripts/bootstrap-contracts.sh
+      - name: Configure Debug
+        run: >-
+          bash scripts/configure.sh debug
+          -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON
+          -DBMD_PROJECTION_ENABLE_WERROR=ON
+      - name: Build Debug
+        run: bash scripts/build.sh debug
+      - name: Produce Debug manifest (run 1)
+        run: >-
+          build/debug/cmake/tests/bmd_projection_m5_semantic_manifest
+          --output build/m5-debug-1.json
+          --head-sha ${{ github.sha }}
+      - name: Produce Debug manifest (run 2)
+        run: >-
+          build/debug/cmake/tests/bmd_projection_m5_semantic_manifest
+          --output build/m5-debug-2.json
+          --head-sha ${{ github.sha }}
+      - name: Configure Release
+        run: >-
+          bash scripts/configure.sh release
+          -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON
+          -DBMD_PROJECTION_ENABLE_WERROR=ON
+      - name: Build Release
+        run: bash scripts/build.sh release
+      - name: Produce Release manifest (run 1)
+        run: >-
+          build/release/cmake/tests/bmd_projection_m5_semantic_manifest
+          --output build/m5-release-1.json
+          --head-sha ${{ github.sha }}
+      - name: Produce Release manifest (run 2)
+        run: >-
+          build/release/cmake/tests/bmd_projection_m5_semantic_manifest
+          --output build/m5-release-2.json
+          --head-sha ${{ github.sha }}
+      - name: Verify Debug/Release determinism and run repeatability
+        run: |
+          python3 -c "
+          import json, sys
+          def load(p):
+              with open(p) as f:
+                  return json.load(f)
+          def digests(m):
+              return {w['workload_id']: w['semantic_digest'] for w in m['workloads']}
+          d1 = load('build/m5-debug-1.json')
+          d2 = load('build/m5-debug-2.json')
+          r1 = load('build/m5-release-1.json')
+          r2 = load('build/m5-release-2.json')
+          assert d1['head_sha'] == d2['head_sha'] == r1['head_sha'] == r2['head_sha'], 'HEAD mismatch'
+          assert digests(d1) == digests(d2), 'Debug run repeatability FAIL'
+          assert digests(r1) == digests(r2), 'Release run repeatability FAIL'
+          assert digests(d1) == digests(r1), 'Debug/Release semantic equality FAIL'
+          assert d1['schema_version'] == d2['schema_version'] == r1['schema_version'] == r2['schema_version']
+          print(f'm5-replay PASS ({len(digests(d1))} workloads, Debug==Release, repeatable)')
+          for wid in digests(d1):
+              print(f'  {wid}: {digests(d1)[wid]}')
+          "
+
+  m5-semantic-compare:
+    name: m5-semantic-compare
+    runs-on: ubuntu-latest
+    needs: build-matrix
+    if: ${{ always() }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compute short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+      - name: Download manifest (Ubuntu GCC)
+        uses: actions/download-artifact@v4
+        with:
+          name: m5-semantic-manifest-ubuntu-gcc-${{ steps.sha.outputs.short }}
+          path: manifests/ubuntu-gcc
+      - name: Download manifest (Ubuntu Clang)
+        uses: actions/download-artifact@v4
+        with:
+          name: m5-semantic-manifest-ubuntu-clang-${{ steps.sha.outputs.short }}
+          path: manifests/ubuntu-clang
+      - name: Download manifest (macOS AppleClang)
+        uses: actions/download-artifact@v4
+        with:
+          name: m5-semantic-manifest-macos-appleclang-${{ steps.sha.outputs.short }}
+          path: manifests/macos-appleclang
+      - name: Compare semantic manifests
+        id: compare
+        run: |
+          python3 scripts/compare-m5-semantic-manifests.py --expected-head ${{ github.sha }} \
+            manifests/ubuntu-gcc/m5-semantic-manifest.json \
+            manifests/ubuntu-clang/m5-semantic-manifest.json \
+            manifests/macos-appleclang/m5-semantic-manifest.json \
+            2>&1 | tee m5-semantic-comparison.txt
+      - name: Upload comparison report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m5-semantic-comparison-${{ steps.sha.outputs.short }}
+          path: m5-semantic-comparison.txt
+          retention-days: 3

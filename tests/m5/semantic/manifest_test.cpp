@@ -1,0 +1,138 @@
+#include "canonical_observation.hpp"
+#include "semantic_digest.hpp"
+#include "semantic_manifest.hpp"
+
+#include "../oracle/operation_observation.hpp"
+
+#include <gtest/gtest.h>
+
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace {
+
+namespace oracle = bmd_projection::m5::oracle;
+namespace replay = bmd_projection::m5::replay;
+namespace semantic = bmd_projection::m5::semantic;
+
+TEST(SemanticManifestTest, RenderValidJson) {
+    semantic::SemanticManifest manifest;
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V1";
+    manifest.head_sha = "a1db0f8374bec84d10b0005552983dd44b4e2026";
+    manifest.toolchain.compiler = "GCC";
+    manifest.toolchain.compiler_version = "14.2.0";
+    manifest.toolchain.os = "Linux";
+    manifest.toolchain.architecture = "x86_64";
+    manifest.build_type = "Release";
+    manifest.fixture_set_id = "abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234";
+
+    semantic::ManifestWorkloadEntry w;
+    w.workload_id = "m5-small-core-spot-v1";
+    w.fixture_id = "m5-small-spot-v1";
+    w.fixture_hash = "1111111111111111111111111111111111111111111111111111111111111111";
+    w.semantic_digest = "2222222222222222222222222222222222222222222222222222222222222222";
+    manifest.workloads.push_back(w);
+
+    const auto json = semantic::render_manifest_json(manifest);
+    EXPECT_NE(json.find("\"schema_version\""), std::string::npos);
+    EXPECT_NE(json.find("\"head_sha\""), std::string::npos);
+    EXPECT_NE(json.find("\"toolchain\""), std::string::npos);
+    EXPECT_NE(json.find("\"fixture_set_id\""), std::string::npos);
+    EXPECT_NE(json.find("\"workloads\""), std::string::npos);
+    EXPECT_NE(json.find("\"m5-small-core-spot-v1\""), std::string::npos);
+    EXPECT_NE(json.find("\"GCC\""), std::string::npos);
+    EXPECT_NE(json.find("\"Release\""), std::string::npos);
+    EXPECT_NE(json.find("\"1111111111111111111111111111111111111111111111111111111111111111\""),
+              std::string::npos);
+}
+
+TEST(SemanticManifestTest, RenderMultipleWorkloads) {
+    semantic::SemanticManifest manifest;
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V1";
+    manifest.head_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    manifest.toolchain.compiler = "Clang";
+    manifest.toolchain.compiler_version = "19.1.0";
+    manifest.toolchain.os = "Darwin";
+    manifest.toolchain.architecture = "arm64";
+    manifest.build_type = "Debug";
+    manifest.fixture_set_id = "f" + std::string(63, '0');
+
+    for (int i = 0; i < 4; ++i) {
+        semantic::ManifestWorkloadEntry w;
+        w.workload_id = "wl-" + std::to_string(i);
+        w.fixture_id = "fx-" + std::to_string(i);
+        w.fixture_hash = "aa" + std::string(62, '0' + static_cast<char>(i));
+        w.semantic_digest = "bb" + std::string(62, '0' + static_cast<char>(i));
+        manifest.workloads.push_back(w);
+    }
+
+    const auto json = semantic::render_manifest_json(manifest);
+    EXPECT_NE(json.find("wl-0"), std::string::npos);
+    EXPECT_NE(json.find("wl-3"), std::string::npos);
+    EXPECT_EQ(json.find("wl-4"), std::string::npos);
+    EXPECT_NE(json.find("\"workloads\""), std::string::npos);
+}
+
+TEST(SemanticManifestTest, JsonStringEscaping) {
+    semantic::SemanticManifest manifest;
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V1";
+    manifest.head_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    manifest.toolchain.compiler = "GCC";
+    manifest.toolchain.compiler_version = "14.2.0";
+    manifest.toolchain.os = "Linux";
+    manifest.toolchain.architecture = "x86_64";
+    manifest.build_type = "Release";
+    manifest.fixture_set_id = "abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234";
+
+    semantic::ManifestWorkloadEntry w;
+    w.workload_id = "test\"quote";
+    w.fixture_id = "fixture";
+    w.fixture_hash = "1111111111111111111111111111111111111111111111111111111111111111";
+    w.semantic_digest = "2222222222222222222222222222222222222222222222222222222222222222";
+    manifest.workloads.push_back(w);
+
+    const auto json = semantic::render_manifest_json(manifest);
+    EXPECT_NE(json.find("test\\\"quote"), std::string::npos);
+}
+
+TEST(SemanticManifestTest, FixtureSetIdDeterministic) {
+    std::vector<semantic::ManifestWorkloadEntry> entries;
+    for (int i = 0; i < 4; ++i) {
+        semantic::ManifestWorkloadEntry w;
+        w.workload_id = "wl-" + std::to_string(i);
+        w.fixture_id = "fx-" + std::to_string(i);
+        w.fixture_hash = "aa" + std::string(62, '0' + static_cast<char>(i));
+        w.semantic_digest = "bb" + std::string(62, '0' + static_cast<char>(i));
+        entries.push_back(w);
+    }
+
+    const auto id1 = semantic::compute_fixture_set_id(entries);
+    const auto id2 = semantic::compute_fixture_set_id(entries);
+    EXPECT_EQ(id1, id2);
+    EXPECT_EQ(id1.size(), 64);
+}
+
+TEST(SemanticManifestTest, FixtureSetIdRejectsUnorderedInput) {
+    std::vector<semantic::ManifestWorkloadEntry> entries1;
+    std::vector<semantic::ManifestWorkloadEntry> entries2;
+    for (int i = 0; i < 4; ++i) {
+        semantic::ManifestWorkloadEntry w;
+        w.workload_id = "wl-" + std::to_string(i);
+        w.fixture_id = "fx-" + std::to_string(i);
+        w.fixture_hash = "ff" + std::string(62, '0');
+        w.semantic_digest = "bb" + std::string(62, '0');
+        entries1.push_back(w);
+    }
+    entries2 = {entries1[1], entries1[0], entries1[2], entries1[3]};
+
+    const auto id1 = semantic::compute_fixture_set_id(entries1);
+    const auto id2 = semantic::compute_fixture_set_id(entries2);
+    EXPECT_NE(id1, id2);
+}
+
+TEST(SemanticManifestTest, ManifestSchemaVersionFrozen) {
+    EXPECT_EQ(std::string(semantic::kManifestSchemaV1), "M5_SEMANTIC_MANIFEST_V1");
+}
+
+} // namespace

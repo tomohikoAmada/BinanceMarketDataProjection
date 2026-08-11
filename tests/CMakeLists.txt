@@ -44,6 +44,52 @@ set_target_properties(
 )
 bmd_projection_apply_project_options(bmd_projection_m5_phase3_support)
 
+add_library(
+    bmd_projection_m5_semantic_support
+    m5/semantic/canonical_observation.cpp
+    m5/semantic/semantic_digest.cpp
+    m5/semantic/semantic_manifest.cpp
+)
+target_include_directories(
+    bmd_projection_m5_semantic_support
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/m5/semantic
+)
+target_link_libraries(
+    bmd_projection_m5_semantic_support
+    PUBLIC bmd_projection_m5_oracle_support
+)
+set_target_properties(
+    bmd_projection_m5_semantic_support
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_semantic_support)
+
+add_executable(
+    bmd_projection_m5_semantic_tests
+    m5/semantic/canonical_observation_test.cpp
+    m5/semantic/digest_test.cpp
+    m5/semantic/manifest_test.cpp
+)
+target_link_libraries(
+    bmd_projection_m5_semantic_tests
+    PRIVATE
+        bmd_projection_m5_semantic_support
+        bmd_projection_m5_phase3_support
+        bmd_projection_m5_reference_support
+        GTest::gtest_main
+)
+set_target_properties(
+    bmd_projection_m5_semantic_tests
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_semantic_tests)
+
 add_executable(
     bmd_projection_m5_replay_tests
     m5/replay/replay_fixture_test.cpp
@@ -343,6 +389,38 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
             CXX_EXTENSIONS NO
     )
     bmd_projection_apply_project_options(bmd_projection_m5_adapter_corpus_validate)
+
+    add_executable(
+        bmd_projection_m5_semantic_manifest
+        m5/semantic/manifest_producer.cpp
+        m5/oracle/adapter_production_side.cpp
+    )
+    target_compile_definitions(
+        bmd_projection_m5_semantic_manifest
+        PRIVATE
+            BMD_PROJECTION_COMPILER_ID="${CMAKE_CXX_COMPILER_ID}"
+            BMD_PROJECTION_COMPILER_VERSION="${CMAKE_CXX_COMPILER_VERSION}"
+            BMD_PROJECTION_SYSTEM_NAME="${CMAKE_SYSTEM_NAME}"
+            BMD_PROJECTION_SYSTEM_PROCESSOR="${CMAKE_SYSTEM_PROCESSOR}"
+            BMD_PROJECTION_BUILD_TYPE="$<CONFIG>"
+    )
+    target_link_libraries(
+        bmd_projection_m5_semantic_manifest
+        PRIVATE
+            bmd_projection_m5_semantic_support
+            bmd_projection_m5_phase3_support
+            bmd_projection_m5_reference_support
+            BinanceMarketDataProjection::ProtoAdapter
+    )
+    set_target_properties(
+        bmd_projection_m5_semantic_manifest
+        PROPERTIES
+            CXX_STANDARD 20
+            CXX_STANDARD_REQUIRED YES
+            CXX_EXTENSIONS NO
+    )
+    bmd_projection_apply_project_options(bmd_projection_m5_semantic_manifest)
+
     add_library(
         bmd_projection_proto_adapter_header_self_containment
         OBJECT
@@ -411,6 +489,12 @@ gtest_discover_tests(bmd_projection_tests)
 gtest_discover_tests(bmd_projection_m3_allocation_failure_tests)
 gtest_discover_tests(bmd_projection_m5_replay_tests)
 gtest_discover_tests(bmd_projection_m5_differential_tests)
+gtest_discover_tests(bmd_projection_m5_semantic_tests)
+add_test(
+    NAME m5_semantic_comparator_tests
+    COMMAND ${Python3_EXECUTABLE} -m unittest
+            ${CMAKE_CURRENT_SOURCE_DIR}/m5/semantic/test_compare_manifest.py
+)
 add_test(
     NAME m5_materializer_tests
     COMMAND ${Python3_EXECUTABLE} -m unittest discover

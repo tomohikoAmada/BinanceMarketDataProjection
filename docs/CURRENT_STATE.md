@@ -36,11 +36,15 @@ orientation only.
 
 ## Active Candidate / Pull Request
 
+- Phase 4: `feat/m5-cross-compiler-semantic-manifests` (DRAFT), implements canonical
+  `OperationObservation` serialization (schema v1), semantic SHA-256 digests, portable
+  manifest v1, the manifest producer, cross-compiler artifact fan-in, the `m5-replay`
+  and `m5-semantic-compare` blocking jobs, and the fail-closed Python comparator. No
+  production-code change (`src/`, `include/` unchanged). PR is DRAFT pending independent
+  implementation review.
 - No active Phase-3 candidate: PR #13, `Implement M5 deterministic replay validation`, is
   MERGED (squash merge `473a907eba2001d18926c57d6c8d16b10c7505be`). Its remote branch
   `feat/m5-deterministic-replay-validation` has been deleted.
-- Final approved PR #13 head: `a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354`.
-- M5 Phase 4 has not started; no candidate exists yet.
 
 ## Deployed State
 
@@ -58,6 +62,11 @@ artifact is a separate identity and remains outside Projection ownership.
   Delivered: deterministic 2,048-event small-tier replay, scaled differential diagnostics,
   the offline Recorder Raw-v1 materializer, medium lifecycle validation, direct ADR-0008 Spot
   conformance coverage, ReplayDriver exception hardening, and uint64 JSON parser hardening.
+- M5 Phase 4: IMPLEMENTED / PENDING INDEPENDENT REVIEW (branch
+  `feat/m5-cross-compiler-semantic-manifests`). Delivered: canonical OperationObservation
+  serializer v1, semantic SHA-256 digests, portable manifest v1, manifest producer, fail-closed
+  Python comparator, three-cross-compiler artifact fan-in, `m5-replay` Debug/Release
+  determinism, and `m5-semantic-compare` blocking job. No production-code change.
 - Spot mandatory 100k evidence is validated lifecycle-valid under ADR-0008: exact-next bridge
   `U=98288147168 u=98288147175` against `L=98288147167` Applied/Synchronized, 100,001 Applied
   operations, zero gaps, final Synchronized.
@@ -66,8 +75,13 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Not Implemented
 
-- M5 Phase 4 (semantic observation serialization/digests/manifests, cross-compiler transport,
-  fuzzing, benchmarks, allocation instrumentation, container spike) is NOT STARTED.
+- M5 Phase 4 (cross-compiler semantic manifests: canonical observation serialization,
+  semantic digests, portable manifest v1, manifest producer, fail-closed comparator,
+  artifact upload, m5-replay, m5-semantic-compare) is IMPLEMENTED / PENDING INDEPENDENT REVIEW.
+- Phase 5 (replay differential fuzzing) is NOT STARTED.
+- Phase 6 (benchmarks) is NOT STARTED.
+- Phase 7 (allocation/memory) is NOT STARTED.
+- Phase 8 (container spike) is NOT STARTED.
 - M6 Gateway integration is NOT STARTED.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading remain outside the implemented Projection scope.

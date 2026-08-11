@@ -254,7 +254,12 @@ validated PASS from the pinned authoritative source: Spot `M5-REC-SPOT-BTCUSDT-V
 bridge `U=98288147168 u=98288147175` against `L=98288147167`; 100,001 Applied, final
 Synchronized) and USD-M `M5-REC-USDM-BTCUSDT-V1` (bridge Applied / Synchronized, 100,001
 Applied, final Synchronized). See
-[M5 Phase 3](docs/M5_PHASE3_DETERMINISTIC_REPLAY.md).
+[M5 Phase 3](docs/M5_PHASE3_DETERMINISTIC_REPLAY.md) and
+[M5 Phase 4](docs/M5_PHASE4_CROSS_COMPILER_SEMANTIC_MANIFESTS.md).
+Phase 4 (cross-compiler semantic manifests) is IMPLEMENTED / PENDING INDEPENDENT REVIEW:
+canonical OperationObservation serialization (schema v1), semantic SHA-256 digests,
+portable manifest v1, manifest producer, fail-closed Python comparator, and three-cross-compiler
+artifact fan-in CI. Later phases remain not started.
 Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
 cross-compiler semantic manifests with artifact fan-in transport, replay/differential fuzzing,

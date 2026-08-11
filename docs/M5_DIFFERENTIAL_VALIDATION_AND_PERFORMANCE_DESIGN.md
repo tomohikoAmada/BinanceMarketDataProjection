@@ -12,7 +12,8 @@
   `a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354`, exact-head CI `31491615547` — PASS 16/16, merge
   `473a907eba2001d18926c57d6c8d16b10c7505be`) — see
   `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`
-- Phase 4 status: **NOT STARTED**
+- Phase 4 status: **IMPLEMENTED / PENDING INDEPENDENT REVIEW** — see
+  `docs/M5_PHASE4_CROSS_COMPILER_SEMANTIC_MANIFESTS.md`
 - ADR status: **ACCEPTED** (ADR-0007)
 - Design date: 2026-08-08
 - Initial independent architecture review: **CHANGES REQUESTED** (P0: 0, P1 design: 1, P1 implementation: 2, P2: 7)
