@@ -7,17 +7,25 @@ relevant files under `docs/adr/`.
 
 Evidence hierarchy for semantic decisions:
 
-1. **External protocol facts** — official upstream Binance documentation and official Binance
-   reference implementations, inspected directly (commit diffs and checked-out files), override
-   local interpretation when they conflict.
-2. **Local implementation facts** — checked-out code, Git history, tests, and build/CI evidence.
-3. **Accepted ADRs** — govern local deliberate behavior unless contradicted by a higher-authority
-   upstream protocol fact; such a conflict requires an explicit ADR correction (new ADR or
-   amendment) and independent review. Never silently rewrite an accepted ADR's history.
+1. **External protocol facts** — official upstream Binance protocol documentation,
+   changelog/corrective commits, and official maintained reference implementations, inspected
+   directly (commit diffs and checked-out files), override local interpretation when they conflict.
+2. **Accepted local semantic/design authority** — accepted ADRs and accepted milestone designs,
+   unless an upstream conflict is established and corrected explicitly through the repository
+   review process.
+3. **Implementation evidence** — exact checked-out code, tests, Git history, build results, and CI
+   establish what is implemented and whether it conforms to higher authority. Implementation does
+   not become semantic authority merely because it exists.
+4. **Status/orientation evidence** — PR bodies, `CURRENT_STATE`-style summaries, milestone status
+   summaries, Recorder observations, and unmerged branches are supporting evidence only and must
+   not define exchange semantics.
 
-Local documentation, PR bodies, Recorder behavior, and unmerged branches are evidence only and
-must not define exchange semantics. A live web page is never a build dependency; verified protocol
-facts are recorded in an ADR before code changes rely on them.
+Accepted ADRs govern local deliberate behavior unless contradicted by a higher-authority upstream
+protocol fact; such a conflict requires an explicit ADR correction (new ADR or amendment) and
+independent review. Never silently rewrite an accepted ADR's history.
+
+A live web page is never a build dependency; verified protocol facts are recorded in an ADR before
+code changes rely on them.
 
 - Do not manually edit generated files. `conan.lock` is updated through Conan; generated dependency
   and CMake files belong under ignored build/cache directories.

@@ -308,7 +308,7 @@ book exactly unchanged. Every `DepthBatch` in this matrix already contains a val
 | `AwaitingBridge` or `Synchronized` | Exact sequence duplicate (`u == current`) | Range structurally valid; in Futures `AwaitingBridge`, equality is the special bridge case above | No | No | Same state / `IgnoredDuplicate` | No-throw result |
 | `Synchronized` | Overlapping Spot update (`U <= current < u`) | Range covers successor | Atomic level apply | Advance to `u` | `Synchronized` / `Applied` | Strong |
 | `Synchronized` | Spot forward gap | `u > current` and `U` is later than successor | Preserve | Preserve last accepted ID; store `GapInfo` | `NeedsResync` / `GapDetected` | No allocation; no-throw result |
-| `AwaitingBridge` | Non-bridgeable candidate | Advancing Spot range has `U > L`, or USD-M range does not contain `L` | Preserve baseline | Preserve `L`; store `GapInfo` | `NeedsResync` / `GapDetected` | No allocation; no-throw result |
+| `AwaitingBridge` | Non-bridgeable candidate | Advancing Spot range has `U > L + 1`, or USD-M range does not contain `L` | Preserve baseline | Preserve `L`; store `GapInfo` | `NeedsResync` / `GapDetected` | No allocation; no-throw result |
 | `AwaitingBridge` or `Synchronized` | Futures missing relevant `pu` | Candidate would otherwise need bridge/live validation | Preserve | Preserve; store gap | `NeedsResync` / `GapDetected` | No allocation; no-throw result |
 | `Synchronized` | Futures `pu` mismatch | Advancing `u`, present `pu != current` | Preserve | Preserve; store gap | `NeedsResync` / `GapDetected` | No allocation; no-throw result |
 | `AwaitingBaseline` or `NeedsResync` | Apply update | Wrong lifecycle | No | No | Same state / `RejectedWrongState` | No-throw result |
@@ -354,8 +354,9 @@ reveals pending state only to callers that opt into diagnostic semantics.
    `AwaitingBridge`.
 2. For the first candidate with `u > L`, require the inclusive interval to cover the successor of
    the snapshot ID: `U <= L + 1` with the guarded successor predicate (never evaluates
-   `UINT64_MAX + 1`). Because `u > L` is already established, the bridge predicate can also be
-   written `U <= L + 1 < u` or `U == L + 1` for exact-next input.
+   `UINT64_MAX + 1`). Because `u > L` is already established and update IDs are integral,
+   `u >= L + 1` follows, so the continuity test is exactly `U <= L + 1`; equivalently the full
+   range predicate is `U <= L + 1 <= u`.
 3. If the interval covers the successor, atomically apply all absolute-quantity levels, set the
    accepted ID to `u`, and enter `Synchronized`.
 4. If `U > L + 1`, record `SpotBootstrapForwardGap`, enter `NeedsResync`, and preserve the

@@ -275,6 +275,50 @@ TEST(BookProjectionSpotBootstrapTest, MaxBaselineCannotAdvance) {
     EXPECT_EQ(projection.last_update_id(), bmd::UpdateId{UINT64_MAX});
 }
 
+TEST(BookProjectionSpotBootstrapTest, MaxSuccessorBridgeAppliesFinalLegalTransition) {
+    const std::array baseline_bids = {
+        bmd::BookLevel{helper::price(100), helper::quantity(1)},
+    };
+    bmd::BookProjection projection{helper::spec(), bmd::SequencePolicyKind::Spot};
+    ASSERT_EQ(helper::install(projection, UINT64_MAX - 1U, baseline_bids).disposition,
+              bmd::InstallDisposition::Installed);
+    const std::array levels = {
+        bmd::LevelUpdate{bmd::BookSide::Bid, helper::price(100), helper::quantity(5)},
+    };
+    const auto result = helper::apply(projection, UINT64_MAX, UINT64_MAX, std::nullopt, levels);
+
+    EXPECT_EQ(result.disposition, bmd::ApplyDisposition::Applied);
+    EXPECT_EQ(result.status_after, bmd::ProjectionStatus::Synchronized);
+    EXPECT_EQ(result.last_update_id_after, bmd::UpdateId{UINT64_MAX});
+    EXPECT_FALSE(result.gap.has_value());
+    EXPECT_EQ(projection.diagnostic_book().quantity_at(bmd::BookSide::Bid, helper::price(100)),
+              helper::quantity(5));
+}
+
+TEST(BookProjectionSpotLiveTest, MaxSuccessorAppliesThenEqualityFinalIsDuplicate) {
+    auto projection = make_spot_synchronized(UINT64_MAX - 2U, UINT64_MAX - 1U);
+    const std::array levels = {
+        bmd::LevelUpdate{bmd::BookSide::Ask, helper::price(101), helper::quantity(9)},
+    };
+    const auto result = helper::apply(projection, UINT64_MAX, UINT64_MAX, std::nullopt, levels);
+
+    EXPECT_EQ(result.disposition, bmd::ApplyDisposition::Applied);
+    EXPECT_EQ(result.status_after, bmd::ProjectionStatus::Synchronized);
+    EXPECT_EQ(result.last_update_id_after, bmd::UpdateId{UINT64_MAX});
+    EXPECT_FALSE(result.gap.has_value());
+    EXPECT_EQ(projection.diagnostic_book().quantity_at(bmd::BookSide::Ask, helper::price(101)),
+              helper::quantity(9));
+
+    const auto stable = helper::checkpoint(projection);
+    const std::array conflicting = {
+        bmd::LevelUpdate{bmd::BookSide::Ask, helper::price(101), helper::quantity(1)},
+    };
+    expect_ignored(helper::apply(projection, 0, UINT64_MAX, std::nullopt, conflicting),
+                   bmd::ApplyDisposition::IgnoredDuplicate, bmd::ProjectionStatus::Synchronized,
+                   UINT64_MAX);
+    EXPECT_EQ(helper::checkpoint(projection), stable);
+}
+
 TEST(BookProjectionSpotLiveTest, SuccessorCoverageAcceptsExactNextAndRejectsLaterStart) {
     auto accepted = make_spot_synchronized(100, 101);
     EXPECT_EQ(helper::apply(accepted, 102, 102).disposition, bmd::ApplyDisposition::Applied);

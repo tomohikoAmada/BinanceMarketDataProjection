@@ -65,8 +65,23 @@ The current official Spot instructions ("How to manage a local order book correc
 3. Normally, `U` of the next event is equal to `u + 1` of the previous event.
 4. Apply levels, then set the local order book update ID to the event's `u`.
 
-The `u <= lastUpdateId` discard step in the snapshot-buffer instructions remains unchanged and
-continues to imply that the first surviving buffered event contains `L` in `[U,u]`.
+### Snapshot/buffer orchestration versus apply-time continuity
+
+The official instructions combine two different concerns that must be kept separate:
+
+**A. Binance snapshot/buffer orchestration.** The official materials retain a conservative
+bootstrap acquisition procedure: open the stream and buffer events, acquire a depth snapshot, and
+while the snapshot `lastUpdateId` is strictly less than the `U` of the first buffered event,
+reacquire the snapshot; then discard buffered events with `u <= lastUpdateId`. These steps
+orchestrate Host snapshot timing and buffering. They do not, by themselves, define the Core
+continuity predicate. In particular, `u > L` alone does not imply `U <= L`: with `L = 100`, the
+surviving range `[101,101]` has `u = 101 > L` but does not contain `L`. The `u <= L` discard step
+therefore does not prove contains-`L` for every survivor.
+
+**B. Binance apply-time continuity rule.** The corrected operational rule says a gap exists when
+`U > local_update_id + 1`, and normally `U` of the next event equals `u + 1` of the previous event.
+The official maintained `binance-toolbox-python` example implements
+`U <= last_update_id + 1 <= u` as its acceptance predicate.
 
 ### Official Binance example implementation
 
@@ -85,17 +100,15 @@ This predicate has been in the official example since commit `1b465ec` (2023-08-
 "fixing orderbook issue (#17)"). It accepts overlap and exact-next input and treats only a start
 later than `last_update_id + 1` as out of sync.
 
-### Tension with the pre-correction text
+**C. M3 Core responsibility.** `BookProjection` does not own WebSocket subscription start,
+buffered-event retention, REST snapshot timing, the snapshot reacquisition loop, or Host/network
+recovery. M3 receives one trusted current ID `C` plus one normalized valid `UpdateRange [U,u]` and
+answers whether the incoming advancing range is sequence-continuous. For that Core responsibility,
+successor coverage is the reviewed predicate `U <= C + 1 <= u` with guarded arithmetic.
 
-The corrected apply-time rule uses `U > local + 1` as the gap condition, while the buffering
-instructions still describe the first surviving buffered event as containing `L`. ADR-0008 resolves
-the tension as follows:
-
-- `u <= L` discard/duplicate classification is unchanged (`INV-003`, `INV-004`), so the buffered
-  set that reaches classification still begins with a range containing `L` or starting at `L + 1`.
-- The apply-time successor-coverage rule is the operative continuity predicate for every advancing
-  event, bootstrap and live alike, per the corrected 2025-11-12 instructions and the official
-  example predicate `U <= last_update_id + 1 <= u`.
+Host-level snapshot acquisition/reacquisition policy and the Core sequence continuity predicate are
+therefore separate responsibilities. A future Host may impose additional acquisition or
+rebootstrap rules without changing this Core continuity predicate.
 
 ## Decision
 
