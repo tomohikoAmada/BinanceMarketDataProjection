@@ -14,13 +14,28 @@
 
 #include "operation_observation.hpp"
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace bmd_projection::m5::oracle {
 
 struct Divergence final {
+    Divergence() = default;
+    Divergence(std::size_t event_index_value, replay::EventKind event_kind_value, Layer layer_value,
+               DivergenceCategory category_value, std::string detail_value,
+               std::string production_value_text, std::string reference_value_text,
+               std::string fixture_identity_value, std::string source_line_value)
+        : event_index{event_index_value}, event_kind{event_kind_value}, layer{layer_value},
+          category{category_value}, detail{std::move(detail_value)},
+          production_value{std::move(production_value_text)},
+          reference_value{std::move(reference_value_text)},
+          fixture_identity{std::move(fixture_identity_value)},
+          source_line{std::move(source_line_value)} {}
+
     std::size_t event_index{};
     replay::EventKind event_kind{};
     Layer layer{};
@@ -30,6 +45,17 @@ struct Divergence final {
     std::string reference_value;
     std::string fixture_identity;
     std::string source_line;
+    std::size_t source_line_number{};
+    std::string fixture_id;
+    std::string replay_log_sha256;
+    std::string production_checkpoint;
+    std::string reference_checkpoint;
+    std::uint32_t price_scale{};
+    std::uint32_t quantity_scale{};
+    std::string policy;
+    std::string market;
+    std::string symbol;
+    std::vector<std::pair<std::string, std::string>> provenance;
 
     friend bool operator==(const Divergence&, const Divergence&) = default;
 };
@@ -57,6 +83,16 @@ struct Divergence final {
 to_canonical_text(const std::vector<CanonicalDecimalObservation>& observations);
 [[nodiscard]] std::string to_canonical_text(const SemanticCheckpoint& checkpoint);
 [[nodiscard]] std::string to_canonical_text(const SnapshotOutcome& snapshot);
+
+// Adds fixture/source/checkpoint context after the fixed semantic comparator has
+// selected the first mismatch. This does not participate in comparison.
+void enrich_divergence(Divergence& divergence, const replay::ReplayFixture& fixture,
+                       const replay::SourceLocation& source, const OperationObservation* production,
+                       const OperationObservation* reference);
+
+// Stable failure-only diagnostic text. It is deliberately not an
+// OperationObservation stream and is never hashed as a semantic result.
+[[nodiscard]] std::string render_divergence(const Divergence& divergence);
 
 // Compares production and reference observations in the fixed order and returns the
 // first divergence, or std::nullopt when they agree.

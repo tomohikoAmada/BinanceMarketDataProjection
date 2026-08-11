@@ -3,7 +3,9 @@
 #include <gtest/gtest.h>
 
 #include <filesystem>
+#include <fstream>
 #include <limits>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -31,6 +33,24 @@ TEST(M5ReplayFixtureTest, LoadsSpotUsdMAndRecoveryTinyFixtures) {
         EXPECT_FALSE(fixture.replay.operations.empty());
         EXPECT_EQ(fixture.manifest.identity.fixture_id, fixture.replay.header.fixture_id);
     }
+}
+
+TEST(M5ReplayFixtureTest, InMemoryLoaderUsesTheSameIdentityBoundary) {
+    const auto directory = std::filesystem::path{BMD_M5_FIXTURE_ROOT} / "spot_tiny";
+    const auto from_directory = replay::load_fixture(directory);
+    ASSERT_TRUE(std::holds_alternative<replay::ReplayFixture>(from_directory));
+
+    const auto read = [](const std::filesystem::path& path) {
+        std::ifstream input(path, std::ios::binary);
+        std::ostringstream bytes;
+        bytes << input.rdbuf();
+        return bytes.str();
+    };
+    const auto from_memory = replay::load_fixture(
+        replay::FixtureBytes{read(directory / "replay.log"), read(directory / "manifest.txt")});
+    ASSERT_TRUE(std::holds_alternative<replay::ReplayFixture>(from_memory));
+    EXPECT_EQ(std::get<replay::ReplayFixture>(from_directory),
+              std::get<replay::ReplayFixture>(from_memory));
 }
 
 TEST(M5ReplayFixtureTest, SpotBootstrapBridgeUsesSuccessorCoverage) {

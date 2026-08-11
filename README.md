@@ -2,8 +2,17 @@
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. M1 through M4 are complete on `main`; M5 (Differential Validation and
-Performance) implementation is in progress (Phase 1 merged, Phase 2 implemented pending
-independent review).
+Performance) implementation is in progress (Phases 1 and 2 merged, Phase 3 foundation implemented
+but Phase 3 is partial because the pinned authoritative Spot source is ineligible under the accepted
+Projection bootstrap policy; the USD-M medium corpus is validated.
+
+## For AI agents and independent reviewers
+
+Start with [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md), then read [`AGENTS.md`](AGENTS.md),
+this README, [`ARCHITECTURE.md`](ARCHITECTURE.md), the current milestone and M5 phase documents,
+the relevant accepted ADRs, actual code/tests, and finally PR #13 plus its exact-head CI. The
+orientation file is a summary only; accepted ADRs/designs and current GitHub/code state remain
+authoritative.
 
 This is an unofficial project and is not affiliated with, endorsed by, or sponsored by Binance.
 This module does not connect to Binance, use API keys, place orders, or contain trading strategies.
@@ -234,7 +243,17 @@ M1, M2, M3, and M4 are COMPLETE. M4 was merged through PR #8 at
 M5 (Differential Validation and Performance) is **APPROVED / MERGED / IN PROGRESS**: Phase 1
 canonical replay infrastructure is COMPLETE / MERGED (PR #11, merge
 `5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — 16/16 PASS) and
-Phase 2 (independent differential oracle foundation) is IMPLEMENTED / PENDING INDEPENDENT REVIEW.
+Phase 2 (independent differential oracle foundation) is COMPLETE / MERGED (PR #12, merge
+`75c619dd683ff2a3893f9535e206231e7bfecc41`, post-merge main CI `31315421548` — 16/16 PASS).
+Phase 3 is IMPLEMENTED / PENDING INDEPENDENT REVIEW in PR #13: deterministic 2,048-event Spot
+and USD-M small workloads, scalable differential replay, failure diagnostics, the offline Raw-v1
+materializer, and validator-enforced medium lifecycle validity are implemented, rebased onto the
+accepted M3 Spot successor-coverage semantics (ADR-0008). Both mandatory 100k corpora are
+validated PASS from the pinned authoritative source: Spot `M5-REC-SPOT-BTCUSDT-V1` (exact-next
+bridge `U=98288147168 u=98288147175` against `L=98288147167`; 100,001 Applied, final
+Synchronized) and USD-M `M5-REC-USDM-BTCUSDT-V1` (bridge Applied / Synchronized, 100,001
+Applied, final Synchronized). See
+[M5 Phase 3](docs/M5_PHASE3_DETERMINISTIC_REPLAY.md).
 Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
 cross-compiler semantic manifests with artifact fan-in transport, replay/differential fuzzing,
@@ -247,9 +266,10 @@ The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
 - The repository includes numeric primitives, a deterministic L2 market-by-price order book, the
   completed M3 sequence/projection implementation, and the merged optional M4 Protobuf adapter on
   `main`.
-- M5 is **APPROVED / MERGED / IN PROGRESS**; M5 implementation is in progress (Phase 1
-  COMPLETE / MERGED, Phase 2 implemented pending independent review) and
-  M6 is not started.
+- M5 is **APPROVED / MERGED / IN PROGRESS**; Phases 1 and 2 are COMPLETE / MERGED, and Phase 3 is
+  IMPLEMENTED / PENDING INDEPENDENT REVIEW in PR #13 (Spot and USD-M 100k corpora validated PASS
+  from the pinned authoritative source under ADR-0008 successor coverage). Phase 4 and M6 are not
+  started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.
 - Tick-size, step-size, signed-decimal, and symbol-metadata validation remain outside the implemented

@@ -1032,6 +1032,63 @@ std::string to_canonical_text(const SnapshotOutcome& snapshot) {
     return text;
 }
 
+void enrich_divergence(Divergence& divergence, const replay::ReplayFixture& fixture,
+                       const replay::SourceLocation& source, const OperationObservation* production,
+                       const OperationObservation* reference) {
+    divergence.fixture_identity = "fixture_id=" + fixture.identity.fixture_id +
+                                  " log_sha256=" + fixture.identity.replay_log_sha256;
+    divergence.source_line = source.canonical_line;
+    divergence.source_line_number = source.line_number;
+    divergence.fixture_id = fixture.identity.fixture_id;
+    divergence.replay_log_sha256 = fixture.identity.replay_log_sha256;
+    divergence.production_checkpoint =
+        production == nullptr ? "-" : to_canonical_text(production->checkpoint);
+    divergence.reference_checkpoint =
+        reference == nullptr ? "-" : to_canonical_text(reference->checkpoint);
+    divergence.price_scale = fixture.identity.numeric_spec.price_scale;
+    divergence.quantity_scale = fixture.identity.numeric_spec.quantity_scale;
+    divergence.policy =
+        fixture.identity.sequence_policy == replay::SequencePolicy::Spot ? "Spot" : "UsdMPerpetual";
+    divergence.market = fixture.identity.market == replay::Market::Spot ? "Spot" : "UsdMPerpetual";
+    divergence.symbol = fixture.identity.symbol;
+    divergence.provenance = fixture.manifest.provenance;
+}
+
+std::string render_divergence(const Divergence& divergence) {
+    std::string text = "FIRST_DIVERGENCE_DIAGNOSTIC_V1\n";
+    text += "fixture_identity=" + divergence.fixture_identity + "\n";
+    text += "fixture_id=" + divergence.fixture_id + "\n";
+    text += "replay_log_sha256=" + divergence.replay_log_sha256 + "\n";
+    text += "event_index=" + std::to_string(divergence.event_index) + "\n";
+    text += "source_line_number=" + std::to_string(divergence.source_line_number) + "\n";
+    text += "event_kind=" + std::string(to_text(divergence.event_kind)) + "\n";
+    text += "layer=" + std::string(to_text(divergence.layer)) + "\n";
+    text += "category=" + std::string(to_text(divergence.category)) + "\n";
+    text += "detail=" + divergence.detail + "\n";
+    text += "production_value=" + divergence.production_value + "\n";
+    text += "reference_value=" + divergence.reference_value + "\n";
+    text += "production_checkpoint=" + divergence.production_checkpoint + "\n";
+    text += "reference_checkpoint=" + divergence.reference_checkpoint + "\n";
+    text += "price_scale=" + std::to_string(divergence.price_scale) + "\n";
+    text += "quantity_scale=" + std::to_string(divergence.quantity_scale) + "\n";
+    text += "policy=" + divergence.policy + "\n";
+    text += "market=" + divergence.market + "\n";
+    text += "symbol=" + divergence.symbol + "\n";
+    text += "provenance=";
+    if (divergence.provenance.empty()) {
+        text += "-";
+    } else {
+        for (std::size_t index = 0; index < divergence.provenance.size(); ++index) {
+            if (index > 0) {
+                text += ",";
+            }
+            text += divergence.provenance[index].first + "=" + divergence.provenance[index].second;
+        }
+    }
+    text += "\nnormalized_event=" + divergence.source_line + "\n";
+    return text;
+}
+
 std::optional<Divergence> compare_observations(const OperationObservation& production,
                                                const OperationObservation& reference,
                                                std::string_view fixture_identity,

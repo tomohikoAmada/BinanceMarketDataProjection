@@ -43,12 +43,97 @@ namespace {
     return "fixture_id=" + identity.fixture_id + " log_sha256=" + identity.replay_log_sha256;
 }
 
+void accumulate_install(ExecutionSummary& summary, std::size_t event_index,
+                        const InstallOutcome& install) noexcept {
+    ++summary.install_events;
+    if (!summary.first_install.has_value()) {
+        summary.first_install =
+            CompactInstallResult{event_index, install.disposition, install.status_after};
+    }
+    if (install.disposition == CanonicalDisposition::Installed) {
+        ++summary.installed_count;
+    } else if (install.disposition == CanonicalDisposition::RejectedWrongState) {
+        ++summary.rejected_wrong_state_count;
+    }
+}
+
+void accumulate_apply(ExecutionSummary& summary, std::size_t event_index,
+                      const ApplyOutcome& apply) {
+    ++summary.depth_events;
+    if (!summary.first_depth_update.has_value()) {
+        summary.first_depth_update =
+            CompactDepthResult{event_index, apply.disposition, apply.status_after};
+    }
+    summary.depth_results.push_back(
+        CompactDepthResult{event_index, apply.disposition, apply.status_after});
+    switch (apply.disposition) {
+    case CanonicalDisposition::Applied:
+        ++summary.applied_count;
+        break;
+    case CanonicalDisposition::IgnoredStale:
+        ++summary.ignored_stale_count;
+        break;
+    case CanonicalDisposition::IgnoredDuplicate:
+        ++summary.ignored_duplicate_count;
+        break;
+    case CanonicalDisposition::GapDetected:
+        ++summary.gap_detected_count;
+        break;
+    case CanonicalDisposition::RejectedWrongState:
+        ++summary.rejected_wrong_state_count;
+        break;
+    case CanonicalDisposition::Installed:
+        break;
+    }
+}
+
+// Aggregation observes typed results only. AdapterSuccessOutcome is unwrapped to
+// its underlying typed Core result; the quality vector is not aggregated.
+// These accumulators are not noexcept: accumulation may allocate (for example
+// ExecutionSummary::depth_results::push_back), and termination on allocation
+// failure under noexcept would be wrong for test/tool code.
+void accumulate_summary(ExecutionSummary& summary, std::size_t event_index,
+                        const OperationResult& result) {
+    if (const auto* install = std::get_if<InstallOutcome>(&result.value)) {
+        accumulate_install(summary, event_index, *install);
+        return;
+    }
+    if (const auto* apply = std::get_if<ApplyOutcome>(&result.value)) {
+        accumulate_apply(summary, event_index, *apply);
+        return;
+    }
+    if (const auto* success = std::get_if<AdapterSuccessOutcome>(&result.value)) {
+        if (const auto* inner_install = std::get_if<InstallOutcome>(&success->core_result)) {
+            accumulate_install(summary, event_index, *inner_install);
+        } else {
+            accumulate_apply(summary, event_index, std::get<ApplyOutcome>(success->core_result));
+        }
+        return;
+    }
+    if (std::holds_alternative<AdapterErrorOutcome>(result.value)) {
+        ++summary.adapter_error_count;
+        if (!summary.first_adapter_error_index.has_value()) {
+            summary.first_adapter_error_index = event_index;
+        }
+        return;
+    }
+    if (std::holds_alternative<DecimalErrorOutcome>(result.value)) {
+        ++summary.decimal_error_count;
+        return;
+    }
+    ++summary.other_events_count;
+    if (!summary.first_other_event_index.has_value()) {
+        summary.first_other_event_index = event_index;
+    }
+}
+
 } // namespace
 
 ReplayDriver::ReplayDriver(const replay::ReplayFixture& fixture,
                            std::unique_ptr<ReplaySide> production,
-                           std::unique_ptr<ReplaySide> reference)
-    : fixture_{&fixture}, production_{std::move(production)}, reference_{std::move(reference)} {}
+                           std::unique_ptr<ReplaySide> reference, ObservationRetention retention)
+    : fixture_{&fixture}, production_{std::move(production)}, reference_{std::move(reference)},
+      retention_{retention} {}
 
 ReplayOutcome ReplayDriver::run() {
     ReplayOutcome outcome;
@@ -62,16 +147,19 @@ ReplayOutcome ReplayDriver::run() {
         const auto source = source_of(operation);
         outcome.processed_events = index + 1;
         if (!production.has_value() || !reference.has_value()) {
-            outcome.first_divergence =
-                Divergence{index,
-                           kind,
-                           Layer::D,
-                           DivergenceCategory::Composition,
-                           "pipeline side failed to produce an observation",
-                           production.has_value() ? to_canonical_text(production->result) : "-",
-                           reference.has_value() ? to_canonical_text(reference->result) : "-",
-                           identity,
-                           source.canonical_line};
+            Divergence divergence{
+                index,
+                kind,
+                Layer::D,
+                DivergenceCategory::Composition,
+                "pipeline side failed to produce an observation",
+                production.has_value() ? to_canonical_text(production->result) : "-",
+                reference.has_value() ? to_canonical_text(reference->result) : "-",
+                identity,
+                source.canonical_line};
+            enrich_divergence(divergence, *fixture_, source, production ? &*production : nullptr,
+                              reference ? &*reference : nullptr);
+            outcome.first_divergence = std::move(divergence);
             return outcome;
         }
         production->event_index = index;
@@ -80,10 +168,16 @@ ReplayOutcome ReplayDriver::run() {
         reference->event_kind = kind;
         if (const auto divergence =
                 compare_observations(*production, *reference, identity, source)) {
-            outcome.first_divergence = divergence;
+            auto enriched = *divergence;
+            enrich_divergence(enriched, *fixture_, source, &*production, &*reference);
+            outcome.first_divergence = std::move(enriched);
             return outcome;
         }
-        outcome.observations.push_back(std::move(*production));
+        outcome.final_observation = *production;
+        accumulate_summary(outcome.summary, index, outcome.final_observation->result);
+        if (retention_ == ObservationRetention::RetainAll) {
+            outcome.observations.push_back(std::move(*production));
+        }
     }
     return outcome;
 }

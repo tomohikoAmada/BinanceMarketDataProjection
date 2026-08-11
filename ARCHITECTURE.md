@@ -42,10 +42,13 @@ benchmark infrastructure as test/benchmark-only artifacts outside Core. It intro
 production public API, no production dependency, and no container change; validation and
 performance evidence are recorded separately. The M5 architecture was independently reviewed
 and APPROVED (ADR-0007 ACCEPTED); pre-implementation decisions OD-M5-001 and OD-M5-002 are
-CLOSED. Phase 1 (canonical replay infrastructure) is COMPLETE / MERGED and Phase 2 (independent
-differential oracle: R1/R4 reference layers, neutral ReplayDriver, OperationObservation, layer
-attribution) is IMPLEMENTED / PENDING INDEPENDENT REVIEW — see
-`docs/M5_PHASE2_DIFFERENTIAL_ORACLE.md`.
+CLOSED. Phases 1 and 2 are COMPLETE / MERGED; Phase 2 is PR #12 at merge
+`75c619dd683ff2a3893f9535e206231e7bfecc41` with post-merge main CI `31315421548` — PASS 16/16.
+Phase 3 remains test/tool-only and is IMPLEMENTED / PENDING INDEPENDENT REVIEW in PR #13: its
+small-tier, scalable comparison, deterministic diagnostics, offline Raw-v1 materializer, and
+medium lifecycle validation are implemented. The pinned authoritative archive was located and
+validated; under the accepted ADR-0008 successor-coverage rule both the Spot and the USD-M
+mandatory 100k medium corpora are validated PASS. See `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`.
 OD-M5-003 remains SPIKE-RESOLVABLE.
 
 Adapter owners are bound to the conversion `NumericSpec` and sequence policy and must check both
