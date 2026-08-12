@@ -29,7 +29,7 @@ struct WorkloadConfig final {
     std::string fixture_id;
     std::string fixture_hash;
     oracle::ReplayMode mode;
-    const replay::ReplayFixture& fixture;
+    const replay::ReplayFixture* fixture;
 };
 
 struct CliArgs final {
@@ -41,11 +41,11 @@ struct CliArgs final {
 [[nodiscard]] CliArgs parse_args(int argc, char** argv) {
     CliArgs args;
     for (int i = 1; i < argc; ++i) {
-        std::string_view arg = argv[i];
+        std::string_view arg = argv[i]; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         if (arg == "--output" && i + 1 < argc) {
-            args.output_path = argv[++i];
+            args.output_path = argv[++i]; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         } else if (arg == "--head-sha" && i + 1 < argc) {
-            args.head_sha = argv[++i];
+            args.head_sha = argv[++i]; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         }
     }
     args.valid = !args.output_path.empty() && !args.head_sha.empty();
@@ -75,9 +75,9 @@ struct CliArgs final {
 
     oracle::ReplayOutcome outcome;
     if (config.mode == oracle::ReplayMode::CoreOnly) {
-        outcome = run_core_replay(config.fixture);
+        outcome = run_core_replay(*config.fixture);
     } else {
-        outcome = run_adapter_replay(config.fixture);
+        outcome = run_adapter_replay(*config.fixture);
     }
 
     if (outcome.first_divergence.has_value()) {
@@ -181,16 +181,17 @@ int main(int argc, char** argv) {
 
     std::vector<WorkloadConfig> configs = {
         {"m5-small-core-spot-v1", spot_fixture.identity.fixture_id, spot_hash,
-         oracle::ReplayMode::CoreOnly, spot_fixture},
+         oracle::ReplayMode::CoreOnly, &spot_fixture},
         {"m5-small-core-usdm-v1", usdm_fixture.identity.fixture_id, usdm_hash,
-         oracle::ReplayMode::CoreOnly, usdm_fixture},
+         oracle::ReplayMode::CoreOnly, &usdm_fixture},
         {"m5-small-adapter-spot-v1", spot_fixture.identity.fixture_id, spot_hash,
-         oracle::ReplayMode::AdapterEnabled, spot_fixture},
+         oracle::ReplayMode::AdapterEnabled, &spot_fixture},
         {"m5-small-adapter-usdm-v1", usdm_fixture.identity.fixture_id, usdm_hash,
-         oracle::ReplayMode::AdapterEnabled, usdm_fixture},
+         oracle::ReplayMode::AdapterEnabled, &usdm_fixture},
     };
 
     std::vector<semantic::ManifestWorkloadEntry> entries;
+    entries.reserve(configs.size());
     for (const auto& config : configs) {
         entries.push_back(process_workload(config));
     }
