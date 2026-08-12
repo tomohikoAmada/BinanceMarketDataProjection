@@ -34,7 +34,7 @@ inline constexpr std::uint32_t kMaxValidScale = 18;
 }
 
 [[nodiscard]] std::string decode_decimal_form_token(ByteCursor& cursor,
-                                                     std::size_t max_len) noexcept {
+                                                    std::size_t max_len) noexcept {
     const std::uint8_t b = cursor.read_u8();
     const std::size_t int_len = (b & 0x0FU) % 5U;
     const bool has_frac = (b & 0x10U) != 0;
@@ -163,7 +163,7 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
 
 // Decodes a single operation from the cursor. event_index is used for SourceLocation.
 [[nodiscard]] std::optional<Operation> decode_operation(ByteCursor& cursor,
-                                                         std::size_t event_index) noexcept {
+                                                        std::size_t event_index) noexcept {
     if (cursor.exhausted()) {
         return std::nullopt;
     }
@@ -185,9 +185,16 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
                                  std::move(asks)};
     }
     case 1: {
-        // DepthUpdate
+        // DepthUpdate — normal update range must satisfy first <= final.
+        // When the decoded range is inverted, emit MalformedRangeOp instead.
         const auto first_id = cursor.read_var_u64();
         const auto final_id = cursor.read_var_u64();
+        if (first_id > final_id) {
+            std::string desc = "structured-fuzz[op=";
+            desc += std::to_string(event_index);
+            desc += " MalformedRange]";
+            return MalformedRangeOp{make_source(event_index, desc), first_id, final_id};
+        }
         const bool has_previous = (cursor.read_u8() & 1U) != 0;
         const auto previous = has_previous ? std::optional{cursor.read_var_u64()} : std::nullopt;
         std::string desc = "structured-fuzz[op=";

@@ -210,8 +210,7 @@ TEST(ReplayFuzzDecoderTest, LevelCountCap) {
     }
     auto result = decode(data.data(), data.size());
     ASSERT_TRUE(result.has_value());
-    ASSERT_TRUE(
-        std::holds_alternative<replay::InstallBaselineOp>(result.value().operations[0]));
+    ASSERT_TRUE(std::holds_alternative<replay::InstallBaselineOp>(result.value().operations[0]));
     const auto& op = std::get<replay::InstallBaselineOp>(result.value().operations[0]);
     EXPECT_LE(op.bids.size(), decoder::kMaxLevelsPerEvent);
 }
@@ -236,6 +235,41 @@ TEST(ReplayFuzzDecoderTest, SnapshotDepthLimitVariants) {
         ASSERT_TRUE(op.depth_limit.has_value());
         EXPECT_EQ(*op.depth_limit, 0U);
     }
+}
+
+// Regression: DepthUpdate with first > final must decode to MalformedRangeOp,
+// not a normal DepthUpdateOp. This matches the accepted operation domain
+// contract where normal DepthUpdateOp implies a structurally constructible range.
+TEST(ReplayFuzzDecoderTest, DepthUpdateInvertedRangeBecomesMalformedRange) {
+    auto data = make_data(0x20, 0x08, 0x03, 'B', 'T', 'C', 0x01,
+                          0x01, // type_raw=1 => op_type=1%7=1 (DepthUpdate case)
+                          0x28, // first_id = UINT64 special 2
+                          0x18  // final_id = UINT64 special 1
+    );
+    auto result = decode(data.data(), data.size());
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(result.value().operations.size(), 1U);
+    EXPECT_TRUE(std::holds_alternative<replay::MalformedRangeOp>(result.value().operations[0]));
+    const auto& op = std::get<replay::MalformedRangeOp>(result.value().operations[0]);
+    EXPECT_EQ(op.first_update_id, 2U);
+    EXPECT_EQ(op.final_update_id, 1U);
+}
+
+// DepthUpdate with first == final remains a normal DepthUpdateOp.
+TEST(ReplayFuzzDecoderTest, DepthUpdateEqualRangeRemainsDepthUpdate) {
+    auto data = make_data(0x20, 0x08, 0x03, 'B', 'T', 'C', 0x01,
+                          0x01, // type_raw=1 => op_type=1%7=1 (DepthUpdate case)
+                          0x18, // first_id = UINT64 special 1
+                          0x18, // final_id = UINT64 special 1
+                          0x00  // has_previous = false
+    );
+    auto result = decode(data.data(), data.size());
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(result.value().operations.size(), 1U);
+    EXPECT_TRUE(std::holds_alternative<replay::DepthUpdateOp>(result.value().operations[0]));
+    const auto& op = std::get<replay::DepthUpdateOp>(result.value().operations[0]);
+    EXPECT_EQ(op.first_update_id, 1U);
+    EXPECT_EQ(op.final_update_id, 1U);
 }
 
 } // namespace

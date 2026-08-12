@@ -566,6 +566,9 @@ ReferenceSide::observe_depth_update(const replay::DepthUpdateOp& operation) {
         return make_observation(DecimalErrorOutcome{parsed.first_error.value()},
                                 std::move(parsed.decimals));
     }
+    if (operation.first_update_id > operation.final_update_id) {
+        return make_observation(RangeOutcome{false}, std::move(parsed.decimals));
+    }
     return make_observation(
         canonical(projection_.apply(operation.first_update_id, operation.final_update_id,
                                     operation.previous_final, parsed.levels)),
