@@ -156,7 +156,20 @@ CMAKE_SYSTEM_PROCESSOR       -> architecture
 $<CONFIG>                    -> build_type
 ```
 
-HEAD SHA is supplied as the required `--head-sha` CLI argument. In CI, this is `${{ github.sha }}`.
+HEAD SHA is supplied as the required `--head-sha` CLI argument.
+
+In CI the evidence SHA policy is event-aware:
+
+- `pull_request`: exact PR Head SHA (`github.event.pull_request.head.sha`)
+- `push`: pushed commit SHA (`github.sha`)
+
+Semantic evidence jobs explicitly checkout and verify the same commit recorded in the manifest.
+
+The invariant is:
+
+```text
+manifest head_sha == semantic producer checkout HEAD == EVIDENCE_SHA
+```
 
 ## Fixture-Set Identity
 
