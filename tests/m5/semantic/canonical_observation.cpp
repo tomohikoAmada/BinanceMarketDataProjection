@@ -360,13 +360,13 @@ void write_bool(std::string& out, bool value) { out += value ? "true" : "false";
 void write_size(std::string& out, std::size_t value) { out += std::to_string(value); }
 
 void write_string(std::string& out, const std::string& value) {
-    static constexpr char kHex[] = "0123456789abcdef";
+    static constexpr std::string_view kHex = "0123456789abcdef";
     write_size(out, value.size());
     out += ':';
     for (const char character : value) {
         const auto byte = static_cast<unsigned char>(character);
-        out += kHex[byte >> 4U];
-        out += kHex[byte & 0x0FU];
+        out += kHex.at(static_cast<std::size_t>(byte >> 4U));
+        out += kHex.at(static_cast<std::size_t>(byte & 0x0FU));
     }
 }
 

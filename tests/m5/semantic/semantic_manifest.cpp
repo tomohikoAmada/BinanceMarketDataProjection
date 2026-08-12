@@ -4,13 +4,14 @@
 
 #include <algorithm>
 #include <string>
+#include <string_view>
 #include <variant>
 
 namespace bmd_projection::m5::semantic {
 namespace {
 
 void append_json_string(std::string& out, const std::string& value) {
-    static constexpr char kHex[] = "0123456789ABCDEF";
+    static constexpr std::string_view kHex = "0123456789ABCDEF";
     out += '"';
     for (const char character : value) {
         const auto byte = static_cast<unsigned char>(character);
@@ -39,8 +40,8 @@ void append_json_string(std::string& out, const std::string& value) {
         default:
             if (byte <= 0x1FU) {
                 out += "\\u00";
-                out += kHex[byte >> 4U];
-                out += kHex[byte & 0x0FU];
+                out += kHex.at(static_cast<std::size_t>(byte >> 4U));
+                out += kHex.at(static_cast<std::size_t>(byte & 0x0FU));
             } else {
                 out += static_cast<char>(byte);
             }
