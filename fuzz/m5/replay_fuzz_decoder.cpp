@@ -1,6 +1,7 @@
 #include "replay_fuzz_decoder.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -18,8 +19,9 @@ inline constexpr std::uint32_t kMaxValidScale = 18;
 }
 
 [[nodiscard]] std::uint64_t read_fixed_u64(ByteCursor& cursor, unsigned width) noexcept {
-    if (width == 0)
+    if (width == 0) {
         return 0;
+    }
     std::uint64_t value = 0;
     for (unsigned i = 0; i < width && !cursor.exhausted(); ++i) {
         value = (value << 8) | cursor.read_u8();
@@ -31,75 +33,73 @@ inline constexpr std::uint32_t kMaxValidScale = 18;
     return {event_index, 0, desc};
 }
 
+[[nodiscard]] std::string decode_decimal_form_token(ByteCursor& cursor,
+                                                     std::size_t max_len) noexcept {
+    const std::uint8_t b = cursor.read_u8();
+    const std::size_t int_len = (b & 0x0FU) % 5U;
+    const bool has_frac = (b & 0x10U) != 0;
+    const std::size_t frac_len = has_frac ? ((b >> 5U) & 0x03U) : 0U;
+    std::string token;
+    for (std::size_t i = 0; i < int_len && token.size() < max_len && !cursor.exhausted(); ++i) {
+        token.push_back(static_cast<char>('0' + (cursor.read_u8() % 10U)));
+    }
+    if (has_frac && token.size() < max_len) {
+        token.push_back('.');
+        for (std::size_t i = 0; i < frac_len && token.size() < max_len && !cursor.exhausted();
+             ++i) {
+            token.push_back(static_cast<char>('0' + (cursor.read_u8() % 10U)));
+        }
+    }
+    return token.empty() ? "0" : token;
+}
+
 // Decodes price/quantity level input strings that provide meaningful M1 fuzz coverage.
 // Makes reachable: empty, "0", integer, decimal point, fractional, leading sign,
 // large magnitude, leading zeros, invalid chars, etc.
 [[nodiscard]] std::string decode_level_token(ByteCursor& cursor, std::size_t& token_idx) noexcept {
-    if (cursor.exhausted())
+    if (cursor.exhausted()) {
         return "0";
+    }
     const std::uint8_t style = cursor.read_u8();
     const unsigned mode = style & 0x7U;
     const std::size_t max_len = std::min<std::size_t>(kMaxLevelTokenBytes, 31U);
 
     if (mode == 0 && !cursor.exhausted()) {
-        // Decimal-form token: integer part + optional fractional part
-        const std::uint8_t b = cursor.read_u8();
-        const std::size_t int_len = (b & 0x0FU) % 5U; // 0-4 digits
-        const bool has_frac = (b & 0x10U) != 0;
-        const std::size_t frac_len = has_frac ? ((b >> 5U) & 0x03U) : 0U; // 0-3 digits
-        std::string token;
-        for (std::size_t i = 0; i < int_len && token.size() < max_len && !cursor.exhausted(); ++i) {
-            const char c = static_cast<char>('0' + (cursor.read_u8() % 10U));
-            token.push_back(c);
-        }
-        if (has_frac && token.size() < max_len) {
-            token.push_back('.');
-            for (std::size_t i = 0; i < frac_len && token.size() < max_len && !cursor.exhausted();
-                 ++i) {
-                token.push_back(static_cast<char>('0' + (cursor.read_u8() % 10U)));
-            }
-        }
-        return token.empty() ? "0" : token;
+        return decode_decimal_form_token(cursor, max_len);
     }
 
     if (mode == 1) {
-        // Pure integer
-        if (cursor.exhausted())
+        if (cursor.exhausted()) {
             return "1";
+        }
         const std::uint8_t b = cursor.read_u8();
         const auto val = static_cast<std::uint64_t>(b);
         return std::to_string(val);
     }
 
-    // Mode 2-7: special boundary tokens
     switch (mode) {
     case 2:
         return "";
     case 3:
         return "0";
     case 4: {
-        // Leading-zero token
         const std::uint8_t b = cursor.exhausted() ? 0 : cursor.read_u8();
-        if (b == 0)
+        if (b == 0) {
             return "00";
+        }
         return "0";
     }
     case 5: {
-        // Sign-prefixed (parser should reject)
         const char sign = (token_idx & 1U) != 0 ? '-' : '+';
         const auto val = std::to_string(
             cursor.exhausted() ? 0U : static_cast<std::uint64_t>(cursor.read_u8()) % 100U);
         return sign + val;
     }
-    case 6: {
-        // Embedded invalid char
+    case 6:
         return "12a34";
-    }
-    case 7: {
-        // Large magnitude
+    case 7:
         ++token_idx;
         return "9999999999999999999";
-    }
     default:
         return "0";
     }
@@ -107,8 +107,10 @@ inline constexpr std::uint32_t kMaxValidScale = 18;
 
 [[nodiscard]] std::vector<LevelInput> decode_levels(ByteCursor& cursor, std::size_t max_count,
                                                     std::size_t& token_idx) noexcept {
-    if (cursor.exhausted())
+    if (cursor.exhausted()) {
         return {};
+    }
+
     const std::uint32_t count = cursor.read_bounded(static_cast<std::uint32_t>(max_count));
     std::vector<LevelInput> levels;
     levels.reserve(count);
@@ -126,7 +128,7 @@ inline constexpr std::uint32_t kMaxValidScale = 18;
 
 // Decodes HostQualityFact from a byte — maps to the 13 valid enum values.
 [[nodiscard]] HostQualityFact decode_quality_fact(ByteCursor& cursor) noexcept {
-    static constexpr HostQualityFact kMap[] = {
+    static constexpr std::array<const HostQualityFact, 13> kMap{
         HostQualityFact::Duplicate,
         HostQualityFact::OutOfOrder,
         HostQualityFact::OrderBookResync,
@@ -142,13 +144,14 @@ inline constexpr std::uint32_t kMaxValidScale = 18;
         HostQualityFact::IdentityConflict,
     };
     const std::uint32_t idx = cursor.read_bounded(12);
-    return kMap[idx];
+    return kMap.at(idx);
 }
 
 [[nodiscard]] std::vector<HostQualityFact>
 decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
-    if (cursor.exhausted())
+    if (cursor.exhausted()) {
         return {};
+    }
     const std::uint32_t count = cursor.read_bounded(8U);
     std::vector<HostQualityFact> facts;
     facts.reserve(count);
@@ -160,9 +163,10 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
 
 // Decodes a single operation from the cursor. event_index is used for SourceLocation.
 [[nodiscard]] std::optional<Operation> decode_operation(ByteCursor& cursor,
-                                                        std::size_t event_index) noexcept {
-    if (cursor.exhausted())
+                                                         std::size_t event_index) noexcept {
+    if (cursor.exhausted()) {
         return std::nullopt;
+    }
     const std::uint8_t type_raw = cursor.read_u8();
     const std::uint8_t op_type = type_raw % 7U;
     std::size_t token_idx = 0;
@@ -304,8 +308,9 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
     ops.reserve(cap);
     for (std::size_t i = 0; i < cap; ++i) {
         auto op = decode_operation(cursor, i);
-        if (!op.has_value())
+        if (!op.has_value()) {
             break;
+        }
         ops.push_back(std::move(*op));
     }
     return ops;
@@ -314,8 +319,9 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
 } // namespace
 
 std::uint64_t ByteCursor::read_var_u64() noexcept {
-    if (exhausted())
+    if (exhausted()) {
         return 0;
+    }
     const std::uint8_t mode = read_u8();
     const unsigned width = (mode & 0x07U) + 1U;
     const bool special = (mode & 0x08U) != 0;
@@ -343,8 +349,9 @@ std::uint64_t ByteCursor::read_var_u64() noexcept {
 }
 
 std::string ByteCursor::read_string(std::size_t max_len) noexcept {
-    if (exhausted())
+    if (exhausted()) {
         return {};
+    }
     const std::uint8_t raw_len = read_u8();
     const std::size_t len = std::min<std::size_t>(static_cast<std::size_t>(raw_len), max_len);
     std::string result;
@@ -359,15 +366,17 @@ std::string ByteCursor::read_string(std::size_t max_len) noexcept {
 }
 
 std::uint32_t ByteCursor::read_bounded(std::uint32_t max_val) noexcept {
-    if (exhausted() || max_val == 0)
+    if (exhausted() || max_val == 0) {
         return 0;
+    }
     const std::uint8_t v = read_u8();
     return static_cast<std::uint32_t>(v) % (max_val + 1U);
 }
 
 std::optional<FuzzCase> decode(const std::uint8_t* data, std::size_t size) {
-    if (data == nullptr || size < 1)
+    if (data == nullptr || size < 1) {
         return std::nullopt;
+    }
 
     ByteCursor cursor(data, size);
 
@@ -391,8 +400,9 @@ std::optional<FuzzCase> decode(const std::uint8_t* data, std::size_t size) {
     }
 
     auto operations = decode_operations(cursor);
-    if (operations.empty())
+    if (operations.empty()) {
         return std::nullopt;
+    }
 
     FuzzCase result;
     result.mode = adapter_mode ? DecodedMode::AdapterEnabled : DecodedMode::CoreOnly;

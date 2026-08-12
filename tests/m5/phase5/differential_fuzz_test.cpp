@@ -167,8 +167,8 @@ TEST(DifferentialFuzzHarnessTest, GapNoDivergence) {
 
 TEST(DifferentialFuzzHarnessTest, LargeFuzzCaseNoDivergence) {
     std::vector<replay::Operation> ops;
-    ops.push_back(spot_install());
-    ops.push_back(spot_bridge());
+    ops.emplace_back(spot_install());
+    ops.emplace_back(spot_bridge());
     for (int i = 0; i < 4; ++i) {
         replay::DepthUpdateOp update{
             replay::SourceLocation{static_cast<std::size_t>(2 + i), 0, "test"},
@@ -176,7 +176,7 @@ TEST(DifferentialFuzzHarnessTest, LargeFuzzCaseNoDivergence) {
             static_cast<std::uint64_t>(52 + i),
             std::nullopt,
             {{replay::Side::Bid, std::to_string(50010 + i * 10), "1.0"}}};
-        ops.push_back(update);
+        ops.emplace_back(update);
     }
     auto c = make_case(decoder::DecodedMode::CoreOnly, replay::Market::Spot, ops);
     run_and_expect_no_divergence(c);
