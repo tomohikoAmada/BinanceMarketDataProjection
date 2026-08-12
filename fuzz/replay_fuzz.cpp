@@ -12,6 +12,7 @@
 #include "adapter_scenario.hpp"
 #include "core_production_side.hpp"
 #include "divergence.hpp"
+#include "reference_side.hpp"
 #include "replay_driver.hpp"
 #include "replay_side.hpp"
 #include "replay_types.hpp"
