@@ -10,6 +10,11 @@
 #include <vector>
 
 namespace {
+
+// Test assertions guard optional access; the dereferences below are covered by
+// ASSERT/EXPECT has_value checks (repository-established pattern).
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
+
 namespace decoder = bmd_projection::m5::replay::fuzz_decoder;
 namespace replay = bmd_projection::m5::replay;
 
@@ -319,4 +324,28 @@ TEST(ReplayFuzzDecoderTest, DecodedOperationsSatisfyStructuralDomains) {
               std::get<replay::MalformedRangeOp>(op2).final_update_id);
 }
 
+// Baseline/Rebaseline bid levels must decode with Side::Bid and ask levels
+// with Side::Ask, matching the canonical replay parser's domain enforcement.
+TEST(ReplayFuzzDecoderTest, BaselineAndRebaselineLevelsUseVectorSide) {
+    // Header (CoreOnly, Spot, scale 8/8), symbol "BTC", op count 1:
+    // InstallBaseline, last=1 (special), bids count=1, asks count=1.
+    // bids level: side byte 0x01 (raw Ask, must normalize to Bid),
+    //             price style 0x02 -> "", quantity style 0x03 -> "0"
+    // asks level: side byte 0x00 (raw Bid, must normalize to Ask),
+    //             price style 0x03 -> "0", quantity style 0x02 -> ""
+    auto data = make_data(0x20, 0x08, 0x03, 'B', 'T', 'C', 0x01, 0x00, 0x18, 0x01, 0x01, 0x02, 0x03,
+                          0x01, 0x00, 0x03, 0x02);
+    auto result = decode(data.data(), data.size());
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(result.value().operations.size(), 1U);
+    ASSERT_TRUE(std::holds_alternative<replay::InstallBaselineOp>(result.value().operations[0]));
+    const auto& op = std::get<replay::InstallBaselineOp>(result.value().operations[0]);
+    ASSERT_EQ(op.bids.size(), 1U);
+    ASSERT_EQ(op.asks.size(), 1U);
+    EXPECT_EQ(op.bids[0].side, replay::Side::Bid);
+    EXPECT_EQ(op.asks[0].side, replay::Side::Ask);
+}
+
 } // namespace
+
+// NOLINTEND(bugprone-unchecked-optional-access)

@@ -16,6 +16,11 @@
 #include <vector>
 
 namespace {
+
+// Test assertions guard optional access; the dereferences below are covered by
+// ASSERT/EXPECT has_value checks (repository-established pattern).
+// NOLINTBEGIN(bugprone-unchecked-optional-access)
+
 namespace decoder = bmd_projection::m5::replay::fuzz_decoder;
 namespace oracle = bmd_projection::m5::oracle;
 namespace replay = bmd_projection::m5::replay;
@@ -186,6 +191,7 @@ TEST(DifferentialFuzzHarnessTest, LargeFuzzCaseNoDivergence) {
 // Previously decoded a normal DepthUpdateOp with first > final, which
 // diverged (RANGE_OUTCOME vs APPLY_OUTCOME). After the decoder domain fix
 // it must decode to conforming operations and replay without divergence.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST(DifferentialFuzzHarnessTest, CiReproducerNoDivergence) {
     // clang-format off
     const std::vector<std::uint8_t> data{
@@ -218,6 +224,7 @@ TEST(DifferentialFuzzHarnessTest, CiReproducerNoDivergence) {
 // (first == final == 0), which the comparator rejects as a composition
 // divergence. After the decoder domain fix it must decode to conforming
 // operations and replay without divergence.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST(DifferentialFuzzHarnessTest, CiMalformedValidRangeNoDivergence) {
     // clang-format off
     const std::vector<std::uint8_t> data{
@@ -241,4 +248,50 @@ TEST(DifferentialFuzzHarnessTest, CiMalformedValidRangeNoDivergence) {
     run_and_expect_no_divergence(*fuzz_case);
 }
 
+// Regression: exact libFuzzer input recovered from CI run 31612853523.
+// Previously decoded a RebaselineOp whose ask-vector level carried
+// Side::Bid, so production installed it positionally into asks while the
+// reference installed it into bids by per-level side. After the decoder
+// side-normalization fix, baseline/rebaseline vectors always carry the
+// vector's own side and replay without divergence.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST(DifferentialFuzzHarnessTest, CiRebaselineSideNoDivergence) {
+    // clang-format off
+    const std::vector<std::uint8_t> data{
+        0x20, 0x08, 0x07, 0x42, 0x54, 0x43, 0x55, 0x53, 0x44, 0x54, 0x04, 0x00, 0x00,
+        0x32, 0x01, 0x00, 0x00, 0x04, 0x06, 0x00, 0x00, 0x00, 0x00, 0x31, 0x01, 0x00,
+        0x01, 0x01, 0x00, 0x04, 0x06, 0x00, 0x01, 0x00, 0x00, 0x30, 0x01, 0x05, 0x01,
+        0x00, 0x33, 0x00, 0x33, 0x00, 0x01, 0x00, 0x00, 0x04, 0x06, 0x00, 0x00, 0x01,
+        0x00, 0x31, 0x02, 0x00, 0x04, 0x01, 0x05, 0x02, 0x00, 0x01, 0x06, 0x61, 0x62,
+        0x63, 0x31, 0x32, 0x33, 0x04, 0x66, 0x75, 0x7a, 0x7a, 0x01, 0x31, 0x00, 0x02,
+        0x0f, 0x42, 0x40, 0x01, 0x02, 0x07, 0xa1, 0x20, 0x00, 0x04, 0x00, 0x00, 0x08,
+        0x6e, 0x6f, 0x2d, 0x6c, 0x69, 0x6d, 0x69, 0x74, 0x04, 0x66, 0x75, 0x7a, 0x7a,
+        0x01, 0x31, 0x02, 0x02, 0x1e, 0x84, 0x80, 0x00, 0x01, 0x00, 0x32, 0x01};
+    // clang-format on
+    const auto fuzz_case = decoder::decode(data.data(), data.size());
+    ASSERT_TRUE(fuzz_case.has_value());
+
+    for (const auto& op : fuzz_case->operations) {
+        if (const auto* install = std::get_if<replay::InstallBaselineOp>(&op)) {
+            for (const auto& level : install->bids) {
+                EXPECT_EQ(level.side, replay::Side::Bid);
+            }
+            for (const auto& level : install->asks) {
+                EXPECT_EQ(level.side, replay::Side::Ask);
+            }
+        }
+        if (const auto* rebaseline = std::get_if<replay::RebaselineOp>(&op)) {
+            for (const auto& level : rebaseline->bids) {
+                EXPECT_EQ(level.side, replay::Side::Bid);
+            }
+            for (const auto& level : rebaseline->asks) {
+                EXPECT_EQ(level.side, replay::Side::Ask);
+            }
+        }
+    }
+    run_and_expect_no_divergence(*fuzz_case);
+}
+
 } // namespace
+
+// NOLINTEND(bugprone-unchecked-optional-access)

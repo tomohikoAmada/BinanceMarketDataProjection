@@ -106,7 +106,8 @@ inline constexpr std::uint32_t kMaxValidScale = 18;
 }
 
 [[nodiscard]] std::vector<LevelInput> decode_levels(ByteCursor& cursor, std::size_t max_count,
-                                                    std::size_t& token_idx) noexcept {
+                                                    std::size_t& token_idx,
+                                                    std::optional<Side> expected_side) noexcept {
     if (cursor.exhausted()) {
         return {};
     }
@@ -116,7 +117,7 @@ inline constexpr std::uint32_t kMaxValidScale = 18;
     levels.reserve(count);
     for (std::uint32_t i = 0; i < count; ++i) {
         const bool bid = (cursor.read_u8() & 1U) == 0;
-        const auto side = bid ? Side::Bid : Side::Ask;
+        const auto side = expected_side.value_or(bid ? Side::Bid : Side::Ask);
         ++token_idx;
         std::string price = decode_level_token(cursor, token_idx);
         ++token_idx;
@@ -175,12 +176,13 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
     case 0: {
         // InstallBaseline
         const auto last_update_id = cursor.read_var_u64();
-        // Bid/ask counts are read by decode_levels; pass kMaxLevelsPerEvent as cap only.
+        // Baseline bid levels must be Bid and ask levels must be Ask, matching
+        // the canonical replay domain enforced by the replay parser.
         std::string desc = "structured-fuzz[op=";
         desc += std::to_string(event_index);
         desc += " InstallBaseline]";
-        auto bids = decode_levels(cursor, kMaxLevelsPerEvent, token_idx);
-        auto asks = decode_levels(cursor, kMaxLevelsPerEvent, token_idx);
+        auto bids = decode_levels(cursor, kMaxLevelsPerEvent, token_idx, Side::Bid);
+        auto asks = decode_levels(cursor, kMaxLevelsPerEvent, token_idx, Side::Ask);
         return InstallBaselineOp{make_source(event_index, desc), last_update_id, std::move(bids),
                                  std::move(asks)};
     }
@@ -200,7 +202,7 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
         std::string desc = "structured-fuzz[op=";
         desc += std::to_string(event_index);
         desc += " DepthUpdate]";
-        auto levels = decode_levels(cursor, kMaxLevelsPerEvent, token_idx);
+        auto levels = decode_levels(cursor, kMaxLevelsPerEvent, token_idx, std::nullopt);
         return DepthUpdateOp{make_source(event_index, desc), first_id, final_id, previous,
                              std::move(levels)};
     }
@@ -210,8 +212,8 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
         std::string desc = "structured-fuzz[op=";
         desc += std::to_string(event_index);
         desc += " Rebaseline]";
-        auto bids = decode_levels(cursor, kMaxLevelsPerEvent, token_idx);
-        auto asks = decode_levels(cursor, kMaxLevelsPerEvent, token_idx);
+        auto bids = decode_levels(cursor, kMaxLevelsPerEvent, token_idx, Side::Bid);
+        auto asks = decode_levels(cursor, kMaxLevelsPerEvent, token_idx, Side::Ask);
         return RebaselineOp{make_source(event_index, desc), last_update_id, std::move(bids),
                             std::move(asks)};
     }
@@ -227,12 +229,12 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
         const bool has_depth = (cursor.read_u8() & 1U) != 0;
         const auto depth_limit =
             has_depth ? std::optional(static_cast<std::uint32_t>(cursor.read_u8())) : std::nullopt;
-        const auto host_quality = decode_quality_facts(cursor, 6);
-        const auto snapshot_id = cursor.read_string(kMaxSnapshotStringBytes);
-        const auto producer = cursor.read_string(kMaxSnapshotStringBytes);
-        const auto producer_version = cursor.read_string(kMaxSnapshotStringBytes);
+        auto host_quality = decode_quality_facts(cursor, 6);
+        auto snapshot_id = cursor.read_string(kMaxSnapshotStringBytes);
+        auto producer = cursor.read_string(kMaxSnapshotStringBytes);
+        auto producer_version = cursor.read_string(kMaxSnapshotStringBytes);
         const std::uint8_t origin_byte = cursor.read_u8();
-        SnapshotOrigin source_origin;
+        SnapshotOrigin source_origin = SnapshotOrigin::HistoryReplay;
         switch (origin_byte % 3U) {
         case 0:
             source_origin = SnapshotOrigin::GatewayLive;
@@ -252,7 +254,7 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
         std::optional<std::pair<std::uint64_t, GapRecoveryState>> current_gap;
         if (has_gap) {
             const auto gap_seq = cursor.read_var_u64();
-            GapRecoveryState state;
+            GapRecoveryState state = GapRecoveryState::ResyncFailed;
             switch (cursor.read_u8() % 5U) {
             case 0:
                 state = GapRecoveryState::Synchronized;
@@ -305,7 +307,7 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
             std::string desc = "structured-fuzz[op=";
             desc += std::to_string(event_index);
             desc += " DepthUpdate]";
-            auto levels = decode_levels(cursor, kMaxLevelsPerEvent, token_idx);
+            auto levels = decode_levels(cursor, kMaxLevelsPerEvent, token_idx, std::nullopt);
             return DepthUpdateOp{make_source(event_index, desc), first_id, final_id, previous,
                                  std::move(levels)};
         }
@@ -321,7 +323,7 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
 
 [[nodiscard]] std::vector<Operation> decode_operations(ByteCursor& cursor) noexcept {
     const std::uint32_t requested = cursor.exhausted() ? 0U : cursor.read_u8();
-    const std::size_t max_ops = static_cast<std::size_t>(requested > 0 ? requested : 1);
+    const auto max_ops = static_cast<std::size_t>(requested > 0 ? requested : 1);
     const std::size_t cap = std::min(max_ops, kMaxOperations);
     std::vector<Operation> ops;
     ops.reserve(cap);
@@ -415,7 +417,7 @@ std::optional<FuzzCase> decode(const std::uint8_t* data, std::size_t size) {
 
     std::string symbol = cursor.read_string(kMaxSymbolBytes);
     if (symbol.empty()) {
-        symbol = usdm_market ? "BTCUSDT" : "BTCUSDT";
+        symbol = "BTCUSDT";
     }
 
     auto operations = decode_operations(cursor);
