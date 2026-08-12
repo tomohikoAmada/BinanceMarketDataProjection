@@ -62,8 +62,8 @@ TEST(SemanticManifestTest, RenderMultipleWorkloads) {
         semantic::ManifestWorkloadEntry w;
         w.workload_id = "wl-" + std::to_string(i);
         w.fixture_id = "fx-" + std::to_string(i);
-        w.fixture_hash = "aa" + std::string(62, '0' + static_cast<char>(i));
-        w.semantic_digest = "bb" + std::string(62, '0' + static_cast<char>(i));
+        w.fixture_hash = "aa" + std::string(62, static_cast<char>('0' + i));
+        w.semantic_digest = "bb" + std::string(62, static_cast<char>('0' + i));
         manifest.workloads.push_back(w);
     }
 
@@ -102,8 +102,8 @@ TEST(SemanticManifestTest, FixtureSetIdDeterministic) {
         semantic::ManifestWorkloadEntry w;
         w.workload_id = "wl-" + std::to_string(i);
         w.fixture_id = "fx-" + std::to_string(i);
-        w.fixture_hash = "aa" + std::string(62, '0' + static_cast<char>(i));
-        w.semantic_digest = "bb" + std::string(62, '0' + static_cast<char>(i));
+        w.fixture_hash = "aa" + std::string(62, static_cast<char>('0' + i));
+        w.semantic_digest = "bb" + std::string(62, static_cast<char>('0' + i));
         entries.push_back(w);
     }
 
