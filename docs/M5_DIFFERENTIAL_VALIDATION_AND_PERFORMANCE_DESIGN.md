@@ -12,7 +12,9 @@
   `a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354`, exact-head CI `31491615547` — PASS 16/16, merge
   `473a907eba2001d18926c57d6c8d16b10c7505be`) — see
   `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`
-- Phase 4 status: **IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW** — see
+- Phase 4 status: **COMPLETE / MERGED** (PR #16, final approved Head
+  `b612f85d281315346c0ccf6f599d51af538e3cf4`, exact-head CI `31571166506` — PASS 18/18, merge
+  `7b6d9ef3b222675138fdd34f3fed381216fe9d02`) — see
   `docs/M5_PHASE4_CROSS_COMPILER_SEMANTIC_MANIFESTS.md`
 - ADR status: **ACCEPTED** (ADR-0007)
 - Design date: 2026-08-08

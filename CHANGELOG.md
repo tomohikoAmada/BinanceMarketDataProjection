@@ -35,24 +35,30 @@ All notable changes will be recorded here.
   Head `a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354`, exact-head CI `31491615547` — PASS 16/16);
   Phase 4 had not started at the time of Phase-3 completion.
 
-- M5 Phase 4 is IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW (branch
-  `feat/m5-cross-compiler-semantic-manifests`): canonical OperationObservation serialization
+- M5 Phase 4 is COMPLETE / MERGED via PR #16 (final approved Head
+  `b612f85d281315346c0ccf6f599d51af538e3cf4`; exact-head CI `31571166506` — PASS 18/18; P0: 0;
+  P1: 0; squash merge `7b6d9ef3b222675138fdd34f3fed381216fe9d02`; post-merge main CI
+  `31576511096` — PASS 18/18): canonical OperationObservation serialization
   (schema `M5_SEMANTIC_OBSERVATION_V1`), semantic SHA-256 digests (reuses existing test-only
   `replay::sha256_hex`), portable manifest v1 (JSON, schema `M5_SEMANTIC_MANIFEST_V1`),
   deterministic manifest producer (`bmd_projection_m5_semantic_manifest`), fail-closed Python
   comparator (`scripts/compare-m5-semantic-manifests.py`), three-cross-compiler Release
   artifact upload/fan-in, `m5-replay` Debug/Release determinism job, and `m5-semantic-compare`
   blocking comparison job. Four mandatory small workloads: Core Spot, Core USD-M, Adapter Spot,
-  Adapter USD-M (reusing Phase-3 deterministic 2,048-event generator). No production-code change
-  (`src/`, `include/` unchanged). See
+  Adapter USD-M (reusing Phase-3 deterministic 2,048-event generator). Post-merge
+  GNU/Clang/AppleClang Release manifests agree on fixture-set identity, the authoritative
+  workload set, fixture hashes, and semantic digests. No production-code change (`src/`,
+  `include/` unchanged). See
   `docs/M5_PHASE4_CROSS_COMPILER_SEMANTIC_MANIFESTS.md`. Phase 5 is NOT STARTED.
-- Corrected independent Phase-4 review findings from rejected Head `bf2239206ff74e11e3ce73de73f28465b033f808`
-  (P0: 0, P1: 7, P2: 4): canonical physical-line/final-LF ownership and byte-safe string encoding;
-  runtime enum and compile-time variant fail-closed behavior; strict evidence SHA validation;
-  exact-evidence comparator checkout; manifest-metadata toolchain roles; schema/structure and
-  authoritative-workload validation on every manifest; full fixture/build identity in `m5-replay`;
-  complete JSON control escaping; collision-free comparison reporting; producer-result hardening;
-  and status-document synchronization. Focused independent re-review remains required.
+- Independent Phase-4 review findings from rejected Head `bf2239206ff74e11e3ce73de73f28465b033f808`
+  (P0: 0, P1: 7, P2: 4) were corrected and cleared: canonical physical-line/final-LF ownership
+  and byte-safe string encoding; runtime enum and compile-time variant fail-closed behavior;
+  strict evidence SHA validation; exact-evidence comparator checkout; manifest-metadata toolchain
+  roles; schema/structure and authoritative-workload validation on every manifest; full
+  fixture/build identity in `m5-replay`; complete JSON control escaping; collision-free comparison
+  reporting; producer-result hardening; and status-document synchronization. Focused independent
+  re-review APPROVED (P0: 0, P1: 0, P2: 0); PR #16 merged at
+  `7b6d9ef3b222675138fdd34f3fed381216fe9d02`.
   (squash merge). Final approved PR head: `a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354`; exact-head
   CI `31491615547` — PASS 16/16; final independent review APPROVED (P0: 0, P1: 0; M5-P3-RR2-001
   CLOSED; M5-P3-RR2-002 PARTIALLY CLOSED / ACCEPTED NON-BLOCKING P2). Delivered at summary level:

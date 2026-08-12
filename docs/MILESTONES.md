@@ -267,7 +267,7 @@ No M5 production change or container migration is authorized by the design.
 
 OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions and CI policy
 are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
-M5 implementation is authorized. Phases 1, 2, and 3 are complete and merged; later
+M5 implementation is authorized. Phases 1, 2, 3, and 4 are complete and merged; later
 phases remain separate.
 
 Phase 1 canonical replay infrastructure is **COMPLETE / MERGED** (PR #11, merge
@@ -298,13 +298,16 @@ USD-M 100k corpus (`M5-REC-USDM-BTCUSDT-V1`) is validated PASS (bridge Applied /
 M5-P3-IR-005) are recorded; M5-P3-IR-001's historical contains-`L` restoration was itself
 superseded by ADR-0008 acceptance. Residual M5-P3-RR2-002 remains PARTIALLY CLOSED / ACCEPTED
 NON-BLOCKING P2. See `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`.
-Phase 4 is IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW in branch
-`feat/m5-cross-compiler-semantic-manifests`: canonical OperationObservation serialization
-(schema v1), semantic SHA-256 digests, portable manifest v1, manifest producer, fail-closed shared
+Phase 4 is **COMPLETE / MERGED** via PR #16 (final approved Head
+`b612f85d281315346c0ccf6f599d51af538e3cf4`; exact-head CI `31571166506` — PASS 18/18; P0: 0;
+P1: 0; squash merge `7b6d9ef3b222675138fdd34f3fed381216fe9d02`; post-merge main CI
+`31576511096` — PASS 18/18): canonical OperationObservation serialization (schema v1),
+semantic SHA-256 digests, portable manifest v1, manifest producer, fail-closed shared
 Python evidence validation, metadata-validated three-cross-compiler artifact fan-in, full-evidence
 `m5-replay` Debug/Release determinism, and exact-Head `m5-semantic-compare` blocking job. The seven
-P1 findings from rejected Head `bf2239206ff74e11e3ce73de73f28465b033f808` are corrected and
-await focused independent re-review. See
+P1 findings from rejected Head `bf2239206ff74e11e3ce73de73f28465b033f808` were corrected and
+independently re-reviewed; post-merge GNU/Clang/AppleClang Release manifests agree on the
+fixture-set identity, the four authoritative workloads, fixture hashes, and semantic digests. See
 `docs/M5_PHASE4_CROSS_COMPILER_SEMANTIC_MANIFESTS.md`.
 No production-code change.
 
