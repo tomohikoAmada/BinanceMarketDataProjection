@@ -492,8 +492,9 @@ gtest_discover_tests(bmd_projection_m5_differential_tests)
 gtest_discover_tests(bmd_projection_m5_semantic_tests)
 add_test(
     NAME m5_semantic_comparator_tests
-    COMMAND ${Python3_EXECUTABLE} -m unittest
-            ${CMAKE_CURRENT_SOURCE_DIR}/m5/semantic/test_compare_manifest.py
+    COMMAND ${Python3_EXECUTABLE} -m unittest discover
+            -s ${CMAKE_CURRENT_SOURCE_DIR}/m5/semantic
+            -p test_compare_manifest.py
 )
 add_test(
     NAME m5_materializer_tests

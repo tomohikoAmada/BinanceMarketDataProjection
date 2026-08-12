@@ -465,9 +465,9 @@ void serialize_snapshot_levels(
     write_size(out, levels.size());
     for (const auto& level : levels) {
         out += ' ';
-        write_string(const_cast<std::string&>(out), level.price);
+        write_string(out, level.price);
         out += ' ';
-        write_string(const_cast<std::string&>(out), level.quantity);
+        write_string(out, level.quantity);
     }
 }
 
