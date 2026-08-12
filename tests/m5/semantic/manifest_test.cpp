@@ -96,6 +96,42 @@ TEST(SemanticManifestTest, JsonStringEscaping) {
     EXPECT_NE(json.find("test\\\"quote"), std::string::npos);
 }
 
+TEST(SemanticManifestTest, JsonStringEscapesEntireControlRangeAndPreservesUtf8) {
+    semantic::SemanticManifest manifest;
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V1";
+    manifest.head_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    manifest.toolchain.compiler = "GNU";
+    manifest.toolchain.compiler_version = "14.2.0";
+    manifest.toolchain.os = "Linux";
+    manifest.toolchain.architecture = "x86_64";
+    manifest.build_type = "Release";
+    manifest.fixture_set_id = std::string(64, 'a');
+
+    semantic::ManifestWorkloadEntry workload;
+    workload.workload_id = std::string{"A\0\x01\b\f\x1F\"\\\n\r\t\xC3\xA9", 13};
+    workload.fixture_id = "fixture";
+    workload.fixture_hash = std::string(64, '1');
+    workload.semantic_digest = std::string(64, '2');
+    manifest.workloads.push_back(workload);
+
+    const auto json = semantic::render_manifest_json(manifest);
+    EXPECT_NE(json.find("\\u0000"), std::string::npos);
+    EXPECT_NE(json.find("\\u0001"), std::string::npos);
+    EXPECT_NE(json.find("\\b"), std::string::npos);
+    EXPECT_NE(json.find("\\f"), std::string::npos);
+    EXPECT_NE(json.find("\\u001F"), std::string::npos);
+    EXPECT_NE(json.find("\\\""), std::string::npos);
+    EXPECT_NE(json.find("\\\\"), std::string::npos);
+    EXPECT_NE(json.find("\\n"), std::string::npos);
+    EXPECT_NE(json.find("\\r"), std::string::npos);
+    EXPECT_NE(json.find("\\t"), std::string::npos);
+    EXPECT_NE(json.find("\xC3\xA9"), std::string::npos);
+    for (const char character : json) {
+        const auto byte = static_cast<unsigned char>(character);
+        EXPECT_TRUE(byte >= 0x20U || byte == static_cast<unsigned char>('\n'));
+    }
+}
+
 TEST(SemanticManifestTest, FixtureSetIdDeterministic) {
     std::vector<semantic::ManifestWorkloadEntry> entries;
     for (int i = 0; i < 4; ++i) {
@@ -133,6 +169,19 @@ TEST(SemanticManifestTest, FixtureSetIdRejectsUnorderedInput) {
 
 TEST(SemanticManifestTest, ManifestSchemaVersionFrozen) {
     EXPECT_EQ(std::string(semantic::kManifestSchemaV1), "M5_SEMANTIC_MANIFEST_V1");
+}
+
+TEST(SemanticManifestTest, EvidenceShaRequiresFortyLowercaseHexCharacters) {
+    EXPECT_TRUE(semantic::is_valid_evidence_sha("a1db0f8374bec84d10b0005552983dd44b4e2026"));
+    EXPECT_TRUE(semantic::is_valid_evidence_sha("0000000000000000000000000000000000000000"));
+    EXPECT_FALSE(semantic::is_valid_evidence_sha(std::string(40, 'z')));
+    EXPECT_FALSE(semantic::is_valid_evidence_sha("A1db0f8374bec84d10b0005552983dd44b4e2026"));
+    EXPECT_FALSE(semantic::is_valid_evidence_sha(std::string(39, 'a')));
+    EXPECT_FALSE(semantic::is_valid_evidence_sha(std::string(41, 'a')));
+    EXPECT_FALSE(semantic::is_valid_evidence_sha("0x1db0f8374bec84d10b0005552983dd44b4e2026"));
+    EXPECT_FALSE(semantic::is_valid_evidence_sha(" a1db0f8374bec84d10b0005552983dd44b4e202"));
+    EXPECT_FALSE(semantic::is_valid_evidence_sha("a1db0f8374bec84d10b0005552983dd44b4e202\n"));
+    EXPECT_FALSE(semantic::is_valid_evidence_sha("LOCAL"));
 }
 
 } // namespace

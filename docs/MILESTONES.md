@@ -298,11 +298,13 @@ USD-M 100k corpus (`M5-REC-USDM-BTCUSDT-V1`) is validated PASS (bridge Applied /
 M5-P3-IR-005) are recorded; M5-P3-IR-001's historical contains-`L` restoration was itself
 superseded by ADR-0008 acceptance. Residual M5-P3-RR2-002 remains PARTIALLY CLOSED / ACCEPTED
 NON-BLOCKING P2. See `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`.
-Phase 4 is IMPLEMENTED / PENDING INDEPENDENT REVIEW in branch
+Phase 4 is IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW in branch
 `feat/m5-cross-compiler-semantic-manifests`: canonical OperationObservation serialization
-(schema v1), semantic SHA-256 digests, portable manifest v1, manifest producer, fail-closed
-Python comparator, three-cross-compiler artifact fan-in, `m5-replay` Debug/Release
-determinism, and `m5-semantic-compare` blocking job. See
+(schema v1), semantic SHA-256 digests, portable manifest v1, manifest producer, fail-closed shared
+Python evidence validation, metadata-validated three-cross-compiler artifact fan-in, full-evidence
+`m5-replay` Debug/Release determinism, and exact-Head `m5-semantic-compare` blocking job. The seven
+P1 findings from rejected Head `bf2239206ff74e11e3ce73de73f28465b033f808` are corrected and
+await focused independent re-review. See
 `docs/M5_PHASE4_CROSS_COMPILER_SEMANTIC_MANIFESTS.md`.
 No production-code change.
 

@@ -37,4 +37,6 @@ struct SemanticManifest final {
 [[nodiscard]] std::string
 compute_fixture_set_id(const std::vector<ManifestWorkloadEntry>& workloads);
 
+[[nodiscard]] bool is_valid_evidence_sha(std::string_view value) noexcept;
+
 } // namespace bmd_projection::m5::semantic

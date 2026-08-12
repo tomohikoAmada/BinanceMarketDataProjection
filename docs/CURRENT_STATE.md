@@ -25,8 +25,8 @@ orientation only.
 
 ## Current Main
 
-- `origin/main`: `473a907eba2001d18926c57d6c8d16b10c7505be` (M5 Phase 3 deterministic replay
-  validation, PR #13 squash-merged at this SHA).
+- `origin/main`: `a1db0f8374bec84d10b0005552983dd44b4e2026` (Phase-3 merge-completion status
+  synchronization on top of PR #13 squash merge `473a907eba2001d18926c57d6c8d16b10c7505be`).
 - M0-M4 are complete on main.
 - M5 Phase 1, Phase 2, and Phase 3 are complete/merged on main.
 - ADR-0008 is ACCEPTED: Spot bootstrap uses successor coverage (`U <= L + 1 <= u`,
@@ -40,8 +40,9 @@ orientation only.
   `OperationObservation` serialization (schema v1), semantic SHA-256 digests, portable
   manifest v1, the manifest producer, cross-compiler artifact fan-in, the `m5-replay`
   and `m5-semantic-compare` blocking jobs, and the fail-closed Python comparator. No
-  production-code change (`src/`, `include/` unchanged). PR is DRAFT pending independent
-  implementation review.
+  production-code change (`src/`, `include/` unchanged). Independent review requested changes at
+  rejected Head `bf2239206ff74e11e3ce73de73f28465b033f808` (P0: 0, P1: 7, P2: 4). The correction is
+  IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW; PR #16 remains DRAFT.
 - No active Phase-3 candidate: PR #13, `Implement M5 deterministic replay validation`, is
   MERGED (squash merge `473a907eba2001d18926c57d6c8d16b10c7505be`). Its remote branch
   `feat/m5-deterministic-replay-validation` has been deleted.
@@ -62,11 +63,12 @@ artifact is a separate identity and remains outside Projection ownership.
   Delivered: deterministic 2,048-event small-tier replay, scaled differential diagnostics,
   the offline Recorder Raw-v1 materializer, medium lifecycle validation, direct ADR-0008 Spot
   conformance coverage, ReplayDriver exception hardening, and uint64 JSON parser hardening.
-- M5 Phase 4: IMPLEMENTED / PENDING INDEPENDENT REVIEW (branch
+- M5 Phase 4: IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW (branch
   `feat/m5-cross-compiler-semantic-manifests`). Delivered: canonical OperationObservation
   serializer v1, semantic SHA-256 digests, portable manifest v1, manifest producer, fail-closed
-  Python comparator, three-cross-compiler artifact fan-in, `m5-replay` Debug/Release
-  determinism, and `m5-semantic-compare` blocking job. No production-code change.
+  Python comparator, metadata-validated three-cross-compiler artifact fan-in, full-evidence
+  `m5-replay` Debug/Release determinism, and exact-evidence-checkout `m5-semantic-compare` blocking
+  job. No production-code change.
 - Spot mandatory 100k evidence is validated lifecycle-valid under ADR-0008: exact-next bridge
   `U=98288147168 u=98288147175` against `L=98288147167` Applied/Synchronized, 100,001 Applied
   operations, zero gaps, final Synchronized.
@@ -75,9 +77,6 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Not Implemented
 
-- M5 Phase 4 (cross-compiler semantic manifests: canonical observation serialization,
-  semantic digests, portable manifest v1, manifest producer, fail-closed comparator,
-  artifact upload, m5-replay, m5-semantic-compare) is IMPLEMENTED / PENDING INDEPENDENT REVIEW.
 - Phase 5 (replay differential fuzzing) is NOT STARTED.
 - Phase 6 (benchmarks) is NOT STARTED.
 - Phase 7 (allocation/memory) is NOT STARTED.
@@ -88,8 +87,8 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Current Blockers
 
-- None: both mandatory Phase-3 medium corpora are established and PR #13 is merged. No blocker
-  prevents Phase-4 implementation once authorized.
+- Phase 4 cannot merge and Phase 5 cannot start until PR #16's seven corrected P1 findings receive
+  focused independent re-review. The PR remains OPEN / DRAFT.
 
 ## Accepted Semantic Authorities
 
@@ -125,19 +124,20 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
   `a8e4ccfc31efd4e67bc10cf0ac9ad2a99faa8354` completed `success` — 16/16 jobs PASS.
 - Post-merge main push run `31500884832` at merge `473a907eba2001d18926c57d6c8d16b10c7505be`
   was queued at last query; its result must be read from GitHub, not inferred.
+- PR #16 rejected reviewed Head `bf2239206ff74e11e3ce73de73f28465b033f808` had successful run
+  `31559019189`, but independent semantic review found seven P1 defects. That historical green run
+  is rejection/correction history and is not acceptance evidence for the corrected implementation.
 
 ## Next Authorized Step
 
-The next authorized implementation phase is M5 Phase 4 (semantic observation
-serialization/digests/manifests and cross-compiler transport), which remains NOT STARTED. Do not
-start Phase-4 implementation in this state-sync task; do not invent alternate Spot bootstrap
-semantics.
+The next step is focused independent re-review of the corrected M5 Phase-4 findings plus a minimal
+regression scan. Phase 5 remains NOT STARTED and is not authorized by Phase-4 implementation or CI.
 
 ## AI / Reviewer Reading Order
 
 Read `docs/CURRENT_STATE.md`, `AGENTS.md`, `README.md`, `ARCHITECTURE.md`, `docs/MILESTONES.md`,
-the M5 phase/design documents, accepted ADR-0007 and ADR-0008, actual code/tests, and then PR #13
-with its exact-head CI. Do not trust this file alone for independent review.
+the M5 phase/design documents, accepted ADR-0007 and ADR-0008, actual code/tests, and then draft
+PR #16 with its exact-head CI. Do not trust this file alone for independent review.
 
 ## Historical Documents
 

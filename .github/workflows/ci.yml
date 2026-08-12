@@ -364,27 +364,14 @@ jobs:
           --output build/m5-release-2.json
           --head-sha ${{ env.EVIDENCE_SHA }}
       - name: Verify Debug/Release determinism and run repeatability
-        run: |
-          python3 -c "
-          import json, sys
-          def load(p):
-              with open(p) as f:
-                  return json.load(f)
-          def digests(m):
-              return {w['workload_id']: w['semantic_digest'] for w in m['workloads']}
-          d1 = load('build/m5-debug-1.json')
-          d2 = load('build/m5-debug-2.json')
-          r1 = load('build/m5-release-1.json')
-          r2 = load('build/m5-release-2.json')
-          assert d1['head_sha'] == d2['head_sha'] == r1['head_sha'] == r2['head_sha'], 'HEAD mismatch'
-          assert digests(d1) == digests(d2), 'Debug run repeatability FAIL'
-          assert digests(r1) == digests(r2), 'Release run repeatability FAIL'
-          assert digests(d1) == digests(r1), 'Debug/Release semantic equality FAIL'
-          assert d1['schema_version'] == d2['schema_version'] == r1['schema_version'] == r2['schema_version']
-          print(f'm5-replay PASS ({len(digests(d1))} workloads, Debug==Release, repeatable)')
-          for wid in digests(d1):
-              print(f'  {wid}: {digests(d1)[wid]}')
-          "
+        run: >-
+          python3 scripts/compare-m5-semantic-manifests.py
+          --mode replay
+          --expected-head "${EVIDENCE_SHA}"
+          build/m5-debug-1.json
+          build/m5-debug-2.json
+          build/m5-release-1.json
+          build/m5-release-2.json
 
   m5-semantic-compare:
     name: m5-semantic-compare
@@ -393,6 +380,17 @@ jobs:
     if: ${{ always() }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EVIDENCE_SHA }}
+      - name: Verify comparator checkout identity
+        run: |
+          actual="$(git rev-parse HEAD)"
+          echo "m5-semantic-compare checkout SHA=$actual"
+          echo "m5-semantic-compare EVIDENCE_SHA=$EVIDENCE_SHA"
+          test "$actual" = "$EVIDENCE_SHA" || {
+            echo "CHECKOUT MISMATCH: expected=$EVIDENCE_SHA actual=$actual" >&2
+            exit 1
+          }
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -416,9 +414,18 @@ jobs:
           path: manifests/macos-appleclang
       - name: Compare semantic manifests
         id: compare
+        env:
+          PRODUCER_RESULT: ${{ needs.build-matrix.result }}
         run: |
+          if [ "$PRODUCER_RESULT" != "success" ]; then
+            echo "FAIL: semantic producer aggregate result is $PRODUCER_RESULT" \
+              | tee m5-semantic-comparison.txt
+            exit 1
+          fi
           set -o pipefail
-          python3 scripts/compare-m5-semantic-manifests.py --expected-head ${{ env.EVIDENCE_SHA }} \
+          python3 scripts/compare-m5-semantic-manifests.py \
+            --mode cross-compiler \
+            --expected-head "${EVIDENCE_SHA}" \
             manifests/ubuntu-gcc/m5-semantic-manifest.json \
             manifests/ubuntu-clang/m5-semantic-manifest.json \
             manifests/macos-appleclang/m5-semantic-manifest.json \
@@ -430,3 +437,13 @@ jobs:
           name: m5-semantic-comparison-${{ steps.evsha.outputs.short }}
           path: m5-semantic-comparison.txt
           retention-days: 3
+      - name: Enforce semantic producer success
+        if: always()
+        env:
+          PRODUCER_RESULT: ${{ needs.build-matrix.result }}
+        run: |
+          echo "build-matrix aggregate result=$PRODUCER_RESULT"
+          test "$PRODUCER_RESULT" = "success" || {
+            echo "FAIL: semantic producer aggregate result is $PRODUCER_RESULT" >&2
+            exit 1
+          }

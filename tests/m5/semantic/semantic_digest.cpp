@@ -10,8 +10,11 @@ namespace bmd_projection::m5::semantic {
 std::string compute_semantic_digest(const std::vector<std::string>& canonical_observations) {
     std::string concatenated;
     for (const auto& canon : canonical_observations) {
+        if (canon.empty() || canon.back() != '\n' ||
+            (canon.size() > 1 && canon[canon.size() - 2] == '\n')) {
+            return {};
+        }
         concatenated += canon;
-        concatenated += '\n';
     }
     const auto hash_result = replay::sha256_hex(concatenated);
     if (!std::holds_alternative<std::string>(hash_result)) {

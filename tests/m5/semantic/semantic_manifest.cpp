@@ -10,14 +10,22 @@ namespace bmd_projection::m5::semantic {
 namespace {
 
 void append_json_string(std::string& out, const std::string& value) {
+    static constexpr char kHex[] = "0123456789ABCDEF";
     out += '"';
-    for (char c : value) {
-        switch (c) {
+    for (const char character : value) {
+        const auto byte = static_cast<unsigned char>(character);
+        switch (byte) {
         case '"':
             out += "\\\"";
             break;
         case '\\':
             out += "\\\\";
+            break;
+        case '\b':
+            out += "\\b";
+            break;
+        case '\f':
+            out += "\\f";
             break;
         case '\n':
             out += "\\n";
@@ -29,7 +37,13 @@ void append_json_string(std::string& out, const std::string& value) {
             out += "\\t";
             break;
         default:
-            out += c;
+            if (byte <= 0x1FU) {
+                out += "\\u00";
+                out += kHex[byte >> 4U];
+                out += kHex[byte & 0x0FU];
+            } else {
+                out += static_cast<char>(byte);
+            }
             break;
         }
     }
@@ -150,6 +164,13 @@ std::string compute_fixture_set_id(const std::vector<ManifestWorkloadEntry>& wor
         return {};
     }
     return std::get<std::string>(hash_result);
+}
+
+bool is_valid_evidence_sha(std::string_view value) noexcept {
+    return value.size() == 40 && std::all_of(value.begin(), value.end(), [](char character) {
+               return (character >= '0' && character <= '9') ||
+                      (character >= 'a' && character <= 'f');
+           });
 }
 
 } // namespace bmd_projection::m5::semantic

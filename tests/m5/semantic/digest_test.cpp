@@ -44,6 +44,22 @@ TEST(SemanticDigestTest, SameStreamProducesSameDigest) {
     EXPECT_EQ(d1.size(), 64);
 }
 
+TEST(SemanticDigestTest, SerializerOwnsFinalLfAndDigestAddsNoSeparator) {
+    const auto observation = make_obs(0, replay::EventKind::InstallBaseline, 100);
+    const auto canonical = semantic::serialize_observation(observation);
+    ASSERT_FALSE(canonical.empty());
+    EXPECT_EQ(canonical.back(), '\n');
+    ASSERT_GT(canonical.size(), 1U);
+    EXPECT_NE(canonical[canonical.size() - 2], '\n');
+    EXPECT_EQ(semantic::compute_semantic_digest({canonical}),
+              "de3105ec85ba1cba8bdee4f9770464cda68e33fdbc51a846cdd3014e01e38242");
+}
+
+TEST(SemanticDigestTest, RejectsRecordsWithoutExactlyOneFinalLf) {
+    EXPECT_TRUE(semantic::compute_semantic_digest({"OBS 0 RESET"}).empty());
+    EXPECT_TRUE(semantic::compute_semantic_digest({"OBS 0 RESET\n\n"}).empty());
+}
+
 TEST(SemanticDigestTest, MutationProducesDifferentDigest) {
     auto obs1 = std::vector<oracle::OperationObservation>{
         make_obs(0, replay::EventKind::InstallBaseline, 100),

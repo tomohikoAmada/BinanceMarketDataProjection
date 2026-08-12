@@ -157,8 +157,9 @@ int main(int argc, char** argv) {
 
     if (args.head_sha == "LOCAL") {
         std::cerr << "WARNING: running with head-sha=LOCAL (non-CI mode)\n";
-    } else if (args.head_sha.size() != 40) {
-        std::cerr << "ERROR: --head-sha must be a 40-character SHA-1 hex string or LOCAL\n";
+    } else if (!semantic::is_valid_evidence_sha(args.head_sha)) {
+        std::cerr << "ERROR: --head-sha must be exactly 40 lowercase hexadecimal characters or "
+                     "LOCAL\n";
         return 1;
     }
 

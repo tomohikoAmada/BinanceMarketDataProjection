@@ -6,7 +6,7 @@
 - Phase 1: **COMPLETE / MERGED** (PR #11, merge `5e8629a7ff825f8ea941304d9b09be1670643e8a`)
 - Phase 2: **COMPLETE / MERGED** (PR #12, merge `75c619dd683ff2a3893f9535e206231e7bfecc41`)
 - Phase 3: **COMPLETE / MERGED** (PR #13, merge `473a907eba2001d18926c57d6c8d16b10c7505be`)
-- Phase 4: **IMPLEMENTED / PENDING INDEPENDENT REVIEW**
+- Phase 4: **IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW**
 - Phase 5: **NOT STARTED**
 - M6: **NOT STARTED**
 
@@ -45,11 +45,17 @@ Each `OperationObservation` is serialized as a deterministic text record:
 
 ```text
 OBS <event_index> <EventKind>
-  RESULT <OperationResultValue>
-  CHECKPOINT <SemanticCheckpoint>
-  SNAPSHOT <SnapshotOutcome> | NONE
-  DECIMALS <count> <decimal_observations>  # only when non-empty
+RESULT <OperationResultValue>
+CHECKPOINT <SemanticCheckpoint>
+SNAPSHOT <SnapshotOutcome> | -
+DECIMALS <count>
+DECIMAL <CanonicalDecimalObservation>  # exactly <count> unindented lines
 ```
+
+Every physical line inherits the accepted M5 canonical-text discipline: UTF-8 without BOM,
+LF-only, no blank lines, no leading or trailing whitespace, no tabs, and exactly one ASCII space
+between tokens. `DECIMALS 0` is always present, so empty and non-empty vectors have one frozen
+framing rule.
 
 ### Integer rules
 
@@ -63,12 +69,14 @@ All integer values serialized as canonical base-10 ASCII:
 Every enum value has an explicit stable name mapping. Examples:
 - `Applied`, `IgnoredStale`, `Synchronized`, `Spot`, `UsdMPerpetual`
 - Enum values are case-sensitive, no locale-dependent parsing
-- Unknown/unhandled values produce `UNKNOWN_<type>_<int>` to fail closed
+- A runtime-invalid enum value throws `std::invalid_argument`; producer failure propagates and no
+  successful manifest is written
+- Switches have no `default`, so normal compiler diagnostics expose future enum additions
 
 ### Optional-value rules
 
-Optional values are `none` when absent or `some <value>` when present. Presence is always
-explicit.
+Optional values use the accepted canonical-text syntax: `-` when absent and the canonical value
+when present. Field labels and fixed field order make presence unambiguous.
 
 ### Variant/result rules
 
@@ -76,6 +84,10 @@ Every variant alternative has an explicit type tag:
 - `DecimalErrorOutcome`, `InstallOutcome`, `ApplyOutcome`, `AdapterErrorOutcome`,
   `AdapterSuccessOutcome`, `SnapshotOutcome`, `SnapshotNotProducedOutcome`,
   `ResetOutcome`, `RangeOutcome`, `MetadataOutcome`
+
+`OperationResultValue` and its nested variants use exhaustive `std::visit` overload sets with no
+generic catch-all. Adding a new alternative therefore fails compilation until schema-v1 handling
+is explicitly updated.
 
 ### Vector rules
 
@@ -87,14 +99,15 @@ Vectors include: decimal observations, checkpoint bids/asks, quality flags, snap
 
 ### String rules
 
-Strings use byte-length prefix: `<length>:<bytes>`. This is unambiguous for all UTF-8 content
-including delimiter and special characters.
+Strings use `<UTF-8-byte-length>:<lowercase-hex-of-exact-UTF-8-bytes>`. The empty string is `0:`.
+This encoding is injective and byte-preserving while ensuring LF, CR, TAB, NUL, other control
+bytes, quotes, backslashes, colons, and spaces can never violate physical-line discipline.
 
 ### Record framing
 
-Each observation is a self-contained text record ending with `\n`. The `OBS` marker prevents
-concatenation ambiguity. The SHA-256 digest concatenates all canonical observation records
-(including their trailing newlines).
+`serialize_observation()` owns record termination and returns exactly one final LF. The `OBS`
+marker prevents concatenation ambiguity. The digest function concatenates those complete records
+verbatim and never appends another separator or newline.
 
 ### Complete field coverage
 
@@ -118,8 +131,11 @@ Every field currently present in `OperationObservation` contributes to its canon
 SHA-256 of the concatenated canonical observation records:
 
 ```text
-SHA-256(canonical_obs_0 || "\n" || canonical_obs_1 || "\n" || ... || canonical_obs_N || "\n")
+SHA-256(canonical_obs_0 || canonical_obs_1 || ... || canonical_obs_N)
 ```
+
+Each `canonical_obs_i` already ends in exactly one LF. Non-canonical caller-supplied records with
+no final LF or more than one final LF are rejected by the digest helper.
 
 The digest is lowercase 64-character hex. It reuses the existing test-only SHA-256 implementation
 in `tests/m5/replay/canonical_text.hpp` (`replay::sha256_hex`).
@@ -190,7 +206,7 @@ JSON, schema `M5_SEMANTIC_MANIFEST_V1`:
 ```json
 {
   "schema_version": "M5_SEMANTIC_MANIFEST_V1",
-  "head_sha": "<40-char hex>",
+  "head_sha": "<40 lowercase hexadecimal characters>",
   "toolchain": {
     "compiler": "<compiler_id>",
     "compiler_version": "<version>",
@@ -217,6 +233,8 @@ Rules:
 - LF line endings, final newline
 - No timestamps, no random UUID, no temp paths
 - No GitHub run ID in semantic identity
+- Required schema-v1 fields are validated; unknown additional fields are ignored for forward
+  compatibility and never substitute for a required field
 
 ## Manifest Producer
 
@@ -225,7 +243,8 @@ Executable: `bmd_projection_m5_semantic_manifest`
 CLI:
 ```text
 --output <path>    required: output manifest JSON path
---head-sha <sha>   required: exact HEAD SHA (or "LOCAL" for non-CI)
+--head-sha <sha>   required: exact 40-character lowercase hexadecimal HEAD SHA
+                   (or "LOCAL" for explicit non-CI use)
 ```
 
 Behaviour:
@@ -256,11 +275,17 @@ MANIFEST...            paths to manifest JSON files
 
 Cross-compiler mode (three Release manifests from different toolchains) verifies:
 - exactly three expected manifests
-- recognized schema v1
-- HEAD SHA identical and matches expected
+- every top-level value and required field has the schema-v1 type/shape
+- recognized schema v1 on every manifest
+- every manifest HEAD is 40 lowercase hexadecimal characters and matches expected
 - build_type == Release for all
-- fixture_set_id identical
-- workload ID set identical, no duplicates
+- toolchain metadata proves exactly one GNU/Linux, one Clang/Linux, and one AppleClang/Darwin role
+- compiler version and architecture are non-empty, and transport path hints cannot substitute roles
+- fixture_set_id is valid, identical, and recomputed from the workload identity
+- workload IDs are exactly the mandatory ordered four-workload set, with no omissions,
+  substitutions, extras, or duplicates
+- every workload is an object with typed `workload_id`, `fixture_id`, `fixture_hash`, and
+  `semantic_digest` fields
 - fixture_id identical per workload
 - fixture_hash identical per workload
 - semantic_digest is valid lower-case SHA-256
@@ -290,18 +315,23 @@ Retention: 3 days.
 Builds Debug and Release with ProtoAdapter enabled.
 - Runs manifest producer twice for Debug (separate process repeatability)
 - Runs manifest producer twice for Release
-- Compares Debug run 1 == Debug run 2
-- Compares Release run 1 == Release run 2
-- Compares Debug run 1 == Release run 1 (build-type determinism)
-- Verifies fixture IDs/hashes identical across all runs
+- Validates schema, exact evidence Head, complete toolchain metadata, authoritative workload order,
+  and recomputed fixture-set identity on every run
+- Requires build types in exact order: Debug, Debug, Release, Release
+- Requires identical Clang/Linux compiler version, OS, and architecture across all four runs
+- Compares fixture-set ID, fixture ID, fixture hash, and semantic digest per workload across all
+  four runs, proving separate-process repeatability and Debug/Release determinism
 
 ### m5-semantic-compare job
 
 Depends on build-matrix. Runs with `if: always()`.
+- Checks out `EVIDENCE_SHA` explicitly and asserts comparator checkout HEAD equals it
 - Downloads three Release artifacts
 - Runs comparator
 - Uploads comparison report artifact
-- Fails if any requirement not met
+- Reports all three validated semantic roles without basename collisions
+- Fails if any comparison requirement is not met or if the aggregate producer result is not
+  `success`, even when artifacts were uploaded before a producer failed
 
 ## Tests
 
@@ -320,6 +350,8 @@ Covers:
 - SnapshotOutcome fields
 - String handling
 - Deterministic repeat serialization
+- Exact golden canonical bytes, physical-line discipline, exactly-one-final-LF ownership,
+  arbitrary-string byte encoding, and invalid runtime enum rejection
 
 ### Digest tests (`digest_test.cpp`)
 
@@ -339,13 +371,16 @@ Proves:
 - Valid JSON rendering
 - Multiple workload entries
 - JSON string escaping
+- Complete JSON U+0000-U+001F control escaping without changing ordinary UTF-8 bytes
+- Strict evidence-SHA validation
 - Fixture-set ID determinism
 - Fixture-set ID rejects unordered input
 - Schema version frozen
 
 ### Comparator tests (`test_compare_manifest.py`)
 
-Positive: three matching manifests pass.
+Positive: three matching manifests pass and report distinct GNU/Linux, Clang/Linux, and
+AppleClang/Darwin roles. Replay mode validates four same-toolchain Debug/Release manifests.
 
 Negative (each exits nonzero):
 - Missing manifest
@@ -362,6 +397,11 @@ Negative (each exits nonzero):
 - Fixture hash mismatch
 - Invalid digest syntax
 - Digest mismatch
+- Schema/Head corruption independently in manifests 2 and 3
+- Path/metadata role spoofing, duplicate/missing/substituted roles, and incomplete toolchains
+- Identical but incomplete/wrong/extra/duplicated workload sets
+- Malformed workload objects and field types in every manifest position
+- Replay fixture-set/fixture-ID/fixture-hash/build-type/Head/schema/digest/toolchain mismatches
 
 ## Non-Goals
 
@@ -405,8 +445,8 @@ docs/
 ## Review Status
 
 ```text
-Initial implementation:
-IMPLEMENTED / PENDING INDEPENDENT REVIEW
+Independent review correction:
+IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW
 
 NOT MERGED
 KEEP PR DRAFT
