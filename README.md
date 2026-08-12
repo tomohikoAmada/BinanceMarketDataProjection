@@ -2,14 +2,14 @@
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. M1 through M4 are complete on `main`; M5 (Differential Validation and
-Performance) implementation is in progress (Phases 1, 2, and 3 merged; Phase 4 and later not
-started).
+Performance) implementation is in progress (Phases 1, 2, and 3 merged; Phase 4 implemented in
+draft PR #16 and pending focused independent re-review; later phases not started).
 
 ## For AI agents and independent reviewers
 
 Start with [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md), then read [`AGENTS.md`](AGENTS.md),
 this README, [`ARCHITECTURE.md`](ARCHITECTURE.md), the current milestone and M5 phase documents,
-the relevant accepted ADRs, actual code/tests, and finally PR #13 plus its exact-head CI. The
+the relevant accepted ADRs, actual code/tests, and finally draft PR #16 plus its exact-head CI. The
 orientation file is a summary only; accepted ADRs/designs and current GitHub/code state remain
 authoritative.
 
@@ -254,7 +254,13 @@ validated PASS from the pinned authoritative source: Spot `M5-REC-SPOT-BTCUSDT-V
 bridge `U=98288147168 u=98288147175` against `L=98288147167`; 100,001 Applied, final
 Synchronized) and USD-M `M5-REC-USDM-BTCUSDT-V1` (bridge Applied / Synchronized, 100,001
 Applied, final Synchronized). See
-[M5 Phase 3](docs/M5_PHASE3_DETERMINISTIC_REPLAY.md).
+[M5 Phase 3](docs/M5_PHASE3_DETERMINISTIC_REPLAY.md) and
+[M5 Phase 4](docs/M5_PHASE4_CROSS_COMPILER_SEMANTIC_MANIFESTS.md).
+Phase 4 (cross-compiler semantic manifests) is IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW:
+canonical OperationObservation serialization (schema v1), semantic SHA-256 digests,
+portable manifest v1, manifest producer, fail-closed shared Python evidence validation, complete
+Debug/Release fixture/build identity checks, and metadata-validated three-cross-compiler artifact
+fan-in CI. Later phases remain not started.
 Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
 cross-compiler semantic manifests with artifact fan-in transport, replay/differential fuzzing,
@@ -269,8 +275,8 @@ The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
   `main`.
 - M5 is **APPROVED / MERGED / IN PROGRESS**; Phases 1, 2, and 3 are COMPLETE / MERGED (Phase 3
   Spot and USD-M 100k corpora validated PASS from the pinned authoritative source under ADR-0008
-  successor coverage). Phase 4 and M6 are not
-  started.
+  successor coverage). Phase 4 is implemented in draft PR #16 and pending focused independent
+  re-review; Phase 5 and M6 are not started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.
 - Tick-size, step-size, signed-decimal, and symbol-metadata validation remain outside the implemented

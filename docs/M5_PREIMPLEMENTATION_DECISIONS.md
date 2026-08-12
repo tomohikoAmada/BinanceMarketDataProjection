@@ -203,9 +203,9 @@ CI `31315421548` — PASS 16/16). Phase 3 is **COMPLETE / MERGED** (PR #13, fina
 `473a907eba2001d18926c57d6c8d16b10c7505be`): the deterministic small-tier, scaled-comparison, diagnostic, Raw-v1 materializer, and medium
 lifecycle-validation foundation is implemented. The authoritative archive was found and validated;
 under the accepted ADR-0008 successor-coverage rule both the mandatory Spot and USD-M 100k
-corpora are validated PASS. Phase 4 and later
-phases remain not started. See
-`docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`.
+corpora are validated PASS. Phase 4 is IMPLEMENTED / PENDING FOCUSED INDEPENDENT
+RE-REVIEW; later phases remain not started. See
+`docs/M5_PHASE4_CROSS_COMPILER_SEMANTIC_MANIFESTS.md`.
 
 ## Phase 1 Review Dispositions
 
