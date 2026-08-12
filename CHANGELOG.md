@@ -4,6 +4,18 @@ All notable changes will be recorded here.
 
 ## [Unreleased]
 
+### Added
+
+- M5 Phase-5 differential replay fuzzer (`bmd_projection_replay_fuzz`): direct structured byte
+  decoder (no canonical text parser in fuzz semantic path), bounded deterministic
+  `LLVMFuzzerTestOneInput`, production/reference ReplayDriver comparison with libFuzzer abort
+  on first divergence, Core and Adapter mode coverage, Spot and USD-M market coverage, all
+  seven operation variants reachable, 10 mandatory checked-in seed categories with structural
+  validator, shared `cmake/M5Support.cmake` for single-source replay/oracle/reference reuse,
+  fifth fuzz-smoke target (10,000-run CI smoke). Production `src/`/`include/` unchanged.
+  Existing four fuzzers preserved. IMPLEMENTED / PENDING INDEPENDENT REVIEW.
+  `docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`. Phase 6 is NOT STARTED.
+
 ### Changed
 
 - Corrected the M3 Spot bootstrap predicate to successor coverage (`U <= L + 1`, overflow-guarded)

@@ -25,9 +25,9 @@ orientation only.
 
 ## Current Main
 
-- `origin/main`: `7b6d9ef3b222675138fdd34f3fed381216fe9d02` (M5 Phase-4 squash merge from
-  PR #16, `Implement M5 cross-compiler semantic manifests`, on top of the Phase-3 merge
-  `473a907eba2001d18926c57d6c8d16b10c7505be`).
+- `origin/main`: `d287c08ed362c5202f25eb77b411bd24bb82cef0` (post-merge Phase-4 documentation
+  synchronization PR #17, on top of the Phase-4 squash merge
+  `7b6d9ef3b222675138fdd34f3fed381216fe9d02`).
 - M0-M4 are complete on main.
 - M5 Phase 1, Phase 2, Phase 3, and Phase 4 are complete/merged on main.
 - ADR-0008 is ACCEPTED: Spot bootstrap uses successor coverage (`U <= L + 1 <= u`,
@@ -79,7 +79,8 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Not Implemented
 
-- Phase 5 (replay differential fuzzing) is NOT STARTED.
+- Phase 5 (replay differential fuzzing) is IMPLEMENTED / PENDING INDEPENDENT REVIEW
+  (PR #??, feat/m5-differential-replay-fuzzing).
 - Phase 6 (benchmarks) is NOT STARTED.
 - Phase 7 (allocation/memory) is NOT STARTED.
 - Phase 8 (container spike) is NOT STARTED.
@@ -140,10 +141,9 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 
 ## Next Authorized Step
 
-Phase 4 is complete and merged. Phase 5 remains NOT STARTED and is not authorized by Phase-4
-implementation or CI. The next implementation milestone is M5 Phase 5 (replay differential
-fuzzing), subject to its normal implementation authorization/workflow. No Phase-5 candidate
-exists and none is created by this documentation synchronization.
+Phase 4 is complete and merged. Phase 5 (replay differential fuzzing) is IMPLEMENTED / PENDING
+INDEPENDENT REVIEW via `feat/m5-differential-replay-fuzzing` (PR open, DRAFT). Phase 6 is
+NOT STARTED.
 
 ## AI / Reviewer Reading Order
 

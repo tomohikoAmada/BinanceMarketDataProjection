@@ -1,26 +1,7 @@
 find_package(GTest CONFIG REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
-add_library(
-    bmd_projection_m5_replay_support
-    m5/replay/canonical_text.cpp
-    m5/replay/replay_fixture.cpp
-    m5/replay/replay_manifest.cpp
-    m5/replay/replay_parser.cpp
-    m5/replay/replay_types.cpp
-)
-target_include_directories(
-    bmd_projection_m5_replay_support
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/m5/replay
-)
-set_target_properties(
-    bmd_projection_m5_replay_support
-    PROPERTIES
-        CXX_STANDARD 20
-        CXX_STANDARD_REQUIRED YES
-        CXX_EXTENSIONS NO
-)
-bmd_projection_apply_project_options(bmd_projection_m5_replay_support)
+include("${PROJECT_SOURCE_DIR}/cmake/M5Support.cmake")
 
 add_library(
     bmd_projection_m5_phase3_support
@@ -115,64 +96,7 @@ set_target_properties(
 )
 bmd_projection_apply_project_options(bmd_projection_m5_replay_tests)
 
-# M5 Phase-2 reference layers: R1 (reference decimal), R4 (reference adapter), and
-# the reference pipeline side composing R1/R3/R4. R2 (ReferenceOrderBook) and R3
-# (ReferenceProjection) are reused in place from their reviewed M2/M3 test homes.
-add_library(
-    bmd_projection_m5_reference_support
-    m5/reference/reference_adapter.cpp
-    m5/reference/reference_decimal.cpp
-    m5/oracle/reference_side.cpp
-)
-target_include_directories(
-    bmd_projection_m5_reference_support
-    PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/m5/reference
-        ${CMAKE_CURRENT_SOURCE_DIR}/m5/oracle
-        ${CMAKE_CURRENT_SOURCE_DIR}/projection_state
-        ${CMAKE_CURRENT_SOURCE_DIR}/order_book
-)
-target_link_libraries(
-    bmd_projection_m5_reference_support
-    PUBLIC bmd_projection_m5_replay_support
-)
-set_target_properties(
-    bmd_projection_m5_reference_support
-    PROPERTIES
-        CXX_STANDARD 20
-        CXX_STANDARD_REQUIRED YES
-        CXX_EXTENSIONS NO
-)
-bmd_projection_apply_project_options(bmd_projection_m5_reference_support)
-
-# M5 Phase-2 oracle support: canonical observation model, first-divergence
-# comparison, the neutral ReplayDriver, and the Core-only production side. This
-# target links Core but never ProtoAdapter/Contracts.
-add_library(
-    bmd_projection_m5_oracle_support
-    m5/oracle/core_production_side.cpp
-    m5/oracle/divergence.cpp
-    m5/oracle/production_decimal_observation.cpp
-    m5/oracle/replay_driver.cpp
-)
-target_include_directories(
-    bmd_projection_m5_oracle_support
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/m5/oracle
-)
-target_link_libraries(
-    bmd_projection_m5_oracle_support
-    PUBLIC
-        bmd_projection_m5_replay_support
-        BinanceMarketDataProjection::Core
-)
-set_target_properties(
-    bmd_projection_m5_oracle_support
-    PROPERTIES
-        CXX_STANDARD 20
-        CXX_STANDARD_REQUIRED YES
-        CXX_EXTENSIONS NO
-)
-bmd_projection_apply_project_options(bmd_projection_m5_oracle_support)
+# M5 Phase-2 reference layers and oracle support are provided by cmake/M5Support.cmake.
 
 add_executable(
     bmd_projection_m5_differential_tests
@@ -518,3 +442,62 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
     gtest_discover_tests(bmd_projection_proto_adapter_allocation_failure_tests)
     gtest_discover_tests(bmd_projection_m5_adapter_differential_tests)
 endif()
+
+# M5 Phase-5: structured decoder tests and differential fuse harness tests.
+add_executable(
+    bmd_projection_m5_phase5_tests
+    m5/phase5/replay_fuzz_decoder_test.cpp
+    m5/phase5/differential_fuzz_test.cpp
+    "${PROJECT_SOURCE_DIR}/fuzz/m5/replay_fuzz_decoder.cpp"
+    "${PROJECT_SOURCE_DIR}/fuzz/m5/replay_fuzz_fixture.cpp"
+)
+target_include_directories(
+    bmd_projection_m5_phase5_tests
+    PRIVATE
+        "${PROJECT_SOURCE_DIR}/fuzz/m5"
+        "${CMAKE_CURRENT_SOURCE_DIR}/m5/phase5"
+)
+target_link_libraries(
+    bmd_projection_m5_phase5_tests
+    PRIVATE
+        bmd_projection_m5_oracle_support
+        bmd_projection_m5_reference_support
+        GTest::gtest_main
+)
+set_target_properties(
+    bmd_projection_m5_phase5_tests
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_phase5_tests)
+gtest_discover_tests(bmd_projection_m5_phase5_tests)
+
+# M5 Phase-5: structural corpus validator for the checked-in replay seed corpus.
+add_executable(
+    bmd_projection_m5_replay_corpus_structural_validate
+    m5/phase5/corpus_structural_validate.cpp
+    "${PROJECT_SOURCE_DIR}/fuzz/m5/replay_fuzz_decoder.cpp"
+)
+target_include_directories(
+    bmd_projection_m5_replay_corpus_structural_validate
+    PRIVATE "${PROJECT_SOURCE_DIR}/fuzz/m5"
+)
+target_link_libraries(
+    bmd_projection_m5_replay_corpus_structural_validate
+    PRIVATE bmd_projection_m5_replay_support
+)
+set_target_properties(
+    bmd_projection_m5_replay_corpus_structural_validate
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_replay_corpus_structural_validate)
+add_test(
+    NAME m5_replay_corpus_structural_validate
+    COMMAND bmd_projection_m5_replay_corpus_structural_validate
+        "${PROJECT_SOURCE_DIR}/fuzz/corpus/replay"
+)

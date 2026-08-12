@@ -267,8 +267,9 @@ No M5 production change or container migration is authorized by the design.
 
 OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions and CI policy
 are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
-M5 implementation is authorized. Phases 1, 2, 3, and 4 are complete and merged; later
-phases remain separate.
+M5 implementation is authorized. Phases 1, 2, 3, and 4 are complete and merged; Phase 5
+is IMPLEMENTED / PENDING INDEPENDENT REVIEW (`feat/m5-differential-replay-fuzzing`).
+Phase 6 is NOT STARTED.
 
 Phase 1 canonical replay infrastructure is **COMPLETE / MERGED** (PR #11, merge
 `5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — PASS 16/16). It
@@ -310,6 +311,15 @@ independently re-reviewed; post-merge GNU/Clang/AppleClang Release manifests agr
 fixture-set identity, the four authoritative workloads, fixture hashes, and semantic digests. See
 `docs/M5_PHASE4_CROSS_COMPILER_SEMANTIC_MANIFESTS.md`.
 No production-code change.
+
+Phase 5 (differential replay fuzzing) is **IMPLEMENTED / PENDING INDEPENDENT REVIEW** via
+`feat/m5-differential-replay-fuzzing`: direct structured byte decoder, bounded deterministic
+`LLVMFuzzerTestOneInput`, production/reference ReplayDriver comparison, Core and Adapter mode
+coverage, Spot and USD-M market coverage, libFuzzer abort on first divergence, 10 mandatory
+checked-in seed categories with structural validation, fifth fuzz-smoke target (10,000-run
+CI smoke), and shared `cmake/M5Support.cmake` for single-source replay/oracle/reference
+reuse. Existing four fuzzers preserved; production `src/`/`include/` unchanged;
+`docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`. Phase 6 is NOT STARTED.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 
