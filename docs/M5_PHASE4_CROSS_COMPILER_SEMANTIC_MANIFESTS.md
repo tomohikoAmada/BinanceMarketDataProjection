@@ -6,7 +6,9 @@
 - Phase 1: **COMPLETE / MERGED** (PR #11, merge `5e8629a7ff825f8ea941304d9b09be1670643e8a`)
 - Phase 2: **COMPLETE / MERGED** (PR #12, merge `75c619dd683ff2a3893f9535e206231e7bfecc41`)
 - Phase 3: **COMPLETE / MERGED** (PR #13, merge `473a907eba2001d18926c57d6c8d16b10c7505be`)
-- Phase 4: **IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW**
+- Phase 4: **COMPLETE / MERGED** (PR #16, final approved Head
+  `b612f85d281315346c0ccf6f599d51af538e3cf4`, exact-head CI `31571166506` — PASS 18/18, squash
+  merge `7b6d9ef3b222675138fdd34f3fed381216fe9d02`, post-merge main CI `31576511096` — PASS 18/18)
 - Phase 5: **NOT STARTED**
 - M6: **NOT STARTED**
 
@@ -446,11 +448,22 @@ docs/
 
 ```text
 Independent review correction:
-IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW
+IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW (historical)
 
-NOT MERGED
-KEEP PR DRAFT
+Initial independent review of Head bf2239206ff74e11e3ce73de73f28465b033f808:
+CHANGES REQUESTED (P0: 0, P1: 7, P2: 4); the green run 31559019189 was rejection
+history, not acceptance evidence.
+
+Final focused independent re-review of corrected Head
+b612f85d281315346c0ccf6f599d51af538e3cf4:
+APPROVED (P0: 0, P1: 0, P2: 0)
+
+MERGE AUTHORIZATION: YES
+
+PR #16 MERGED (squash) at main 7b6d9ef3b222675138fdd34f3fed381216fe9d02.
+Exact-head CI: 31571166506 — PASS 18/18.
+Post-merge main CI: 31576511096 — PASS 18/18.
+Phase 4: COMPLETE / MERGED.
 ```
 
-Do not merge until independent implementation review.
-Do not start Phase 5.
+Phase 5 is NOT STARTED. Do not start Phase 5 from this documentation.

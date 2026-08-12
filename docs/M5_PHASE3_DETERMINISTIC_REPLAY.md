@@ -13,7 +13,9 @@
   merge `473a907eba2001d18926c57d6c8d16b10c7505be`; rebased onto accepted
   M3 successor-coverage semantics; authoritative Spot and USD-M 100k
   corpora validated PASS under ADR-0008 authority)
-- Phase 4: **NOT STARTED**
+- Phase 4: **COMPLETE / MERGED** (PR #16, merge
+  `7b6d9ef3b222675138fdd34f3fed381216fe9d02`) — see
+  `docs/M5_PHASE4_CROSS_COMPILER_SEMANTIC_MANIFESTS.md`
 - M6: **NOT STARTED**
 
 Phase 3 remains test/tool-only. `include/**`, `src/**`, production Core, production ProtoAdapter,
