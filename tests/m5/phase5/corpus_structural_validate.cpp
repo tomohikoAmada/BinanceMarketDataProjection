@@ -1,7 +1,12 @@
 #include "replay_fuzz_decoder.hpp"
 
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <iterator>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -9,62 +14,49 @@ namespace decoder = bmd_projection::m5::replay::fuzz_decoder;
 namespace replay = bmd_projection::m5::replay;
 
 [[nodiscard]] std::vector<std::uint8_t> read_file(const std::string& path) {
-    std::ifstream file(path, std::ios::binary | std::ios::ate);
-    if (!file)
+    std::ifstream file(path, std::ios::binary);
+    if (!file) {
         return {};
-    const auto size = file.tellg();
-    file.seekg(0, std::ios::beg);
-    std::vector<std::uint8_t> data(static_cast<std::size_t>(size));
-    file.read(reinterpret_cast<char*>(data.data()), static_cast<std::streamsize>(size));
+    }
+    std::vector<std::uint8_t> data{std::istreambuf_iterator<char>(file),
+                                   std::istreambuf_iterator<char>()};
     return data;
 }
 
 [[nodiscard]] bool has_install(const decoder::FuzzCase& c) {
-    for (const auto& op : c.operations) {
-        if (std::holds_alternative<replay::InstallBaselineOp>(op))
-            return true;
-    }
-    return false;
+    return std::ranges::any_of(c.operations, [](const replay::Operation& op) {
+        return std::holds_alternative<replay::InstallBaselineOp>(op);
+    });
 }
 
 [[nodiscard]] bool has_update(const decoder::FuzzCase& c) {
-    for (const auto& op : c.operations) {
-        if (std::holds_alternative<replay::DepthUpdateOp>(op))
-            return true;
-    }
-    return false;
+    return std::ranges::any_of(c.operations, [](const replay::Operation& op) {
+        return std::holds_alternative<replay::DepthUpdateOp>(op);
+    });
 }
 
 [[nodiscard]] bool has_reset(const decoder::FuzzCase& c) {
-    for (const auto& op : c.operations) {
-        if (std::holds_alternative<replay::ResetOp>(op))
-            return true;
-    }
-    return false;
+    return std::ranges::any_of(c.operations, [](const replay::Operation& op) {
+        return std::holds_alternative<replay::ResetOp>(op);
+    });
 }
 
 [[nodiscard]] bool has_rebaseline(const decoder::FuzzCase& c) {
-    for (const auto& op : c.operations) {
-        if (std::holds_alternative<replay::RebaselineOp>(op))
-            return true;
-    }
-    return false;
+    return std::ranges::any_of(c.operations, [](const replay::Operation& op) {
+        return std::holds_alternative<replay::RebaselineOp>(op);
+    });
 }
 
 [[nodiscard]] bool has_snapshot(const decoder::FuzzCase& c) {
-    for (const auto& op : c.operations) {
-        if (std::holds_alternative<replay::SnapshotRequestOp>(op))
-            return true;
-    }
-    return false;
+    return std::ranges::any_of(c.operations, [](const replay::Operation& op) {
+        return std::holds_alternative<replay::SnapshotRequestOp>(op);
+    });
 }
 
 [[nodiscard]] bool has_metadata(const decoder::FuzzCase& c) {
-    for (const auto& op : c.operations) {
-        if (std::holds_alternative<replay::AdapterMetadataOp>(op))
-            return true;
-    }
-    return false;
+    return std::ranges::any_of(c.operations, [](const replay::Operation& op) {
+        return std::holds_alternative<replay::AdapterMetadataOp>(op);
+    });
 }
 
 [[nodiscard]] bool has_baseline_continuation(const decoder::FuzzCase& c) {
@@ -74,19 +66,21 @@ namespace replay = bmd_projection::m5::replay;
 [[nodiscard]] int count_updates(const decoder::FuzzCase& c) {
     int du = 0;
     for (const auto& op : c.operations) {
-        if (std::holds_alternative<replay::DepthUpdateOp>(op))
+        if (std::holds_alternative<replay::DepthUpdateOp>(op)) {
             ++du;
+        }
     }
     return du;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char** argv) {
     if (argc < 2) {
         std::cerr << "Usage: bmd_projection_m5_corpus_structural_validate <corpus_dir>\n";
         return 1;
     }
 
-    const std::string dir = argv[1];
+    const std::span<char*> arguments{argv, static_cast<std::size_t>(argc)};
+    const std::string dir = arguments[1];
     std::cerr << "Structural corpus validator: " << dir << "\n";
 
     int failures = 0;
@@ -137,7 +131,7 @@ int main(int argc, char* argv[]) {
     };
     static auto check_duplicate = [](const decoder::FuzzCase& c) { return count_updates(c) >= 2; };
     static auto check_locked = [](const decoder::FuzzCase& c) { return has_install(c); };
-    static auto check_decimal = [](const decoder::FuzzCase& c) { return c.operations.size() >= 1; };
+    static auto check_decimal = [](const decoder::FuzzCase& c) { return !c.operations.empty(); };
     static auto check_snapshot = [](const decoder::FuzzCase& c) { return has_snapshot(c); };
     static auto check_quality = [](const decoder::FuzzCase& c) {
         return has_metadata(c) || has_snapshot(c);
