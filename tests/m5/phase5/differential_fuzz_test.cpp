@@ -21,7 +21,7 @@ namespace oracle = bmd_projection::m5::oracle;
 namespace replay = bmd_projection::m5::replay;
 
 void run_and_expect_no_divergence(const decoder::FuzzCase& fuzz_case, bool expect_pass = true) {
-    auto fixture = decoder::build_structured_fixture(fuzz_case, {});
+    auto fixture = decoder::build_structured_fixture(fuzz_case);
 
     auto mode = fuzz_case.mode == decoder::DecodedMode::AdapterEnabled
                     ? oracle::ReplayMode::AdapterEnabled

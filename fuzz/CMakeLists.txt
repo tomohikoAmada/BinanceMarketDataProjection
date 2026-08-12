@@ -151,13 +151,12 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
         bmd_projection_replay_fuzz
         PRIVATE BMD_PROJECTION_FUZZ_ADAPTER_ENABLED=1
     )
-endif()
 
-add_executable(
-    bmd_projection_proto_adapter_fuzz
-    EXCLUDE_FROM_ALL
-    proto_adapter_fuzz.cpp
-)
+    add_executable(
+        bmd_projection_proto_adapter_fuzz
+        EXCLUDE_FROM_ALL
+        proto_adapter_fuzz.cpp
+    )
     target_link_libraries(
         bmd_projection_proto_adapter_fuzz
         PRIVATE BinanceMarketDataProjection::ProtoAdapter

@@ -22,6 +22,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <memory>
 #include <optional>
@@ -63,7 +64,7 @@ namespace decoder = bmd_projection::m5::replay::fuzz_decoder;
 }
 
 void run_structured_fuzz_case(const decoder::FuzzCase& fuzz_case) {
-    auto fixture = decoder::build_structured_fixture(fuzz_case, {});
+    auto fixture = decoder::build_structured_fixture(fuzz_case);
 
     const auto replay_mode = fuzz_case.mode == decoder::DecodedMode::AdapterEnabled
                                  ? oracle::ReplayMode::AdapterEnabled
@@ -114,10 +115,8 @@ void run_structured_fuzz_case(const decoder::FuzzCase& fuzz_case) {
         const auto& d = outcome.first_divergence.value();
         const auto diag = render_divergence_diagnostics(d);
         if (!diag.empty()) {
-            // Print diagnostics for the reproducer before aborting.
-            // Using write() to stderr avoids buffering issues in the fuzz harness.
             const auto msg = "M5 REPLAY FUZZ DIVERGENCE:\n" + diag + "\n";
-            static_cast<void>(write(2, msg.data(), msg.size()));
+            std::fprintf(stderr, "%s", msg.c_str());
         }
         std::abort();
     }

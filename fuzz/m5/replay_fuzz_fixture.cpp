@@ -1,11 +1,10 @@
 #include "replay_fuzz_fixture.hpp"
 
 #include <string>
-#include <string_view>
 
 namespace bmd_projection::m5::replay::fuzz_decoder {
 
-ReplayFixture build_structured_fixture(const FuzzCase& fuzz_case, std::string_view input_hash_hex) {
+ReplayFixture build_structured_fixture(const FuzzCase& fuzz_case) {
     ReplayFixture fixture;
 
     fixture.identity.schema_version = kReplaySchemaVersion;
@@ -15,13 +14,13 @@ ReplayFixture build_structured_fixture(const FuzzCase& fuzz_case, std::string_vi
     fixture.identity.sequence_policy = fuzz_case.sequence_policy;
     fixture.identity.fixture_id = "structured-fuzz";
 
-    if (!input_hash_hex.empty()) {
-        fixture.identity.replay_log_sha256 = input_hash_hex;
-        fixture.canonical_log_sha256 = input_hash_hex;
-    } else {
-        fixture.identity.replay_log_sha256 = "structured-fuzz-input";
-        fixture.canonical_log_sha256 = "structured-fuzz-input";
-    }
+    // Structured fuzz cases do not originate from a canonical replay log. The
+    // replay-log-SHA and canonical-log-SHA fields are left empty because
+    // placing raw fuzz bytes or a synthetic sentinel into them would be a
+    // false claim of canonical replay provenance. ReplayDriver consumes these
+    // fields only for diagnostic messages.
+    fixture.identity.replay_log_sha256.clear();
+    fixture.canonical_log_sha256.clear();
 
     fixture.manifest.identity = fixture.identity;
     fixture.manifest.event_count = fuzz_case.operations.size();
