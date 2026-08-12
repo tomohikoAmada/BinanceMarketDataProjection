@@ -164,23 +164,26 @@ def validate_workloads(manifests: dict[str, dict]) -> None:
 def compare_manifests(manifest_paths: list[Path], expected_head: str | None = None) -> bool:
     """Compare the given manifests. Returns True on success, dies on failure."""
     manifests: dict[str, dict] = {}
-    expected_names = {
-        "m5-semantic-manifest-ubuntu-gcc",
-        "m5-semantic-manifest-ubuntu-clang",
-        "m5-semantic-manifest-macos-appleclang",
+    expected_toolchains = {
+        "ubuntu-gcc": "m5-semantic-manifest-ubuntu-gcc",
+        "ubuntu-clang": "m5-semantic-manifest-ubuntu-clang",
+        "macos-appleclang": "m5-semantic-manifest-macos-appleclang",
     }
 
     for path in manifest_paths:
-        name = path.name
-        # Strip suffix patterns that GitHub artifacts might add
-        manifests[name] = load_manifest(path)
+        tc_key = None
+        path_str = str(path)
+        for tc_name in expected_toolchains:
+            if tc_name in path_str:
+                tc_key = tc_name
+                break
+        if tc_key is None:
+            die(f"cannot identify toolchain for manifest: {path}")
+        manifests[tc_key] = load_manifest(path)
 
-    # Check that we have the expected artifact names
-    found_names = set(manifests.keys())
-    for expected in expected_names:
-        found = [n for n in found_names if expected in n or n == expected]
-        if not found:
-            die(f"missing manifest: expected artifact name containing '{expected}' in {sorted(found_names)}")
+    missing = expected_toolchains.keys() - manifests.keys()
+    if missing:
+        die(f"missing manifests for toolchains: {sorted(missing)}")
 
     validate_manifest_schema(manifests[list(manifests.keys())[0]], list(manifests.keys())[0])
 

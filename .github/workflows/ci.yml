@@ -417,6 +417,7 @@ jobs:
       - name: Compare semantic manifests
         id: compare
         run: |
+          set -o pipefail
           python3 scripts/compare-m5-semantic-manifests.py --expected-head ${{ env.EVIDENCE_SHA }} \
             manifests/ubuntu-gcc/m5-semantic-manifest.json \
             manifests/ubuntu-clang/m5-semantic-manifest.json \
