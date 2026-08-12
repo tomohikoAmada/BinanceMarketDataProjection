@@ -272,4 +272,51 @@ TEST(ReplayFuzzDecoderTest, DepthUpdateEqualRangeRemainsDepthUpdate) {
     EXPECT_EQ(op.final_update_id, 1U);
 }
 
+// MalformedRange intent (op_type=6) with a non-reversed range must decode to a
+// normal DepthUpdateOp: a structurally valid range cannot be a MalformedRangeOp.
+TEST(ReplayFuzzDecoderTest, MalformedRangeValidRangeBecomesDepthUpdate) {
+    auto data = make_data(0x20, 0x08, 0x03, 'B', 'T', 'C', 0x01,
+                          0x06, // type_raw=6 => op_type=6%7=6 (MalformedRange case)
+                          0x18, // first_id = UINT64 special 1
+                          0x18, // final_id = UINT64 special 1 (not reversed)
+                          0x00  // has_previous = false
+    );
+    auto result = decode(data.data(), data.size());
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(result.value().operations.size(), 1U);
+    EXPECT_TRUE(std::holds_alternative<replay::DepthUpdateOp>(result.value().operations[0]));
+    const auto& op = std::get<replay::DepthUpdateOp>(result.value().operations[0]);
+    EXPECT_EQ(op.first_update_id, 1U);
+    EXPECT_EQ(op.final_update_id, 1U);
+}
+
+// Every decoded operation must satisfy its own structural domain:
+// DepthUpdateOp requires first <= final, MalformedRangeOp requires first > final.
+TEST(ReplayFuzzDecoderTest, DecodedOperationsSatisfyStructuralDomains) {
+    // Header (CoreOnly, Spot, scale 8/8), symbol "BTC", op count 3:
+    //  op0: DepthUpdate intent with reversed range 2 > 1
+    //  op1: MalformedRange intent with valid range 1 < 2 (plus has_previous=0, levels=0)
+    //  op2: MalformedRange intent with reversed range 2 > 1
+    auto data = make_data(0x20, 0x08, 0x03, 'B', 'T', 'C', 0x03, 0x01, 0x28, 0x18, 0x06, 0x18, 0x28,
+                          0x00, 0x00, 0x06, 0x28, 0x18);
+    auto result = decode(data.data(), data.size());
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(result.value().operations.size(), 3U);
+
+    const auto& op0 = result.value().operations[0];
+    ASSERT_TRUE(std::holds_alternative<replay::MalformedRangeOp>(op0));
+    EXPECT_GT(std::get<replay::MalformedRangeOp>(op0).first_update_id,
+              std::get<replay::MalformedRangeOp>(op0).final_update_id);
+
+    const auto& op1 = result.value().operations[1];
+    ASSERT_TRUE(std::holds_alternative<replay::DepthUpdateOp>(op1));
+    EXPECT_LE(std::get<replay::DepthUpdateOp>(op1).first_update_id,
+              std::get<replay::DepthUpdateOp>(op1).final_update_id);
+
+    const auto& op2 = result.value().operations[2];
+    ASSERT_TRUE(std::holds_alternative<replay::MalformedRangeOp>(op2));
+    EXPECT_GT(std::get<replay::MalformedRangeOp>(op2).first_update_id,
+              std::get<replay::MalformedRangeOp>(op2).final_update_id);
+}
+
 } // namespace

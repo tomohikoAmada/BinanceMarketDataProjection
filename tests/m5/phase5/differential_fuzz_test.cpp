@@ -182,4 +182,63 @@ TEST(DifferentialFuzzHarnessTest, LargeFuzzCaseNoDivergence) {
     run_and_expect_no_divergence(c);
 }
 
+// Regression: exact libFuzzer input recovered from CI run 31596081744.
+// Previously decoded a normal DepthUpdateOp with first > final, which
+// diverged (RANGE_OUTCOME vs APPLY_OUTCOME). After the decoder domain fix
+// it must decode to conforming operations and replay without divergence.
+TEST(DifferentialFuzzHarnessTest, CiReproducerNoDivergence) {
+    // clang-format off
+    const std::vector<std::uint8_t> data{
+        0x20, 0x08, 0x07, 0x42, 0x54, 0x43, 0x55, 0x53, 0x44, 0x54, 0x03, 0x00, 0x00,
+        0x32, 0x01, 0x00, 0x00, 0x04, 0x06, 0x00, 0x00, 0x00, 0x00, 0x32, 0x01, 0x00,
+        0x01, 0x01, 0x00, 0x04, 0x06, 0x00, 0xff, 0x00, 0x00, 0x31, 0x01, 0x05, 0x01,
+        0x00, 0x33, 0x00, 0x33, 0xf9, 0x00, 0x01, 0x00, 0x00, 0x04, 0x06, 0x00, 0x00,
+        0x00, 0x00, 0x31, 0x00, 0x05, 0x01, 0x00, 0x33, 0x00, 0x33, 0x00, 0x01, 0x00,
+        0x00, 0x50, 0x40, 0x00, 0x08, 0x1c, 0x31, 0x31, 0x01, 0x00};
+    // clang-format on
+    const auto fuzz_case = decoder::decode(data.data(), data.size());
+    ASSERT_TRUE(fuzz_case.has_value());
+    ASSERT_EQ(fuzz_case->operations.size(), 3U);
+
+    for (const auto& op : fuzz_case->operations) {
+        if (const auto* update = std::get_if<replay::DepthUpdateOp>(&op)) {
+            EXPECT_LE(update->first_update_id, update->final_update_id)
+                << "DepthUpdateOp must satisfy first <= final";
+        }
+        if (const auto* malformed = std::get_if<replay::MalformedRangeOp>(&op)) {
+            EXPECT_GT(malformed->first_update_id, malformed->final_update_id)
+                << "MalformedRangeOp must satisfy first > final";
+        }
+    }
+    run_and_expect_no_divergence(*fuzz_case);
+}
+
+// Regression: exact libFuzzer input recovered from CI run 31608561257.
+// Previously decoded a MalformedRangeOp with a non-reversed range
+// (first == final == 0), which the comparator rejects as a composition
+// divergence. After the decoder domain fix it must decode to conforming
+// operations and replay without divergence.
+TEST(DifferentialFuzzHarnessTest, CiMalformedValidRangeNoDivergence) {
+    // clang-format off
+    const std::vector<std::uint8_t> data{
+        0x20, 0x08, 0x00, 0x04, 0x06, 0x00, 0x00, 0x00, 0x00, 0x31, 0x00, 0x05, 0x40, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x04, 0x04, 0x06, 0x00, 0x00, 0x00, 0x00, 0x31,
+        0x01, 0x00};
+    // clang-format on
+    const auto fuzz_case = decoder::decode(data.data(), data.size());
+    ASSERT_TRUE(fuzz_case.has_value());
+
+    for (const auto& op : fuzz_case->operations) {
+        if (const auto* update = std::get_if<replay::DepthUpdateOp>(&op)) {
+            EXPECT_LE(update->first_update_id, update->final_update_id)
+                << "DepthUpdateOp must satisfy first <= final";
+        }
+        if (const auto* malformed = std::get_if<replay::MalformedRangeOp>(&op)) {
+            EXPECT_GT(malformed->first_update_id, malformed->final_update_id)
+                << "MalformedRangeOp must satisfy first > final";
+        }
+    }
+    run_and_expect_no_divergence(*fuzz_case);
+}
+
 } // namespace

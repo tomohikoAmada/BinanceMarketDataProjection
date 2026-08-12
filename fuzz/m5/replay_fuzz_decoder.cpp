@@ -294,9 +294,21 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
         return AdapterMetadataOp{make_source(event_index, desc), decode_quality_facts(cursor, 8)};
     }
     case 6: {
-        // MalformedRange
+        // MalformedRange — must denote a reversed range (first > final).
+        // A structurally valid range belongs to DepthUpdateOp instead.
         const auto first_id = cursor.read_var_u64();
         const auto final_id = cursor.read_var_u64();
+        if (first_id <= final_id) {
+            const bool has_previous = (cursor.read_u8() & 1U) != 0;
+            const auto previous =
+                has_previous ? std::optional{cursor.read_var_u64()} : std::nullopt;
+            std::string desc = "structured-fuzz[op=";
+            desc += std::to_string(event_index);
+            desc += " DepthUpdate]";
+            auto levels = decode_levels(cursor, kMaxLevelsPerEvent, token_idx);
+            return DepthUpdateOp{make_source(event_index, desc), first_id, final_id, previous,
+                                 std::move(levels)};
+        }
         std::string desc = "structured-fuzz[op=";
         desc += std::to_string(event_index);
         desc += " MalformedRange]";
