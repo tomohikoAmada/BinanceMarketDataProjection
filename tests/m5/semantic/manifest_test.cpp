@@ -6,6 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -15,6 +17,23 @@ namespace {
 namespace oracle = bmd_projection::m5::oracle;
 namespace replay = bmd_projection::m5::replay;
 namespace semantic = bmd_projection::m5::semantic;
+
+[[nodiscard]] bool contains_every_escape(std::string_view json) {
+    static constexpr std::array<std::string_view, 11> kExpected{
+        "\\u0000", "\\u0001", "\\b", "\\f", "\\u001F",  "\\\"",
+        "\\\\",    "\\n",     "\\r", "\\t", "\xC3\xA9",
+    };
+    return std::ranges::all_of(kExpected, [json](std::string_view value) {
+        return json.find(value) != std::string_view::npos;
+    });
+}
+
+[[nodiscard]] bool has_only_permitted_json_bytes(std::string_view json) {
+    return std::ranges::all_of(json, [](char character) {
+        const auto byte = static_cast<unsigned char>(character);
+        return byte >= 0x20U || byte == static_cast<unsigned char>('\n');
+    });
+}
 
 TEST(SemanticManifestTest, RenderValidJson) {
     semantic::SemanticManifest manifest;
@@ -115,21 +134,8 @@ TEST(SemanticManifestTest, JsonStringEscapesEntireControlRangeAndPreservesUtf8) 
     manifest.workloads.push_back(workload);
 
     const auto json = semantic::render_manifest_json(manifest);
-    EXPECT_NE(json.find("\\u0000"), std::string::npos);
-    EXPECT_NE(json.find("\\u0001"), std::string::npos);
-    EXPECT_NE(json.find("\\b"), std::string::npos);
-    EXPECT_NE(json.find("\\f"), std::string::npos);
-    EXPECT_NE(json.find("\\u001F"), std::string::npos);
-    EXPECT_NE(json.find("\\\""), std::string::npos);
-    EXPECT_NE(json.find("\\\\"), std::string::npos);
-    EXPECT_NE(json.find("\\n"), std::string::npos);
-    EXPECT_NE(json.find("\\r"), std::string::npos);
-    EXPECT_NE(json.find("\\t"), std::string::npos);
-    EXPECT_NE(json.find("\xC3\xA9"), std::string::npos);
-    for (const char character : json) {
-        const auto byte = static_cast<unsigned char>(character);
-        EXPECT_TRUE(byte >= 0x20U || byte == static_cast<unsigned char>('\n'));
-    }
+    EXPECT_TRUE(contains_every_escape(json));
+    EXPECT_TRUE(has_only_permitted_json_bytes(json));
 }
 
 TEST(SemanticManifestTest, FixtureSetIdDeterministic) {

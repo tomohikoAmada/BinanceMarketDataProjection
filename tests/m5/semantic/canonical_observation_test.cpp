@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -53,32 +54,37 @@ oracle::CanonicalGapEvidence make_gap() {
     return gap;
 }
 
-void expect_canonical_line_discipline(const std::string& text) {
-    ASSERT_FALSE(text.empty());
-    EXPECT_EQ(text.back(), '\n');
-    ASSERT_GT(text.size(), 1U);
-    EXPECT_NE(text[text.size() - 2], '\n');
-    EXPECT_EQ(text.find('\r'), std::string::npos);
-    EXPECT_EQ(text.find('\t'), std::string::npos);
-    EXPECT_EQ(text.find("  "), std::string::npos);
-
-    for (const char character : text) {
+[[nodiscard]] bool has_only_canonical_control_bytes(std::string_view text) {
+    return std::ranges::all_of(text, [](char character) {
         const auto byte = static_cast<unsigned char>(character);
-        if (byte < 0x20U) {
-            EXPECT_EQ(byte, static_cast<unsigned char>('\n'));
-        }
-    }
+        return byte >= 0x20U || byte == static_cast<unsigned char>('\n');
+    });
+}
 
-    std::size_t line_start = 0;
-    while (line_start < text.size()) {
-        const auto line_end = text.find('\n', line_start);
-        ASSERT_NE(line_end, std::string::npos);
-        const std::string_view line{text.data() + line_start, line_end - line_start};
-        ASSERT_FALSE(line.empty());
-        EXPECT_NE(line.front(), ' ');
-        EXPECT_NE(line.back(), ' ');
-        line_start = line_end + 1;
+[[nodiscard]] bool has_only_canonical_physical_lines(std::string_view text) {
+    while (!text.empty()) {
+        const auto line_end = text.find('\n');
+        if (line_end == std::string_view::npos) {
+            return false;
+        }
+        const auto line = text.substr(0, line_end);
+        if (line.empty() || line.front() == ' ' || line.back() == ' ') {
+            return false;
+        }
+        text.remove_prefix(line_end + 1U);
     }
+    return true;
+}
+
+[[nodiscard]] bool is_canonical_line_disciplined(std::string_view text) {
+    return text.size() > 1U && text.back() == '\n' && text.at(text.size() - 2U) != '\n' &&
+           text.find('\r') == std::string_view::npos && text.find('\t') == std::string_view::npos &&
+           text.find("  ") == std::string_view::npos && has_only_canonical_control_bytes(text) &&
+           has_only_canonical_physical_lines(text);
+}
+
+void expect_canonical_line_discipline(const std::string& text) {
+    EXPECT_TRUE(is_canonical_line_disciplined(text));
 }
 
 TEST(CanonicalObservationTest, SchemaVersionIsFrozen) {
