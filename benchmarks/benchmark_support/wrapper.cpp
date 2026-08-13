@@ -46,7 +46,7 @@ namespace {
 
 [[nodiscard]] std::vector<std::string> split_conan_references() {
     std::vector<std::string> references;
-    std::istringstream stream(BMD_P6_CONAN_REFERENCES);
+    std::istringstream stream{std::string{BMD_P6_CONAN_REFERENCES}};
     std::string reference;
     while (std::getline(stream, reference, ';')) {
         if (!reference.empty()) {
