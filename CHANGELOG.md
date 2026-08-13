@@ -13,7 +13,11 @@ All notable changes will be recorded here.
   seven operation variants reachable, 10 mandatory checked-in seed categories with structural
   validator, shared `cmake/M5Support.cmake` for single-source replay/oracle/reference reuse,
   fifth fuzz-smoke target (10,000-run CI smoke). Production `src/`/`include/` unchanged.
-  Existing four fuzzers preserved. IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW.
+  Existing four fuzzers preserved. Phase 5 is COMPLETE / MERGED via PR #18 (final approved
+  Head `e56f5dbd12b9e66946343467221e8e3ba9984531`; exact-head CI `31668465623` — 18/18 PASS;
+  final focused independent review APPROVED, P0=0, P1=0, P2=0; squash merge
+  `53268d5cd2090f4779ffdc14c070184f470cc899`; post-merge main CI `31671708958` — 18/18 PASS).
+  M4-IIR-3: CLOSED.
   `docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`. Phase 6 is NOT STARTED.
 
 ### Changed
@@ -25,7 +29,8 @@ All notable changes will be recorded here.
   fuzz-instrumented with compile-database enforcement. Also tightened shared event-level and
   quality-fact bounds and preserved inverted-update byte framing. Production `src/`/`include/`
   remain unchanged. A final independent review closed M4-IIR-3 and requested two focused P1
-  corrections; Phase 5 remains IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW.
+  corrections; the corrections were applied and Phase 5 subsequently passed final focused
+  independent re-review and was merged (see the Added entry above).
 
 - Corrected the two remaining Phase-5 P1 findings without production changes: actual snapshot
   source/current-gap wire enums now fail closed at the test observation boundary, including

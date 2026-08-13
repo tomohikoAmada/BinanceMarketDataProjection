@@ -267,9 +267,8 @@ No M5 production change or container migration is authorized by the design.
 
 OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions and CI policy
 are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
-M5 implementation is authorized. Phases 1, 2, 3, and 4 are complete and merged; Phase 5
-is IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW
-(`feat/m5-differential-replay-fuzzing`).
+M5 implementation is authorized. Phases 1, 2, 3, 4, and 5 are complete and merged; Phase 5
+is COMPLETE / MERGED (evidence in the Phase-5 record below).
 Phase 6 is NOT STARTED.
 
 Phase 1 canonical replay infrastructure is **COMPLETE / MERGED** (PR #11, merge
@@ -313,8 +312,11 @@ fixture-set identity, the four authoritative workloads, fixture hashes, and sema
 `docs/M5_PHASE4_CROSS_COMPILER_SEMANTIC_MANIFESTS.md`.
 No production-code change.
 
-Phase 5 (differential replay fuzzing) is **IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW** via
-`feat/m5-differential-replay-fuzzing`: direct structured byte decoder, bounded deterministic
+Phase 5 (differential replay fuzzing) is **COMPLETE / MERGED** via PR #18 (final approved Head
+`e56f5dbd12b9e66946343467221e8e3ba9984531`; exact-head CI `31668465623` — PASS 18/18; final
+focused independent review APPROVED, P0: 0, P1: 0, P2: 0; squash merge
+`53268d5cd2090f4779ffdc14c070184f470cc899`; post-merge main CI `31671708958` — PASS 18/18):
+direct structured byte decoder, bounded deterministic
 `LLVMFuzzerTestOneInput`, production/reference ReplayDriver comparison, Core and Adapter mode
 coverage, Spot and USD-M market coverage, libFuzzer abort on first divergence, 10 mandatory
 checked-in seed categories with structural validation, fifth fuzz-smoke target (10,000-run
@@ -328,6 +330,8 @@ units receive fuzz-only `fuzzer-no-link` + ASan + UBSan instrumentation verified
 commands. Snapshot source/current-gap wire enum extraction fails closed rather than legalizing
 unspecified or unknown values, and manifest rendering accepts only V1/V1 or V2/V2 while preserving
 the exact historical V1 JSON shape. M4-IIR-3 is CLOSED by final independent Phase-5 review evidence.
+Post-merge GNU/Clang/AppleClang Release manifests record `head_sha`
+`53268d5cd2090f4779ffdc14c070184f470cc899` and agree on all four authoritative semantic digests.
 `docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`. Phase 6 is NOT STARTED.
 
 ### M3 Spot successor-coverage correction (2026-08-10)

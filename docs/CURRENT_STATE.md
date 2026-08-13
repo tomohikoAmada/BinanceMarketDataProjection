@@ -25,28 +25,32 @@ orientation only.
 
 ## Current Main
 
-- `origin/main`: `d287c08ed362c5202f25eb77b411bd24bb82cef0` (post-merge Phase-4 documentation
-  synchronization PR #17, on top of the Phase-4 squash merge
-  `7b6d9ef3b222675138fdd34f3fed381216fe9d02`).
+- Phase-5 implementation merge baseline: `53268d5cd2090f4779ffdc14c070184f470cc899` (PR #18
+  squash merge, on top of the post-merge Phase-4 documentation synchronization PR #17 at
+  `d287c08ed362c5202f25eb77b411bd24bb82cef0`). Main advances as documentation-state PRs merge;
+  see Git history for the current tip.
 - M0-M4 are complete on main.
-- M5 Phase 1, Phase 2, Phase 3, and Phase 4 are complete/merged on main.
+- M5 Phase 1 through Phase 5 are complete/merged on main.
 - ADR-0008 is ACCEPTED: Spot bootstrap uses successor coverage (`U <= L + 1 <= u`,
   overflow-guarded); exact-next `[L+1, ...]` is a valid bridge; `U > L + 1` is the true gap.
   ADR-0008 supersedes only the Spot-bootstrap contains-`L` portion of ADR-0005; USD-M semantics
   are unchanged.
 
-## Active Candidate / Pull Request
+## Recent Pull Requests / Active Candidate
 
-- PR #18, `Implement M5 differential replay fuzzing`, is OPEN / DRAFT / UNMERGED on
-  `feat/m5-differential-replay-fuzzing`. The final blocking-correction work started from Head
-  `95c9bc8918eaa4d3447648a6ad3698d445ec8dcb`; its pre-correction exact-head CI run
-  `31620426837` passed 18/18. Current GitHub Head and exact-head CI remain authoritative.
-- No active Phase-4 candidate: PR #16, `Implement M5 cross-compiler semantic manifests`, is
+- PR #18, `Implement M5 differential replay fuzzing`, is MERGED (squash merge
+  `53268d5cd2090f4779ffdc14c070184f470cc899`; final approved Head
+  `e56f5dbd12b9e66946343467221e8e3ba9984531`; exact-head CI `31668465623` — 18/18 PASS;
+  post-merge main CI `31671708958` — 18/18 PASS). The final blocking-correction work started
+  from Head `95c9bc8918eaa4d3447648a6ad3698d445ec8dcb`; its pre-correction exact-head CI run
+  `31620426837` passed 18/18. Its remote branch `feat/m5-differential-replay-fuzzing` has been
+  deleted. No active Phase-5 candidate remains.
+- Phase-4 record: PR #16, `Implement M5 cross-compiler semantic manifests`, is
   MERGED (squash merge `7b6d9ef3b222675138fdd34f3fed381216fe9d02`; approved Head
   `b612f85d281315346c0ccf6f599d51af538e3cf4`; exact-head CI `31571166506` — 18/18 PASS;
   post-merge main CI `31576511096` — 18/18 PASS). Its remote branch
   `feat/m5-cross-compiler-semantic-manifests` has been deleted.
-- No active Phase-3 candidate: PR #13, `Implement M5 deterministic replay validation`, is
+- Phase-3 record: PR #13, `Implement M5 deterministic replay validation`, is
   MERGED (squash merge `473a907eba2001d18926c57d6c8d16b10c7505be`). Its remote branch
   `feat/m5-deterministic-replay-validation` has been deleted.
 
@@ -75,6 +79,24 @@ artifact is a separate identity and remains outside Projection ownership.
   exact-evidence-checkout `m5-semantic-compare` blocking job. Post-merge GNU/Clang/AppleClang
   Release manifests agree on fixture-set `c688c046c1dcfc08a87a1d3737a6760598d5af0fa1338ba87087059127310e27`,
   the four authoritative workloads, fixture hashes, and semantic digests. No production-code change.
+- M5 Phase 5: COMPLETE / MERGED (PR #18; final approved Head
+  `e56f5dbd12b9e66946343467221e8e3ba9984531`; exact-head CI `31668465623` — PASS 18/18; final
+  focused independent review APPROVED, P0: 0, P1: 0, P2: 0; squash merge
+  `53268d5cd2090f4779ffdc14c070184f470cc899`; post-merge main CI `31671708958` — PASS 18/18).
+  Delivered: direct structured byte decoder, bounded deterministic
+  `LLVMFuzzerTestOneInput`, production/reference ReplayDriver comparison, Core and Adapter mode
+  coverage, Spot and USD-M market coverage, libFuzzer abort on first divergence, 10 mandatory
+  checked-in replay seed categories with structural validation, fifth fuzz-smoke target
+  (10,000-run CI smoke), and shared `cmake/M5Support.cmake` reuse. Post-merge
+  GNU/Clang/AppleClang Release manifests record `head_sha`
+  `53268d5cd2090f4779ffdc14c070184f470cc899` (schema `M5_SEMANTIC_MANIFEST_V2`, observation
+  schema `M5_SEMANTIC_OBSERVATION_V2`), agree on the fixture-set
+  `c688c046c1dcfc08a87a1d3737a6760598d5af0fa1338ba87087059127310e27` and the four authoritative
+  semantic digests (Core Spot `988e96d69f20748af758fd6a9273d2bc3b3d08680a98047c249f1bc0ab07d9e7`,
+  Core USD-M `1b6c0b11a4a601f3efc091c737ba9ddb60b2984854ebdfdf6a2cf3504f74b1fb`,
+  Adapter Spot `797001c2516994ea45b180047dfa2531dba9423d2653027412de9fa7207b55e6`,
+  Adapter USD-M `b9cdd80f6678e771e01d6f238713d3412ce84b99009a0942cf2fe90fba564e74`),
+  cross-compiler semantic equality PASS. No production-code change.
 - Spot mandatory 100k evidence is validated lifecycle-valid under ADR-0008: exact-next bridge
   `U=98288147168 u=98288147175` against `L=98288147167` Applied/Synchronized, 100,001 Applied
   operations, zero gaps, final Synchronized.
@@ -83,13 +105,6 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Not Implemented
 
-- Phase 5 (replay differential fuzzing) is IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW
-  (PR #18, `feat/m5-differential-replay-fuzzing`). Its candidate includes complete snapshot
-  wire-identity observation with explicit observation/manifest V2 schema evolution, substantive
-  structural evidence for all ten mandatory seeds, AdapterEnabled depth/quality replay coverage,
-  fuzz-only instrumentation of reused M5 support translation units, fail-closed snapshot wire-enum
-  extraction, and byte-stable version-aware V1/V2 manifest rendering. M4-IIR-3 is CLOSED by final
-  independent Phase-5 review evidence.
 - Phase 6 (benchmarks) is NOT STARTED.
 - Phase 7 (allocation/memory) is NOT STARTED.
 - Phase 8 (container spike) is NOT STARTED.
@@ -99,8 +114,9 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Current Blockers
 
-- Phase 5 remains a draft candidate pending focused independent re-review; no completion or merge
-  is claimed here.
+- No implementation blockers: Phase 5 is COMPLETE / MERGED on main and no active Phase-5
+  implementation candidate remains. Phase 6 (benchmarks) is NOT STARTED and remains
+  unauthorized.
 
 ## Accepted Semantic Authorities
 
@@ -144,21 +160,30 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
   UBSan, benchmark smoke, fuzz smoke, Release GCC/Clang/AppleClang, all M4 static/shared gates,
   `m5-replay`, `m5-semantic-compare`). Its semantic evidence manifests record `head_sha`
   `7b6d9ef3b222675138fdd34f3fed381216fe9d02` and pass cross-compiler semantic equality.
+- PR #18 approved exact-head CI run `31668465623` for the final approved head
+  `e56f5dbd12b9e66946343467221e8e3ba9984531` completed `success` — 18/18 jobs PASS. This is the
+  acceptance evidence for the merged Phase-5 implementation.
+- Post-merge main push run `31671708958` at Phase-5 merge
+  `53268d5cd2090f4779ffdc14c070184f470cc899` completed `success` — 18/18 jobs PASS (quality, ASan,
+  UBSan, benchmark smoke, fuzz smoke, Release GCC/Clang/AppleClang, all M4 static/shared gates,
+  `m5-replay`, `m5-semantic-compare`). Its semantic evidence manifests record `head_sha`
+  `53268d5cd2090f4779ffdc14c070184f470cc899` (schema `M5_SEMANTIC_MANIFEST_V2`, observation
+  schema `M5_SEMANTIC_OBSERVATION_V2`) and pass cross-compiler semantic equality.
 - PR #16 rejected reviewed Head `bf2239206ff74e11e3ce73de73f28465b033f808` had successful run
   `31559019189`, but independent semantic review found seven P1 defects. That historical green run
   is rejection/correction history and is not acceptance evidence for the merged implementation.
 
 ## Next Authorized Step
 
-Phase 4 is complete and merged. Phase 5 (replay differential fuzzing) is IMPLEMENTED / PENDING
-FOCUSED INDEPENDENT RE-REVIEW via `feat/m5-differential-replay-fuzzing` (PR open, DRAFT).
-Phase 6 is NOT STARTED.
+Phase 5 is complete and merged (PR #18, squash merge
+`53268d5cd2090f4779ffdc14c070184f470cc899`). Phase 6 (benchmarks) is NOT STARTED and remains
+unauthorized.
 
 ## AI / Reviewer Reading Order
 
 Read `docs/CURRENT_STATE.md`, `AGENTS.md`, `README.md`, `ARCHITECTURE.md`, `docs/MILESTONES.md`,
 the M5 phase/design documents, accepted ADR-0007 and ADR-0008, actual code/tests, and the merged
-PR #16 record plus its exact-head CI. Do not trust this file alone for independent review.
+PR #18 record plus its exact-head CI. Do not trust this file alone for independent review.
 
 ## Historical Documents
 
