@@ -2,7 +2,7 @@
 
 ## Status
 
-**IMPLEMENTED / PENDING INDEPENDENT REVIEW**
+**IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW**
 
 NOT MERGED. Do not mark COMPLETE before independent implementation review.
 
@@ -275,13 +275,28 @@ All four existing fuzz targets are unchanged:
 
 ## M4-IIR-3
 
-**IMPLEMENTED COVERAGE / CLOSURE PENDING INDEPENDENT REVIEW**
+**CLOSED BY FINAL INDEPENDENT PHASE-5 REVIEW EVIDENCE**
 
 The AdapterEnabled quality seed exercises inbound adapter-observed quality, distinct eligible host
 snapshot facts, and Core-derived `CrossedBook` output in one deterministic replay. Focused tests
 prove all three domains are present and do not leak into one another. ReplayDriver differential
-comparison provides the oracle. Final closure decision belongs to the independent implementation
-reviewer.
+comparison provides the oracle. Final independent Phase-5 review evidence closed M4-IIR-3. The
+remaining focused re-review scope is limited to the two corrected P1 findings described below; it
+does not reopen this coverage finding.
+
+## Final two-P1 correction
+
+The production observation boundary now maps `SnapshotSource`, current-gap `ResyncState`, and
+current-gap `ReasonCode` through explicit fallible conversions. Only the accepted M4 output values
+produce canonical semantics. Unspecified, known-but-invalid-for-this-field, and unknown numeric
+values return a test-only extraction error and cannot compare equal to the valid independent R4
+prediction.
+
+Semantic manifest rendering is version aware. `M5_SEMANTIC_MANIFEST_V1` pairs only with
+`M5_SEMANTIC_OBSERVATION_V1` and renders the exact historical V1 JSON shape without an
+`observation_schema_version` member. `M5_SEMANTIC_MANIFEST_V2` pairs only with
+`M5_SEMANTIC_OBSERVATION_V2` and includes that member. Mixed, empty, or unknown pairings fail before
+JSON is produced. The current producer and exact-head comparator remain V2/V2.
 
 ## OD-M5-003
 

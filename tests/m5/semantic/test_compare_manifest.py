@@ -216,10 +216,27 @@ class CrossCompilerTest(unittest.TestCase):
             json.dump(manifest, handle)
         self.assert_cross_fails()
 
-    def test_historical_observation_schema_fails_closed(self):
+    def test_current_manifest_historical_observation_pair_fails(self):
         write_manifest(
             self.clang,
             observation_schema_version="M5_SEMANTIC_OBSERVATION_V1",
+            toolchain=toolchain("Clang", "18.1.3", "Linux", "x86_64"),
+        )
+        self.assert_cross_fails()
+
+    def test_historical_manifest_current_observation_pair_fails(self):
+        write_manifest(
+            self.clang,
+            schema_version="M5_SEMANTIC_MANIFEST_V1",
+            observation_schema_version="M5_SEMANTIC_OBSERVATION_V2",
+            toolchain=toolchain("Clang", "18.1.3", "Linux", "x86_64"),
+        )
+        self.assert_cross_fails()
+
+    def test_unknown_observation_schema_fails(self):
+        write_manifest(
+            self.clang,
+            observation_schema_version="M5_SEMANTIC_OBSERVATION_V99",
             toolchain=toolchain("Clang", "18.1.3", "Linux", "x86_64"),
         )
         self.assert_cross_fails()

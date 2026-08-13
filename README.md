@@ -280,7 +280,8 @@ The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
 - M5 is **APPROVED / MERGED / IN PROGRESS**; Phases 1, 2, 3, and 4 are COMPLETE / MERGED (Phase 3
   Spot and USD-M 100k corpora validated PASS from the pinned authoritative source under ADR-0008
   successor coverage; Phase 4 cross-compiler GNU/Clang/AppleClang semantic equality PASS).
-  Phase 5 is IMPLEMENTED / PENDING INDEPENDENT REVIEW (`feat/m5-differential-replay-fuzzing`).
+  Phase 5 is IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW
+  (`feat/m5-differential-replay-fuzzing`).
   M6 is not started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.

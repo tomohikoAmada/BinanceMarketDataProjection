@@ -83,12 +83,13 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Not Implemented
 
-- Phase 5 (replay differential fuzzing) is IMPLEMENTED / PENDING INDEPENDENT REVIEW
+- Phase 5 (replay differential fuzzing) is IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW
   (PR #18, `feat/m5-differential-replay-fuzzing`). Its candidate includes complete snapshot
   wire-identity observation with explicit observation/manifest V2 schema evolution, substantive
   structural evidence for all ten mandatory seeds, AdapterEnabled depth/quality replay coverage,
-  and fuzz-only instrumentation of reused M5 support translation units. M4-IIR-3 is IMPLEMENTED
-  COVERAGE / CLOSURE PENDING INDEPENDENT REVIEW.
+  fuzz-only instrumentation of reused M5 support translation units, fail-closed snapshot wire-enum
+  extraction, and byte-stable version-aware V1/V2 manifest rendering. M4-IIR-3 is CLOSED by final
+  independent Phase-5 review evidence.
 - Phase 6 (benchmarks) is NOT STARTED.
 - Phase 7 (allocation/memory) is NOT STARTED.
 - Phase 8 (container spike) is NOT STARTED.
@@ -98,8 +99,8 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Current Blockers
 
-- Phase 5 remains a draft candidate pending exact-head CI and independent implementation review;
-  no completion or merge is claimed here.
+- Phase 5 remains a draft candidate pending correction exact-head CI and focused independent
+  re-review; no completion or merge is claimed here.
 
 ## Accepted Semantic Authorities
 
@@ -150,8 +151,8 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 ## Next Authorized Step
 
 Phase 4 is complete and merged. Phase 5 (replay differential fuzzing) is IMPLEMENTED / PENDING
-INDEPENDENT REVIEW via `feat/m5-differential-replay-fuzzing` (PR open, DRAFT). Phase 6 is
-NOT STARTED.
+FOCUSED INDEPENDENT RE-REVIEW via `feat/m5-differential-replay-fuzzing` (PR open, DRAFT).
+Phase 6 is NOT STARTED.
 
 ## AI / Reviewer Reading Order
 

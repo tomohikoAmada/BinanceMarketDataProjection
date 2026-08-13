@@ -163,7 +163,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::cout << "M5 Semantic Manifest Producer v1\n";
+    std::cout << "M5 Semantic Manifest Producer v2\n";
     std::cout << "HEAD: " << args.head_sha << '\n';
 
     std::cout << "Generating Spot workload...\n";

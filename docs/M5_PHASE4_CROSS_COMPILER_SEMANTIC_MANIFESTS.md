@@ -150,7 +150,9 @@ Current evidence uses manifest schema `M5_SEMANTIC_MANIFEST_V2`, which adds the 
 The comparator accepts only this current manifest/observation schema pair and still requires the
 exact expected Head SHA. Thus cross-head comparison remains forbidden and the digest's canonical
 byte meaning is unambiguous. Historical Phase-4 V1 manifests remain historical evidence; they are
-not accepted as current Phase-5 evidence.
+not accepted as current Phase-5 evidence. The version-aware renderer accepts only V1/V1 and V2/V2:
+V1 omits `observation_schema_version` exactly as the accepted historical renderer did, while V2
+requires and emits it. Mixed, empty, and unknown schema pairings fail closed before rendering.
 
 ## Semantic Digest
 

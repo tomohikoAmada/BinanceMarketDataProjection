@@ -268,7 +268,8 @@ No M5 production change or container migration is authorized by the design.
 OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions and CI policy
 are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
 M5 implementation is authorized. Phases 1, 2, 3, and 4 are complete and merged; Phase 5
-is IMPLEMENTED / PENDING INDEPENDENT REVIEW (`feat/m5-differential-replay-fuzzing`).
+is IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW
+(`feat/m5-differential-replay-fuzzing`).
 Phase 6 is NOT STARTED.
 
 Phase 1 canonical replay infrastructure is **COMPLETE / MERGED** (PR #11, merge
@@ -312,7 +313,7 @@ fixture-set identity, the four authoritative workloads, fixture hashes, and sema
 `docs/M5_PHASE4_CROSS_COMPILER_SEMANTIC_MANIFESTS.md`.
 No production-code change.
 
-Phase 5 (differential replay fuzzing) is **IMPLEMENTED / PENDING INDEPENDENT REVIEW** via
+Phase 5 (differential replay fuzzing) is **IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW** via
 `feat/m5-differential-replay-fuzzing`: direct structured byte decoder, bounded deterministic
 `LLVMFuzzerTestOneInput`, production/reference ReplayDriver comparison, Core and Adapter mode
 coverage, Spot and USD-M market coverage, libFuzzer abort on first divergence, 10 mandatory
@@ -324,7 +325,9 @@ duplicate plus stale ranges, exact decimal token categories, and AdapterEnabled 
 paths. Snapshot comparison observes actual venue, market, and schema through explicit observation
 V2 / manifest V2 evolution while retaining historical V1 bytes. Reused M5 support translation
 units receive fuzz-only `fuzzer-no-link` + ASan + UBSan instrumentation verified from compile
-commands. M4-IIR-3 coverage is implemented, with closure pending independent review.
+commands. Snapshot source/current-gap wire enum extraction fails closed rather than legalizing
+unspecified or unknown values, and manifest rendering accepts only V1/V1 or V2/V2 while preserving
+the exact historical V1 JSON shape. M4-IIR-3 is CLOSED by final independent Phase-5 review evidence.
 `docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`. Phase 6 is NOT STARTED.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
