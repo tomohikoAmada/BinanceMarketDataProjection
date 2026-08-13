@@ -92,6 +92,7 @@ target_link_options(
 # M5 Phase-5 differential replay fuzzer: reuses the same replay/oracle/reference
 # source as the deterministic tests via cmake/M5Support.cmake.
 include("${PROJECT_SOURCE_DIR}/cmake/M5Support.cmake")
+bmd_projection_enable_m5_fuzz_support_instrumentation()
 
 add_executable(
     bmd_projection_replay_fuzz

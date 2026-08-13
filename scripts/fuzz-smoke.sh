@@ -53,6 +53,9 @@ cmake --build --preset fuzz --target bmd_projection_order_book_fuzz
 cmake --build --preset fuzz --target bmd_projection_book_projection_fuzz
 cmake --build --preset fuzz --target bmd_projection_proto_adapter_fuzz
 
+python3 scripts/check-m5-fuzz-instrumentation.py \
+    "$repo_root/build/fuzz/cmake/compile_commands.json"
+
 echo "Running decimal parser fuzz: $decimal_fuzz_runs inputs"
 "$repo_root/build/fuzz/cmake/fuzz/bmd_projection_decimal_parser_fuzz" \
     "$repo_root/fuzz/corpus/decimal_parser" \

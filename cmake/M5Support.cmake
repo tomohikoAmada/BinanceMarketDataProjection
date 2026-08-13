@@ -81,3 +81,35 @@ if(NOT TARGET bmd_projection_m5_reference_support)
   )
   bmd_projection_apply_project_options(bmd_projection_m5_reference_support)
 endif()
+
+# Static M5 replay/oracle/reference support is also part of the libFuzzer
+# execution path. The final fuzzer link supplies the runtime; support objects
+# need fuzzer-no-link plus the same ASan/UBSan instrumentation at compile time.
+function(bmd_projection_enable_m5_fuzz_support_instrumentation)
+  foreach(
+      support_target
+      IN ITEMS
+          bmd_projection_m5_replay_support
+          bmd_projection_m5_oracle_support
+          bmd_projection_m5_reference_support
+  )
+    if(NOT TARGET "${support_target}")
+      message(FATAL_ERROR "missing M5 fuzz support target: ${support_target}")
+    endif()
+    get_property(
+        already_instrumented
+        TARGET "${support_target}"
+        PROPERTY BMD_M5_FUZZ_INSTRUMENTED
+    )
+    if(NOT already_instrumented)
+      target_compile_options(
+          "${support_target}"
+          PRIVATE -fsanitize=fuzzer-no-link,address,undefined -fno-omit-frame-pointer
+      )
+      set_property(
+          TARGET "${support_target}"
+          PROPERTY BMD_M5_FUZZ_INSTRUMENTED TRUE
+      )
+    endif()
+  endforeach()
+endfunction()
