@@ -2,28 +2,8 @@ find_package(GTest CONFIG REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 include("${PROJECT_SOURCE_DIR}/cmake/M5Support.cmake")
-
-add_library(
-    bmd_projection_m5_phase3_support
-    m5/phase3/medium_validity.cpp
-    m5/phase3/small_workload.cpp
-)
-target_include_directories(
-    bmd_projection_m5_phase3_support
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/m5/phase3
-)
-target_link_libraries(
-    bmd_projection_m5_phase3_support
-    PUBLIC bmd_projection_m5_oracle_support
-)
-set_target_properties(
-    bmd_projection_m5_phase3_support
-    PROPERTIES
-        CXX_STANDARD 20
-        CXX_STANDARD_REQUIRED YES
-        CXX_EXTENSIONS NO
-)
-bmd_projection_apply_project_options(bmd_projection_m5_phase3_support)
+include("${PROJECT_SOURCE_DIR}/cmake/M5BenchmarkSupport.cmake")
+bmd_projection_generate_benchmark_build_identity()
 
 add_library(
     bmd_projection_m5_semantic_support
@@ -408,17 +388,67 @@ set_target_properties(
 )
 bmd_projection_apply_project_options(bmd_projection_m3_allocation_failure_tests)
 
+# M5 Phase-6: deterministic tests for the benchmark support components.
+add_executable(
+    bmd_projection_m5_benchmark_support_tests
+    m5/benchmark/benchmark_support_test.cpp
+)
+target_link_libraries(
+    bmd_projection_m5_benchmark_support_tests
+    PRIVATE
+        bmd_projection_m5_benchmark_support
+        bmd_projection_m5_phase3_support
+        GTest::gtest_main
+)
+set_target_properties(
+    bmd_projection_m5_benchmark_support_tests
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_benchmark_support_tests)
+if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
+    target_sources(
+        bmd_projection_m5_benchmark_support_tests
+        PRIVATE
+            m5/benchmark/adapter_benchmark_support_test.cpp
+            "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/adapter_wire_support.cpp"
+            "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/adapter_replay_executor.cpp"
+    )
+    target_compile_definitions(
+        bmd_projection_m5_benchmark_support_tests
+        PRIVATE BMD_PROJECTION_PHASE6_ADAPTER_ENABLED=1
+    )
+    target_link_libraries(
+        bmd_projection_m5_benchmark_support_tests
+        PRIVATE BinanceMarketDataProjection::ProtoAdapter
+    )
+endif()
+
 include(GoogleTest)
 gtest_discover_tests(bmd_projection_tests)
 gtest_discover_tests(bmd_projection_m3_allocation_failure_tests)
 gtest_discover_tests(bmd_projection_m5_replay_tests)
 gtest_discover_tests(bmd_projection_m5_differential_tests)
 gtest_discover_tests(bmd_projection_m5_semantic_tests)
+gtest_discover_tests(bmd_projection_m5_benchmark_support_tests)
 add_test(
     NAME m5_semantic_comparator_tests
     COMMAND ${Python3_EXECUTABLE} -m unittest discover
             -s ${CMAKE_CURRENT_SOURCE_DIR}/m5/semantic
             -p test_compare_manifest.py
+)
+add_test(
+    NAME m5_benchmark_validator_tests
+    COMMAND ${Python3_EXECUTABLE} -m unittest discover
+            -s ${CMAKE_CURRENT_SOURCE_DIR}/m5/benchmark
+            -p test_phase6_validators.py
+)
+set_tests_properties(
+    m5_benchmark_validator_tests
+    PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}"
 )
 add_test(
     NAME m5_materializer_tests
