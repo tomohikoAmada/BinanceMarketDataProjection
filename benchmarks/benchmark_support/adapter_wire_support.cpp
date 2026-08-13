@@ -184,6 +184,19 @@ void apply_pending_quality(market_wire::DepthUpdate& wire,
 
 } // namespace
 
+PreconstructedEntry::PreconstructedEntry()
+    : kind{PreconstructedKind::Baseline}, rebaseline_last_update_id{0},
+      snapshot_context{{"", core::SequencePolicyKind::Spot},
+                       "",
+                       "",
+                       adapter::SnapshotOrigin::GatewayLive,
+                       0,
+                       std::nullopt,
+                       std::nullopt},
+      snapshot_options{std::nullopt, {}}, malformed_first{0}, malformed_final{0},
+      conversion_spec{required_scale(2), required_scale(3)},
+      expected{"", core::SequencePolicyKind::Spot} {}
+
 WireIdentity benchmark_wire_identity() {
     return {benchmark_numeric_spec(), {"BTCUSDT", core::SequencePolicyKind::Spot}};
 }

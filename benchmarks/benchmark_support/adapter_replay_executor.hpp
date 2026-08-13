@@ -45,7 +45,7 @@ class AdapterReplayExecutor final {
 
   private:
     const replay::ReplayFixture* fixture_;
-    std::vector<adapter_support::PreconstructedEntry> entries_{};
+    std::vector<adapter_support::PreconstructedEntry> entries_;
     core::NumericSpec numeric_spec_;
     core::SequencePolicyKind policy_;
     std::uint64_t expected_checksum_{0};

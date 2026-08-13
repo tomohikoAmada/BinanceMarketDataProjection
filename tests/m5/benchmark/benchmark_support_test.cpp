@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -35,7 +36,14 @@ namespace core = binance_market_data::projection::v1;
 namespace bm = bmd_projection::m5::benchmark;
 namespace phase3 = bmd_projection::m5::phase3;
 
-[[nodiscard]] core::DecimalScale scale_8() { return *core::DecimalScale::create(8); }
+template <typename T> [[nodiscard]] T required_value(std::optional<T> value) {
+    if (!value.has_value()) {
+        std::abort();
+    }
+    return *value;
+}
+
+[[nodiscard]] core::DecimalScale scale_8() { return required_value(core::DecimalScale::create(8)); }
 
 struct ApplyLevelPreparedState final {
     std::string workload_hash;
@@ -94,6 +102,70 @@ capture_apply_updates_state(const bm::M2ApplyUpdatesCell& cell) {
     return true;
 }
 
+[[nodiscard]] bool all_names_have_accepted_prefix(const std::vector<std::string>& names) {
+    return std::all_of(names.begin(), names.end(), [](const std::string& name) {
+        return name.starts_with("M3/LiveApply/Accepted/");
+    });
+}
+
+[[nodiscard]] std::size_t count_policy_names(const std::vector<std::string>& names,
+                                             std::string_view policy) {
+    return static_cast<std::size_t>(
+        std::count_if(names.begin(), names.end(), [policy](const std::string& name) {
+            return name.find(std::string{policy} + "/") != std::string::npos;
+        }));
+}
+
+[[nodiscard]] bool classification_apply_matches(core::SequencePolicyKind policy,
+                                                bm::M3ClassificationKind kind,
+                                                core::ApplyDisposition expected) {
+    bm::M3ClassificationCell cell{bm::M3ClassificationCell::Config{kind, policy, 8}};
+    cell.prepare();
+    const auto step_count = cell.uses_pool() ? cell.pool_size() : 32U;
+    for (std::size_t index = 0; index < step_count; ++index) {
+        if (cell.execute_step(index).apply_disposition != expected) {
+            return false;
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] bool classification_reset_matches(core::SequencePolicyKind policy) {
+    bm::M3ClassificationCell cell{bm::M3ClassificationCell::Config{
+        bm::M3ClassificationKind::Reset, policy, bm::kM3ClassificationDepth}};
+    cell.prepare();
+    for (std::size_t index = 0; index < cell.pool_size(); ++index) {
+        if (cell.execute_step(index).status_after != core::ProjectionStatus::AwaitingBaseline) {
+            return false;
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] bool classification_baseline_install_matches(core::SequencePolicyKind policy) {
+    bm::M3ClassificationCell cell{bm::M3ClassificationCell::Config{
+        bm::M3ClassificationKind::BaselineInstall, policy, bm::kM3ClassificationDepth}};
+    cell.prepare();
+    for (std::size_t index = 0; index < cell.pool_size(); ++index) {
+        const auto result = cell.execute_step(index);
+        if (result.install_disposition != core::InstallDisposition::Installed ||
+            result.status_after != core::ProjectionStatus::AwaitingBridge) {
+            return false;
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] bool classification_table_matches(core::SequencePolicyKind policy) {
+    return classification_apply_matches(policy, bm::M3ClassificationKind::Stale,
+                                        core::ApplyDisposition::IgnoredStale) &&
+           classification_apply_matches(policy, bm::M3ClassificationKind::Duplicate,
+                                        core::ApplyDisposition::IgnoredDuplicate) &&
+           classification_apply_matches(policy, bm::M3ClassificationKind::Gap,
+                                        core::ApplyDisposition::GapDetected) &&
+           classification_reset_matches(policy) && classification_baseline_install_matches(policy);
+}
+
 // ---------------------------------------------------------------------------
 // M1 normative semantic table (OD-M5-P6-003).
 // ---------------------------------------------------------------------------
@@ -147,16 +219,14 @@ TEST(Phase6M1Cases, NormativeSemanticTable) {
         EXPECT_EQ(std::get<core::DecimalError>(result).code, core::DecimalErrorCode::InvalidSyntax);
     }
     {
-        const auto value = core::PriceUnits::create(123'456'789);
-        ASSERT_TRUE(value.has_value());
-        const auto result = core::format_price_fixed(*value, scale_8());
+        const auto value = required_value(core::PriceUnits::create(123'456'789));
+        const auto result = core::format_price_fixed(value, scale_8());
         ASSERT_TRUE(std::holds_alternative<std::string>(result));
         EXPECT_EQ(std::get<std::string>(result), "1.23456789");
     }
     {
-        const auto value = core::QuantityUnits::create(0);
-        ASSERT_TRUE(value.has_value());
-        const auto result = core::format_quantity_fixed(*value, scale_8());
+        const auto value = required_value(core::QuantityUnits::create(0));
+        const auto result = core::format_quantity_fixed(value, scale_8());
         ASSERT_TRUE(std::holds_alternative<std::string>(result));
         EXPECT_EQ(std::get<std::string>(result), "0.00000000");
     }
@@ -302,7 +372,7 @@ TEST(Phase6M2ReplaceAll, PostStateIsCanonical) {
     cell.execute_step();
     EXPECT_EQ(cell.book().level_count(core::BookSide::Bid), 8U);
     EXPECT_EQ(cell.book().level_count(core::BookSide::Ask), 8U);
-    EXPECT_EQ(cell.book().best_bid()->price.value(), 20'000);
+    EXPECT_EQ(required_value(cell.book().best_bid()).price.value(), 20'000);
 }
 
 // ---------------------------------------------------------------------------
@@ -315,19 +385,10 @@ TEST(Phase6M3AcceptedCellNames, Full48CellMatrix) {
     std::sort(unique.begin(), unique.end());
     unique.erase(std::unique(unique.begin(), unique.end()), unique.end());
     EXPECT_EQ(unique.size(), 48U);
-    for (const auto& name : names) {
-        EXPECT_TRUE(name.starts_with("M3/LiveApply/Accepted/"));
-    }
+    EXPECT_TRUE(all_names_have_accepted_prefix(names));
     // Spot and USD-M each cover 6 depths x 4 batches.
-    for (const auto policy : {"Spot", "UsdMPerpetual"}) {
-        int count = 0;
-        for (const auto& name : names) {
-            if (name.find(std::string{policy} + "/") != std::string::npos) {
-                ++count;
-            }
-        }
-        EXPECT_EQ(count, 24);
-    }
+    EXPECT_EQ(count_policy_names(names, "Spot"), 24U);
+    EXPECT_EQ(count_policy_names(names, "UsdMPerpetual"), 24U);
 }
 
 TEST(Phase6M3AcceptedCell, BatchZeroReturnsAppliedAndStaysSynchronized) {
@@ -369,60 +430,8 @@ TEST(Phase6M3AcceptedCell, EmptyBookInsertionEdgeUsesPreparedPool) {
 }
 
 TEST(Phase6M3Classification, DispositionsMatchNormativeTable) {
-    for (const auto policy :
-         {core::SequencePolicyKind::Spot, core::SequencePolicyKind::UsdMPerpetual}) {
-        {
-            bm::M3ClassificationCell cell{
-                bm::M3ClassificationCell::Config{bm::M3ClassificationKind::Stale, policy, 8}};
-            cell.prepare();
-            for (std::size_t index = 0; index < 32; ++index) {
-                const auto result = cell.execute_step();
-                ASSERT_TRUE(result.apply_disposition.has_value());
-                EXPECT_EQ(*result.apply_disposition, core::ApplyDisposition::IgnoredStale);
-            }
-        }
-        {
-            bm::M3ClassificationCell cell{
-                bm::M3ClassificationCell::Config{bm::M3ClassificationKind::Duplicate, policy, 8}};
-            cell.prepare();
-            for (std::size_t index = 0; index < 32; ++index) {
-                const auto result = cell.execute_step();
-                ASSERT_TRUE(result.apply_disposition.has_value());
-                EXPECT_EQ(*result.apply_disposition, core::ApplyDisposition::IgnoredDuplicate);
-            }
-        }
-        {
-            bm::M3ClassificationCell cell{
-                bm::M3ClassificationCell::Config{bm::M3ClassificationKind::Gap, policy, 8}};
-            cell.prepare();
-            ASSERT_TRUE(cell.uses_pool());
-            for (std::size_t index = 0; index < cell.pool_size(); ++index) {
-                const auto result = cell.execute_step(index);
-                ASSERT_TRUE(result.apply_disposition.has_value());
-                EXPECT_EQ(*result.apply_disposition, core::ApplyDisposition::GapDetected);
-            }
-        }
-        {
-            bm::M3ClassificationCell cell{
-                bm::M3ClassificationCell::Config{bm::M3ClassificationKind::Reset, policy, 8}};
-            cell.prepare();
-            for (std::size_t index = 0; index < cell.pool_size(); ++index) {
-                const auto result = cell.execute_step(index);
-                EXPECT_EQ(result.status_after, core::ProjectionStatus::AwaitingBaseline);
-            }
-        }
-        {
-            bm::M3ClassificationCell cell{bm::M3ClassificationCell::Config{
-                bm::M3ClassificationKind::BaselineInstall, policy, 8}};
-            cell.prepare();
-            for (std::size_t index = 0; index < cell.pool_size(); ++index) {
-                const auto result = cell.execute_step(index);
-                ASSERT_TRUE(result.install_disposition.has_value());
-                EXPECT_EQ(*result.install_disposition, core::InstallDisposition::Installed);
-                EXPECT_EQ(result.status_after, core::ProjectionStatus::AwaitingBridge);
-            }
-        }
-    }
+    EXPECT_TRUE(classification_table_matches(core::SequencePolicyKind::Spot));
+    EXPECT_TRUE(classification_table_matches(core::SequencePolicyKind::UsdMPerpetual));
 }
 
 TEST(Phase6M3Proxy, MoveCommitIncludesPopulatedDestination) {
