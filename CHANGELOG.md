@@ -18,6 +18,15 @@ All notable changes will be recorded here.
 
 ### Changed
 
+- Corrected the M5 Phase-5 candidate's final validation blockers: snapshot observations now cover
+  actual venue, market, and schema version via explicit observation/manifest V2 schemas while V1
+  bytes remain frozen; all ten mandatory replay seeds carry substantive decoded structure with
+  AdapterEnabled depth/quality outcome tests; and reused M5 differential-fuzz support sources are
+  fuzz-instrumented with compile-database enforcement. Also tightened shared event-level and
+  quality-fact bounds and preserved inverted-update byte framing. Production `src/`/`include/`
+  remain unchanged. Phase 5 remains IMPLEMENTED / PENDING INDEPENDENT REVIEW; M4-IIR-3 closure
+  remains pending independent review.
+
 - Corrected the M3 Spot bootstrap predicate to successor coverage (`U <= L + 1`, overflow-guarded)
   per the official Binance 2025-11-12 correction of the Spot local-order-book instructions.
   Exact-next bootstrap input is now a valid bridge; a true forward gap is `U > L + 1`.

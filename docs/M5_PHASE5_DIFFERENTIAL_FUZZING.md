@@ -75,6 +75,11 @@ deterministic `ByteCursor`.
 | Snapshot strings | 15 |
 | Symbol length | 10 |
 
+Install/rebaseline bid and ask vectors share the single eight-level event budget. Quality-fact
+decoding likewise honors each call site's bound (six for snapshot host facts, eight for adapter
+metadata). An inverted DepthUpdate consumes its complete encoded payload before becoming a
+`MalformedRangeOp`, so following operations retain stable byte framing.
+
 ### Determinism
 
 The same byte string always produces the same structured test case. No `std::random_device`,
@@ -168,6 +173,14 @@ targets once. Both `tests/CMakeLists.txt` and `fuzz/CMakeLists.txt` include it.
 The fuzz preset (`BUILD_TESTS=OFF, BUILD_FUZZERS=ON`) builds the M5 support targets
 from the shared definitions without dragging in GTest or the full test tree.
 
+In fuzz configuration only, those existing support targets compile with
+`-fsanitize=fuzzer-no-link,address,undefined -fno-omit-frame-pointer`. The final replay fuzzer
+continues to compile/link with `-fsanitize=fuzzer,address,undefined`; static support libraries do
+not receive a libFuzzer main. `scripts/check-m5-fuzz-instrumentation.py` inspects the generated
+compile database and fails the fuzz smoke unless every replay/oracle/reference source (including
+`reference_side.cpp`, `reference_decimal.cpp`, `replay_driver.cpp`, and `divergence.cpp`) carries
+the intended fuzz-only compile instrumentation.
+
 ## Corpus
 
 ### Path
@@ -180,19 +193,22 @@ fuzz/corpus/replay/
 
 | Category | Seed file | Verification |
 |----------|-----------|-------------|
-| Spot synchronized stream | `spot_synchronized_stream.bin` | PASS |
-| USD-M synchronized stream | `usdm_synchronized_stream.bin` | PASS |
-| Bridge transition | `bridge_transition.bin` | PASS |
-| Gap | `gap.bin` | PASS |
-| Recovery | `recovery.bin` | PASS |
-| Duplicate/stale | `duplicate_stale.bin` | PASS |
-| Locked/crossed | `locked_crossed.bin` | PASS |
-| Decimal boundaries | `decimal_boundaries.bin` | PASS |
-| Depth-limit snapshot | `depth_limit_snapshot.bin` | PASS |
-| Quality combinations | `quality_combinations.bin` | PASS |
+| Spot synchronized stream | `spot_synchronized_stream.bin` | Spot mode plus exact baseline/bridge/continuation ID geometry |
+| USD-M synchronized stream | `usdm_synchronized_stream.bin` | USD-M mode plus bootstrap range, `pu`, and live continuation geometry |
+| Bridge transition | `bridge_transition.bin` | Successor-covering baseline bridge |
+| Gap | `gap.bin` | Forward-separated update IDs |
+| Recovery | `recovery.bin` | Gap, reset, rebaseline, then a post-rebaseline bridge; focused replay ends Synchronized |
+| Duplicate/stale | `duplicate_stale.bin` | Established current ID followed by both duplicate and stale ranges |
+| Locked/crossed | `locked_crossed.bin` | Actual equal best-side price strings (locked geometry) |
+| Decimal boundaries | `decimal_boundaries.bin` | Exact decoded set: empty, zero, fractional, leading-zero, signed, embedded-invalid, large, integer |
+| Depth-limit snapshot | `depth_limit_snapshot.bin` | AdapterEnabled; three levels per side, synchronized, depth limit one; focused replay produces and truncates both sides |
+| Quality combinations | `quality_combinations.bin` | AdapterEnabled; inbound metadata, distinct host facts, and locked geometry yielding derived CrossedBook |
 
 All categories verified by `bmd_projection_m5_replay_corpus_structural_validate` which
 checks that each seed decodes into the intended structural shape.
+
+The three CI regression inputs remain additional corpus seeds and continue protecting the closed
+range-domain and baseline/rebaseline-side findings.
 
 ## fuzz-smoke integration
 
@@ -211,7 +227,7 @@ With `BMD_PROJECTION_REQUIRE_FUZZERS=1`, all five must be available and pass.
 
 ## Test coverage
 
-### Decoder tests (14 tests)
+### Decoder tests (23 tests)
 
 - Empty input, minimum input, single-byte input
 - Core/Adapter mode decoding
@@ -222,10 +238,12 @@ With `BMD_PROJECTION_REQUIRE_FUZZERS=1`, all five must be available and pass.
 - Per-input operation cap
 - Deterministic identical-input decode
 - MalformedRange reachability
-- Level count cap
+- Shared InstallBaseline/Rebaseline level cap and stable discarded-level framing
+- Snapshot/metadata quality-fact call-site bounds
+- Inverted DepthUpdate full-payload framing with a following operation
 - Snapshot depth-limit variants
 
-### Harness tests (8 tests)
+### Harness tests (16 tests)
 
 - Spot Core no-divergence
 - USD-M Core no-divergence
@@ -235,6 +253,12 @@ With `BMD_PROJECTION_REQUIRE_FUZZERS=1`, all five must be available and pass.
 - Decimal error no-divergence (production/reference agree)
 - Gap no-divergence
 - Large case no-divergence
+- Corrected recovery seed reaches Synchronized
+- Spot AdapterEnabled seed produces a real per-side depth-limited snapshot
+- USD-M AdapterEnabled no-divergence
+- Adapter error leaves projection state unmutated
+- Quality seed keeps inbound adapter quality separate from host and Core-derived snapshot quality
+- Three preserved CI reproducer regressions
 
 ### Corpus structural validator
 
@@ -253,10 +277,11 @@ All four existing fuzz targets are unchanged:
 
 **IMPLEMENTED COVERAGE / CLOSURE PENDING INDEPENDENT REVIEW**
 
-Phase 5 quality-combination corpus exercises HostQualityFact combinations, adapter-observed
-quality coverage, and snapshot state eligibility contexts. ReplayDriver differential
-comparison provides the oracle. Final closure decision belongs to the independent
-implementation reviewer.
+The AdapterEnabled quality seed exercises inbound adapter-observed quality, distinct eligible host
+snapshot facts, and Core-derived `CrossedBook` output in one deterministic replay. Focused tests
+prove all three domains are present and do not leak into one another. ReplayDriver differential
+comparison provides the oracle. Final closure decision belongs to the independent implementation
+reviewer.
 
 ## OD-M5-003
 
@@ -274,7 +299,9 @@ A local byte cursor/decoder is sufficient.
 
 ## Sanitizer compatibility
 
-Target runs under libFuzzer + ASan + UBSan. No deliberate UB, out-of-bounds reads,
+The final target and all reused M5 support translation units run under libFuzzer coverage + ASan +
+UBSan, with compile-command evidence enforced before fuzz execution. No deliberate UB,
+out-of-bounds reads,
 invalid enum casts, unaligned reinterpret_casts, or signed overflow.
 
 ## Phase 6
@@ -288,7 +315,9 @@ Expected job count: ~18 (reuse existing fuzz-smoke job, no new Phase-5-specific 
 ## Non-goals
 
 - No canonical text parser in fuzz semantic path
-- No Phase 4 schema changes (M5_SEMANTIC_OBSERVATION_V1, M5_SEMANTIC_MANIFEST_V1 preserved)
+- No silent Phase-4 schema mutation: historical observation/manifest V1 meaning is preserved;
+  current evidence explicitly uses `M5_SEMANTIC_OBSERVATION_V2` and
+  `M5_SEMANTIC_MANIFEST_V2`
 - No production code modifications for differential failures
 - No custom replay-minimizer subsystem
 - No live/external corpus dependency
@@ -308,6 +337,7 @@ Expected job count: ~18 (reuse existing fuzz-smoke job, no new Phase-5-specific 
 - `tests/m5/phase5/differential_fuzz_test.cpp` — harness tests
 - `tests/m5/phase5/corpus_structural_validate.cpp` — seed validator
 - `scripts/generate_replay_corpus.py` — seed generator
+- `scripts/check-m5-fuzz-instrumentation.py` — compile-database instrumentation assertion
 - `docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md` — this document
 
 ### Modified files

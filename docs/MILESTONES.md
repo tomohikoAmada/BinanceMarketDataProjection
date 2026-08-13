@@ -319,6 +319,12 @@ coverage, Spot and USD-M market coverage, libFuzzer abort on first divergence, 1
 checked-in seed categories with structural validation, fifth fuzz-smoke target (10,000-run
 CI smoke), and shared `cmake/M5Support.cmake` for single-source replay/oracle/reference
 reuse. Existing four fuzzers preserved; production `src/`/`include/` unchanged;
+the corrected ten-seed corpus proves exact structural intent, including complete recovery,
+duplicate plus stale ranges, exact decimal token categories, and AdapterEnabled depth/quality
+paths. Snapshot comparison observes actual venue, market, and schema through explicit observation
+V2 / manifest V2 evolution while retaining historical V1 bytes. Reused M5 support translation
+units receive fuzz-only `fuzzer-no-link` + ASan + UBSan instrumentation verified from compile
+commands. M4-IIR-3 coverage is implemented, with closure pending independent review.
 `docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`. Phase 6 is NOT STARTED.
 
 ### M3 Spot successor-coverage correction (2026-08-10)

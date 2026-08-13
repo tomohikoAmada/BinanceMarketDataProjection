@@ -37,6 +37,10 @@ orientation only.
 
 ## Active Candidate / Pull Request
 
+- PR #18, `Implement M5 differential replay fuzzing`, is OPEN / DRAFT / UNMERGED on
+  `feat/m5-differential-replay-fuzzing`. The final blocking-correction work started from Head
+  `95c9bc8918eaa4d3447648a6ad3698d445ec8dcb`; its pre-correction exact-head CI run
+  `31620426837` passed 18/18. Current GitHub Head and exact-head CI remain authoritative.
 - No active Phase-4 candidate: PR #16, `Implement M5 cross-compiler semantic manifests`, is
   MERGED (squash merge `7b6d9ef3b222675138fdd34f3fed381216fe9d02`; approved Head
   `b612f85d281315346c0ccf6f599d51af538e3cf4`; exact-head CI `31571166506` — 18/18 PASS;
@@ -80,7 +84,11 @@ artifact is a separate identity and remains outside Projection ownership.
 ## Not Implemented
 
 - Phase 5 (replay differential fuzzing) is IMPLEMENTED / PENDING INDEPENDENT REVIEW
-  (PR #??, feat/m5-differential-replay-fuzzing).
+  (PR #18, `feat/m5-differential-replay-fuzzing`). Its candidate includes complete snapshot
+  wire-identity observation with explicit observation/manifest V2 schema evolution, substantive
+  structural evidence for all ten mandatory seeds, AdapterEnabled depth/quality replay coverage,
+  and fuzz-only instrumentation of reused M5 support translation units. M4-IIR-3 is IMPLEMENTED
+  COVERAGE / CLOSURE PENDING INDEPENDENT REVIEW.
 - Phase 6 (benchmarks) is NOT STARTED.
 - Phase 7 (allocation/memory) is NOT STARTED.
 - Phase 8 (container spike) is NOT STARTED.
@@ -90,8 +98,8 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Current Blockers
 
-- No repository-state blocker: Phase 4 is complete and merged. Phase 5 being NOT STARTED is a
-  status, not a defect; starting it requires its normal implementation authorization/workflow.
+- Phase 5 remains a draft candidate pending exact-head CI and independent implementation review;
+  no completion or merge is claimed here.
 
 ## Accepted Semantic Authorities
 
