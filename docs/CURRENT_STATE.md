@@ -99,8 +99,8 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Current Blockers
 
-- Phase 5 remains a draft candidate pending correction exact-head CI and focused independent
-  re-review; no completion or merge is claimed here.
+- Phase 5 remains a draft candidate pending focused independent re-review; no completion or merge
+  is claimed here.
 
 ## Accepted Semantic Authorities
 
