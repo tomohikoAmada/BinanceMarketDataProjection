@@ -81,13 +81,13 @@ std::uint64_t fold_evidence(std::uint64_t checksum, const EventEvidence& evidenc
 }
 
 CoreReplayExecutor::CoreReplayExecutor(const replay::ReplayFixture& fixture)
-    : fixture_{fixture},
+    : fixture_{&fixture},
       numeric_spec_{required_scale(fixture.identity.numeric_spec.price_scale),
                     required_scale(fixture.identity.numeric_spec.quantity_scale)},
       policy_{core_policy(fixture.identity.sequence_policy)} {
     std::size_t max_book_levels = 0;
     std::size_t max_updates = 0;
-    for (const auto& operation : fixture_.replay.operations) {
+    for (const auto& operation : fixture_->replay.operations) {
         if (const auto* install = std::get_if<replay::InstallBaselineOp>(&operation)) {
             max_book_levels =
                 std::max(max_book_levels, install->bids.size() + install->asks.size());
@@ -131,15 +131,17 @@ CoreReplayExecutor::execute_install(core::BookProjection& projection,
     if (!parse_levels(operation.bids, 0) || !parse_levels(operation.asks, operation.bids.size())) {
         return {kind, kParseErrorDisposition, kNoDisposition, kNoUpdateIdMarker};
     }
+    const std::span<const core::BookLevel> book_levels{scratch_book_levels_};
     const auto result = projection.install_baseline(
-        {core::UpdateId{operation.last_update_id},
-         std::span<const core::BookLevel>{scratch_book_levels_.data(), operation.bids.size()},
-         std::span<const core::BookLevel>{scratch_book_levels_.data() + operation.bids.size(),
-                                          operation.asks.size()}});
+        {core::UpdateId{operation.last_update_id}, book_levels.first(operation.bids.size()),
+         book_levels.subspan(operation.bids.size(), operation.asks.size())});
+    std::uint64_t update_id_after = kNoUpdateIdMarker;
+    if (result.last_update_id_after.has_value()) {
+        update_id_after = result.last_update_id_after->value();
+    }
     return {kind, static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.disposition)),
             static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.status_after)),
-            result.last_update_id_after.has_value() ? result.last_update_id_after->value()
-                                                    : kNoUpdateIdMarker};
+            update_id_after};
 }
 
 EventEvidence
@@ -170,15 +172,18 @@ CoreReplayExecutor::execute_depth_update(core::BookProjection& projection,
     }
     const auto result = projection.apply(
         {*range, previous, std::span<const core::LevelUpdate>{scratch_updates_.data(), count}});
+    std::uint64_t update_id_after = kNoUpdateIdMarker;
+    if (result.last_update_id_after.has_value()) {
+        update_id_after = result.last_update_id_after->value();
+    }
     return {kind, static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.disposition)),
             static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.status_after)),
-            result.last_update_id_after.has_value() ? result.last_update_id_after->value()
-                                                    : kNoUpdateIdMarker};
+            update_id_after};
 }
 
 EventEvidence CoreReplayExecutor::execute_event(core::BookProjection& projection,
                                                 std::size_t event_index) const {
-    const auto& operation = fixture_.replay.operations.at(event_index);
+    const auto& operation = fixture_->replay.operations.at(event_index);
     const auto kind = operation_kind_code(operation);
     if (const auto* install = std::get_if<replay::InstallBaselineOp>(&operation)) {
         return execute_install(projection, *install);
@@ -189,16 +194,19 @@ EventEvidence CoreReplayExecutor::execute_event(core::BookProjection& projection
             !parse_levels(rebaseline->asks, rebaseline->bids.size())) {
             return {kind_rebaseline, kParseErrorDisposition, kNoDisposition, kNoUpdateIdMarker};
         }
+        const std::span<const core::BookLevel> book_levels{scratch_book_levels_};
         const auto result = projection.install_baseline(
             {core::UpdateId{rebaseline->last_update_id},
-             std::span<const core::BookLevel>{scratch_book_levels_.data(), rebaseline->bids.size()},
-             std::span<const core::BookLevel>{scratch_book_levels_.data() + rebaseline->bids.size(),
-                                              rebaseline->asks.size()}});
+             book_levels.first(rebaseline->bids.size()),
+             book_levels.subspan(rebaseline->bids.size(), rebaseline->asks.size())});
+        std::uint64_t update_id_after = kNoUpdateIdMarker;
+        if (result.last_update_id_after.has_value()) {
+            update_id_after = result.last_update_id_after->value();
+        }
         return {kind_rebaseline,
                 static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.disposition)),
                 static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.status_after)),
-                result.last_update_id_after.has_value() ? result.last_update_id_after->value()
-                                                        : kNoUpdateIdMarker};
+                update_id_after};
     }
     if (const auto* update = std::get_if<replay::DepthUpdateOp>(&operation)) {
         return execute_depth_update(projection, *update);
@@ -238,32 +246,37 @@ std::uint64_t finalize_projection_checksum(const core::BookProjection& projectio
     checksum = replay_checksum_append(checksum, book.level_count(core::BookSide::Bid));
     checksum = replay_checksum_append(checksum, book.level_count(core::BookSide::Ask));
     const auto best_bid = book.best_bid();
+    std::uint64_t best_bid_price = kNoUpdateIdMarker;
+    if (best_bid.has_value()) {
+        best_bid_price = static_cast<std::uint64_t>(best_bid->price.value());
+    }
+    checksum = replay_checksum_append(checksum, best_bid_price);
     const auto best_ask = book.best_ask();
-    checksum = replay_checksum_append(
-        checksum, best_bid.has_value() ? static_cast<std::uint64_t>(best_bid->price.value())
-                                       : kNoUpdateIdMarker);
-    checksum = replay_checksum_append(
-        checksum, best_ask.has_value() ? static_cast<std::uint64_t>(best_ask->price.value())
-                                       : kNoUpdateIdMarker);
-    checksum = replay_checksum_append(checksum, projection.synchronized_book().has_value() ? 1 : 0);
+    std::uint64_t best_ask_price = kNoUpdateIdMarker;
+    if (best_ask.has_value()) {
+        best_ask_price = static_cast<std::uint64_t>(best_ask->price.value());
+    }
+    checksum = replay_checksum_append(checksum, best_ask_price);
+    checksum = replay_checksum_append(checksum,
+                                      projection.synchronized_book().has_value() ? 1 : 0);
     return checksum;
 }
 
 std::uint64_t CoreReplayExecutor::finalize_checksum(const core::BookProjection& projection,
-                                                    std::uint64_t checksum) const {
+                                                    std::uint64_t checksum) {
     return finalize_projection_checksum(projection, checksum);
 }
 
 std::uint64_t CoreReplayExecutor::run(core::BookProjection& projection) const {
     std::uint64_t checksum = kReplayChecksumSeed;
-    for (std::size_t index = 0; index < fixture_.replay.operations.size(); ++index) {
+    for (std::size_t index = 0; index < fixture_->replay.operations.size(); ++index) {
         checksum = fold_evidence(checksum, execute_event(projection, index));
     }
     return finalize_checksum(projection, checksum);
 }
 
 std::size_t CoreReplayExecutor::event_count() const noexcept {
-    return fixture_.replay.operations.size();
+    return fixture_->replay.operations.size();
 }
 
 std::string replay_fixture_identity(const replay::ReplayFixture& fixture) {

@@ -36,9 +36,14 @@ struct LatencyReport final {
     [[nodiscard]] std::string p999_omission_reason() const;
 };
 
+struct LatencyBookkeeping final {
+    std::size_t unique_event_count{};
+    std::size_t passes{};
+};
+
 // Builds a LatencyReport from unsorted samples: sorts a copy, records the
 // sample/pass/unique-event bookkeeping supplied by the caller.
 [[nodiscard]] LatencyReport make_latency_report(std::vector<std::uint64_t> samples_ns,
-                                                std::size_t unique_event_count, std::size_t passes);
+                                                LatencyBookkeeping bookkeeping);
 
 } // namespace bmd_projection::m5::benchmark

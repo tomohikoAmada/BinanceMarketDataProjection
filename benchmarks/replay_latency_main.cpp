@@ -217,8 +217,10 @@ int main(int argc, char** argv) {
         calibration_samples.push_back(static_cast<std::uint64_t>((t1 - t0).count()));
     }
 
-    const auto report = bm::make_latency_report(std::move(samples), event_count, options.passes);
-    const auto calibration = bm::make_latency_report(std::move(calibration_samples), 0, 1);
+    const auto report = bm::make_latency_report(
+        std::move(samples), bm::LatencyBookkeeping{event_count, options.passes});
+    const auto calibration =
+        bm::make_latency_report(std::move(calibration_samples), bm::LatencyBookkeeping{0, 1});
 
     // Workload identity for the payload and wrapper.
     const auto workload_spec_text = bm::replay_fixture_identity(fixture);

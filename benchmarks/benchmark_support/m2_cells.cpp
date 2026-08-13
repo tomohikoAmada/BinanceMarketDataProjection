@@ -101,8 +101,9 @@ core::LevelChange M2ApplyLevelCell::execute_step(std::size_t pool_index) {
     return core::LevelChange::Unchanged;
 }
 
-M2ApplyUpdatesCell::M2ApplyUpdatesCell(std::size_t depth, std::size_t batch, M2ApplyUpdatesMix mix)
-    : depth_{depth}, batch_{batch}, mix_{mix}, book_{benchmark_numeric_spec()} {}
+M2ApplyUpdatesCell::M2ApplyUpdatesCell(Config config)
+    : depth_{config.depth}, batch_{config.batch}, mix_{config.mix},
+      book_{benchmark_numeric_spec()} {}
 
 void M2ApplyUpdatesCell::prepare() {
     step_ = 0;
@@ -159,8 +160,9 @@ void M2ApplyUpdatesCell::execute_step(std::size_t pool_index) {
     ++step_;
 }
 
-M2QueryCell::M2QueryCell(std::size_t depth, std::size_t query_limit)
-    : depth_{depth}, query_limit_{query_limit}, book_{benchmark_numeric_spec()} {}
+M2QueryCell::M2QueryCell(Config config)
+    : depth_{config.depth}, query_limit_{config.query_limit},
+      book_{benchmark_numeric_spec()} {}
 
 void M2QueryCell::prepare() {
     book_ = build_order_book(depth_);

@@ -6,6 +6,7 @@
 
 #include <fstream>
 #include <iterator>
+#include <system_error>
 #include <string>
 #include <thread>
 #include <variant>
@@ -16,6 +17,8 @@
 #elif defined(__linux__)
 #include <unistd.h>
 #endif
+
+#include <filesystem>
 
 namespace bmd_projection::m5::benchmark {
 namespace {
@@ -43,7 +46,7 @@ namespace {
     }
     std::string line;
     while (std::getline(cpuinfo, line)) {
-        if (line.rfind("model name", 0) == 0) {
+        if (line.starts_with("model name")) {
             const auto colon = line.find(':');
             if (colon == std::string::npos) {
                 return "unavailable";
@@ -66,9 +69,9 @@ EnvironmentIdentity collect_environment_identity() {
     EnvironmentIdentity identity;
     utsname info{};
     if (uname(&info) == 0) {
-        identity.os_name = info.sysname;
-        identity.os_version = info.release;
-        identity.architecture = info.machine;
+        identity.os_name = std::string{info.sysname};
+        identity.os_version = std::string{info.release};
+        identity.architecture = std::string{info.machine};
     } else {
         identity.os_name = "unavailable";
         identity.os_version = "unavailable";
@@ -102,13 +105,12 @@ std::string current_executable_path() {
     }
     return path;
 #elif defined(__linux__)
-    std::string buffer(4096, '\0');
-    const auto length = readlink("/proc/self/exe", buffer.data(), buffer.size() - 1);
-    if (length < 0) {
+    std::error_code error;
+    const auto resolved = std::filesystem::read_symlink("/proc/self/exe", error);
+    if (error) {
         return {};
     }
-    buffer.resize(static_cast<std::size_t>(length));
-    return buffer;
+    return resolved.string();
 #else
     return {};
 #endif

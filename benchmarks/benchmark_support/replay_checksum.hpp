@@ -13,7 +13,9 @@ namespace bmd_projection::m5::benchmark {
 inline constexpr std::string_view kReplayChecksumMethodology = "M5_PHASE6_REPLAY_CHECKSUM_V1";
 inline constexpr std::uint64_t kReplayChecksumSeed = 14'695'981'039'346'656'037ULL;
 
-// FNV-1a 64 over the little-endian byte representation of `value`.
+// FNV-1a 64 over the little-endian byte representation of `value`. The
+// state/value parameter order is the deliberate fold-contract order.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] std::uint64_t replay_checksum_append(std::uint64_t state, std::uint64_t value);
 
 } // namespace bmd_projection::m5::benchmark

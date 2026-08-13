@@ -30,13 +30,13 @@ class AdapterReplayExecutor final {
                                               std::size_t event_index,
                                               std::uint64_t checksum) const;
 
-    [[nodiscard]] std::uint64_t finalize_checksum(const core::BookProjection& projection,
-                                                  std::uint64_t checksum) const;
+    [[nodiscard]] static std::uint64_t finalize_checksum(const core::BookProjection& projection,
+                                                         std::uint64_t checksum);
 
     [[nodiscard]] std::uint64_t run(core::BookProjection& projection) const;
 
     [[nodiscard]] std::size_t event_count() const noexcept { return entries_.size(); }
-    [[nodiscard]] const replay::ReplayFixture& fixture() const noexcept { return fixture_; }
+    [[nodiscard]] const replay::ReplayFixture& fixture() const noexcept { return *fixture_; }
     [[nodiscard]] core::NumericSpec numeric_spec() const noexcept { return numeric_spec_; }
     [[nodiscard]] core::SequencePolicyKind policy() const noexcept { return policy_; }
 
@@ -44,7 +44,7 @@ class AdapterReplayExecutor final {
     void set_expected_checksum(std::uint64_t value) noexcept { expected_checksum_ = value; }
 
   private:
-    const replay::ReplayFixture& fixture_;
+    const replay::ReplayFixture* fixture_;
     std::vector<adapter_support::PreconstructedEntry> entries_;
     core::NumericSpec numeric_spec_;
     core::SequencePolicyKind policy_;

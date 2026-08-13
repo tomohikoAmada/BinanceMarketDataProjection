@@ -8,6 +8,7 @@
 // generator schema/version, seed, and all parameters are part of the spec.
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <utility>

@@ -67,11 +67,17 @@ enum class M2ApplyUpdatesMix : std::uint8_t {
 
 class M2ApplyUpdatesCell final {
   public:
+    struct Config final {
+        std::size_t depth;
+        std::size_t batch;
+        M2ApplyUpdatesMix mix;
+    };
+
     // For batch updates: depth levels per side, batch of `batch` replacement
     // updates per execution. For the primary scaling workload (update_mix),
     // depth runs over the full {0, 8, 100, 1000, 5000, 10000} set and the
     // D=0 cell is explicitly labelled as the empty-book insertion edge.
-    M2ApplyUpdatesCell(std::size_t depth, std::size_t batch, M2ApplyUpdatesMix mix);
+    explicit M2ApplyUpdatesCell(Config config);
 
     void prepare();
 
@@ -103,7 +109,12 @@ class M2ApplyUpdatesCell final {
 // book, so a single prepared book is shared across every measured execution.
 class M2QueryCell final {
   public:
-    M2QueryCell(std::size_t depth, std::size_t query_limit);
+    struct Config final {
+        std::size_t depth;
+        std::size_t query_limit;
+    };
+
+    explicit M2QueryCell(Config config);
 
     void prepare();
 

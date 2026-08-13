@@ -207,7 +207,7 @@ static void run_apply_updates(benchmark::State& state, const char* name,
                               bm::M2ApplyUpdatesMix mix) {
     const auto depth = static_cast<std::size_t>(state.range(0));
     const auto batch = static_cast<std::size_t>(state.range(1));
-    bm::M2ApplyUpdatesCell cell{depth, batch, mix};
+    bm::M2ApplyUpdatesCell cell{bm::M2ApplyUpdatesCell::Config{depth, batch, mix}};
     cell.prepare();
     std::uint64_t accumulator = 0;
     std::size_t pool_index = 0;
@@ -262,7 +262,7 @@ static void BM_ReplaceAll(benchmark::State& state) {
 // ---------------------------------------------------------------------------
 template <typename Step> void run_query(benchmark::State& state, Step step, std::int64_t items) {
     const auto depth = static_cast<std::size_t>(state.range(0));
-    bm::M2QueryCell cell{depth, static_cast<std::size_t>(state.range(1))};
+    bm::M2QueryCell cell{bm::M2QueryCell::Config{depth, static_cast<std::size_t>(state.range(1))}};
     cell.prepare();
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {

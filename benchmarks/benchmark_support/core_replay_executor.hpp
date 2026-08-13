@@ -55,8 +55,8 @@ class CoreReplayExecutor final {
 
     // Folds the final projection state (status, sequence, book shape) into the
     // checksum.
-    [[nodiscard]] std::uint64_t finalize_checksum(const core::BookProjection& projection,
-                                                  std::uint64_t checksum) const;
+    [[nodiscard]] static std::uint64_t finalize_checksum(const core::BookProjection& projection,
+                                                         std::uint64_t checksum);
 
     // Runs the entire workload against any projection, folding evidence.
     [[nodiscard]] std::uint64_t run(core::BookProjection& projection) const;
@@ -64,7 +64,7 @@ class CoreReplayExecutor final {
     [[nodiscard]] std::size_t event_count() const noexcept;
     [[nodiscard]] core::NumericSpec numeric_spec() const noexcept { return numeric_spec_; }
     [[nodiscard]] core::SequencePolicyKind policy() const noexcept { return policy_; }
-    [[nodiscard]] const replay::ReplayFixture& fixture() const noexcept { return fixture_; }
+    [[nodiscard]] const replay::ReplayFixture& fixture() const noexcept { return *fixture_; }
 
     // Preflight result, computed once outside any measured region.
     [[nodiscard]] std::uint64_t expected_checksum() const noexcept { return expected_checksum_; }
@@ -81,7 +81,7 @@ class CoreReplayExecutor final {
     [[nodiscard]] bool parse_levels(const std::vector<replay::LevelInput>& levels,
                                     std::size_t side_offset) const;
 
-    const replay::ReplayFixture& fixture_;
+    const replay::ReplayFixture* fixture_;
     core::NumericSpec numeric_spec_;
     core::SequencePolicyKind policy_;
     // Preallocated scratch: no allocation inside the measured region.

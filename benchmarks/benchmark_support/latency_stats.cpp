@@ -53,11 +53,11 @@ std::string LatencyReport::p999_omission_reason() const {
 }
 
 LatencyReport make_latency_report(std::vector<std::uint64_t> samples_ns,
-                                  std::size_t unique_event_count, std::size_t passes) {
+                                  LatencyBookkeeping bookkeeping) {
     LatencyReport report;
     report.sample_count = samples_ns.size();
-    report.unique_event_count = unique_event_count;
-    report.passes = passes;
+    report.unique_event_count = bookkeeping.unique_event_count;
+    report.passes = bookkeeping.passes;
     report.sorted_samples_ns = std::move(samples_ns);
     std::sort(report.sorted_samples_ns.begin(), report.sorted_samples_ns.end());
     return report;

@@ -61,7 +61,7 @@ constexpr std::uint64_t kNoUpdateIdMarker = 0xFFFF'FFFF'FFFF'FFFFULL;
 
 AdapterReplayExecutor::AdapterReplayExecutor(
     const replay::ReplayFixture& fixture, std::vector<adapter_support::PreconstructedEntry> entries)
-    : fixture_{fixture}, entries_{std::move(entries)},
+    : fixture_{&fixture}, entries_{std::move(entries)},
       numeric_spec_{required_scale(fixture.identity.numeric_spec.price_scale),
                     required_scale(fixture.identity.numeric_spec.quantity_scale)},
       policy_{core_policy(fixture.identity.sequence_policy)} {}
@@ -144,7 +144,7 @@ std::uint64_t AdapterReplayExecutor::execute_event(core::BookProjection& project
 }
 
 std::uint64_t AdapterReplayExecutor::finalize_checksum(const core::BookProjection& projection,
-                                                       std::uint64_t checksum) const {
+                                                       std::uint64_t checksum) {
     return finalize_projection_checksum(projection, checksum);
 }
 
