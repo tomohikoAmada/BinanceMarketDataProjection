@@ -516,10 +516,23 @@ def summarize(wrappers: list[tuple[str, dict[str, Any]]]) -> str:
         replay_names = sorted(
             name for name in grouped
             if name.startswith(("CoreNormalizedReplay", "AdapterWireReplay")))
+
+        def events_per_iteration(entry_name: str) -> float:
+            # The dispatched-event count per iteration is recorded in the
+            # workload identity (event_count=... of the replay fixture).
+            for identity in wrapper.get("workload_identities", []):
+                if identity.get("benchmark_name") == entry_name:
+                    match = re.search(r"event_count=(\d+)",
+                                      identity.get("canonical_spec_text", ""))
+                    if match:
+                        return float(match.group(1))
+            return 2048.0
+
         for name in replay_names:
             entries = grouped[name]
+            events = events_per_iteration(name)
             ns_per_events = [
-                entry.get("real_time_ns", 0.0) / 2048 for entry in entries
+                entry.get("real_time_ns", 0.0) / events for entry in entries
             ]
             mean_ns = sum(ns_per_events) / len(ns_per_events) if ns_per_events else 0.0
             median_ns = sorted(ns_per_events)[len(ns_per_events) // 2] if ns_per_events else 0.0
