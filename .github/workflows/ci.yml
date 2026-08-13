@@ -165,6 +165,7 @@ jobs:
   benchmark-smoke:
     name: benchmark smoke (Ubuntu Clang)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       CC: clang
       CXX: clang++
@@ -175,15 +176,17 @@ jobs:
           python-version: "3.12"
       - name: Bootstrap repository-local Conan
         run: bash scripts/bootstrap.sh
+      - name: Bootstrap pinned Contracts package
+        run: bash scripts/bootstrap-contracts.sh
       - name: Configure
-        run: bash scripts/configure.sh benchmark -DBMD_PROJECTION_ENABLE_WERROR=ON
+        run: >-
+          bash scripts/configure.sh benchmark
+          -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON
+          -DBMD_PROJECTION_ENABLE_WERROR=ON
       - name: Build
         run: bash scripts/build.sh benchmark
-      - name: Run infrastructure benchmark
-        run: >-
-          build/benchmark/cmake/benchmarks/bmd_projection_benchmarks
-          --benchmark_format=json
-          --benchmark_out=build/benchmark/foundation-benchmark.json
+      - name: Run Phase-6 benchmark smoke (fail-closed, structural only)
+        run: bash scripts/benchmark-smoke.sh
 
   fuzz-smoke:
     name: fuzz smoke (Ubuntu Clang)
