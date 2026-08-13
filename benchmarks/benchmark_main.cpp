@@ -44,6 +44,9 @@ class CollectingReporter final : public benchmark::BenchmarkReporter {
 
     void ReportRuns(const std::vector<Run>& reports) override {
         for (const auto& report : reports) {
+            if (report.run_type != Run::RT_Iteration) {
+                continue;
+            }
             RunRecord record;
             record.name = report.run_name.function_name;
             record.iterations = report.iterations;

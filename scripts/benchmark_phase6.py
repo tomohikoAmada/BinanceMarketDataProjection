@@ -503,17 +503,36 @@ def summarize(wrappers: list[tuple[str, dict[str, Any]]]) -> str:
         names = {entry.get("benchmark_name")
                  for entry in wrapper.get("workload_identities", [])}
         required = set(_required_inventory())
-        lines.append(f"  inventory: {len(names)} workloads registered, "
-                     f"{len(required & names)}/{len(required)} required present")
+        if len(names) == 1:
+            lines.append(f"  inventory: latency payload "
+                         f"({sorted(names)[0] if names else 'none'})")
+        else:
+            lines.append(f"  inventory: {len(names)} workloads registered, "
+                         f"{len(required & names)}/{len(required)} required present")
         measurements = wrapper.get("measurements", [])
-        replay_measurements = [entry for entry in measurements
-                               if entry.get("name", "").startswith(("CoreNormalizedReplay",
-                                                                    "AdapterWireReplay"))]
-        for entry in replay_measurements:
-            items_per_second = entry.get("items_per_second")
-            lines.append(f"  {entry.get('name')}: iterations={entry.get('iterations')} "
-                         f"items/s={items_per_second} "
-                         f"ns/event={1e9 / items_per_second if items_per_second else float('nan'):.0f}")
+        grouped: dict[str, list[dict]] = {}
+        for entry in measurements:
+            grouped.setdefault(entry.get("name", ""), []).append(entry)
+        replay_names = sorted(
+            name for name in grouped
+            if name.startswith(("CoreNormalizedReplay", "AdapterWireReplay")))
+        for name in replay_names:
+            entries = grouped[name]
+            ns_per_events = [
+                entry.get("real_time_ns", 0.0) / 2048 for entry in entries
+            ]
+            mean_ns = sum(ns_per_events) / len(ns_per_events) if ns_per_events else 0.0
+            median_ns = sorted(ns_per_events)[len(ns_per_events) // 2] if ns_per_events else 0.0
+            stddev = math.sqrt(
+                sum((value - mean_ns) ** 2 for value in ns_per_events) / len(ns_per_events)
+            ) if ns_per_events else 0.0
+            cv = (stddev / mean_ns * 100.0) if mean_ns else 0.0
+            rates = [entry.get("items_per_second", 0.0) for entry in entries]
+            mean_rate = sum(rates) / len(rates) if rates else 0.0
+            lines.append(
+                f"  {name}: repetitions={len(entries)} events/s={mean_rate:.1f} "
+                f"ns/event mean={mean_ns:.0f} median={median_ns:.0f} "
+                f"stddev={stddev:.0f} CV={cv:.1f}%")
         payload = wrapper.get("result_payload", {})
         lines.append(f"  payload: {payload.get('path')} sha256={payload.get('sha256')}")
     return "\n".join(lines) + "\n"
