@@ -337,18 +337,22 @@ void append_decimals(std::vector<CanonicalDecimalObservation>& destination,
     return CanonicalAdapterField::None;
 }
 
-[[nodiscard]] CanonicalSnapshotSource to_canonical(common_wire::SnapshotSource source) noexcept {
+[[nodiscard]] std::optional<CanonicalSnapshotSource>
+snapshot_source(common_wire::SnapshotSource source) noexcept {
     switch (source) {
     case common_wire::SNAPSHOT_SOURCE_GATEWAY_LIVE:
         return CanonicalSnapshotSource::GatewayLive;
     case common_wire::SNAPSHOT_SOURCE_RECORDER_REPLAY:
         return CanonicalSnapshotSource::RecorderReplay;
-    default:
+    case common_wire::SNAPSHOT_SOURCE_HISTORY_REPLAY:
         return CanonicalSnapshotSource::HistoryReplay;
+    default:
+        return std::nullopt;
     }
 }
 
-[[nodiscard]] CanonicalResyncState to_canonical(common_wire::ResyncState state) noexcept {
+[[nodiscard]] std::optional<CanonicalResyncState>
+snapshot_resync_state(common_wire::ResyncState state) noexcept {
     switch (state) {
     case common_wire::RESYNC_STATE_RESYNC_REQUIRED:
         return CanonicalResyncState::ResyncRequired;
@@ -357,13 +361,16 @@ void append_decimals(std::vector<CanonicalDecimalObservation>& destination,
     case common_wire::RESYNC_STATE_RESYNC_FAILED:
         return CanonicalResyncState::ResyncFailed;
     default:
-        return CanonicalResyncState::ResyncRequired;
+        return std::nullopt;
     }
 }
 
-[[nodiscard]] CanonicalReasonCode to_canonical(common_wire::ReasonCode reason) noexcept {
-    static_cast<void>(reason);
-    return CanonicalReasonCode::SequenceGapDetected;
+[[nodiscard]] std::optional<CanonicalReasonCode>
+snapshot_reason_code(common_wire::ReasonCode reason) noexcept {
+    if (reason == common_wire::REASON_CODE_SEQUENCE_GAP_DETECTED) {
+        return CanonicalReasonCode::SequenceGapDetected;
+    }
+    return std::nullopt;
 }
 
 [[nodiscard]] AdapterErrorOutcome to_canonical(const adapter::AdapterError& error) noexcept {
@@ -444,13 +451,30 @@ snapshot_flag(const core::LocalOrderBookSnapshot& snapshot, int index) noexcept 
     }
 }
 
-// Semantic extraction of the produced snapshot. Never compares Protobuf bytes.
-[[nodiscard]] std::optional<SnapshotOutcome>
-extract_snapshot(const core::LocalOrderBookSnapshot& wire, core::SequencePolicyKind policy) {
+} // namespace
+
+SnapshotExtractionResult extract_snapshot_observation(const core::LocalOrderBookSnapshot& wire,
+                                                      core::SequencePolicyKind policy) {
     const auto venue = snapshot_venue(wire.venue());
+    if (!venue.has_value()) {
+        return SnapshotExtractionError{wire.venue() == common_wire::VENUE_UNSPECIFIED
+                                           ? CanonicalAdapterCode::UnspecifiedEnum
+                                           : CanonicalAdapterCode::UnsupportedVenue,
+                                       CanonicalAdapterField::Venue};
+    }
     const auto market = snapshot_market(wire.market());
-    if (!venue.has_value() || !market.has_value()) {
-        return std::nullopt;
+    if (!market.has_value()) {
+        return SnapshotExtractionError{wire.market() == common_wire::MARKET_UNSPECIFIED
+                                           ? CanonicalAdapterCode::UnspecifiedEnum
+                                           : CanonicalAdapterCode::UnknownEnumValue,
+                                       CanonicalAdapterField::Market};
+    }
+    const auto source = snapshot_source(wire.source());
+    if (!source.has_value()) {
+        return SnapshotExtractionError{wire.source() == common_wire::SNAPSHOT_SOURCE_UNSPECIFIED
+                                           ? CanonicalAdapterCode::UnspecifiedEnum
+                                           : CanonicalAdapterCode::UnknownEnumValue,
+                                       CanonicalAdapterField::SnapshotSource};
     }
     SnapshotOutcome snapshot;
     snapshot.venue = *venue;
@@ -460,7 +484,7 @@ extract_snapshot(const core::LocalOrderBookSnapshot& wire, core::SequencePolicyK
     snapshot.symbol = wire.symbol();
     snapshot.producer = wire.producer();
     snapshot.producer_version = wire.producer_version();
-    snapshot.source = to_canonical(wire.source());
+    snapshot.source = *source;
     snapshot.generated_time_utc_ns = wire.generated_time_utc_ns();
     if (wire.has_generated_monotonic_ns()) {
         snapshot.generated_monotonic_ns = wire.generated_monotonic_ns();
@@ -476,7 +500,11 @@ extract_snapshot(const core::LocalOrderBookSnapshot& wire, core::SequencePolicyK
     for (int index = 0; index < wire.quality_flags_size(); ++index) {
         const auto flag = snapshot_flag(wire, index);
         if (!flag.has_value()) {
-            return std::nullopt;
+            return SnapshotExtractionError{wire.quality_flags(index) ==
+                                                   common_wire::QUALITY_FLAG_UNSPECIFIED
+                                               ? CanonicalAdapterCode::UnspecifiedEnum
+                                               : CanonicalAdapterCode::UnknownEnumValue,
+                                           CanonicalAdapterField::QualityFlag};
         }
         snapshot.quality_flags.push_back(*flag);
     }
@@ -485,14 +513,30 @@ extract_snapshot(const core::LocalOrderBookSnapshot& wire, core::SequencePolicyK
     }
     if (wire.has_last_gap()) {
         const auto& gap = wire.last_gap();
-        snapshot.gap_descriptor = GapDescriptorObservation{
-            gap.detected_at_utc_ns(), gap.previous_sequence(), gap.next_sequence(),
-            to_canonical(gap.reason_code()), to_canonical(gap.recovery_state())};
+        const auto reason = snapshot_reason_code(gap.reason_code());
+        if (!reason.has_value()) {
+            const auto code = gap.reason_code() == common_wire::REASON_CODE_UNSPECIFIED
+                                  ? CanonicalAdapterCode::UnspecifiedEnum
+                              : common_wire::ReasonCode_IsValid(gap.reason_code())
+                                  ? CanonicalAdapterCode::InvalidGapContext
+                                  : CanonicalAdapterCode::UnknownEnumValue;
+            return SnapshotExtractionError{code, CanonicalAdapterField::CurrentGap};
+        }
+        const auto recovery = snapshot_resync_state(gap.recovery_state());
+        if (!recovery.has_value()) {
+            const auto code = gap.recovery_state() == common_wire::RESYNC_STATE_UNSPECIFIED
+                                  ? CanonicalAdapterCode::UnspecifiedEnum
+                              : common_wire::ResyncState_IsValid(gap.recovery_state())
+                                  ? CanonicalAdapterCode::InvalidGapContext
+                                  : CanonicalAdapterCode::UnknownEnumValue;
+            return SnapshotExtractionError{code, CanonicalAdapterField::GapRecoveryState};
+        }
+        snapshot.gap_descriptor =
+            GapDescriptorObservation{gap.detected_at_utc_ns(), gap.previous_sequence(),
+                                     gap.next_sequence(), *reason, *recovery};
     }
     return snapshot;
 }
-
-} // namespace
 
 AdapterProductionSide::AdapterProductionSide(const replay::ReplayFixture& fixture)
     : AdapterProductionSide{fixture, default_adapter_scenario(fixture)} {}
@@ -676,14 +720,12 @@ AdapterProductionSide::observe_snapshot_request(const replay::SnapshotRequestOp&
     if (const auto* failure = std::get_if<adapter::AdapterError>(&produced)) {
         return make_observation(to_canonical(*failure));
     }
-    const auto snapshot =
-        extract_snapshot(std::get<core::LocalOrderBookSnapshot>(produced), projection_.policy());
-    if (!snapshot.has_value()) {
-        return make_observation(AdapterErrorOutcome{CanonicalAdapterCode::UnsupportedVenue,
-                                                    CanonicalAdapterField::QualityFlag,
-                                                    std::nullopt});
+    auto extracted = extract_snapshot_observation(std::get<core::LocalOrderBookSnapshot>(produced),
+                                                  projection_.policy());
+    if (const auto* failure = std::get_if<SnapshotExtractionError>(&extracted)) {
+        return make_observation(AdapterErrorOutcome{failure->code, failure->field, std::nullopt});
     }
-    return make_snapshot_observation(*snapshot);
+    return make_snapshot_observation(std::get<SnapshotOutcome>(std::move(extracted)));
 }
 
 SemanticCheckpoint AdapterProductionSide::checkpoint() const {

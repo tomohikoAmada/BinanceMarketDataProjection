@@ -14,11 +14,31 @@
 #include "replay_types.hpp"
 
 #include <binance_market_data/projection/v1/projection_state/book_projection.hpp>
+#include <binance_market_data/projection/v1/snapshots.pb.h>
 
+#include <cstdint>
 #include <memory>
 #include <optional>
+#include <variant>
 
 namespace bmd_projection::m5::oracle {
+
+// Test-only observation-boundary result. A produced wire snapshot with an enum
+// value outside the accepted M4 output domain must remain distinguishable from
+// a valid semantic SnapshotOutcome.
+struct SnapshotExtractionError final {
+    CanonicalAdapterCode code{};
+    CanonicalAdapterField field{};
+
+    friend bool operator==(const SnapshotExtractionError&,
+                           const SnapshotExtractionError&) = default;
+};
+
+using SnapshotExtractionResult = std::variant<SnapshotOutcome, SnapshotExtractionError>;
+
+[[nodiscard]] SnapshotExtractionResult extract_snapshot_observation(
+    const binance_market_data::projection::v1::LocalOrderBookSnapshot& wire,
+    binance_market_data::projection::v1::SequencePolicyKind policy);
 
 class AdapterProductionSide final : public ReplaySide {
   public:
