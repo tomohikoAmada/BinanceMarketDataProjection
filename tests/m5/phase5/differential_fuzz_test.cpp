@@ -37,6 +37,7 @@ namespace decoder = bmd_projection::m5::replay::fuzz_decoder;
 namespace oracle = bmd_projection::m5::oracle;
 namespace replay = bmd_projection::m5::replay;
 
+#ifdef BMD_PROJECTION_PHASE5_TEST_ADAPTER_ENABLED
 [[nodiscard]] oracle::ScenarioVenue map_venue(decoder::FuzzVenue venue) noexcept {
     switch (venue) {
     case decoder::FuzzVenue::Binance:
@@ -82,6 +83,7 @@ namespace replay = bmd_projection::m5::replay;
         fuzz_case.adapter_projection_policy,
     };
 }
+#endif
 
 [[nodiscard]] oracle::ReplayOutcome
 run_case(const decoder::FuzzCase& fuzz_case,
