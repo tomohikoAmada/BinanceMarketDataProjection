@@ -85,9 +85,6 @@ bool M2ApplyLevelCell::uses_pool() const noexcept {
 std::size_t M2ApplyLevelCell::pool_size() const noexcept { return pool_.size(); }
 
 core::LevelChange M2ApplyLevelCell::execute_step(std::size_t pool_index) {
-    if (!update_.has_value()) {
-        std::abort();
-    }
     switch (kind_) {
     case M2ApplyLevelKind::Insert:
         return pool_.at(pool_index).apply_level(update_->side, update_->price, update_->quantity);

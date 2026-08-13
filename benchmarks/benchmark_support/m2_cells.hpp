@@ -45,6 +45,15 @@ class M2ApplyLevelCell final {
     [[nodiscard]] M2ApplyLevelKind kind() const noexcept { return kind_; }
     [[nodiscard]] std::size_t depth() const noexcept { return depth_; }
     [[nodiscard]] const core::OrderBook& book() const noexcept { return book_; }
+
+    // Guarded access to the prepared single update used by the pool and
+    // idempotent cells (never by the alternating Update cell).
+    [[nodiscard]] const core::LevelUpdate& prepared_update() const noexcept {
+        if (!update_.has_value()) {
+            std::abort();
+        }
+        return *update_;
+    }
     [[nodiscard]] const std::string& generated_workload_sha256() const noexcept {
         return generated_sha_;
     }
