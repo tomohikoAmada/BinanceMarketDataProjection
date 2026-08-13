@@ -37,7 +37,8 @@ namespace semantic = bmd_projection::m5::semantic;
 
 TEST(SemanticManifestTest, RenderValidJson) {
     semantic::SemanticManifest manifest;
-    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V1";
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V2";
+    manifest.observation_schema_version = "M5_SEMANTIC_OBSERVATION_V2";
     manifest.head_sha = "a1db0f8374bec84d10b0005552983dd44b4e2026";
     manifest.toolchain.compiler = "GCC";
     manifest.toolchain.compiler_version = "14.2.0";
@@ -54,7 +55,9 @@ TEST(SemanticManifestTest, RenderValidJson) {
     manifest.workloads.push_back(w);
 
     const auto json = semantic::render_manifest_json(manifest);
-    EXPECT_NE(json.find("\"schema_version\""), std::string::npos);
+    EXPECT_NE(json.find("\"schema_version\": \"M5_SEMANTIC_MANIFEST_V2\""), std::string::npos);
+    EXPECT_NE(json.find("\"observation_schema_version\": \"M5_SEMANTIC_OBSERVATION_V2\""),
+              std::string::npos);
     EXPECT_NE(json.find("\"head_sha\""), std::string::npos);
     EXPECT_NE(json.find("\"toolchain\""), std::string::npos);
     EXPECT_NE(json.find("\"fixture_set_id\""), std::string::npos);
@@ -68,7 +71,8 @@ TEST(SemanticManifestTest, RenderValidJson) {
 
 TEST(SemanticManifestTest, RenderMultipleWorkloads) {
     semantic::SemanticManifest manifest;
-    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V1";
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V2";
+    manifest.observation_schema_version = "M5_SEMANTIC_OBSERVATION_V2";
     manifest.head_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     manifest.toolchain.compiler = "Clang";
     manifest.toolchain.compiler_version = "19.1.0";
@@ -95,7 +99,8 @@ TEST(SemanticManifestTest, RenderMultipleWorkloads) {
 
 TEST(SemanticManifestTest, JsonStringEscaping) {
     semantic::SemanticManifest manifest;
-    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V1";
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V2";
+    manifest.observation_schema_version = "M5_SEMANTIC_OBSERVATION_V2";
     manifest.head_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     manifest.toolchain.compiler = "GCC";
     manifest.toolchain.compiler_version = "14.2.0";
@@ -117,7 +122,8 @@ TEST(SemanticManifestTest, JsonStringEscaping) {
 
 TEST(SemanticManifestTest, JsonStringEscapesEntireControlRangeAndPreservesUtf8) {
     semantic::SemanticManifest manifest;
-    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V1";
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V2";
+    manifest.observation_schema_version = "M5_SEMANTIC_OBSERVATION_V2";
     manifest.head_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     manifest.toolchain.compiler = "GNU";
     manifest.toolchain.compiler_version = "14.2.0";
@@ -175,6 +181,7 @@ TEST(SemanticManifestTest, FixtureSetIdRejectsUnorderedInput) {
 
 TEST(SemanticManifestTest, ManifestSchemaVersionFrozen) {
     EXPECT_EQ(std::string(semantic::kManifestSchemaV1), "M5_SEMANTIC_MANIFEST_V1");
+    EXPECT_EQ(std::string(semantic::kManifestSchemaV2), "M5_SEMANTIC_MANIFEST_V2");
 }
 
 TEST(SemanticManifestTest, EvidenceShaRequiresFortyLowercaseHexCharacters) {

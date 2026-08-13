@@ -20,6 +20,8 @@ namespace {
 
 namespace replay = bmd_projection::m5::replay;
 
+constexpr std::string_view kLocalOrderBookSnapshotSchema{"local-order-book-snapshot.v1"};
+
 [[nodiscard]] ReferenceAdapterError error(ReferenceAdapterErrorCode code,
                                           ReferenceAdapterField field) noexcept {
     return {code, field, std::nullopt};
@@ -453,6 +455,11 @@ ReferenceAdapter::predict_snapshot(const bmd_projection_reference::ReferenceProj
     }
 
     ReferenceSnapshotPrediction prediction;
+    prediction.venue = ReferenceVenue::Binance;
+    prediction.market = dimensions_.projection_policy == ReferencePolicy::Spot
+                            ? ReferenceMarket::Spot
+                            : ReferenceMarket::UsdMPerpetual;
+    prediction.schema_version = std::string(kLocalOrderBookSnapshotSchema);
     prediction.synchronized = status == bmd_projection_reference::Status::Synchronized;
     prediction.last_update_id = projection.last();
 

@@ -40,11 +40,13 @@ using oracle::CanonicalDecimalError;
 using oracle::CanonicalDisposition;
 using oracle::CanonicalGapEvidence;
 using oracle::CanonicalGapReason;
+using oracle::CanonicalMarket;
 using oracle::CanonicalPolicy;
 using oracle::CanonicalQualityFlag;
 using oracle::CanonicalResyncState;
 using oracle::CanonicalSnapshotSource;
 using oracle::CanonicalStatus;
+using oracle::CanonicalVenue;
 using oracle::GapDescriptorObservation;
 using oracle::InstallOutcome;
 using oracle::MetadataOutcome;
@@ -172,6 +174,9 @@ TEST(AdapterDifferentialReplayTest, SpotTinyAdapterBoundaryAgrees) {
 
     const auto& snapshot = observation(outcome, 4);
     const auto& semantic = std::get<SnapshotOutcome>(snapshot.result.value);
+    EXPECT_EQ(semantic.venue, CanonicalVenue::Binance);
+    EXPECT_EQ(semantic.market, CanonicalMarket::Spot);
+    EXPECT_EQ(semantic.schema_version, "local-order-book-snapshot.v1");
     EXPECT_EQ(semantic.policy, CanonicalPolicy::Spot);
     EXPECT_EQ(semantic.symbol, "BTCUSDT");
     EXPECT_EQ(semantic.producer, "fixture");
@@ -209,6 +214,9 @@ TEST(AdapterDifferentialReplayTest, UsdmTinySnapshotSemanticsAgree) {
 
     const auto& snapshot = observation(outcome, 3);
     const auto& semantic = std::get<SnapshotOutcome>(snapshot.result.value);
+    EXPECT_EQ(semantic.venue, CanonicalVenue::Binance);
+    EXPECT_EQ(semantic.market, CanonicalMarket::UsdMPerpetual);
+    EXPECT_EQ(semantic.schema_version, "local-order-book-snapshot.v1");
     EXPECT_EQ(semantic.policy, CanonicalPolicy::UsdMPerpetual);
     EXPECT_EQ(semantic.symbol, "BTCUSDT");
     EXPECT_EQ(semantic.producer, "recorder");

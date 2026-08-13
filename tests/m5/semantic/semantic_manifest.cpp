@@ -69,6 +69,11 @@ std::string render_manifest_json(const SemanticManifest& manifest) {
     append_json_string(out, manifest.schema_version);
     out += ",\n";
     append_indent(out, 1);
+    append_json_string(out, "observation_schema_version");
+    out += ": ";
+    append_json_string(out, manifest.observation_schema_version);
+    out += ",\n";
+    append_indent(out, 1);
     append_json_string(out, "head_sha");
     out += ": ";
     append_json_string(out, manifest.head_sha);

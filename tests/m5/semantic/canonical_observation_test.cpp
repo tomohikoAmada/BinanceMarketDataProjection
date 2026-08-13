@@ -29,6 +29,9 @@ oracle::OperationObservation make_minimal_obs(std::size_t index, replay::EventKi
 
 oracle::SnapshotOutcome make_snapshot() {
     oracle::SnapshotOutcome snapshot;
+    snapshot.venue = oracle::CanonicalVenue::Binance;
+    snapshot.market = oracle::CanonicalMarket::Spot;
+    snapshot.schema_version = "local-order-book-snapshot.v1";
     snapshot.policy = oracle::CanonicalPolicy::Spot;
     snapshot.symbol = "BTCUSDT";
     snapshot.producer = "gw-01";
@@ -89,6 +92,7 @@ void expect_canonical_line_discipline(const std::string& text) {
 
 TEST(CanonicalObservationTest, SchemaVersionIsFrozen) {
     EXPECT_EQ(std::string(semantic::kObservationSchemaV1), "M5_SEMANTIC_OBSERVATION_V1");
+    EXPECT_EQ(std::string(semantic::kObservationSchemaV2), "M5_SEMANTIC_OBSERVATION_V2");
 }
 
 TEST(CanonicalObservationTest, SimpleObservationMatchesGoldenBytes) {
@@ -184,7 +188,9 @@ TEST(CanonicalObservationTest, SnapshotMatchesGoldenBytes) {
     observation.snapshot = snapshot;
 
     const std::string golden_snapshot =
-        "SnapshotOutcome Spot SYMBOL 7:42544355534454 PRODUCER 5:67772d3031 "
+        "SnapshotOutcome VENUE Binance MARKET Spot SCHEMA_VERSION "
+        "28:6c6f63616c2d6f726465722d626f6f6b2d736e617073686f742e7631 POLICY Spot "
+        "SYMBOL 7:42544355534454 PRODUCER 5:67772d3031 "
         "PRODUCER_VERSION 5:322e302e31 SOURCE RecorderReplay GENERATED_UTC_NS "
         "1699999999000000000 GENERATED_MONOTONIC_NS - LAST_UPDATE 5000 SYNCHRONIZED true "
         "BIDS 2 6:3130302e3030 5:312e353030 5:39392e3530 5:322e303030 "
@@ -193,6 +199,27 @@ TEST(CanonicalObservationTest, SnapshotMatchesGoldenBytes) {
     const auto text = semantic::serialize_observation(observation);
     EXPECT_NE(text.find("RESULT " + golden_snapshot + "\n"), std::string::npos);
     EXPECT_NE(text.find("SNAPSHOT " + golden_snapshot + "\n"), std::string::npos);
+    expect_canonical_line_discipline(text);
+}
+
+TEST(CanonicalObservationTest, HistoricalV1SnapshotMeaningRemainsFrozen) {
+    auto observation = make_minimal_obs(8, replay::EventKind::SnapshotRequest);
+    const auto snapshot = make_snapshot();
+    observation.result.value = snapshot;
+    observation.snapshot = snapshot;
+
+    const std::string golden_snapshot =
+        "SnapshotOutcome Spot SYMBOL 7:42544355534454 PRODUCER 5:67772d3031 "
+        "PRODUCER_VERSION 5:322e302e31 SOURCE RecorderReplay GENERATED_UTC_NS "
+        "1699999999000000000 GENERATED_MONOTONIC_NS - LAST_UPDATE 5000 SYNCHRONIZED true "
+        "BIDS 2 6:3130302e3030 5:312e353030 5:39392e3530 5:322e303030 "
+        "ASKS 1 6:3130302e3530 5:302e373530 QUALITY 1 Duplicate DEPTH_LIMIT 20 "
+        "GAP_DESCRIPTOR -";
+    const auto text = semantic::serialize_observation_v1(observation);
+    EXPECT_NE(text.find("RESULT " + golden_snapshot + "\n"), std::string::npos);
+    EXPECT_NE(text.find("SNAPSHOT " + golden_snapshot + "\n"), std::string::npos);
+    EXPECT_EQ(text.find("VENUE"), std::string::npos);
+    EXPECT_EQ(text.find("SCHEMA_VERSION"), std::string::npos);
     expect_canonical_line_discipline(text);
 }
 
@@ -362,6 +389,20 @@ TEST(CanonicalObservationTest, InvalidRuntimeEnumValuesFailClosed) {
                                  oracle::CanonicalStatus::Synchronized, 1, std::nullopt};
         success.observed_quality = {static_cast<oracle::CanonicalQualityFlag>(255)};
         observation.result.value = success;
+        EXPECT_THROW((void)semantic::serialize_observation(observation), std::invalid_argument);
+    }
+    {
+        auto observation = make_minimal_obs(0, replay::EventKind::SnapshotRequest);
+        auto snapshot = make_snapshot();
+        snapshot.venue = static_cast<oracle::CanonicalVenue>(255);
+        observation.result.value = snapshot;
+        EXPECT_THROW((void)semantic::serialize_observation(observation), std::invalid_argument);
+    }
+    {
+        auto observation = make_minimal_obs(0, replay::EventKind::SnapshotRequest);
+        auto snapshot = make_snapshot();
+        snapshot.market = static_cast<oracle::CanonicalMarket>(255);
+        observation.result.value = snapshot;
         EXPECT_THROW((void)semantic::serialize_observation(observation), std::invalid_argument);
     }
     {

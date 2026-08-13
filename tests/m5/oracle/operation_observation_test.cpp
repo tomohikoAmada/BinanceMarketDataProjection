@@ -31,9 +31,11 @@ using oracle::CanonicalDisposition;
 using oracle::CanonicalGapEvidence;
 using oracle::CanonicalGapReason;
 using oracle::CanonicalLevel;
+using oracle::CanonicalMarket;
 using oracle::CanonicalPolicy;
 using oracle::CanonicalQualityFlag;
 using oracle::CanonicalStatus;
+using oracle::CanonicalVenue;
 using oracle::DecimalErrorOutcome;
 using oracle::InstallOutcome;
 using oracle::MetadataOutcome;
@@ -212,6 +214,48 @@ TEST(OperationObservationTest, SnapshotMismatchIsAttributedToR4) {
 
     auto reference = production;
     reference.snapshot->quality_flags = {};
+    const auto divergence = compare(production, reference);
+    ASSERT_TRUE(divergence.has_value());
+    EXPECT_EQ(divergence->category, oracle::DivergenceCategory::SnapshotObservation);
+    EXPECT_EQ(divergence->layer, oracle::Layer::R4);
+}
+
+TEST(OperationObservationTest, SnapshotVenueMismatchIsAttributedToR4SnapshotSemantics) {
+    SnapshotOutcome snapshot;
+    snapshot.venue = CanonicalVenue::Binance;
+    auto production = observation(OperationResult{snapshot});
+    production.snapshot = snapshot;
+    auto reference = production;
+    reference.snapshot->venue = static_cast<CanonicalVenue>(1);
+
+    const auto divergence = compare(production, reference);
+    ASSERT_TRUE(divergence.has_value());
+    EXPECT_EQ(divergence->category, oracle::DivergenceCategory::SnapshotObservation);
+    EXPECT_EQ(divergence->layer, oracle::Layer::R4);
+}
+
+TEST(OperationObservationTest, SnapshotMarketMismatchIsAttributedToR4SnapshotSemantics) {
+    SnapshotOutcome snapshot;
+    snapshot.market = CanonicalMarket::Spot;
+    auto production = observation(OperationResult{snapshot});
+    production.snapshot = snapshot;
+    auto reference = production;
+    reference.snapshot->market = CanonicalMarket::UsdMPerpetual;
+
+    const auto divergence = compare(production, reference);
+    ASSERT_TRUE(divergence.has_value());
+    EXPECT_EQ(divergence->category, oracle::DivergenceCategory::SnapshotObservation);
+    EXPECT_EQ(divergence->layer, oracle::Layer::R4);
+}
+
+TEST(OperationObservationTest, SnapshotSchemaMismatchIsAttributedToR4SnapshotSemantics) {
+    SnapshotOutcome snapshot;
+    snapshot.schema_version = "local-order-book-snapshot.v1";
+    auto production = observation(OperationResult{snapshot});
+    production.snapshot = snapshot;
+    auto reference = production;
+    reference.snapshot->schema_version = "local-order-book-snapshot.v2";
+
     const auto divergence = compare(production, reference);
     ASSERT_TRUE(divergence.has_value());
     EXPECT_EQ(divergence->category, oracle::DivergenceCategory::SnapshotObservation);

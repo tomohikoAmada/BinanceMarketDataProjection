@@ -66,6 +66,8 @@ struct Divergence final {
 [[nodiscard]] std::string_view to_text(CanonicalStatus status) noexcept;
 [[nodiscard]] std::string_view to_text(CanonicalGapReason reason) noexcept;
 [[nodiscard]] std::string_view to_text(CanonicalPolicy policy) noexcept;
+[[nodiscard]] std::string_view to_text(CanonicalVenue venue) noexcept;
+[[nodiscard]] std::string_view to_text(CanonicalMarket market) noexcept;
 [[nodiscard]] std::string_view to_text(CanonicalDecimalError error) noexcept;
 [[nodiscard]] std::string_view to_text(CanonicalBookSide side) noexcept;
 [[nodiscard]] std::string_view to_text(CanonicalDecimalRole role) noexcept;

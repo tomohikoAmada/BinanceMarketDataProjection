@@ -65,7 +65,8 @@ def toolchain(compiler: str, version: str, os_name: str, architecture: str) -> d
 def make_manifest(**overrides) -> dict:
     workloads = copy.deepcopy(WORKLOADS)
     manifest = {
-        "schema_version": "M5_SEMANTIC_MANIFEST_V1",
+        "schema_version": "M5_SEMANTIC_MANIFEST_V2",
+        "observation_schema_version": "M5_SEMANTIC_OBSERVATION_V2",
         "head_sha": HEAD_SHA,
         "toolchain": toolchain("GNU", "13.3.0", "Linux", "x86_64"),
         "build_type": "Release",
@@ -205,6 +206,21 @@ class CrossCompilerTest(unittest.TestCase):
             self.apple,
             schema_version="M5_SEMANTIC_MANIFEST_V99",
             toolchain=toolchain("AppleClang", "21", "Darwin", "arm64"),
+        )
+        self.assert_cross_fails()
+
+    def test_missing_observation_schema_fails(self):
+        manifest = make_manifest()
+        del manifest["observation_schema_version"]
+        with self.clang.open("w", encoding="utf-8") as handle:
+            json.dump(manifest, handle)
+        self.assert_cross_fails()
+
+    def test_historical_observation_schema_fails_closed(self):
+        write_manifest(
+            self.clang,
+            observation_schema_version="M5_SEMANTIC_OBSERVATION_V1",
+            toolchain=toolchain("Clang", "18.1.3", "Linux", "x86_64"),
         )
         self.assert_cross_fails()
 

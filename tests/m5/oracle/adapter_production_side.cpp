@@ -426,10 +426,36 @@ snapshot_flag(const core::LocalOrderBookSnapshot& snapshot, int index) noexcept 
     }
 }
 
+[[nodiscard]] std::optional<CanonicalVenue> snapshot_venue(common_wire::Venue venue) noexcept {
+    if (venue == common_wire::VENUE_BINANCE) {
+        return CanonicalVenue::Binance;
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<CanonicalMarket> snapshot_market(common_wire::Market market) noexcept {
+    switch (market) {
+    case common_wire::MARKET_SPOT:
+        return CanonicalMarket::Spot;
+    case common_wire::MARKET_USD_M_PERPETUAL:
+        return CanonicalMarket::UsdMPerpetual;
+    default:
+        return std::nullopt;
+    }
+}
+
 // Semantic extraction of the produced snapshot. Never compares Protobuf bytes.
 [[nodiscard]] std::optional<SnapshotOutcome>
 extract_snapshot(const core::LocalOrderBookSnapshot& wire, core::SequencePolicyKind policy) {
+    const auto venue = snapshot_venue(wire.venue());
+    const auto market = snapshot_market(wire.market());
+    if (!venue.has_value() || !market.has_value()) {
+        return std::nullopt;
+    }
     SnapshotOutcome snapshot;
+    snapshot.venue = *venue;
+    snapshot.market = *market;
+    snapshot.schema_version = wire.schema_version();
     snapshot.policy = to_canonical(policy);
     snapshot.symbol = wire.symbol();
     snapshot.producer = wire.producer();

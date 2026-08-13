@@ -12,7 +12,8 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = "M5_SEMANTIC_MANIFEST_V1"
+SCHEMA_VERSION = "M5_SEMANTIC_MANIFEST_V2"
+OBSERVATION_SCHEMA_VERSION = "M5_SEMANTIC_OBSERVATION_V2"
 AUTHORITATIVE_WORKLOAD_IDS = (
     "m5-small-core-spot-v1",
     "m5-small-core-usdm-v1",
@@ -57,6 +58,7 @@ class Manifest:
     label: str
     path: Path
     schema_version: str
+    observation_schema_version: str
     head_sha: str
     toolchain: Toolchain
     build_type: str
@@ -142,6 +144,13 @@ def validate_manifest(path: Path, position: int, expected_head: str) -> Manifest
     if schema_version != SCHEMA_VERSION:
         fail(f"{label}: unrecognized schema_version: {schema_version!r}")
 
+    observation_schema_version = raw.get("observation_schema_version")
+    if observation_schema_version != OBSERVATION_SCHEMA_VERSION:
+        fail(
+            f"{label}: unrecognized observation_schema_version: "
+            f"{observation_schema_version!r}"
+        )
+
     head_sha = raw.get("head_sha")
     if not is_valid_git_sha(head_sha):
         fail(f"{label}: head_sha must be exactly 40 lowercase hexadecimal characters")
@@ -206,6 +215,7 @@ def validate_manifest(path: Path, position: int, expected_head: str) -> Manifest
         label=label,
         path=path,
         schema_version=schema_version,
+        observation_schema_version=observation_schema_version,
         head_sha=head_sha,
         toolchain=toolchain,
         build_type=build_type,
@@ -360,6 +370,7 @@ def main() -> int:
             reference = by_role[ROLE_ORDER[0]]
             print("M5 cross-compiler semantic manifest comparison PASS")
             print(f"  schema: {reference.schema_version}")
+            print(f"  observation_schema: {reference.observation_schema_version}")
             print(f"  HEAD: {reference.head_sha}")
             print(f"  fixture_set_id: {reference.fixture_set_id}")
             print("  toolchains:")
@@ -375,6 +386,7 @@ def main() -> int:
             reference = manifests[0]
             print("M5 replay semantic manifest comparison PASS")
             print(f"  schema: {reference.schema_version}")
+            print(f"  observation_schema: {reference.observation_schema_version}")
             print(f"  HEAD: {reference.head_sha}")
             print(f"  fixture_set_id: {reference.fixture_set_id}")
             print(

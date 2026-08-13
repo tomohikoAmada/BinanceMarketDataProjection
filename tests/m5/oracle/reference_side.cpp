@@ -34,6 +34,30 @@ namespace replay = bmd_projection::m5::replay;
     return CanonicalPolicy::Spot;
 }
 
+[[nodiscard]] CanonicalVenue canonical(ref::ReferenceVenue venue) noexcept {
+    switch (venue) {
+    case ref::ReferenceVenue::Binance:
+        return CanonicalVenue::Binance;
+    case ref::ReferenceVenue::Unspecified:
+    case ref::ReferenceVenue::Unknown:
+        break;
+    }
+    return CanonicalVenue::Binance;
+}
+
+[[nodiscard]] CanonicalMarket canonical(ref::ReferenceMarket market) noexcept {
+    switch (market) {
+    case ref::ReferenceMarket::Spot:
+        return CanonicalMarket::Spot;
+    case ref::ReferenceMarket::UsdMPerpetual:
+        return CanonicalMarket::UsdMPerpetual;
+    case ref::ReferenceMarket::Unspecified:
+    case ref::ReferenceMarket::Unknown:
+        break;
+    }
+    return CanonicalMarket::Spot;
+}
+
 [[nodiscard]] CanonicalStatus canonical(reference::Status status) noexcept {
     switch (status) {
     case reference::Status::AwaitingBaseline:
@@ -586,6 +610,9 @@ ReferenceSide::observe_snapshot_request(const replay::SnapshotRequestOp& operati
     }
     const auto predicted = std::get<ref::ReferenceSnapshotPrediction>(prediction);
     SnapshotOutcome snapshot;
+    snapshot.venue = canonical(predicted.venue);
+    snapshot.market = canonical(predicted.market);
+    snapshot.schema_version = predicted.schema_version;
     snapshot.policy = projection_policy_ == replay::SequencePolicy::Spot
                           ? CanonicalPolicy::Spot
                           : CanonicalPolicy::UsdMPerpetual;

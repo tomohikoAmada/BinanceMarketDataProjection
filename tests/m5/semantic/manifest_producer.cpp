@@ -198,7 +198,8 @@ int main(int argc, char** argv) {
     }
 
     semantic::SemanticManifest manifest;
-    manifest.schema_version = std::string(semantic::kManifestSchemaV1);
+    manifest.schema_version = std::string(semantic::kManifestSchemaV2);
+    manifest.observation_schema_version = std::string(semantic::kObservationSchemaV2);
     manifest.head_sha = args.head_sha;
     manifest.toolchain = get_toolchain();
     manifest.build_type = get_build_type();
