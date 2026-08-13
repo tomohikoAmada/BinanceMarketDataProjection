@@ -6,6 +6,20 @@ All notable changes will be recorded here.
 
 ### Added
 
+- M5 Phase-6 representative benchmark infrastructure (implementation PR open, DRAFT / UNMERGED):
+  M1 normative parse/format cases, M2 apply_level/apply_updates/replace_all/query families,
+  the full 48-cell M3 accepted live-apply matrix plus classification and component/proxy cells,
+  M4 adaptation/install/apply/snapshot/serialization boundaries (fail-closed inventory),
+  production CoreNormalizedReplay and AdapterWireReplay wall-time throughput,
+  a dedicated production-only event-latency executable with nearest-rank-v1 statistics and
+  calibration, `M5_BENCHMARK_WORKLOAD_SPEC_V1` workload identity, the
+  `M5_BENCHMARK_WRAPPER_V1` metadata/provenance wrapper with configure-time dirty capture and
+  exact binary/payload SHA binding, `M5_REPLAY_LATENCY_V1` latency evidence, deterministic
+  fail-closed inventory/smoke/wrapper/latency validators with Python and C++ tests,
+  `scripts/benchmark-smoke.sh` / `scripts/benchmark-full.sh`, and the extended benchmark-smoke
+  CI job (ProtoAdapter ON, 15-minute timeout, structural evidence only, no numeric threshold).
+  Production `src/`/`include/` unchanged. Phase 6: IMPLEMENTED / PENDING INDEPENDENT REVIEW
+  (`docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`).
 - M5 Phase-5 differential replay fuzzer (`bmd_projection_replay_fuzz`): direct structured byte
   decoder (no canonical text parser in fuzz semantic path), bounded deterministic
   `LLVMFuzzerTestOneInput`, production/reference ReplayDriver comparison with libFuzzer abort

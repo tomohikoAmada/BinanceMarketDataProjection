@@ -172,15 +172,26 @@ its checked-in seed corpus.
 ## Benchmark smoke test
 
 ```bash
-bash scripts/configure.sh benchmark
+bash scripts/configure.sh benchmark -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON
 bash scripts/build.sh benchmark
-build/benchmark/cmake/benchmarks/bmd_projection_benchmarks \
-  --benchmark_format=json \
-  --benchmark_out=build/benchmark/foundation-benchmark.json
+bash scripts/benchmark-smoke.sh
 ```
 
-The benchmark remains an infrastructure smoke test; it does not represent order-book or projection
-performance.
+The Phase-6 benchmark suite provides representative M1-M4 Google Benchmark workloads (including
+the full 48-cell M3 accepted live-apply matrix), production `CoreNormalizedReplay` and
+`AdapterWireReplay` throughput, and a dedicated production-only event-latency executable. The
+smoke driver runs the locked 8-cell M3 subset with 1 repetition and validates the required
+inventory, the metadata wrapper (`M5_BENCHMARK_WRAPPER_V1`), payload SHA binding, and the
+`M5_REPLAY_LATENCY_V1` latency evidence fail-closed. Smoke values are structural execution
+evidence only; no numeric performance threshold exists.
+
+A formal/manual full evidence run (>= 5 repetitions, full matrix) uses:
+
+```bash
+bash scripts/benchmark-full.sh
+```
+
+See [M5 Phase 6](docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md) for the measurement contracts.
 
 ## Install and downstream consumer
 
@@ -289,8 +300,8 @@ The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
   ADR-0008 successor coverage; Phase 4 cross-compiler GNU/Clang/AppleClang semantic equality
   PASS; Phase 5 differential replay fuzzing merged via PR #18, squash
   `53268d5cd2090f4779ffdc14c070184f470cc899`, exact-head CI `31668465623` — 18/18 PASS,
-  post-merge CI `31671708958` — 18/18 PASS). Phase 6: PRE-IMPLEMENTATION DECISIONS RECORDED /
-  IMPLEMENTATION NOT STARTED.
+  post-merge CI `31671708958` — 18/18 PASS). Phase 6: IMPLEMENTED / PENDING INDEPENDENT REVIEW
+  (`docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`).
   M6 is not started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.
