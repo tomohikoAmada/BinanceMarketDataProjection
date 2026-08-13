@@ -457,6 +457,10 @@ target_include_directories(
         "${PROJECT_SOURCE_DIR}/fuzz/m5"
         "${CMAKE_CURRENT_SOURCE_DIR}/m5/phase5"
 )
+target_compile_definitions(
+    bmd_projection_m5_phase5_tests
+    PRIVATE BMD_M5_REPLAY_CORPUS_ROOT="${PROJECT_SOURCE_DIR}/fuzz/corpus/replay"
+)
 target_link_libraries(
     bmd_projection_m5_phase5_tests
     PRIVATE
@@ -472,6 +476,20 @@ set_target_properties(
         CXX_EXTENSIONS NO
 )
 bmd_projection_apply_project_options(bmd_projection_m5_phase5_tests)
+if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
+    target_sources(
+        bmd_projection_m5_phase5_tests
+        PRIVATE m5/oracle/adapter_production_side.cpp
+    )
+    target_link_libraries(
+        bmd_projection_m5_phase5_tests
+        PRIVATE BinanceMarketDataProjection::ProtoAdapter
+    )
+    target_compile_definitions(
+        bmd_projection_m5_phase5_tests
+        PRIVATE BMD_PROJECTION_PHASE5_TEST_ADAPTER_ENABLED=1
+    )
+endif()
 gtest_discover_tests(bmd_projection_m5_phase5_tests)
 
 # M5 Phase-5: structural corpus validator for the checked-in replay seed corpus.

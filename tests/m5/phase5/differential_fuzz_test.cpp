@@ -1,18 +1,30 @@
 #include "replay_fuzz_decoder.hpp"
 #include "replay_fuzz_fixture.hpp"
 
+#include "adapter_scenario.hpp"
 #include "core_production_side.hpp"
 #include "divergence.hpp"
+#include "operation_observation.hpp"
 #include "reference_side.hpp"
 #include "replay_driver.hpp"
 #include "replay_side.hpp"
 
+#ifdef BMD_PROJECTION_PHASE5_TEST_ADAPTER_ENABLED
+#include "adapter_production_side.hpp"
+#endif
+
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <fstream>
+#include <iterator>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <variant>
 #include <vector>
 
 namespace {
@@ -25,20 +37,83 @@ namespace decoder = bmd_projection::m5::replay::fuzz_decoder;
 namespace oracle = bmd_projection::m5::oracle;
 namespace replay = bmd_projection::m5::replay;
 
-void run_and_expect_no_divergence(const decoder::FuzzCase& fuzz_case, bool expect_pass = true) {
+[[nodiscard]] oracle::ScenarioVenue map_venue(decoder::FuzzVenue venue) noexcept {
+    switch (venue) {
+    case decoder::FuzzVenue::Binance:
+        return oracle::ScenarioVenue::Binance;
+    case decoder::FuzzVenue::Unspecified:
+        return oracle::ScenarioVenue::Unspecified;
+    case decoder::FuzzVenue::UnknownNumeric:
+        return oracle::ScenarioVenue::UnknownNumeric;
+    }
+    return oracle::ScenarioVenue::Binance;
+}
+
+[[nodiscard]] oracle::ScenarioMarket map_market(decoder::FuzzMarket market) noexcept {
+    switch (market) {
+    case decoder::FuzzMarket::Spot:
+        return oracle::ScenarioMarket::Spot;
+    case decoder::FuzzMarket::UsdMPerpetual:
+        return oracle::ScenarioMarket::UsdMPerpetual;
+    case decoder::FuzzMarket::Unspecified:
+        return oracle::ScenarioMarket::Unspecified;
+    case decoder::FuzzMarket::UnknownNumeric:
+        return oracle::ScenarioMarket::UnknownNumeric;
+    }
+    return oracle::ScenarioMarket::Spot;
+}
+
+[[nodiscard]] oracle::AdapterScenario scenario(const decoder::FuzzCase& fuzz_case) {
+    return {
+        map_venue(fuzz_case.scenario_venue),
+        map_market(fuzz_case.scenario_market),
+        fuzz_case.adapter_wire_symbol.empty() ? fuzz_case.symbol : fuzz_case.adapter_wire_symbol,
+        fuzz_case.adapter_expected_symbol.empty() ? fuzz_case.symbol
+                                                  : fuzz_case.adapter_expected_symbol,
+        fuzz_case.adapter_expected_policy,
+        fuzz_case.adapter_conversion_numeric_spec.price_scale == 0 &&
+                fuzz_case.adapter_conversion_numeric_spec.quantity_scale == 0
+            ? fuzz_case.numeric_spec
+            : fuzz_case.adapter_conversion_numeric_spec,
+        fuzz_case.adapter_projection_numeric_spec.price_scale == 0 &&
+                fuzz_case.adapter_projection_numeric_spec.quantity_scale == 0
+            ? fuzz_case.numeric_spec
+            : fuzz_case.adapter_projection_numeric_spec,
+        fuzz_case.adapter_projection_policy,
+    };
+}
+
+[[nodiscard]] oracle::ReplayOutcome
+run_case(const decoder::FuzzCase& fuzz_case,
+         oracle::ObservationRetention retention = oracle::ObservationRetention::RetainNone) {
     auto fixture = decoder::build_structured_fixture(fuzz_case);
 
     auto mode = fuzz_case.mode == decoder::DecodedMode::AdapterEnabled
                     ? oracle::ReplayMode::AdapterEnabled
                     : oracle::ReplayMode::CoreOnly;
 
-    auto production = oracle::make_core_production_side(fixture);
-    auto reference = oracle::make_reference_side(fixture, mode);
+    std::unique_ptr<oracle::ReplaySide> production;
+    std::unique_ptr<oracle::ReplaySide> reference;
+    if (mode == oracle::ReplayMode::AdapterEnabled) {
+#ifdef BMD_PROJECTION_PHASE5_TEST_ADAPTER_ENABLED
+        const auto adapter_scenario = scenario(fuzz_case);
+        production = oracle::make_adapter_production_side(fixture, adapter_scenario);
+        reference = oracle::make_reference_side(fixture, mode, adapter_scenario);
+#else
+        return {};
+#endif
+    } else {
+        production = oracle::make_core_production_side(fixture);
+        reference = oracle::make_reference_side(fixture, mode);
+    }
 
-    oracle::ReplayDriver driver{fixture, std::move(production), std::move(reference),
-                                oracle::ObservationRetention::RetainNone};
+    oracle::ReplayDriver driver{fixture, std::move(production), std::move(reference), retention};
 
-    auto outcome = driver.run();
+    return driver.run();
+}
+
+void run_and_expect_no_divergence(const decoder::FuzzCase& fuzz_case, bool expect_pass = true) {
+    auto outcome = run_case(fuzz_case);
 
     if (expect_pass) {
         EXPECT_FALSE(outcome.first_divergence.has_value())
@@ -52,6 +127,18 @@ void run_and_expect_no_divergence(const decoder::FuzzCase& fuzz_case, bool expec
     }
 }
 
+[[nodiscard]] decoder::FuzzCase load_seed(std::string_view filename) {
+    const std::string path = std::string(BMD_M5_REPLAY_CORPUS_ROOT) + "/" + std::string(filename);
+    std::ifstream file(path, std::ios::binary);
+    const std::vector<std::uint8_t> data{std::istreambuf_iterator<char>(file),
+                                         std::istreambuf_iterator<char>()};
+    if (data.empty()) {
+        return {};
+    }
+    const auto decoded = decoder::decode(data.data(), data.size());
+    return decoded.value_or(decoder::FuzzCase{});
+}
+
 // Builds a minimal FuzzCase programmatically.
 decoder::FuzzCase make_case(decoder::DecodedMode mode, replay::Market market,
                             const std::vector<replay::Operation>& ops) {
@@ -63,6 +150,11 @@ decoder::FuzzCase make_case(decoder::DecodedMode mode, replay::Market market,
                                                        : replay::SequencePolicy::UsdMPerpetual;
     c.symbol = "BTCUSDT";
     c.operations = ops;
+    if (mode == decoder::DecodedMode::AdapterEnabled && market == replay::Market::UsdMPerpetual) {
+        c.scenario_market = decoder::FuzzMarket::UsdMPerpetual;
+        c.adapter_expected_policy = replay::SequencePolicy::UsdMPerpetual;
+        c.adapter_projection_policy = replay::SequencePolicy::UsdMPerpetual;
+    }
     return c;
 }
 
@@ -186,6 +278,90 @@ TEST(DifferentialFuzzHarnessTest, LargeFuzzCaseNoDivergence) {
     auto c = make_case(decoder::DecodedMode::CoreOnly, replay::Market::Spot, ops);
     run_and_expect_no_divergence(c);
 }
+
+TEST(DifferentialFuzzHarnessTest, RecoverySeedEndsSynchronizedAfterPostRebaselineBridge) {
+    const auto fuzz_case = load_seed("recovery.bin");
+    ASSERT_FALSE(fuzz_case.operations.empty());
+    const auto outcome = run_case(fuzz_case, oracle::ObservationRetention::RetainAll);
+    ASSERT_FALSE(outcome.first_divergence.has_value());
+    ASSERT_FALSE(outcome.observations.empty());
+    EXPECT_EQ(outcome.observations.back().checkpoint.status, oracle::CanonicalStatus::Synchronized);
+}
+
+#ifdef BMD_PROJECTION_PHASE5_TEST_ADAPTER_ENABLED
+TEST(DifferentialFuzzHarnessTest, SpotAdapterDepthLimitSeedTruncatesBothSnapshotSides) {
+    const auto fuzz_case = load_seed("depth_limit_snapshot.bin");
+    ASSERT_EQ(fuzz_case.mode, decoder::DecodedMode::AdapterEnabled);
+    const auto outcome = run_case(fuzz_case, oracle::ObservationRetention::RetainAll);
+    ASSERT_FALSE(outcome.first_divergence.has_value());
+    ASSERT_EQ(outcome.observations.size(), 3U);
+    const auto& observed = outcome.observations.back();
+    const auto& snapshot = std::get<oracle::SnapshotOutcome>(observed.result.value);
+    EXPECT_EQ(snapshot.depth_limit, 1U);
+    EXPECT_EQ(snapshot.bids.size(), 1U);
+    EXPECT_EQ(snapshot.asks.size(), 1U);
+    EXPECT_GE(observed.checkpoint.bids.size(), 3U);
+    EXPECT_GE(observed.checkpoint.asks.size(), 3U);
+}
+
+TEST(DifferentialFuzzHarnessTest, UsdmAdapterPathReplaysWithoutDivergence) {
+    replay::InstallBaselineOp install{replay::SourceLocation{0, 0, "adapter-usdm"},
+                                      50,
+                                      {{replay::Side::Bid, "50000", "1.0"}},
+                                      {{replay::Side::Ask, "50100", "1.5"}}};
+    replay::DepthUpdateOp bridge{
+        replay::SourceLocation{1, 0, "adapter-usdm"}, 50, 51, std::optional<std::uint64_t>{50}, {}};
+    const auto fuzz_case = make_case(decoder::DecodedMode::AdapterEnabled,
+                                     replay::Market::UsdMPerpetual, {install, bridge});
+    const auto outcome = run_case(fuzz_case, oracle::ObservationRetention::RetainAll);
+    ASSERT_FALSE(outcome.first_divergence.has_value());
+    ASSERT_EQ(outcome.observations.size(), 2U);
+    EXPECT_EQ(outcome.observations.back().checkpoint.status, oracle::CanonicalStatus::Synchronized);
+}
+
+TEST(DifferentialFuzzHarnessTest, AdapterErrorDoesNotMutateProjectionState) {
+    auto fuzz_case =
+        make_case(decoder::DecodedMode::AdapterEnabled, replay::Market::Spot, {spot_install()});
+    fuzz_case.scenario_venue = decoder::FuzzVenue::Unspecified;
+    const auto outcome = run_case(fuzz_case, oracle::ObservationRetention::RetainAll);
+    ASSERT_FALSE(outcome.first_divergence.has_value());
+    ASSERT_EQ(outcome.observations.size(), 1U);
+    const auto& observed = outcome.observations.front();
+    const auto& error = std::get<oracle::AdapterErrorOutcome>(observed.result.value);
+    EXPECT_EQ(error.code, oracle::CanonicalAdapterCode::UnspecifiedEnum);
+    EXPECT_EQ(error.field, oracle::CanonicalAdapterField::Venue);
+    EXPECT_EQ(observed.checkpoint.status, oracle::CanonicalStatus::AwaitingBaseline);
+    EXPECT_FALSE(observed.checkpoint.last_update_id.has_value());
+    EXPECT_TRUE(observed.checkpoint.bids.empty());
+    EXPECT_TRUE(observed.checkpoint.asks.empty());
+}
+
+TEST(DifferentialFuzzHarnessTest, QualitySeedSeparatesInboundHostAndDerivedFacts) {
+    const auto fuzz_case = load_seed("quality_combinations.bin");
+    ASSERT_EQ(fuzz_case.mode, decoder::DecodedMode::AdapterEnabled);
+    const auto outcome = run_case(fuzz_case, oracle::ObservationRetention::RetainAll);
+    ASSERT_FALSE(outcome.first_divergence.has_value());
+    ASSERT_EQ(outcome.observations.size(), 4U);
+
+    const auto& install =
+        std::get<oracle::AdapterSuccessOutcome>(outcome.observations.at(1).result.value);
+    EXPECT_EQ(install.observed_quality, (std::vector<oracle::CanonicalQualityFlag>{
+                                            oracle::CanonicalQualityFlag::OutOfOrder,
+                                            oracle::CanonicalQualityFlag::ProducerRestart}));
+
+    const auto& snapshot =
+        std::get<oracle::SnapshotOutcome>(outcome.observations.back().result.value);
+    EXPECT_EQ(snapshot.quality_flags, (std::vector<oracle::CanonicalQualityFlag>{
+                                          oracle::CanonicalQualityFlag::Duplicate,
+                                          oracle::CanonicalQualityFlag::SnapshotTooOld,
+                                          oracle::CanonicalQualityFlag::CrossedBook}));
+    EXPECT_EQ(std::ranges::count(snapshot.quality_flags, oracle::CanonicalQualityFlag::OutOfOrder),
+              0);
+    EXPECT_EQ(
+        std::ranges::count(snapshot.quality_flags, oracle::CanonicalQualityFlag::ProducerRestart),
+        0);
+}
+#endif
 
 // Regression: exact libFuzzer input recovered from CI run 31596081744.
 // Previously decoded a normal DepthUpdateOp with first > final, which

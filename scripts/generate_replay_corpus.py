@@ -45,16 +45,12 @@ def var_u64(value):
     return result
 
 
-def level_token(value_str):
-    """Encode a level token for decode_level_token."""
-    if not value_str:
-        return bytes([0x12])  # mode 2: empty
-    if value_str == "0":
-        return bytes([0x1A])  # mode 2 but 0...
-        # Actually let me use mode 1 (pure integer) for simplicity
-    # mode 1: pure integer
-    val = int(value_str)
-    return bytes([0x01, val & 0xFF])
+def token_style(mode, payload=None):
+    """Encode one exact decode_level_token style."""
+    data = bytes([mode & 0x07])
+    if payload is not None:
+        data += bytes([payload & 0xFF])
+    return data
 
 
 def decimal_token(num_str):
@@ -93,8 +89,8 @@ def levels_data(levels):
     data = bytes([count])
     for side, price, qty in levels:
         data += bytes([0 if side == "B" else 1])
-        data += decimal_token(price)
-        data += decimal_token(qty)
+        data += price if isinstance(price, bytes) else decimal_token(price)
+        data += qty if isinstance(qty, bytes) else decimal_token(qty)
     return data
 
 
@@ -104,9 +100,9 @@ def quality_fact_byte(quality_idx):
     return bytes([quality_idx % 13])
 
 
-def quality_facts(facts):
+def quality_facts(facts, max_count):
     """Encode quality facts: count byte then each fact."""
-    count = min(len(facts), 6)
+    count = min(len(facts), max_count)
     return bytes([count]) + b"".join(quality_fact_byte(f) for f in facts)
 
 
@@ -177,7 +173,7 @@ def snapshot_request_op(depth_limit, host_quality, snapshot_id, producer,
         data += bytes([0x01, depth_limit & 0xFF])
     else:
         data += bytes([0x00])
-    data += quality_facts(host_quality)
+    data += quality_facts(host_quality, 6)
     data += string_with_len(snapshot_id)
     data += string_with_len(producer)
     data += string_with_len(producer_version)
@@ -197,7 +193,7 @@ def snapshot_request_op(depth_limit, host_quality, snapshot_id, producer,
 def adapter_metadata_op(quality):
     """Opcode 5: AdapterMetadata."""
     data = bytes([0x05])
-    data += quality_facts(quality)
+    data += quality_facts(quality, 8)
     return data
 
 
@@ -223,8 +219,8 @@ def gen_spot_synchronized():
 def gen_usdm_synchronized():
     ops = b""
     ops += install_baseline_op(200, [("B", "50000", "1.5")], [("A", "50100", "2.0")])
-    ops += depth_update_op(200, 200, 200, [("B", "50010", "1.0")])  # bridge
-    ops += depth_update_op(205, 206, 200, [("A", "50090", "3.0")])
+    ops += depth_update_op(200, 201, 200, [("B", "5001", "1.0")])  # bridge
+    ops += depth_update_op(202, 202, 201, [("A", "5009", "3.0")])
     data = header("usdm") + bytes([3]) + ops
     make_seed("usdm_synchronized_stream.bin", data)
 
@@ -256,7 +252,8 @@ def gen_recovery():
     ops += depth_update_op(100, 101, None, [("B", "60100", "2.0")])
     ops += reset_op()
     ops += rebaseline_op(200, [("B", "61000", "2.0")], [("A", "61100", "3.0")])
-    data = header("spot") + bytes([4]) + ops
+    ops += depth_update_op(201, 201, None, [("B", "6101", "2.5")])
+    data = header("spot") + bytes([5]) + ops
     make_seed("recovery.bin", data)
 
 
@@ -266,7 +263,8 @@ def gen_duplicate_stale():
     ops += install_baseline_op(50, [("B", "60000", "1.0")], [("A", "60100", "1.5")])
     ops += depth_update_op(51, 51, None, [("B", "60001", "0.5")])  # Successor
     ops += depth_update_op(51, 51, None, [("B", "60002", "1.0")])  # Duplicate
-    data = header("spot") + bytes([3]) + ops
+    ops += depth_update_op(49, 49, None, [("B", "5999", "1.0")])  # Stale
+    data = header("spot") + bytes([4]) + ops
     make_seed("duplicate_stale.bin", data)
 
 
@@ -274,8 +272,8 @@ def gen_duplicate_stale():
 def gen_locked_crossed():
     ops = b""
     ops += install_baseline_op(50,
-        [("B", "50000", "1.0"), ("B", "49900", "2.0")],
-        [("A", "49900", "1.5"), ("A", "50000", "2.5")])
+        [("B", "5000", "1.0"), ("B", "4990", "2.0")],
+        [("A", "5000", "1.5"), ("A", "5010", "2.5")])
     data = header("spot") + bytes([1]) + ops
     make_seed("locked_crossed.bin", data)
 
@@ -283,12 +281,14 @@ def gen_locked_crossed():
 # ── Category 8: decimal boundaries ──
 def gen_decimal_boundaries():
     ops = b""
-    # Levels with varied decimal forms: empty, 0, integer, decimal point, fractional,
-    # leading zeros, large magnitude
+    # Four levels / eight tokens exercise the exact decoder styles required by
+    # the corpus contract without exceeding the shared per-event level budget.
     ops += install_baseline_op(1,
-        [("B", "", "0"), ("B", "0", "1"), ("B", "1", "1.5"), ("B", "9", "00"),
-         ("B", "9999999999", "9999999999")],
-        [("A", "1", "1"), ("A", "1.23", "0.001"), ("A", "9999999999999999999", "1")])
+        [("B", token_style(2), token_style(3)),
+         ("B", decimal_token("1.23"), token_style(4, 0)),
+         ("B", token_style(5, 42), token_style(6)),
+         ("B", token_style(7), decimal_token("9"))],
+        [])
     data = header("spot") + bytes([1]) + ops
     make_seed("decimal_boundaries.bin", data)
 
@@ -296,12 +296,14 @@ def gen_decimal_boundaries():
 # ── Category 9: depth-limit snapshot ──
 def gen_depth_limit_snapshot():
     ops = b""
-    ops += install_baseline_op(50, [("B", "60000", "1.0")], [("A", "60100", "1.5")])
-    ops += depth_update_op(51, 51, None, [("B", "60010", "2.0")])
-    # Snapshot with depth limit
+    ops += install_baseline_op(
+        50,
+        [("B", "6000", "1.0"), ("B", "5990", "2.0"), ("B", "5980", "3.0")],
+        [("A", "6010", "1.5"), ("A", "6020", "2.5"), ("A", "6030", "3.5")])
+    ops += depth_update_op(51, 51, None, [])
     ops += snapshot_request_op(
-        depth_limit=5,
-        host_quality=[0, 1],
+        depth_limit=1,
+        host_quality=[],
         snapshot_id="abc123",
         producer="fuzz",
         producer_version="1",
@@ -311,40 +313,32 @@ def gen_depth_limit_snapshot():
         monotonic_ns=500000,
         has_gap=False,
     )
-    ops += snapshot_request_op(
-        depth_limit=None,
-        host_quality=[],
-        snapshot_id="no-limit",
-        producer="fuzz",
-        producer_version="1",
-        origin="history",
-        generated_time=2000000,
-        has_gap=True,
-        gap_seq=50,
-        gap_state=1,  # ResyncRequired
-    )
-    data = header("spot") + bytes([4]) + ops
+    data = header("spot", adapter=True) + bytes([3]) + ops
     make_seed("depth_limit_snapshot.bin", data)
 
 
 # ── Category 10: quality combinations ──
 def gen_quality_combinations():
     ops = b""
-    ops += adapter_metadata_op([0, 1, 2, 3, 4])
-    ops += install_baseline_op(50, [("B", "60000", "1.0")], [("A", "60100", "1.5")])
+    # Inbound metadata is observed on install only. The later snapshot carries
+    # different host facts plus an independently derived CrossedBook flag.
+    ops += adapter_metadata_op([1, 10])
+    ops += install_baseline_op(
+        50,
+        [("B", "6000", "1.0"), ("B", "5900", "2.0")],
+        [("A", "6000", "1.5"), ("A", "6100", "2.5")])
+    ops += depth_update_op(51, 51, None, [])
     ops += snapshot_request_op(
-        depth_limit=10,
-        host_quality=[0, 3, 6, 9, 12],
+        depth_limit=2,
+        host_quality=[0, 3],
         snapshot_id="qcomb1",
         producer="fuzz",
         producer_version="1",
         origin="recorder",
         generated_time=3000000,
-        has_gap=True,
-        gap_seq=50,
-        gap_state=3,  # Recovered
+        has_gap=False,
     )
-    data = header("spot") + bytes([3]) + ops
+    data = header("spot", adapter=True) + bytes([4]) + ops
     make_seed("quality_combinations.bin", data)
 
 

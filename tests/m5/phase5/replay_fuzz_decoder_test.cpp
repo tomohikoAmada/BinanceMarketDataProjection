@@ -220,6 +220,57 @@ TEST(ReplayFuzzDecoderTest, LevelCountCap) {
     EXPECT_LE(op.bids.size(), decoder::kMaxLevelsPerEvent);
 }
 
+TEST(ReplayFuzzDecoderTest, BaselineSidesShareOneEventLevelBudgetAndStayFramed) {
+    auto data = make_data(0x20, 0x08, 0x03, 'B', 'T', 'C', 0x02, 0x00, 0x18, 0x08);
+    for (int i = 0; i < 8; ++i) {
+        data.insert(data.end(), {0x00, 0x03, 0x03});
+    }
+    data.push_back(0x08);
+    for (int i = 0; i < 8; ++i) {
+        data.insert(data.end(), {0x01, 0x03, 0x03});
+    }
+    data.push_back(0x03);
+
+    const auto result = decode(data.data(), data.size());
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(result->operations.size(), 2U);
+    const auto& install = std::get<replay::InstallBaselineOp>(result->operations[0]);
+    EXPECT_LE(install.bids.size() + install.asks.size(), decoder::kMaxLevelsPerEvent);
+    EXPECT_TRUE(std::holds_alternative<replay::ResetOp>(result->operations[1]));
+}
+
+TEST(ReplayFuzzDecoderTest, RebaselineSidesShareOneEventLevelBudgetAndStayFramed) {
+    auto data = make_data(0x20, 0x08, 0x03, 'B', 'T', 'C', 0x02, 0x02, 0x18, 0x08);
+    for (int i = 0; i < 8; ++i) {
+        data.insert(data.end(), {0x00, 0x03, 0x03});
+    }
+    data.push_back(0x08);
+    for (int i = 0; i < 8; ++i) {
+        data.insert(data.end(), {0x01, 0x03, 0x03});
+    }
+    data.push_back(0x03);
+
+    const auto result = decode(data.data(), data.size());
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(result->operations.size(), 2U);
+    const auto& rebaseline = std::get<replay::RebaselineOp>(result->operations[0]);
+    EXPECT_LE(rebaseline.bids.size() + rebaseline.asks.size(), decoder::kMaxLevelsPerEvent);
+    EXPECT_TRUE(std::holds_alternative<replay::ResetOp>(result->operations[1]));
+}
+
+TEST(ReplayFuzzDecoderTest, QualityFactCallSiteBoundsAreHonored) {
+    auto data = make_data(0x20, 0x08, 0x03, 'B', 'T', 'C', 0x02, 0x04, 0x00, 0x06, 0x00, 0x01, 0x02,
+                          0x03, 0x04, 0x05, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x05, 0x08,
+                          0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07);
+    const auto result = decode(data.data(), data.size());
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(result->operations.size(), 2U);
+    const auto& snapshot = std::get<replay::SnapshotRequestOp>(result->operations[0]);
+    const auto& metadata = std::get<replay::AdapterMetadataOp>(result->operations[1]);
+    EXPECT_EQ(snapshot.host_quality_facts.size(), 6U);
+    EXPECT_EQ(metadata.observed_quality.size(), 8U);
+}
+
 TEST(ReplayFuzzDecoderTest, SnapshotDepthLimitVariants) {
     {
         auto data = make_data(0x20, 0x08, 0x03, 'B', 'T', 'C', 0x01, 0x04, 0x00, 0x00, 0x00, 0x00,
@@ -258,6 +309,16 @@ TEST(ReplayFuzzDecoderTest, DepthUpdateInvertedRangeBecomesMalformedRange) {
     const auto& op = std::get<replay::MalformedRangeOp>(result.value().operations[0]);
     EXPECT_EQ(op.first_update_id, 2U);
     EXPECT_EQ(op.final_update_id, 1U);
+}
+
+TEST(ReplayFuzzDecoderTest, InvertedDepthUpdateConsumesPayloadBeforeNextOperation) {
+    auto data = make_data(0x20, 0x08, 0x03, 'B', 'T', 'C', 0x02, 0x01, 0x28, 0x18, 0x01, 0x08, 0x01,
+                          0x00, 0x03, 0x03, 0x03);
+    const auto result = decode(data.data(), data.size());
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(result->operations.size(), 2U);
+    EXPECT_TRUE(std::holds_alternative<replay::MalformedRangeOp>(result->operations[0]));
+    EXPECT_TRUE(std::holds_alternative<replay::ResetOp>(result->operations[1]));
 }
 
 // DepthUpdate with first == final remains a normal DepthUpdateOp.
@@ -302,8 +363,8 @@ TEST(ReplayFuzzDecoderTest, DecodedOperationsSatisfyStructuralDomains) {
     //  op0: DepthUpdate intent with reversed range 2 > 1
     //  op1: MalformedRange intent with valid range 1 < 2 (plus has_previous=0, levels=0)
     //  op2: MalformedRange intent with reversed range 2 > 1
-    auto data = make_data(0x20, 0x08, 0x03, 'B', 'T', 'C', 0x03, 0x01, 0x28, 0x18, 0x06, 0x18, 0x28,
-                          0x00, 0x00, 0x06, 0x28, 0x18);
+    auto data = make_data(0x20, 0x08, 0x03, 'B', 'T', 'C', 0x03, 0x01, 0x28, 0x18, 0x00, 0x00, 0x06,
+                          0x18, 0x28, 0x00, 0x00, 0x06, 0x28, 0x18);
     auto result = decode(data.data(), data.size());
     ASSERT_TRUE(result.has_value());
     ASSERT_EQ(result.value().operations.size(), 3U);

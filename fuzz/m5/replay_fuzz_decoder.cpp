@@ -112,17 +112,24 @@ inline constexpr std::uint32_t kMaxValidScale = 18;
         return {};
     }
 
-    const std::uint32_t count = cursor.read_bounded(static_cast<std::uint32_t>(max_count));
+    // Decode the collection's own bounded count, then retain only the caller's
+    // remaining event budget. Discarded entries are still consumed so the next
+    // operation remains framed deterministically.
+    const std::uint32_t encoded_count =
+        cursor.read_bounded(static_cast<std::uint32_t>(kMaxLevelsPerEvent));
+    const auto count = std::min<std::size_t>(encoded_count, max_count);
     std::vector<LevelInput> levels;
     levels.reserve(count);
-    for (std::uint32_t i = 0; i < count; ++i) {
+    for (std::uint32_t i = 0; i < encoded_count; ++i) {
         const bool bid = (cursor.read_u8() & 1U) == 0;
         const auto side = expected_side.value_or(bid ? Side::Bid : Side::Ask);
         ++token_idx;
         std::string price = decode_level_token(cursor, token_idx);
         ++token_idx;
         std::string quantity = decode_level_token(cursor, token_idx);
-        levels.push_back({side, std::move(price), std::move(quantity)});
+        if (i < count) {
+            levels.push_back({side, std::move(price), std::move(quantity)});
+        }
     }
     return levels;
 }
@@ -148,12 +155,14 @@ inline constexpr std::uint32_t kMaxValidScale = 18;
     return kMap.at(idx);
 }
 
-[[nodiscard]] std::vector<HostQualityFact>
-decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
+[[nodiscard]] std::vector<HostQualityFact> decode_quality_facts(ByteCursor& cursor,
+                                                                std::size_t max_count) noexcept {
     if (cursor.exhausted()) {
         return {};
     }
-    const std::uint32_t count = cursor.read_bounded(8U);
+    const auto bounded_max = static_cast<std::uint32_t>(
+        std::min<std::size_t>(max_count, static_cast<std::size_t>(UINT32_MAX)));
+    const std::uint32_t count = cursor.read_bounded(bounded_max);
     std::vector<HostQualityFact> facts;
     facts.reserve(count);
     for (std::uint32_t i = 0; i < count; ++i) {
@@ -182,7 +191,7 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
         desc += std::to_string(event_index);
         desc += " InstallBaseline]";
         auto bids = decode_levels(cursor, kMaxLevelsPerEvent, token_idx, Side::Bid);
-        auto asks = decode_levels(cursor, kMaxLevelsPerEvent, token_idx, Side::Ask);
+        auto asks = decode_levels(cursor, kMaxLevelsPerEvent - bids.size(), token_idx, Side::Ask);
         return InstallBaselineOp{make_source(event_index, desc), last_update_id, std::move(bids),
                                  std::move(asks)};
     }
@@ -191,18 +200,18 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
         // When the decoded range is inverted, emit MalformedRangeOp instead.
         const auto first_id = cursor.read_var_u64();
         const auto final_id = cursor.read_var_u64();
+        const bool has_previous = (cursor.read_u8() & 1U) != 0;
+        const auto previous = has_previous ? std::optional{cursor.read_var_u64()} : std::nullopt;
+        auto levels = decode_levels(cursor, kMaxLevelsPerEvent, token_idx, std::nullopt);
         if (first_id > final_id) {
             std::string desc = "structured-fuzz[op=";
             desc += std::to_string(event_index);
             desc += " MalformedRange]";
             return MalformedRangeOp{make_source(event_index, desc), first_id, final_id};
         }
-        const bool has_previous = (cursor.read_u8() & 1U) != 0;
-        const auto previous = has_previous ? std::optional{cursor.read_var_u64()} : std::nullopt;
         std::string desc = "structured-fuzz[op=";
         desc += std::to_string(event_index);
         desc += " DepthUpdate]";
-        auto levels = decode_levels(cursor, kMaxLevelsPerEvent, token_idx, std::nullopt);
         return DepthUpdateOp{make_source(event_index, desc), first_id, final_id, previous,
                              std::move(levels)};
     }
@@ -213,7 +222,7 @@ decode_quality_facts(ByteCursor& cursor, std::size_t /*max_count*/) noexcept {
         desc += std::to_string(event_index);
         desc += " Rebaseline]";
         auto bids = decode_levels(cursor, kMaxLevelsPerEvent, token_idx, Side::Bid);
-        auto asks = decode_levels(cursor, kMaxLevelsPerEvent, token_idx, Side::Ask);
+        auto asks = decode_levels(cursor, kMaxLevelsPerEvent - bids.size(), token_idx, Side::Ask);
         return RebaselineOp{make_source(event_index, desc), last_update_id, std::move(bids),
                             std::move(asks)};
     }
