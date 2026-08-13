@@ -36,6 +36,14 @@ namespace semantic = bmd_projection::m5::semantic;
     });
 }
 
+void expect_render_rejected(std::string_view manifest_schema, std::string_view observation_schema) {
+    semantic::SemanticManifest manifest;
+    manifest.schema_version = manifest_schema;
+    manifest.observation_schema_version = observation_schema;
+    EXPECT_THROW(static_cast<void>(semantic::render_manifest_json(manifest)),
+                 std::invalid_argument);
+}
+
 TEST(SemanticManifestTest, RenderValidJson) {
     semantic::SemanticManifest manifest;
     manifest.schema_version = "M5_SEMANTIC_MANIFEST_V2";
@@ -125,20 +133,12 @@ TEST(SemanticManifestTest, SupportedSchemaPairsAreAccepted) {
 }
 
 TEST(SemanticManifestTest, MixedAndUnknownSchemaPairsFailClosed) {
-    semantic::SemanticManifest manifest;
-    for (const auto& [manifest_schema, observation_schema] :
-         {std::pair<std::string_view, std::string_view>{"M5_SEMANTIC_MANIFEST_V1",
-                                                        "M5_SEMANTIC_OBSERVATION_V2"},
-          {"M5_SEMANTIC_MANIFEST_V2", "M5_SEMANTIC_OBSERVATION_V1"},
-          {"M5_SEMANTIC_MANIFEST_V99", "M5_SEMANTIC_OBSERVATION_V2"},
-          {"M5_SEMANTIC_MANIFEST_V2", "M5_SEMANTIC_OBSERVATION_V99"},
-          {"M5_SEMANTIC_MANIFEST_V1", ""},
-          {"M5_SEMANTIC_MANIFEST_V2", ""}}) {
-        manifest.schema_version = manifest_schema;
-        manifest.observation_schema_version = observation_schema;
-        EXPECT_THROW(static_cast<void>(semantic::render_manifest_json(manifest)),
-                     std::invalid_argument);
-    }
+    expect_render_rejected("M5_SEMANTIC_MANIFEST_V1", "M5_SEMANTIC_OBSERVATION_V2");
+    expect_render_rejected("M5_SEMANTIC_MANIFEST_V2", "M5_SEMANTIC_OBSERVATION_V1");
+    expect_render_rejected("M5_SEMANTIC_MANIFEST_V99", "M5_SEMANTIC_OBSERVATION_V2");
+    expect_render_rejected("M5_SEMANTIC_MANIFEST_V2", "M5_SEMANTIC_OBSERVATION_V99");
+    expect_render_rejected("M5_SEMANTIC_MANIFEST_V1", "");
+    expect_render_rejected("M5_SEMANTIC_MANIFEST_V2", "");
 }
 
 TEST(SemanticManifestTest, RenderMultipleWorkloads) {
