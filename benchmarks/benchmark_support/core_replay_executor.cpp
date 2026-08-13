@@ -71,6 +71,22 @@ constexpr std::uint64_t kNoDisposition = 0xFFFF'FFFF'FFFF'FFFEULL;
     return side == replay::Side::Bid ? core::BookSide::Bid : core::BookSide::Ask;
 }
 
+[[nodiscard]] core::PriceUnits placeholder_price() {
+    const auto value = core::PriceUnits::create(1);
+    if (!value.has_value()) {
+        std::abort();
+    }
+    return *value;
+}
+
+[[nodiscard]] core::QuantityUnits placeholder_quantity() {
+    const auto value = core::QuantityUnits::create(1);
+    if (!value.has_value()) {
+        std::abort();
+    }
+    return *value;
+}
+
 } // namespace
 
 std::uint64_t fold_evidence(std::uint64_t checksum, const EventEvidence& evidence) {
@@ -99,11 +115,9 @@ CoreReplayExecutor::CoreReplayExecutor(const replay::ReplayFixture& fixture)
         }
     }
     scratch_book_levels_.resize(max_book_levels,
-                                core::BookLevel{core::PriceUnits::create(1).value(),
-                                                core::QuantityUnits::create(1).value()});
-    scratch_updates_.resize(max_updates, core::LevelUpdate{core::BookSide::Bid,
-                                                           core::PriceUnits::create(1).value(),
-                                                           core::QuantityUnits::create(1).value()});
+                                core::BookLevel{placeholder_price(), placeholder_quantity()});
+    scratch_updates_.resize(max_updates, core::LevelUpdate{core::BookSide::Bid, placeholder_price(),
+                                                           placeholder_quantity()});
 }
 
 bool CoreReplayExecutor::parse_levels(const std::vector<replay::LevelInput>& levels,

@@ -69,9 +69,9 @@ EnvironmentIdentity collect_environment_identity() {
     EnvironmentIdentity identity;
     utsname info{};
     if (uname(&info) == 0) {
-        identity.os_name = std::string{info.sysname};
-        identity.os_version = std::string{info.release};
-        identity.architecture = std::string{info.machine};
+        identity.os_name = info.sysname;
+        identity.os_version = info.release;
+        identity.architecture = info.machine;
     } else {
         identity.os_name = "unavailable";
         identity.os_version = "unavailable";
