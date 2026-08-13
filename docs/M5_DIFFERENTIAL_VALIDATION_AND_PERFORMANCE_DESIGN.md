@@ -20,7 +20,8 @@
   `e56f5dbd12b9e66946343467221e8e3ba9984531`, exact-head CI `31668465623` — PASS 18/18, squash
   merge `53268d5cd2090f4779ffdc14c070184f470cc899`, post-merge main CI `31671708958` — PASS
   18/18) — see `docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`
-- Phase 6 status: **NOT STARTED**
+- Phase 6 status: **PRE-IMPLEMENTATION DECISIONS RECORDED / IMPLEMENTATION NOT STARTED** — see
+  `docs/M5_PHASE6_PREIMPLEMENTATION_DECISIONS.md`
 - ADR status: **ACCEPTED** (ADR-0007)
 - Design date: 2026-08-08
 - Initial independent architecture review: **CHANGES REQUESTED** (P0: 0, P1 design: 1, P1 implementation: 2, P2: 7)

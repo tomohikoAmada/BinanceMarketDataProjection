@@ -18,7 +18,8 @@ All notable changes will be recorded here.
   final focused independent review APPROVED, P0=0, P1=0, P2=0; squash merge
   `53268d5cd2090f4779ffdc14c070184f470cc899`; post-merge main CI `31671708958` — 18/18 PASS).
   M4-IIR-3: CLOSED.
-  `docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`. Phase 6 is NOT STARTED.
+  `docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`. Phase 6: PRE-IMPLEMENTATION DECISIONS RECORDED /
+  IMPLEMENTATION NOT STARTED (`docs/M5_PHASE6_PREIMPLEMENTATION_DECISIONS.md`).
 
 ### Changed
 

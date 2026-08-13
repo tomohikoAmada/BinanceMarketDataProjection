@@ -268,8 +268,10 @@ fan-in CI.
 Phase 5 (differential replay fuzzing) is COMPLETE / MERGED (PR #18, final approved Head
 `e56f5dbd12b9e66946343467221e8e3ba9984531`, exact-head CI `31668465623` — 18/18 PASS, squash
 merge `53268d5cd2090f4779ffdc14c070184f470cc899`, post-merge main CI `31671708958` — 18/18
-PASS). See [M5 Phase 5](docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md). Phase 6 and later remain not
-started.
+PASS). See [M5 Phase 5](docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md). Phase 6:
+PRE-IMPLEMENTATION DECISIONS RECORDED / IMPLEMENTATION NOT STARTED (see
+[M5 Phase-6 pre-implementation decisions](docs/M5_PHASE6_PREIMPLEMENTATION_DECISIONS.md)); later
+phases remain not started.
 Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
 cross-compiler semantic manifests with artifact fan-in transport, replay/differential fuzzing,
@@ -287,7 +289,8 @@ The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
   ADR-0008 successor coverage; Phase 4 cross-compiler GNU/Clang/AppleClang semantic equality
   PASS; Phase 5 differential replay fuzzing merged via PR #18, squash
   `53268d5cd2090f4779ffdc14c070184f470cc899`, exact-head CI `31668465623` — 18/18 PASS,
-  post-merge CI `31671708958` — 18/18 PASS). Phase 6 is NOT STARTED.
+  post-merge CI `31671708958` — 18/18 PASS). Phase 6: PRE-IMPLEMENTATION DECISIONS RECORDED /
+  IMPLEMENTATION NOT STARTED.
   M6 is not started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.
