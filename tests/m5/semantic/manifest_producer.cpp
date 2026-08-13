@@ -163,7 +163,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::cout << "M5 Semantic Manifest Producer v1\n";
+    std::cout << "M5 Semantic Manifest Producer v2\n";
     std::cout << "HEAD: " << args.head_sha << '\n';
 
     std::cout << "Generating Spot workload...\n";
@@ -198,7 +198,8 @@ int main(int argc, char** argv) {
     }
 
     semantic::SemanticManifest manifest;
-    manifest.schema_version = std::string(semantic::kManifestSchemaV1);
+    manifest.schema_version = std::string(semantic::kManifestSchemaV2);
+    manifest.observation_schema_version = std::string(semantic::kObservationSchemaV2);
     manifest.head_sha = args.head_sha;
     manifest.toolchain = get_toolchain();
     manifest.build_type = get_build_type();

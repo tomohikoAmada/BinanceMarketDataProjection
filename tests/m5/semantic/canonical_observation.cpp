@@ -21,12 +21,14 @@ using bmd_projection::m5::oracle::CanonicalDecimalRole;
 using bmd_projection::m5::oracle::CanonicalDecimalValue;
 using bmd_projection::m5::oracle::CanonicalDisposition;
 using bmd_projection::m5::oracle::CanonicalGapReason;
+using bmd_projection::m5::oracle::CanonicalMarket;
 using bmd_projection::m5::oracle::CanonicalPolicy;
 using bmd_projection::m5::oracle::CanonicalQualityFlag;
 using bmd_projection::m5::oracle::CanonicalReasonCode;
 using bmd_projection::m5::oracle::CanonicalResyncState;
 using bmd_projection::m5::oracle::CanonicalSnapshotSource;
 using bmd_projection::m5::oracle::CanonicalStatus;
+using bmd_projection::m5::oracle::CanonicalVenue;
 using bmd_projection::m5::oracle::OperationObservation;
 using bmd_projection::m5::oracle::OperationResultValue;
 using bmd_projection::m5::replay::EventKind;
@@ -163,6 +165,24 @@ template <typename Enum>
         return "UsdMPerpetual";
     }
     throw_invalid_enum("CanonicalPolicy", policy);
+}
+
+[[nodiscard]] std::string venue_name(CanonicalVenue venue) {
+    switch (venue) {
+    case CanonicalVenue::Binance:
+        return "Binance";
+    }
+    throw_invalid_enum("CanonicalVenue", venue);
+}
+
+[[nodiscard]] std::string market_name(CanonicalMarket market) {
+    switch (market) {
+    case CanonicalMarket::Spot:
+        return "Spot";
+    case CanonicalMarket::UsdMPerpetual:
+        return "UsdMPerpetual";
+    }
+    throw_invalid_enum("CanonicalMarket", market);
 }
 
 [[nodiscard]] std::string adapter_code_name(CanonicalAdapterCode code) {
@@ -537,8 +557,18 @@ void serialize_adapter_success_outcome(
 }
 
 void serialize_snapshot_outcome(std::string& out,
-                                const bmd_projection::m5::oracle::SnapshotOutcome& value) {
+                                const bmd_projection::m5::oracle::SnapshotOutcome& value,
+                                bool include_wire_identity) {
     out += "SnapshotOutcome ";
+    if (include_wire_identity) {
+        out += "VENUE ";
+        out += venue_name(value.venue);
+        out += " MARKET ";
+        out += market_name(value.market);
+        out += " SCHEMA_VERSION ";
+        write_string(out, value.schema_version);
+        out += " POLICY ";
+    }
     out += policy_name(value.policy);
     out += " SYMBOL ";
     write_string(out, value.symbol);
@@ -572,7 +602,8 @@ void serialize_snapshot_outcome(std::string& out,
     }
 }
 
-void serialize_result(std::string& out, const OperationResultValue& value) {
+void serialize_result(std::string& out, const OperationResultValue& value,
+                      bool include_snapshot_wire_identity) {
     std::visit(Overloaded{[&out](const bmd_projection::m5::oracle::DecimalErrorOutcome& result) {
                               serialize_decimal_error_outcome(out, result);
                           },
@@ -588,8 +619,10 @@ void serialize_result(std::string& out, const OperationResultValue& value) {
                           [&out](const bmd_projection::m5::oracle::AdapterSuccessOutcome& result) {
                               serialize_adapter_success_outcome(out, result);
                           },
-                          [&out](const bmd_projection::m5::oracle::SnapshotOutcome& result) {
-                              serialize_snapshot_outcome(out, result);
+                          [&out, include_snapshot_wire_identity](
+                              const bmd_projection::m5::oracle::SnapshotOutcome& result) {
+                              serialize_snapshot_outcome(out, result,
+                                                         include_snapshot_wire_identity);
                           },
                           [&out](const bmd_projection::m5::oracle::SnapshotNotProducedOutcome&) {
                               out += "SnapshotNotProducedOutcome";
@@ -632,10 +665,11 @@ void serialize_checkpoint(std::string& out,
 }
 
 void serialize_snapshot_optional(
-    std::string& out, const std::optional<bmd_projection::m5::oracle::SnapshotOutcome>& snapshot) {
+    std::string& out, const std::optional<bmd_projection::m5::oracle::SnapshotOutcome>& snapshot,
+    bool include_wire_identity) {
     out += "SNAPSHOT ";
     if (snapshot.has_value()) {
-        serialize_snapshot_outcome(out, *snapshot);
+        serialize_snapshot_outcome(out, *snapshot, include_wire_identity);
     } else {
         out += '-';
     }
@@ -655,7 +689,8 @@ void serialize_decimal_observation(std::string& out,
 
 } // namespace
 
-std::string serialize_observation(const OperationObservation& observation) {
+[[nodiscard]] std::string serialize_observation_impl(const OperationObservation& observation,
+                                                     bool include_snapshot_wire_identity) {
     std::string result;
     result.reserve(4096);
     result += "OBS ";
@@ -664,11 +699,11 @@ std::string serialize_observation(const OperationObservation& observation) {
     result += event_kind_name(observation.event_kind);
     result += '\n';
     result += "RESULT ";
-    serialize_result(result, observation.result.value);
+    serialize_result(result, observation.result.value, include_snapshot_wire_identity);
     result += '\n';
     serialize_checkpoint(result, observation.checkpoint);
     result += '\n';
-    serialize_snapshot_optional(result, observation.snapshot);
+    serialize_snapshot_optional(result, observation.snapshot, include_snapshot_wire_identity);
     result += '\n';
     result += "DECIMALS ";
     write_size(result, observation.decimal_observations.size());
@@ -676,6 +711,24 @@ std::string serialize_observation(const OperationObservation& observation) {
     for (const auto& decimal : observation.decimal_observations) {
         serialize_decimal_observation(result, decimal);
         result += '\n';
+    }
+    return result;
+}
+
+std::string serialize_observation_v1(const OperationObservation& observation) {
+    return serialize_observation_impl(observation, false);
+}
+
+std::string serialize_observation(const OperationObservation& observation) {
+    return serialize_observation_impl(observation, true);
+}
+
+std::vector<std::string>
+serialize_observation_stream_v1(const std::vector<OperationObservation>& observations) {
+    std::vector<std::string> result;
+    result.reserve(observations.size());
+    for (const auto& observation : observations) {
+        result.push_back(serialize_observation_v1(observation));
     }
     return result;
 }

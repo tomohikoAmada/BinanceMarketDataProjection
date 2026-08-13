@@ -8,6 +8,7 @@
 namespace bmd_projection::m5::semantic {
 
 inline constexpr std::string_view kManifestSchemaV1 = "M5_SEMANTIC_MANIFEST_V1";
+inline constexpr std::string_view kManifestSchemaV2 = "M5_SEMANTIC_MANIFEST_V2";
 
 struct ManifestWorkloadEntry final {
     std::string workload_id;
@@ -25,6 +26,7 @@ struct ManifestToolchain final {
 
 struct SemanticManifest final {
     std::string schema_version;
+    std::string observation_schema_version;
     std::string head_sha;
     ManifestToolchain toolchain;
     std::string build_type;

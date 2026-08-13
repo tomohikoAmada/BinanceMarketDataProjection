@@ -181,6 +181,9 @@ struct ReferenceSnapshotLevel final {
 
 // Predicted semantic snapshot output for a SNAPSHOT_REQUEST.
 struct ReferenceSnapshotPrediction final {
+    ReferenceVenue venue{ReferenceVenue::Binance};
+    ReferenceMarket market{ReferenceMarket::Spot};
+    std::string schema_version;
     bool synchronized{};
     std::optional<std::uint64_t> last_update_id;
     std::vector<ReferenceSnapshotLevel> bids;

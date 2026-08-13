@@ -163,10 +163,11 @@ requires ASan and UBSan and retains TSan as an explicit independently testable c
 bash scripts/fuzz-smoke.sh
 ```
 
-The decimal parser, order book, book projection, and Protobuf adapter fuzz harnesses are built with upstream Clang and
-libFuzzer plus AddressSanitizer and UndefinedBehaviorSanitizer. Unsupported local toolchains report
-an explicit skip; the Ubuntu Clang CI job requires support and runs each harness for a fixed
-10,000-input smoke test from its checked-in seed corpus.
+The decimal parser, order book, book projection, Protobuf adapter, and M5 replay differential
+fuzz harnesses are built with upstream Clang and libFuzzer plus AddressSanitizer and
+UndefinedBehaviorSanitizer. Unsupported local toolchains report an explicit skip; the Ubuntu
+Clang CI job requires support and runs each harness for a fixed 10,000-input smoke test from
+its checked-in seed corpus.
 
 ## Benchmark smoke test
 
@@ -278,8 +279,10 @@ The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
   `main`.
 - M5 is **APPROVED / MERGED / IN PROGRESS**; Phases 1, 2, 3, and 4 are COMPLETE / MERGED (Phase 3
   Spot and USD-M 100k corpora validated PASS from the pinned authoritative source under ADR-0008
-  successor coverage; Phase 4 cross-compiler GNU/Clang/AppleClang semantic equality PASS). Phase 5
-  and M6 are not started.
+  successor coverage; Phase 4 cross-compiler GNU/Clang/AppleClang semantic equality PASS).
+  Phase 5 is IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW
+  (`feat/m5-differential-replay-fuzzing`).
+  M6 is not started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.
 - Tick-size, step-size, signed-decimal, and symbol-metadata validation remain outside the implemented

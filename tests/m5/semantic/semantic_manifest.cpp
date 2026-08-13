@@ -1,8 +1,11 @@
 #include "semantic_manifest.hpp"
 
+#include "canonical_observation.hpp"
+
 #include "../replay/canonical_text.hpp"
 
 #include <algorithm>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -57,9 +60,22 @@ void append_indent(std::string& out, int level) {
     }
 }
 
+[[nodiscard]] bool includes_observation_schema(const SemanticManifest& manifest) {
+    if (manifest.schema_version == kManifestSchemaV1 &&
+        manifest.observation_schema_version == kObservationSchemaV1) {
+        return false;
+    }
+    if (manifest.schema_version == kManifestSchemaV2 &&
+        manifest.observation_schema_version == kObservationSchemaV2) {
+        return true;
+    }
+    throw std::invalid_argument{"unsupported semantic manifest/observation schema pairing"};
+}
+
 } // namespace
 
 std::string render_manifest_json(const SemanticManifest& manifest) {
+    const bool include_observation_schema = includes_observation_schema(manifest);
     std::string out;
     out.reserve(8192);
     out += "{\n";
@@ -68,6 +84,13 @@ std::string render_manifest_json(const SemanticManifest& manifest) {
     out += ": ";
     append_json_string(out, manifest.schema_version);
     out += ",\n";
+    if (include_observation_schema) {
+        append_indent(out, 1);
+        append_json_string(out, "observation_schema_version");
+        out += ": ";
+        append_json_string(out, manifest.observation_schema_version);
+        out += ",\n";
+    }
     append_indent(out, 1);
     append_json_string(out, "head_sha");
     out += ": ";

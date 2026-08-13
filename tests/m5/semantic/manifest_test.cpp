@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -35,9 +36,18 @@ namespace semantic = bmd_projection::m5::semantic;
     });
 }
 
+void expect_render_rejected(std::string_view manifest_schema, std::string_view observation_schema) {
+    semantic::SemanticManifest manifest;
+    manifest.schema_version = manifest_schema;
+    manifest.observation_schema_version = observation_schema;
+    EXPECT_THROW(static_cast<void>(semantic::render_manifest_json(manifest)),
+                 std::invalid_argument);
+}
+
 TEST(SemanticManifestTest, RenderValidJson) {
     semantic::SemanticManifest manifest;
-    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V1";
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V2";
+    manifest.observation_schema_version = "M5_SEMANTIC_OBSERVATION_V2";
     manifest.head_sha = "a1db0f8374bec84d10b0005552983dd44b4e2026";
     manifest.toolchain.compiler = "GCC";
     manifest.toolchain.compiler_version = "14.2.0";
@@ -54,7 +64,9 @@ TEST(SemanticManifestTest, RenderValidJson) {
     manifest.workloads.push_back(w);
 
     const auto json = semantic::render_manifest_json(manifest);
-    EXPECT_NE(json.find("\"schema_version\""), std::string::npos);
+    EXPECT_NE(json.find("\"schema_version\": \"M5_SEMANTIC_MANIFEST_V2\""), std::string::npos);
+    EXPECT_NE(json.find("\"observation_schema_version\": \"M5_SEMANTIC_OBSERVATION_V2\""),
+              std::string::npos);
     EXPECT_NE(json.find("\"head_sha\""), std::string::npos);
     EXPECT_NE(json.find("\"toolchain\""), std::string::npos);
     EXPECT_NE(json.find("\"fixture_set_id\""), std::string::npos);
@@ -66,9 +78,73 @@ TEST(SemanticManifestTest, RenderValidJson) {
               std::string::npos);
 }
 
-TEST(SemanticManifestTest, RenderMultipleWorkloads) {
+TEST(SemanticManifestTest, HistoricalV1RenderingIsByteStable) {
     semantic::SemanticManifest manifest;
     manifest.schema_version = "M5_SEMANTIC_MANIFEST_V1";
+    manifest.observation_schema_version = "M5_SEMANTIC_OBSERVATION_V1";
+    manifest.head_sha = "a1db0f8374bec84d10b0005552983dd44b4e2026";
+    manifest.toolchain.compiler = "GCC";
+    manifest.toolchain.compiler_version = "14.2.0";
+    manifest.toolchain.os = "Linux";
+    manifest.toolchain.architecture = "x86_64";
+    manifest.build_type = "Release";
+    manifest.fixture_set_id = "abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234";
+    manifest.workloads.push_back(
+        {"m5-small-core-spot-v1", "m5-small-spot-v1",
+         "1111111111111111111111111111111111111111111111111111111111111111",
+         "2222222222222222222222222222222222222222222222222222222222222222"});
+
+    constexpr std::string_view kHistoricalV1 = R"JSON({
+  "schema_version": "M5_SEMANTIC_MANIFEST_V1",
+  "head_sha": "a1db0f8374bec84d10b0005552983dd44b4e2026",
+  "toolchain": {
+    "compiler": "GCC",
+    "compiler_version": "14.2.0",
+    "os": "Linux",
+    "architecture": "x86_64"
+  },
+  "build_type": "Release",
+  "fixture_set_id": "abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234",
+  "workloads": [
+    {
+      "workload_id": "m5-small-core-spot-v1",
+      "fixture_id": "m5-small-spot-v1",
+      "fixture_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "semantic_digest": "2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ]
+}
+)JSON";
+
+    const auto json = semantic::render_manifest_json(manifest);
+    EXPECT_EQ(json, kHistoricalV1);
+    EXPECT_EQ(json.find("observation_schema_version"), std::string::npos);
+}
+
+TEST(SemanticManifestTest, SupportedSchemaPairsAreAccepted) {
+    semantic::SemanticManifest manifest;
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V1";
+    manifest.observation_schema_version = "M5_SEMANTIC_OBSERVATION_V1";
+    EXPECT_NO_THROW(static_cast<void>(semantic::render_manifest_json(manifest)));
+
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V2";
+    manifest.observation_schema_version = "M5_SEMANTIC_OBSERVATION_V2";
+    EXPECT_NO_THROW(static_cast<void>(semantic::render_manifest_json(manifest)));
+}
+
+TEST(SemanticManifestTest, MixedAndUnknownSchemaPairsFailClosed) {
+    expect_render_rejected("M5_SEMANTIC_MANIFEST_V1", "M5_SEMANTIC_OBSERVATION_V2");
+    expect_render_rejected("M5_SEMANTIC_MANIFEST_V2", "M5_SEMANTIC_OBSERVATION_V1");
+    expect_render_rejected("M5_SEMANTIC_MANIFEST_V99", "M5_SEMANTIC_OBSERVATION_V2");
+    expect_render_rejected("M5_SEMANTIC_MANIFEST_V2", "M5_SEMANTIC_OBSERVATION_V99");
+    expect_render_rejected("M5_SEMANTIC_MANIFEST_V1", "");
+    expect_render_rejected("M5_SEMANTIC_MANIFEST_V2", "");
+}
+
+TEST(SemanticManifestTest, RenderMultipleWorkloads) {
+    semantic::SemanticManifest manifest;
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V2";
+    manifest.observation_schema_version = "M5_SEMANTIC_OBSERVATION_V2";
     manifest.head_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     manifest.toolchain.compiler = "Clang";
     manifest.toolchain.compiler_version = "19.1.0";
@@ -95,7 +171,8 @@ TEST(SemanticManifestTest, RenderMultipleWorkloads) {
 
 TEST(SemanticManifestTest, JsonStringEscaping) {
     semantic::SemanticManifest manifest;
-    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V1";
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V2";
+    manifest.observation_schema_version = "M5_SEMANTIC_OBSERVATION_V2";
     manifest.head_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     manifest.toolchain.compiler = "GCC";
     manifest.toolchain.compiler_version = "14.2.0";
@@ -117,7 +194,8 @@ TEST(SemanticManifestTest, JsonStringEscaping) {
 
 TEST(SemanticManifestTest, JsonStringEscapesEntireControlRangeAndPreservesUtf8) {
     semantic::SemanticManifest manifest;
-    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V1";
+    manifest.schema_version = "M5_SEMANTIC_MANIFEST_V2";
+    manifest.observation_schema_version = "M5_SEMANTIC_OBSERVATION_V2";
     manifest.head_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     manifest.toolchain.compiler = "GNU";
     manifest.toolchain.compiler_version = "14.2.0";
@@ -175,6 +253,7 @@ TEST(SemanticManifestTest, FixtureSetIdRejectsUnorderedInput) {
 
 TEST(SemanticManifestTest, ManifestSchemaVersionFrozen) {
     EXPECT_EQ(std::string(semantic::kManifestSchemaV1), "M5_SEMANTIC_MANIFEST_V1");
+    EXPECT_EQ(std::string(semantic::kManifestSchemaV2), "M5_SEMANTIC_MANIFEST_V2");
 }
 
 TEST(SemanticManifestTest, EvidenceShaRequiresFortyLowercaseHexCharacters) {

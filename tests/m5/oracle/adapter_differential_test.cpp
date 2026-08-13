@@ -9,6 +9,9 @@
 
 #include "replay_types.hpp"
 
+#include <binance_market_data/common/v1/enums.pb.h>
+#include <binance_market_data/projection/v1/snapshots.pb.h>
+
 #include <gtest/gtest.h>
 
 #include <cstddef>
@@ -29,6 +32,8 @@ namespace {
 
 namespace oracle = bmd_projection::m5::oracle;
 namespace replay = bmd_projection::m5::replay;
+namespace common_wire = binance_market_data::common::v1;
+namespace core = binance_market_data::projection::v1;
 
 using oracle::AdapterErrorOutcome;
 using oracle::AdapterScenario;
@@ -40,11 +45,13 @@ using oracle::CanonicalDecimalError;
 using oracle::CanonicalDisposition;
 using oracle::CanonicalGapEvidence;
 using oracle::CanonicalGapReason;
+using oracle::CanonicalMarket;
 using oracle::CanonicalPolicy;
 using oracle::CanonicalQualityFlag;
 using oracle::CanonicalResyncState;
 using oracle::CanonicalSnapshotSource;
 using oracle::CanonicalStatus;
+using oracle::CanonicalVenue;
 using oracle::GapDescriptorObservation;
 using oracle::InstallOutcome;
 using oracle::MetadataOutcome;
@@ -53,6 +60,39 @@ using oracle::RangeOutcome;
 using oracle::ResetOutcome;
 using oracle::SnapshotLevel;
 using oracle::SnapshotOutcome;
+
+constexpr int kUnknownWireEnumValue = 999;
+
+[[nodiscard]] core::LocalOrderBookSnapshot
+snapshot_wire(common_wire::SnapshotSource source = common_wire::SNAPSHOT_SOURCE_HISTORY_REPLAY) {
+    core::LocalOrderBookSnapshot wire;
+    wire.set_venue(common_wire::VENUE_BINANCE);
+    wire.set_market(common_wire::MARKET_SPOT);
+    wire.set_source(source);
+    return wire;
+}
+
+void append_varint(std::string& wire, std::uint64_t value) {
+    while (value >= 0x80U) {
+        wire.push_back(static_cast<char>((value & 0x7FU) | 0x80U));
+        value >>= 7U;
+    }
+    wire.push_back(static_cast<char>(value));
+}
+
+template <typename Message> void set_unknown_enum(Message& message, int field_number) {
+    // A duplicate scalar's last value wins. Parsing it exercises protobuf's
+    // supported unknown-enum wire path without fabricating a C++ enum value.
+    auto wire = message.SerializeAsString();
+    append_varint(wire, static_cast<std::uint64_t>(field_number) << 3U);
+    append_varint(wire, kUnknownWireEnumValue);
+    ASSERT_TRUE(message.ParseFromString(wire));
+}
+
+[[nodiscard]] oracle::SnapshotExtractionResult
+extract_snapshot(const core::LocalOrderBookSnapshot& wire) {
+    return oracle::extract_snapshot_observation(wire, core::SequencePolicyKind::Spot);
+}
 
 [[nodiscard]] oracle::ReplayOutcome run_adapter(std::string_view fixture_name) {
     const auto fixture = oracle::test::load_fixture(fixture_name);
@@ -172,6 +212,9 @@ TEST(AdapterDifferentialReplayTest, SpotTinyAdapterBoundaryAgrees) {
 
     const auto& snapshot = observation(outcome, 4);
     const auto& semantic = std::get<SnapshotOutcome>(snapshot.result.value);
+    EXPECT_EQ(semantic.venue, CanonicalVenue::Binance);
+    EXPECT_EQ(semantic.market, CanonicalMarket::Spot);
+    EXPECT_EQ(semantic.schema_version, "local-order-book-snapshot.v1");
     EXPECT_EQ(semantic.policy, CanonicalPolicy::Spot);
     EXPECT_EQ(semantic.symbol, "BTCUSDT");
     EXPECT_EQ(semantic.producer, "fixture");
@@ -209,6 +252,9 @@ TEST(AdapterDifferentialReplayTest, UsdmTinySnapshotSemanticsAgree) {
 
     const auto& snapshot = observation(outcome, 3);
     const auto& semantic = std::get<SnapshotOutcome>(snapshot.result.value);
+    EXPECT_EQ(semantic.venue, CanonicalVenue::Binance);
+    EXPECT_EQ(semantic.market, CanonicalMarket::UsdMPerpetual);
+    EXPECT_EQ(semantic.schema_version, "local-order-book-snapshot.v1");
     EXPECT_EQ(semantic.policy, CanonicalPolicy::UsdMPerpetual);
     EXPECT_EQ(semantic.symbol, "BTCUSDT");
     EXPECT_EQ(semantic.producer, "recorder");
@@ -225,6 +271,117 @@ TEST(AdapterDifferentialReplayTest, UsdmTinySnapshotSemanticsAgree) {
     EXPECT_FALSE(semantic.gap_descriptor.has_value());
     ASSERT_TRUE(snapshot.snapshot.has_value());
     EXPECT_EQ(*snapshot.snapshot, semantic);
+}
+
+TEST(AdapterSnapshotExtractionTest, SnapshotSourceValidValuesMapExplicitly) {
+    for (const auto& [wire_source, expected] :
+         {std::pair{common_wire::SNAPSHOT_SOURCE_GATEWAY_LIVE,
+                    CanonicalSnapshotSource::GatewayLive},
+          std::pair{common_wire::SNAPSHOT_SOURCE_RECORDER_REPLAY,
+                    CanonicalSnapshotSource::RecorderReplay},
+          std::pair{common_wire::SNAPSHOT_SOURCE_HISTORY_REPLAY,
+                    CanonicalSnapshotSource::HistoryReplay}}) {
+        const auto extracted = extract_snapshot(snapshot_wire(wire_source));
+        ASSERT_TRUE(std::holds_alternative<SnapshotOutcome>(extracted));
+        EXPECT_EQ(std::get<SnapshotOutcome>(extracted).source, expected);
+    }
+}
+
+TEST(AdapterSnapshotExtractionTest, SnapshotSourceUnspecifiedAndUnknownNumericFailClosed) {
+    const auto unspecified =
+        extract_snapshot(snapshot_wire(common_wire::SNAPSHOT_SOURCE_UNSPECIFIED));
+    EXPECT_EQ(unspecified,
+              (oracle::SnapshotExtractionResult{oracle::SnapshotExtractionError{
+                  CanonicalAdapterCode::UnspecifiedEnum, CanonicalAdapterField::SnapshotSource}}));
+
+    auto unknown_wire = snapshot_wire();
+    set_unknown_enum(unknown_wire, core::LocalOrderBookSnapshot::kSourceFieldNumber);
+    const auto unknown = extract_snapshot(unknown_wire);
+    EXPECT_EQ(unknown,
+              (oracle::SnapshotExtractionResult{oracle::SnapshotExtractionError{
+                  CanonicalAdapterCode::UnknownEnumValue, CanonicalAdapterField::SnapshotSource}}));
+}
+
+TEST(AdapterSnapshotExtractionTest, CurrentGapResyncStatesMapExplicitly) {
+    for (const auto& [wire_state, expected] :
+         {std::pair{common_wire::RESYNC_STATE_RESYNC_REQUIRED,
+                    CanonicalResyncState::ResyncRequired},
+          std::pair{common_wire::RESYNC_STATE_RESYNC_IN_PROGRESS,
+                    CanonicalResyncState::ResyncInProgress},
+          std::pair{common_wire::RESYNC_STATE_RESYNC_FAILED, CanonicalResyncState::ResyncFailed}}) {
+        auto wire = snapshot_wire();
+        auto* gap = wire.mutable_last_gap();
+        gap->set_reason_code(common_wire::REASON_CODE_SEQUENCE_GAP_DETECTED);
+        gap->set_recovery_state(wire_state);
+        const auto extracted = extract_snapshot(wire);
+        ASSERT_TRUE(std::holds_alternative<SnapshotOutcome>(extracted));
+        ASSERT_TRUE(std::get<SnapshotOutcome>(extracted).gap_descriptor.has_value());
+        EXPECT_EQ(std::get<SnapshotOutcome>(extracted).gap_descriptor->recovery_state, expected);
+    }
+}
+
+TEST(AdapterSnapshotExtractionTest, CurrentGapInvalidResyncStatesFailClosed) {
+    for (const auto wire_state :
+         {common_wire::RESYNC_STATE_UNSPECIFIED, common_wire::RESYNC_STATE_SYNCHRONIZED,
+          common_wire::RESYNC_STATE_RECOVERED}) {
+        auto wire = snapshot_wire();
+        auto* gap = wire.mutable_last_gap();
+        gap->set_reason_code(common_wire::REASON_CODE_SEQUENCE_GAP_DETECTED);
+        gap->set_recovery_state(wire_state);
+        EXPECT_TRUE(
+            std::holds_alternative<oracle::SnapshotExtractionError>(extract_snapshot(wire)));
+    }
+
+    auto unknown_wire = snapshot_wire();
+    auto* gap = unknown_wire.mutable_last_gap();
+    gap->set_reason_code(common_wire::REASON_CODE_SEQUENCE_GAP_DETECTED);
+    set_unknown_enum(*gap, core::GapDescriptor::kRecoveryStateFieldNumber);
+    const auto extracted = extract_snapshot(unknown_wire);
+    EXPECT_EQ(extracted, (oracle::SnapshotExtractionResult{oracle::SnapshotExtractionError{
+                             CanonicalAdapterCode::UnknownEnumValue,
+                             CanonicalAdapterField::GapRecoveryState}}));
+}
+
+TEST(AdapterSnapshotExtractionTest, CurrentGapReasonCodeMapsOnlySequenceGapDetected) {
+    auto valid_wire = snapshot_wire();
+    auto* valid_gap = valid_wire.mutable_last_gap();
+    valid_gap->set_reason_code(common_wire::REASON_CODE_SEQUENCE_GAP_DETECTED);
+    valid_gap->set_recovery_state(common_wire::RESYNC_STATE_RESYNC_REQUIRED);
+    const auto valid = extract_snapshot(valid_wire);
+    ASSERT_TRUE(std::holds_alternative<SnapshotOutcome>(valid));
+    ASSERT_TRUE(std::get<SnapshotOutcome>(valid).gap_descriptor.has_value());
+    EXPECT_EQ(std::get<SnapshotOutcome>(valid).gap_descriptor->reason_code,
+              oracle::CanonicalReasonCode::SequenceGapDetected);
+
+    for (const auto reason :
+         {common_wire::REASON_CODE_UNSPECIFIED, common_wire::REASON_CODE_CONNECTION_LOST}) {
+        auto wire = snapshot_wire();
+        auto* gap = wire.mutable_last_gap();
+        gap->set_reason_code(reason);
+        gap->set_recovery_state(common_wire::RESYNC_STATE_RESYNC_REQUIRED);
+        EXPECT_TRUE(
+            std::holds_alternative<oracle::SnapshotExtractionError>(extract_snapshot(wire)));
+    }
+
+    auto unknown_wire = snapshot_wire();
+    auto* unknown_gap = unknown_wire.mutable_last_gap();
+    unknown_gap->set_recovery_state(common_wire::RESYNC_STATE_RESYNC_REQUIRED);
+    set_unknown_enum(*unknown_gap, core::GapDescriptor::kReasonCodeFieldNumber);
+    const auto unknown = extract_snapshot(unknown_wire);
+    EXPECT_EQ(unknown,
+              (oracle::SnapshotExtractionResult{oracle::SnapshotExtractionError{
+                  CanonicalAdapterCode::UnknownEnumValue, CanonicalAdapterField::CurrentGap}}));
+}
+
+TEST(AdapterSnapshotExtractionTest, InvalidWireSourceCannotEqualValidReferenceSemantics) {
+    const auto valid = extract_snapshot(snapshot_wire(common_wire::SNAPSHOT_SOURCE_HISTORY_REPLAY));
+    ASSERT_TRUE(std::holds_alternative<SnapshotOutcome>(valid));
+    EXPECT_EQ(std::get<SnapshotOutcome>(valid).source, CanonicalSnapshotSource::HistoryReplay);
+
+    const auto malformed =
+        extract_snapshot(snapshot_wire(common_wire::SNAPSHOT_SOURCE_UNSPECIFIED));
+    EXPECT_FALSE(std::holds_alternative<SnapshotOutcome>(malformed));
+    EXPECT_NE(malformed, valid);
 }
 
 TEST(AdapterDifferentialReplayTest, RecoveryTinyDepthLimitErrorAgrees) {

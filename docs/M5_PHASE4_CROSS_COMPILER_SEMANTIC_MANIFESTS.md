@@ -128,6 +128,32 @@ Every field currently present in `OperationObservation` contributes to its canon
 | Checkpoint | `status`, `last_update_id`, `last_gap`, `synchronized_visible`, `bids`, `asks`, `price_scale`, `quantity_scale` |
 | Reset, Range, Metadata | Full outcomes with all fields |
 
+## Phase-5 Versioned Extension (Historical V1 Preserved)
+
+Phase 5 discovered that the historical V1 `SnapshotOutcome` omitted three actual output-wire
+identity fields: venue, market, and schema version. Phase 4's historical V1 evidence and byte
+meaning are not rewritten. `serialize_observation_v1()` retains that exact representation and a
+frozen snapshot known-vector test protects it.
+
+The current complete representation is `M5_SEMANTIC_OBSERVATION_V2`. Its snapshot encoding adds,
+in fixed order, the independently observed `VENUE`, `MARKET`, and `SCHEMA_VERSION` fields before
+the existing projection `POLICY`. Production extracts the three values from the actual emitted
+`LocalOrderBookSnapshot`; the reference predicts them independently from accepted R4 authority.
+Canonical market remains distinct from canonical projection policy.
+
+Current evidence uses manifest schema `M5_SEMANTIC_MANIFEST_V2`, which adds the required field:
+
+```json
+"observation_schema_version": "M5_SEMANTIC_OBSERVATION_V2"
+```
+
+The comparator accepts only this current manifest/observation schema pair and still requires the
+exact expected Head SHA. Thus cross-head comparison remains forbidden and the digest's canonical
+byte meaning is unambiguous. Historical Phase-4 V1 manifests remain historical evidence; they are
+not accepted as current Phase-5 evidence. The version-aware renderer accepts only V1/V1 and V2/V2:
+V1 omits `observation_schema_version` exactly as the accepted historical renderer did, while V2
+requires and emits it. Mixed, empty, and unknown schema pairings fail closed before rendering.
+
 ## Semantic Digest
 
 SHA-256 of the concatenated canonical observation records:

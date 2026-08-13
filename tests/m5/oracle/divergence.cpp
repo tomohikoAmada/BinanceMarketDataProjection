@@ -569,6 +569,24 @@ std::string_view to_text(CanonicalPolicy policy) noexcept {
     return "UNKNOWN";
 }
 
+std::string_view to_text(CanonicalVenue venue) noexcept {
+    switch (venue) {
+    case CanonicalVenue::Binance:
+        return "BINANCE";
+    }
+    return "UNKNOWN";
+}
+
+std::string_view to_text(CanonicalMarket market) noexcept {
+    switch (market) {
+    case CanonicalMarket::Spot:
+        return "SPOT";
+    case CanonicalMarket::UsdMPerpetual:
+        return "USD_M_PERPETUAL";
+    }
+    return "UNKNOWN";
+}
+
 std::string_view to_text(CanonicalDecimalError error) noexcept {
     switch (error) {
     case CanonicalDecimalError::Empty:
@@ -977,6 +995,9 @@ std::string to_canonical_text(const SemanticCheckpoint& checkpoint) {
 
 std::string to_canonical_text(const SnapshotOutcome& snapshot) {
     std::string text = "SNAPSHOT_OUTCOME";
+    text += " venue=" + std::string(to_text(snapshot.venue));
+    text += " market=" + std::string(to_text(snapshot.market));
+    text += " schema_version=" + snapshot.schema_version;
     text += " policy=" + std::string(to_text(snapshot.policy));
     text += " symbol=" + snapshot.symbol;
     text += " producer=" + snapshot.producer;

@@ -4,7 +4,34 @@ All notable changes will be recorded here.
 
 ## [Unreleased]
 
+### Added
+
+- M5 Phase-5 differential replay fuzzer (`bmd_projection_replay_fuzz`): direct structured byte
+  decoder (no canonical text parser in fuzz semantic path), bounded deterministic
+  `LLVMFuzzerTestOneInput`, production/reference ReplayDriver comparison with libFuzzer abort
+  on first divergence, Core and Adapter mode coverage, Spot and USD-M market coverage, all
+  seven operation variants reachable, 10 mandatory checked-in seed categories with structural
+  validator, shared `cmake/M5Support.cmake` for single-source replay/oracle/reference reuse,
+  fifth fuzz-smoke target (10,000-run CI smoke). Production `src/`/`include/` unchanged.
+  Existing four fuzzers preserved. IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW.
+  `docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`. Phase 6 is NOT STARTED.
+
 ### Changed
+
+- Corrected the M5 Phase-5 candidate's final validation blockers: snapshot observations now cover
+  actual venue, market, and schema version via explicit observation/manifest V2 schemas while V1
+  bytes remain frozen; all ten mandatory replay seeds carry substantive decoded structure with
+  AdapterEnabled depth/quality outcome tests; and reused M5 differential-fuzz support sources are
+  fuzz-instrumented with compile-database enforcement. Also tightened shared event-level and
+  quality-fact bounds and preserved inverted-update byte framing. Production `src/`/`include/`
+  remain unchanged. A final independent review closed M4-IIR-3 and requested two focused P1
+  corrections; Phase 5 remains IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW.
+
+- Corrected the two remaining Phase-5 P1 findings without production changes: actual snapshot
+  source/current-gap wire enums now fail closed at the test observation boundary, including
+  unspecified and unknown numeric values; semantic manifest rendering accepts only V1/V1 and
+  V2/V2, preserves the exact historical V1 JSON shape without `observation_schema_version`, and
+  rejects mixed/unknown pairings. The current producer and comparator remain V2/V2.
 
 - Corrected the M3 Spot bootstrap predicate to successor coverage (`U <= L + 1`, overflow-guarded)
   per the official Binance 2025-11-12 correction of the Spot local-order-book instructions.

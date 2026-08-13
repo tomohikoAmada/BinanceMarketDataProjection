@@ -63,6 +63,13 @@ enum class CanonicalGapReason : std::uint8_t {
 
 enum class CanonicalPolicy : std::uint8_t { Spot, UsdMPerpetual };
 
+// Snapshot wire identity is observed independently from the projection policy.
+// Keeping these as separate enum domains prevents a production-side market value
+// from being synthesized from the policy under test.
+enum class CanonicalVenue : std::uint8_t { Binance };
+
+enum class CanonicalMarket : std::uint8_t { Spot, UsdMPerpetual };
+
 enum class CanonicalDecimalError : std::uint8_t {
     Empty,
     InvalidSyntax,
@@ -304,6 +311,9 @@ struct GapDescriptorObservation final {
 // Semantic snapshot output. All fields are stable observable semantics; Protobuf
 // byte equality is deliberately not compared.
 struct SnapshotOutcome final {
+    CanonicalVenue venue{};
+    CanonicalMarket market{};
+    std::string schema_version;
     CanonicalPolicy policy{};
     std::string symbol;
     std::string producer;

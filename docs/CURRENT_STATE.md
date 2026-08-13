@@ -25,9 +25,9 @@ orientation only.
 
 ## Current Main
 
-- `origin/main`: `7b6d9ef3b222675138fdd34f3fed381216fe9d02` (M5 Phase-4 squash merge from
-  PR #16, `Implement M5 cross-compiler semantic manifests`, on top of the Phase-3 merge
-  `473a907eba2001d18926c57d6c8d16b10c7505be`).
+- `origin/main`: `d287c08ed362c5202f25eb77b411bd24bb82cef0` (post-merge Phase-4 documentation
+  synchronization PR #17, on top of the Phase-4 squash merge
+  `7b6d9ef3b222675138fdd34f3fed381216fe9d02`).
 - M0-M4 are complete on main.
 - M5 Phase 1, Phase 2, Phase 3, and Phase 4 are complete/merged on main.
 - ADR-0008 is ACCEPTED: Spot bootstrap uses successor coverage (`U <= L + 1 <= u`,
@@ -37,6 +37,10 @@ orientation only.
 
 ## Active Candidate / Pull Request
 
+- PR #18, `Implement M5 differential replay fuzzing`, is OPEN / DRAFT / UNMERGED on
+  `feat/m5-differential-replay-fuzzing`. The final blocking-correction work started from Head
+  `95c9bc8918eaa4d3447648a6ad3698d445ec8dcb`; its pre-correction exact-head CI run
+  `31620426837` passed 18/18. Current GitHub Head and exact-head CI remain authoritative.
 - No active Phase-4 candidate: PR #16, `Implement M5 cross-compiler semantic manifests`, is
   MERGED (squash merge `7b6d9ef3b222675138fdd34f3fed381216fe9d02`; approved Head
   `b612f85d281315346c0ccf6f599d51af538e3cf4`; exact-head CI `31571166506` — 18/18 PASS;
@@ -79,7 +83,13 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Not Implemented
 
-- Phase 5 (replay differential fuzzing) is NOT STARTED.
+- Phase 5 (replay differential fuzzing) is IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW
+  (PR #18, `feat/m5-differential-replay-fuzzing`). Its candidate includes complete snapshot
+  wire-identity observation with explicit observation/manifest V2 schema evolution, substantive
+  structural evidence for all ten mandatory seeds, AdapterEnabled depth/quality replay coverage,
+  fuzz-only instrumentation of reused M5 support translation units, fail-closed snapshot wire-enum
+  extraction, and byte-stable version-aware V1/V2 manifest rendering. M4-IIR-3 is CLOSED by final
+  independent Phase-5 review evidence.
 - Phase 6 (benchmarks) is NOT STARTED.
 - Phase 7 (allocation/memory) is NOT STARTED.
 - Phase 8 (container spike) is NOT STARTED.
@@ -89,8 +99,8 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Current Blockers
 
-- No repository-state blocker: Phase 4 is complete and merged. Phase 5 being NOT STARTED is a
-  status, not a defect; starting it requires its normal implementation authorization/workflow.
+- Phase 5 remains a draft candidate pending focused independent re-review; no completion or merge
+  is claimed here.
 
 ## Accepted Semantic Authorities
 
@@ -140,10 +150,9 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 
 ## Next Authorized Step
 
-Phase 4 is complete and merged. Phase 5 remains NOT STARTED and is not authorized by Phase-4
-implementation or CI. The next implementation milestone is M5 Phase 5 (replay differential
-fuzzing), subject to its normal implementation authorization/workflow. No Phase-5 candidate
-exists and none is created by this documentation synchronization.
+Phase 4 is complete and merged. Phase 5 (replay differential fuzzing) is IMPLEMENTED / PENDING
+FOCUSED INDEPENDENT RE-REVIEW via `feat/m5-differential-replay-fuzzing` (PR open, DRAFT).
+Phase 6 is NOT STARTED.
 
 ## AI / Reviewer Reading Order
 

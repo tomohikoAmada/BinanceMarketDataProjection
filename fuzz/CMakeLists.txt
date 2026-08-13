@@ -89,7 +89,70 @@ target_link_options(
     PRIVATE -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer
 )
 
+# M5 Phase-5 differential replay fuzzer: reuses the same replay/oracle/reference
+# source as the deterministic tests via cmake/M5Support.cmake.
+include("${PROJECT_SOURCE_DIR}/cmake/M5Support.cmake")
+bmd_projection_enable_m5_fuzz_support_instrumentation()
+
+add_executable(
+    bmd_projection_replay_fuzz
+    EXCLUDE_FROM_ALL
+    replay_fuzz.cpp
+    m5/replay_fuzz_decoder.cpp
+    m5/replay_fuzz_fixture.cpp
+)
+target_link_libraries(
+    bmd_projection_replay_fuzz
+    PRIVATE
+        bmd_projection_m5_replay_support
+        bmd_projection_m5_oracle_support
+        bmd_projection_m5_reference_support
+        BinanceMarketDataProjection::Core
+)
+target_include_directories(
+    bmd_projection_replay_fuzz
+    PRIVATE
+        "${PROJECT_SOURCE_DIR}/fuzz"
+        "${PROJECT_SOURCE_DIR}/fuzz/m5"
+        "${PROJECT_SOURCE_DIR}/tests/m5/oracle"
+        "${PROJECT_SOURCE_DIR}/tests/m5/reference"
+        "${PROJECT_SOURCE_DIR}/tests/projection_state"
+        "${PROJECT_SOURCE_DIR}/tests/order_book"
+)
+set_target_properties(
+    bmd_projection_replay_fuzz
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_replay_fuzz)
+target_compile_options(
+    bmd_projection_replay_fuzz
+    PRIVATE -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer
+)
+target_link_options(
+    bmd_projection_replay_fuzz
+    PRIVATE -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer
+)
+
 if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
+    # Adapter production side: compiled directly as a source in the fuzz target
+    # to keep adapter-enabled differential fuzzing reachable without a separate
+    # library target.
+    target_sources(
+        bmd_projection_replay_fuzz
+        PRIVATE "${PROJECT_SOURCE_DIR}/tests/m5/oracle/adapter_production_side.cpp"
+    )
+    target_link_libraries(
+        bmd_projection_replay_fuzz
+        PRIVATE BinanceMarketDataProjection::ProtoAdapter
+    )
+    target_compile_definitions(
+        bmd_projection_replay_fuzz
+        PRIVATE BMD_PROJECTION_FUZZ_ADAPTER_ENABLED=1
+    )
+
     add_executable(
         bmd_projection_proto_adapter_fuzz
         EXCLUDE_FROM_ALL
