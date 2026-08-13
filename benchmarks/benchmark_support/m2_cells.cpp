@@ -44,6 +44,8 @@ M2ApplyLevelCell::M2ApplyLevelCell(M2ApplyLevelKind kind, std::size_t depth)
 
 void M2ApplyLevelCell::prepare() {
     update_slot_ = 0;
+    update_.reset();
+    update_slots_.clear();
     book_ = build_order_book(depth_);
     const BookParams params{};
     switch (kind_) {
@@ -86,17 +88,23 @@ std::size_t M2ApplyLevelCell::pool_size() const noexcept { return pool_.size(); 
 
 core::LevelChange M2ApplyLevelCell::execute_step(std::size_t pool_index) {
     switch (kind_) {
-    case M2ApplyLevelKind::Insert:
-        return pool_.at(pool_index).apply_level(update_->side, update_->price, update_->quantity);
+    case M2ApplyLevelKind::Insert: {
+        const auto& update = prepared_update();
+        return pool_.at(pool_index).apply_level(update.side, update.price, update.quantity);
+    }
     case M2ApplyLevelKind::Update: {
         const auto& slot_update = update_slots_.at(update_slot_);
         update_slot_ = (update_slot_ + 1) % update_slots_.size();
         return book_.apply_level(slot_update.side, slot_update.price, slot_update.quantity);
     }
-    case M2ApplyLevelKind::Delete:
-        return pool_.at(pool_index).apply_level(update_->side, update_->price, update_->quantity);
-    case M2ApplyLevelKind::MissingDelete:
-        return book_.apply_level(update_->side, update_->price, update_->quantity);
+    case M2ApplyLevelKind::Delete: {
+        const auto& update = prepared_update();
+        return pool_.at(pool_index).apply_level(update.side, update.price, update.quantity);
+    }
+    case M2ApplyLevelKind::MissingDelete: {
+        const auto& update = prepared_update();
+        return book_.apply_level(update.side, update.price, update.quantity);
+    }
     }
     return core::LevelChange::Unchanged;
 }
@@ -107,6 +115,7 @@ M2ApplyUpdatesCell::M2ApplyUpdatesCell(Config config)
 
 void M2ApplyUpdatesCell::prepare() {
     step_ = 0;
+    cycle_batches_.clear();
     const BookParams params{};
     if (mix_ == M2ApplyUpdatesMix::Insertion) {
         // Empty-book insertion edge (D=0 only). Each execution inserts the same
@@ -126,7 +135,6 @@ void M2ApplyUpdatesCell::prepare() {
         return;
     }
     book_ = build_order_book(depth_);
-    cycle_batches_.clear();
     cycle_batches_.reserve(kBatchCycleSize);
     for (std::size_t batch_index = 0; batch_index < kBatchCycleSize; ++batch_index) {
         std::vector<core::LevelUpdate> updates;

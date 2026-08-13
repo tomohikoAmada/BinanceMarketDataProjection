@@ -53,8 +53,7 @@ void Writer::raw_string(std::string_view value) {
         default:
             if (static_cast<unsigned char>(character) < 0x20U) {
                 constexpr std::string_view kHexDigits{"0123456789abcdef"};
-                const auto code =
-                    static_cast<unsigned>(static_cast<unsigned char>(character));
+                const auto code = static_cast<unsigned>(static_cast<unsigned char>(character));
                 out_ += "\\u00";
                 out_.push_back(kHexDigits[code >> 4U]);
                 out_.push_back(kHexDigits[code & 0xFU]);

@@ -28,7 +28,7 @@ inline constexpr std::array<std::size_t, 4> kBatchSet{0, 1, 10, 100};
                           static_cast<std::int64_t>(index % kQuantityIndexPeriod));
 }
 
-[[nodiscard]] std::string policy_label(core::SequencePolicyKind policy) noexcept {
+[[nodiscard]] std::string policy_label(core::SequencePolicyKind policy) {
     return policy == core::SequencePolicyKind::Spot ? "Spot" : "UsdMPerpetual";
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-// M2 stateful benchmark cells (OD-M5-P6-004 / OD-M5-P6-010 / OD-M5-P6-012).
+// M2 stateful benchmark cells (OD-M5-P6-004/005).
 //
 // Every measured execution of a cell has the same semantic precondition and
 // expected disposition as the first execution. Pool-based cells (insert and
@@ -14,6 +14,8 @@
 #include <binance_market_data/projection/v1/order_book/order_book.hpp>
 
 #include <cstddef>
+#include <cstdint>
+#include <cstdlib>
 #include <optional>
 #include <string>
 #include <vector>
@@ -45,6 +47,9 @@ class M2ApplyLevelCell final {
     [[nodiscard]] M2ApplyLevelKind kind() const noexcept { return kind_; }
     [[nodiscard]] std::size_t depth() const noexcept { return depth_; }
     [[nodiscard]] const core::OrderBook& book() const noexcept { return book_; }
+    [[nodiscard]] std::size_t prepared_update_slot_count() const noexcept {
+        return update_slots_.size();
+    }
 
     // Guarded access to the prepared single update used by the pool and
     // idempotent cells (never by the alternating Update cell).
@@ -99,6 +104,12 @@ class M2ApplyUpdatesCell final {
     [[nodiscard]] std::size_t batch() const noexcept { return batch_; }
     [[nodiscard]] M2ApplyUpdatesMix mix() const noexcept { return mix_; }
     [[nodiscard]] const core::OrderBook& book() const noexcept { return book_; }
+    [[nodiscard]] const core::OrderBook& pooled_book(std::size_t index) const {
+        return pool_.at(index);
+    }
+    [[nodiscard]] std::size_t prepared_batch_count() const noexcept {
+        return cycle_batches_.size();
+    }
     [[nodiscard]] const std::string& generated_workload_sha256() const noexcept {
         return generated_sha_;
     }
@@ -195,7 +206,7 @@ class M3ProxyCells final {
     // book rebuilt from the canonical vectors.
     void candidate_apply_updates(core::OrderBook& candidate, std::size_t step) const;
     // M3/Proxy/OrderBookMoveCommit: destination must hold the populated old
-    // book; measurement includes destination destruction (OD-M5-P6-019).
+    // book; measurement includes destination destruction (OD-M5-P6-009).
     static void move_commit(core::OrderBook& destination, core::OrderBook source);
 
     [[nodiscard]] std::size_t depth() const noexcept { return depth_; }

@@ -1,5 +1,5 @@
-// Deterministic tests for the Phase-6 benchmark support components
-// (OD-M5-P6-060/068): workload-spec identity, M1 semantic cases, M2 state
+// Deterministic tests for the Phase-6 benchmark support components:
+// workload-spec identity, M1 semantic cases, M2 state
 // invariance, the complete 48-cell M3 accepted registration set, M3 batch=0
 // Applied behavior, classification dispositions, latency nearest-rank-v1
 // thresholds, and replay checksum determinism.
@@ -36,6 +36,63 @@ namespace bm = bmd_projection::m5::benchmark;
 namespace phase3 = bmd_projection::m5::phase3;
 
 [[nodiscard]] core::DecimalScale scale_8() { return *core::DecimalScale::create(8); }
+
+struct ApplyLevelPreparedState final {
+    std::string workload_hash;
+    std::size_t update_slot_count;
+    std::vector<core::BookLevel> bids;
+    std::vector<core::BookLevel> asks;
+
+    bool operator==(const ApplyLevelPreparedState&) const = default;
+};
+
+[[nodiscard]] ApplyLevelPreparedState capture_apply_level_state(const bm::M2ApplyLevelCell& cell) {
+    return {cell.generated_workload_sha256(), cell.prepared_update_slot_count(),
+            cell.book().all_levels(core::BookSide::Bid),
+            cell.book().all_levels(core::BookSide::Ask)};
+}
+
+[[nodiscard]] bool all_update_steps_are_updated(bm::M2ApplyLevelCell& cell, std::size_t count) {
+    for (std::size_t index = 0; index < count; ++index) {
+        if (cell.execute_step() != core::LevelChange::Updated) {
+            return false;
+        }
+    }
+    return true;
+}
+
+struct ApplyUpdatesPreparedState final {
+    std::string workload_hash;
+    std::size_t prepared_batch_count;
+    std::size_t pool_size;
+    bool pool_is_empty;
+
+    bool operator==(const ApplyUpdatesPreparedState&) const = default;
+};
+
+[[nodiscard]] ApplyUpdatesPreparedState
+capture_apply_updates_state(const bm::M2ApplyUpdatesCell& cell) {
+    bool pool_is_empty = true;
+    for (std::size_t index = 0; index < cell.pool_size(); ++index) {
+        pool_is_empty = pool_is_empty &&
+                        cell.pooled_book(index).level_count(core::BookSide::Bid) == 0 &&
+                        cell.pooled_book(index).level_count(core::BookSide::Ask) == 0;
+    }
+    return {cell.generated_workload_sha256(), cell.prepared_batch_count(), cell.pool_size(),
+            pool_is_empty};
+}
+
+[[nodiscard]] bool all_insertion_steps_have_expected_state(bm::M2ApplyUpdatesCell& cell,
+                                                           std::size_t expected_levels) {
+    for (std::size_t index = 0; index < cell.pool_size(); ++index) {
+        cell.execute_step(index);
+        if (cell.pooled_book(index).level_count(core::BookSide::Bid) != expected_levels ||
+            cell.pooled_book(index).level_count(core::BookSide::Ask) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
 
 // ---------------------------------------------------------------------------
 // M1 normative semantic table (OD-M5-P6-003).
@@ -106,7 +163,7 @@ TEST(Phase6M1Cases, NormativeSemanticTable) {
 }
 
 // ---------------------------------------------------------------------------
-// Workload-spec identity (OD-M5-P6-023/036).
+// Workload-spec identity (OD-M5-P6-023).
 // ---------------------------------------------------------------------------
 TEST(Phase6WorkloadSpec, DistinctParametersProduceDistinctHashes) {
     bm::clear_registered_workloads_for_testing();
@@ -152,7 +209,7 @@ TEST(Phase6WorkloadSpec, SeedAloneIsInsufficient) {
 }
 
 // ---------------------------------------------------------------------------
-// M2 state invariance (OD-M5-P6-004/010/012).
+// M2 state invariance (OD-M5-P6-004/005).
 // ---------------------------------------------------------------------------
 TEST(Phase6M2ApplyLevel, InsertPoolAlwaysInsertsFreshState) {
     bm::M2ApplyLevelCell cell{bm::M2ApplyLevelKind::Insert, 8};
@@ -170,6 +227,17 @@ TEST(Phase6M2ApplyLevel, UpdateAlternatesAndAlwaysUpdates) {
     for (std::size_t index = 0; index < 256; ++index) {
         EXPECT_EQ(cell.execute_step(), core::LevelChange::Updated);
     }
+}
+
+TEST(Phase6M2ApplyLevel, PrepareTwiceRebuildsUpdateState) {
+    bm::M2ApplyLevelCell cell{bm::M2ApplyLevelKind::Update, 8};
+    cell.prepare();
+    const auto first_state = capture_apply_level_state(cell);
+
+    cell.prepare();
+
+    EXPECT_EQ(capture_apply_level_state(cell), first_state);
+    EXPECT_TRUE(all_update_steps_are_updated(cell, 256));
 }
 
 TEST(Phase6M2ApplyLevel, DeletePoolAlwaysRemovesFreshState) {
@@ -213,6 +281,21 @@ TEST(Phase6M2ApplyUpdates, EmptyBookInsertionEdgeUsesPool) {
     }
 }
 
+TEST(Phase6M2ApplyUpdates, PrepareTwiceRebuildsInsertionPool) {
+    constexpr std::size_t kBatch = 10;
+    bm::M2ApplyUpdatesCell cell{
+        bm::M2ApplyUpdatesCell::Config{0, kBatch, bm::M2ApplyUpdatesMix::Insertion}};
+    cell.prepare();
+    const auto first_state = capture_apply_updates_state(cell);
+
+    cell.prepare();
+
+    EXPECT_EQ(capture_apply_updates_state(cell), first_state);
+    EXPECT_TRUE(first_state.pool_is_empty);
+    EXPECT_EQ(first_state.prepared_batch_count, 1U);
+    EXPECT_TRUE(all_insertion_steps_have_expected_state(cell, kBatch));
+}
+
 TEST(Phase6M2ReplaceAll, PostStateIsCanonical) {
     bm::M2ReplaceAllCell cell{8};
     cell.prepare();
@@ -223,7 +306,7 @@ TEST(Phase6M2ReplaceAll, PostStateIsCanonical) {
 }
 
 // ---------------------------------------------------------------------------
-// M3 cells (OD-M5-P6-006/007/008/017).
+// M3 cells (OD-M5-P6-006/007/008/009).
 // ---------------------------------------------------------------------------
 TEST(Phase6M3AcceptedCellNames, Full48CellMatrix) {
     const auto names = bm::expected_m3_accepted_cell_names();
@@ -354,7 +437,7 @@ TEST(Phase6M3Proxy, MoveCommitIncludesPopulatedDestination) {
 }
 
 // ---------------------------------------------------------------------------
-// Latency statistics (OD-M5-P6-018/032).
+// Latency statistics (OD-M5-P6-017/018).
 // ---------------------------------------------------------------------------
 TEST(Phase6LatencyStats, NearestRankV1) {
     bm::LatencyReport report = bm::make_latency_report({10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
@@ -403,7 +486,7 @@ TEST(Phase6LatencyStats, EligibilityThresholds) {
 }
 
 // ---------------------------------------------------------------------------
-// Replay checksum determinism (OD-M5-P6-026/045).
+// Replay checksum determinism (OD-M5-P6-021/024).
 // ---------------------------------------------------------------------------
 TEST(Phase6ReplayChecksum, FnvIsDeterministicAndSensitive) {
     const auto first = bm::replay_checksum_append(bm::kReplayChecksumSeed, 42);
