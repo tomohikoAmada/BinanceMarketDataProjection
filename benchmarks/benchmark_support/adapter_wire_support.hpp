@@ -66,8 +66,8 @@ struct PreconstructedEntry final {
     market_wire::DepthUpdate update_wire;
     // Rebaseline: direct production install inputs.
     std::uint64_t rebaseline_last_update_id{};
-    std::vector<core::BookLevel> rebaseline_bids{};
-    std::vector<core::BookLevel> rebaseline_asks{};
+    std::vector<core::BookLevel> rebaseline_bids;
+    std::vector<core::BookLevel> rebaseline_asks;
     // Snapshot: production snapshot context/options.
     adapter::SnapshotContext snapshot_context;
     adapter::SnapshotOptions snapshot_options;

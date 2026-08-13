@@ -185,10 +185,10 @@ void apply_pending_quality(market_wire::DepthUpdate& wire,
 
 struct EntryBuilder final {
     core::NumericSpec conversion_spec;
-    const adapter::ExpectedIdentity& expected;
+    adapter::ExpectedIdentity expected;
     common_wire::Market market;
-    std::string_view symbol;
-    std::vector<replay::HostQualityFact>& pending_metadata;
+    std::string symbol;
+    std::vector<replay::HostQualityFact>* pending_metadata;
 
     [[nodiscard]] PreconstructedEntry base(PreconstructedKind kind) const {
         PreconstructedEntry entry;
@@ -203,13 +203,13 @@ struct EntryBuilder final {
         auto& wire = entry.baseline_wire;
         wire.set_venue(common_wire::VENUE_BINANCE);
         wire.set_market(market);
-        wire.set_symbol(std::string{symbol});
+        wire.set_symbol(symbol);
         wire.set_schema_version("exchange-depth-snapshot.v1");
         wire.set_producer(std::string{kBenchmarkProducer});
         wire.set_producer_version(std::string{kBenchmarkProducerVersion});
         wire.set_request_id("phase6-baseline-" + std::to_string(install.source.event_index));
-        apply_pending_quality(wire, pending_metadata);
-        pending_metadata.clear();
+        apply_pending_quality(wire, *pending_metadata);
+        pending_metadata->clear();
         wire.set_last_update_id(install.last_update_id);
         for (const auto& level : install.bids) {
             auto* wire_level = wire.add_bids();
@@ -230,15 +230,15 @@ struct EntryBuilder final {
         auto* metadata = wire.mutable_metadata();
         metadata->set_venue(common_wire::VENUE_BINANCE);
         metadata->set_market(market);
-        metadata->set_symbol(std::string{symbol});
+        metadata->set_symbol(symbol);
         metadata->set_producer(std::string{kBenchmarkProducer});
         metadata->set_producer_version(std::string{kBenchmarkProducerVersion});
         metadata->set_connection_id("phase6-connection-" +
                                     std::to_string(update.source.event_index));
         metadata->set_stream(common_wire::STREAM_DIFF_DEPTH);
         metadata->set_schema_version("depth-update.v1");
-        apply_pending_quality(wire, pending_metadata);
-        pending_metadata.clear();
+        apply_pending_quality(wire, *pending_metadata);
+        pending_metadata->clear();
         wire.set_first_update_id(update.first_update_id);
         wire.set_final_update_id(update.final_update_id);
         if (update.previous_final.has_value()) {
@@ -260,7 +260,8 @@ struct EntryBuilder final {
         return entry;
     }
 
-    [[nodiscard]] PreconstructedEntry operator()(const replay::ResetOp&) const {
+    [[nodiscard]] PreconstructedEntry operator()(const replay::ResetOp& reset) const {
+        (void)reset;
         return base(PreconstructedKind::Reset);
     }
 
@@ -292,7 +293,7 @@ struct EntryBuilder final {
     }
 
     [[nodiscard]] PreconstructedEntry operator()(const replay::AdapterMetadataOp& metadata_op) {
-        pending_metadata = metadata_op.observed_quality;
+        *pending_metadata = metadata_op.observed_quality;
         return base(PreconstructedKind::Metadata);
     }
 
@@ -306,6 +307,9 @@ struct EntryBuilder final {
 
 } // namespace
 
+// Empty vectors are default-initialized; spelling empty initializers conflicts
+// with readability-redundant-member-init under the CI clang-tidy policy.
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 PreconstructedEntry::PreconstructedEntry()
     : snapshot_context{{"", core::SequencePolicyKind::Spot},
                        "",
@@ -385,7 +389,7 @@ std::vector<PreconstructedEntry> preconstruct_adapter_wire(const replay::ReplayF
     entries.reserve(fixture.replay.operations.size());
     std::vector<replay::HostQualityFact> pending_metadata;
     EntryBuilder builder{conversion_spec, expected, wire_market_value, fixture.identity.symbol,
-                         pending_metadata};
+                         &pending_metadata};
     for (const auto& operation : fixture.replay.operations) {
         entries.push_back(std::visit(builder, operation));
     }

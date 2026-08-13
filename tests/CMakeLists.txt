@@ -413,6 +413,7 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
         bmd_projection_m5_benchmark_support_tests
         PRIVATE
             m5/benchmark/adapter_benchmark_support_test.cpp
+            m5/benchmark/adapter_benchmark_test_support.cpp
             "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/adapter_wire_support.cpp"
             "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/adapter_replay_executor.cpp"
     )
