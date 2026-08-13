@@ -192,7 +192,8 @@ TEST(Phase6M2ApplyLevel, MissingDeleteAlwaysUnchanged) {
 
 TEST(Phase6M2ApplyUpdates, ReplacementHeavyKeepsDepthFixed) {
     for (const auto depth : {8U, 100U, 1000U}) {
-        bm::M2ApplyUpdatesCell cell{bm::M2ApplyUpdatesCell::Config{depth, 10, bm::M2ApplyUpdatesMix::ReplacementHeavy}};
+        bm::M2ApplyUpdatesCell cell{
+            bm::M2ApplyUpdatesCell::Config{depth, 10, bm::M2ApplyUpdatesMix::ReplacementHeavy}};
         cell.prepare();
         for (std::size_t index = 0; index < 128; ++index) {
             cell.execute_step();
@@ -203,7 +204,8 @@ TEST(Phase6M2ApplyUpdates, ReplacementHeavyKeepsDepthFixed) {
 }
 
 TEST(Phase6M2ApplyUpdates, EmptyBookInsertionEdgeUsesPool) {
-    bm::M2ApplyUpdatesCell cell{bm::M2ApplyUpdatesCell::Config{0, 100, bm::M2ApplyUpdatesMix::Insertion}};
+    bm::M2ApplyUpdatesCell cell{
+        bm::M2ApplyUpdatesCell::Config{0, 100, bm::M2ApplyUpdatesMix::Insertion}};
     cell.prepare();
     ASSERT_TRUE(cell.uses_pool());
     for (std::size_t index = 0; index < cell.pool_size(); ++index) {
@@ -355,8 +357,8 @@ TEST(Phase6M3Proxy, MoveCommitIncludesPopulatedDestination) {
 // Latency statistics (OD-M5-P6-018/032).
 // ---------------------------------------------------------------------------
 TEST(Phase6LatencyStats, NearestRankV1) {
-    bm::LatencyReport report =
-        bm::make_latency_report({10, 20, 30, 40, 50, 60, 70, 80, 90, 100}, bm::LatencyBookkeeping{10, 1});
+    bm::LatencyReport report = bm::make_latency_report({10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+                                                       bm::LatencyBookkeeping{10, 1});
     EXPECT_EQ(report.quantile(0.5), 50);
     EXPECT_EQ(report.quantile(0.9), 90);
     EXPECT_EQ(report.quantile(1.0), 100);
@@ -366,36 +368,36 @@ TEST(Phase6LatencyStats, NearestRankV1) {
 
 TEST(Phase6LatencyStats, EligibilityThresholds) {
     {
-        bm::LatencyReport small =
-            bm::make_latency_report(std::vector<std::uint64_t>(999, 1), bm::LatencyBookkeeping{999, 1});
+        bm::LatencyReport small = bm::make_latency_report(std::vector<std::uint64_t>(999, 1),
+                                                          bm::LatencyBookkeeping{999, 1});
         EXPECT_FALSE(small.p50_eligible());
         EXPECT_FALSE(small.p99_eligible());
     }
     {
-        bm::LatencyReport medium =
-            bm::make_latency_report(std::vector<std::uint64_t>(1'000, 1), bm::LatencyBookkeeping{1'000, 1});
+        bm::LatencyReport medium = bm::make_latency_report(std::vector<std::uint64_t>(1'000, 1),
+                                                           bm::LatencyBookkeeping{1'000, 1});
         EXPECT_TRUE(medium.p50_eligible());
         EXPECT_TRUE(medium.p90_eligible());
         EXPECT_FALSE(medium.p99_eligible());
         EXPECT_FALSE(medium.p999_eligible());
     }
     {
-        bm::LatencyReport p99 =
-            bm::make_latency_report(std::vector<std::uint64_t>(10'000, 1), bm::LatencyBookkeeping{10'000, 1});
+        bm::LatencyReport p99 = bm::make_latency_report(std::vector<std::uint64_t>(10'000, 1),
+                                                        bm::LatencyBookkeeping{10'000, 1});
         EXPECT_TRUE(p99.p99_eligible());
         EXPECT_FALSE(p99.p999_eligible());
     }
     {
-        bm::LatencyReport repeated_small =
-            bm::make_latency_report(std::vector<std::uint64_t>(10'240, 1), bm::LatencyBookkeeping{2'048, 5});
+        bm::LatencyReport repeated_small = bm::make_latency_report(
+            std::vector<std::uint64_t>(10'240, 1), bm::LatencyBookkeeping{2'048, 5});
         EXPECT_TRUE(repeated_small.p99_eligible());
         EXPECT_FALSE(repeated_small.p999_eligible());
         EXPECT_NE(repeated_small.p999_omission_reason().find("unique_event_count"),
                   std::string::npos);
     }
     {
-        bm::LatencyReport large =
-            bm::make_latency_report(std::vector<std::uint64_t>(100'000, 1), bm::LatencyBookkeeping{100'000, 1});
+        bm::LatencyReport large = bm::make_latency_report(std::vector<std::uint64_t>(100'000, 1),
+                                                          bm::LatencyBookkeeping{100'000, 1});
         EXPECT_TRUE(large.p999_eligible());
     }
 }

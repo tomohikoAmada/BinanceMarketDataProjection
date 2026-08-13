@@ -165,7 +165,11 @@ jobs:
   benchmark-smoke:
     name: benchmark smoke (Ubuntu Clang)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The pinned Contracts package is bootstrapped from source on cold CI
+    # runners (fail-closed M4 inventory requires it), which alone consumes
+    # ~10-15 minutes; the 15-minute recommendation is insufficient for the
+    # complete Phase-6 smoke path.
+    timeout-minutes: 45
     env:
       CC: clang
       CXX: clang++

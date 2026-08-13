@@ -161,8 +161,7 @@ void M2ApplyUpdatesCell::execute_step(std::size_t pool_index) {
 }
 
 M2QueryCell::M2QueryCell(Config config)
-    : depth_{config.depth}, query_limit_{config.query_limit},
-      book_{benchmark_numeric_spec()} {}
+    : depth_{config.depth}, query_limit_{config.query_limit}, book_{benchmark_numeric_spec()} {}
 
 void M2QueryCell::prepare() {
     book_ = build_order_book(depth_);

@@ -196,8 +196,7 @@ EventEvidence CoreReplayExecutor::execute_event(core::BookProjection& projection
         }
         const std::span<const core::BookLevel> book_levels{scratch_book_levels_};
         const auto result = projection.install_baseline(
-            {core::UpdateId{rebaseline->last_update_id},
-             book_levels.first(rebaseline->bids.size()),
+            {core::UpdateId{rebaseline->last_update_id}, book_levels.first(rebaseline->bids.size()),
              book_levels.subspan(rebaseline->bids.size(), rebaseline->asks.size())});
         std::uint64_t update_id_after = kNoUpdateIdMarker;
         if (result.last_update_id_after.has_value()) {
@@ -257,8 +256,7 @@ std::uint64_t finalize_projection_checksum(const core::BookProjection& projectio
         best_ask_price = static_cast<std::uint64_t>(best_ask->price.value());
     }
     checksum = replay_checksum_append(checksum, best_ask_price);
-    checksum = replay_checksum_append(checksum,
-                                      projection.synchronized_book().has_value() ? 1 : 0);
+    checksum = replay_checksum_append(checksum, projection.synchronized_book().has_value() ? 1 : 0);
     return checksum;
 }
 

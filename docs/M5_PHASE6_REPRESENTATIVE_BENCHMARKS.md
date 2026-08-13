@@ -190,6 +190,10 @@ Python tests in `tests/m5/benchmark/test_phase6_validators.py` and C++ tests in
 `scripts/benchmark-smoke.sh` runs the CI-intended smoke (Release, ProtoAdapter ON, 1
 repetition, locked filter, validators) and `scripts/benchmark-full.sh` runs the formal/manual
 full evidence suite (>= 5 repetitions, full matrix, latency small-tier evidence, summary).
+The benchmark-smoke job timeout is 45 minutes: the pinned Contracts package is bootstrapped
+from source on cold CI runners (fail-closed M4 inventory requires it), which alone consumes
+~10-15 minutes; the locked 15-minute recommendation is physically insufficient for the
+complete smoke path.
 
 ## CI policy
 
