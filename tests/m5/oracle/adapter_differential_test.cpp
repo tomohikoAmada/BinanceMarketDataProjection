@@ -12,9 +12,6 @@
 #include <binance_market_data/common/v1/enums.pb.h>
 #include <binance_market_data/projection/v1/snapshots.pb.h>
 
-#include <google/protobuf/descriptor.h>
-#include <google/protobuf/message.h>
-
 #include <gtest/gtest.h>
 
 #include <cstddef>
@@ -75,11 +72,21 @@ snapshot_wire(common_wire::SnapshotSource source = common_wire::SNAPSHOT_SOURCE_
     return wire;
 }
 
-void set_unknown_enum(google::protobuf::Message& message, std::string_view field_name) {
-    const auto* field = message.GetDescriptor()->FindFieldByName(std::string{field_name});
-    ASSERT_NE(field, nullptr);
-    ASSERT_EQ(field->cpp_type(), google::protobuf::FieldDescriptor::CPPTYPE_ENUM);
-    message.GetReflection()->SetEnumValue(&message, field, kUnknownWireEnumValue);
+void append_varint(std::string& wire, std::uint64_t value) {
+    while (value >= 0x80U) {
+        wire.push_back(static_cast<char>((value & 0x7FU) | 0x80U));
+        value >>= 7U;
+    }
+    wire.push_back(static_cast<char>(value));
+}
+
+template <typename Message> void set_unknown_enum(Message& message, int field_number) {
+    // A duplicate scalar's last value wins. Parsing it exercises protobuf's
+    // supported unknown-enum wire path without fabricating a C++ enum value.
+    auto wire = message.SerializeAsString();
+    append_varint(wire, static_cast<std::uint64_t>(field_number) << 3U);
+    append_varint(wire, kUnknownWireEnumValue);
+    ASSERT_TRUE(message.ParseFromString(wire));
 }
 
 [[nodiscard]] oracle::SnapshotExtractionResult
@@ -288,7 +295,7 @@ TEST(AdapterSnapshotExtractionTest, SnapshotSourceUnspecifiedAndUnknownNumericFa
                   CanonicalAdapterCode::UnspecifiedEnum, CanonicalAdapterField::SnapshotSource}}));
 
     auto unknown_wire = snapshot_wire();
-    set_unknown_enum(unknown_wire, "source");
+    set_unknown_enum(unknown_wire, core::LocalOrderBookSnapshot::kSourceFieldNumber);
     const auto unknown = extract_snapshot(unknown_wire);
     EXPECT_EQ(unknown,
               (oracle::SnapshotExtractionResult{oracle::SnapshotExtractionError{
@@ -328,7 +335,7 @@ TEST(AdapterSnapshotExtractionTest, CurrentGapInvalidResyncStatesFailClosed) {
     auto unknown_wire = snapshot_wire();
     auto* gap = unknown_wire.mutable_last_gap();
     gap->set_reason_code(common_wire::REASON_CODE_SEQUENCE_GAP_DETECTED);
-    set_unknown_enum(*gap, "recovery_state");
+    set_unknown_enum(*gap, core::GapDescriptor::kRecoveryStateFieldNumber);
     const auto extracted = extract_snapshot(unknown_wire);
     EXPECT_EQ(extracted, (oracle::SnapshotExtractionResult{oracle::SnapshotExtractionError{
                              CanonicalAdapterCode::UnknownEnumValue,
@@ -359,7 +366,7 @@ TEST(AdapterSnapshotExtractionTest, CurrentGapReasonCodeMapsOnlySequenceGapDetec
     auto unknown_wire = snapshot_wire();
     auto* unknown_gap = unknown_wire.mutable_last_gap();
     unknown_gap->set_recovery_state(common_wire::RESYNC_STATE_RESYNC_REQUIRED);
-    set_unknown_enum(*unknown_gap, "reason_code");
+    set_unknown_enum(*unknown_gap, core::GapDescriptor::kReasonCodeFieldNumber);
     const auto unknown = extract_snapshot(unknown_wire);
     EXPECT_EQ(unknown,
               (oracle::SnapshotExtractionResult{oracle::SnapshotExtractionError{
