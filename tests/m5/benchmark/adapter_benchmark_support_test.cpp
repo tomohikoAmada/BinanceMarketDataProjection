@@ -13,6 +13,7 @@ namespace test_support = bmd_projection::m5::benchmark::test_support;
 TEST(Phase6AdapterReplay, PreconstructionCoversFullWorkloadAndChecksumIsStable) {
     const auto observation = test_support::observe_spot_replay_repeat();
     EXPECT_TRUE(observation.full_preconstruction);
+    EXPECT_TRUE(observation.first_baseline_adapts);
     EXPECT_EQ(observation.event_count, 2'048U);
     EXPECT_EQ(observation.first_checksum, observation.second_checksum);
     EXPECT_TRUE(observation.first_synchronized);

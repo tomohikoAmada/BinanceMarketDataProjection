@@ -6,17 +6,32 @@
 
 #include <binance_market_data/projection/v1/projection_state/book_projection.hpp>
 
+#include <algorithm>
+#include <variant>
+
 namespace bmd_projection::m5::benchmark::test_support {
 namespace {
 
 namespace core = binance_market_data::projection::v1;
 namespace phase3 = bmd_projection::m5::phase3;
+namespace adapter = binance_market_data::projection_adapter::v1;
 
 } // namespace
 
 RepeatObservation observe_spot_replay_repeat() {
     const auto fixture = phase3::make_spot_small_workload();
     const auto entries = adapter_support::preconstruct_adapter_wire(fixture);
+    const auto first_baseline = std::find_if(
+        entries.begin(), entries.end(), [](const adapter_support::PreconstructedEntry& entry) {
+            return entry.kind == adapter_support::PreconstructedKind::Baseline;
+        });
+    bool first_baseline_adapts = false;
+    if (first_baseline != entries.end()) {
+        const auto adapted = adapter::adapt_exchange_depth_snapshot(first_baseline->baseline_wire,
+                                                                    first_baseline->conversion_spec,
+                                                                    first_baseline->expected);
+        first_baseline_adapts = std::get_if<adapter::AdapterError>(&adapted) == nullptr;
+    }
     AdapterReplayExecutor executor{fixture, entries};
 
     core::BookProjection first_projection{executor.numeric_spec(), executor.policy()};
@@ -25,6 +40,7 @@ RepeatObservation observe_spot_replay_repeat() {
     const auto second_checksum = executor.run(second_projection);
 
     return {entries.size() == fixture.replay.operations.size(),
+            first_baseline_adapts,
             executor.event_count(),
             first_checksum,
             second_checksum,
