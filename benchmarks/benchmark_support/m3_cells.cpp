@@ -5,6 +5,7 @@
 #include <binance_market_data/projection/v1/order_book/book_side.hpp>
 #include <binance_market_data/projection/v1/order_book/level_update.hpp>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -19,8 +20,8 @@ namespace {
 
 constexpr std::uint64_t kQuantityIndexPeriod = 10'007;
 constexpr std::size_t kBatchCycleSize = 64;
-inline constexpr std::size_t kDepthSet[] = {0, 8, 100, 1'000, 5'000, 10'000};
-inline constexpr std::size_t kBatchSet[] = {0, 1, 10, 100};
+inline constexpr std::array<std::size_t, 6> kDepthSet{0, 8, 100, 1'000, 5'000, 10'000};
+inline constexpr std::array<std::size_t, 4> kBatchSet{0, 1, 10, 100};
 
 [[nodiscard]] core::QuantityUnits cycling_quantity(std::uint64_t index) {
     return quantity_units(BookParams{}.quantity_base + 1 +
@@ -152,13 +153,18 @@ M3ClassificationCell::M3ClassificationCell(Config config)
                                                      core::UpdateId{current_value - 1});
     auto duplicate_range =
         core::UpdateRange::try_create(core::UpdateId{current_value - 1}, current);
-    auto gap_range = config.kind == M3ClassificationKind::Gap
-                         ? (config.policy == core::SequencePolicyKind::Spot
-                                ? core::UpdateRange::try_create(core::UpdateId{current_value + 2},
-                                                                core::UpdateId{current_value + 2})
-                                : core::UpdateRange::try_create(core::UpdateId{current_value + 1},
-                                                                core::UpdateId{current_value + 1}))
-                         : core::UpdateRange::try_create(current, current);
+    std::optional<core::UpdateRange> gap_range;
+    if (config.kind == M3ClassificationKind::Gap) {
+        if (config.policy == core::SequencePolicyKind::Spot) {
+            gap_range = core::UpdateRange::try_create(core::UpdateId{current_value + 2},
+                                                      core::UpdateId{current_value + 2});
+        } else {
+            gap_range = core::UpdateRange::try_create(core::UpdateId{current_value + 1},
+                                                      core::UpdateId{current_value + 1});
+        }
+    } else {
+        gap_range = core::UpdateRange::try_create(current, current);
+    }
     if (!stale_range.has_value() || !duplicate_range.has_value() || !gap_range.has_value()) {
         std::abort();
     }
@@ -214,18 +220,27 @@ M3ClassificationResult M3ClassificationCell::execute_step(std::size_t pool_index
     result.status_after = projection_.status();
     switch (config_.kind) {
     case M3ClassificationKind::Stale: {
+        if (!stale_batch_.has_value()) {
+            std::abort();
+        }
         const auto applied = projection_.apply(*stale_batch_);
         result.apply_disposition = applied.disposition;
         result.status_after = applied.status_after;
         return result;
     }
     case M3ClassificationKind::Duplicate: {
+        if (!duplicate_batch_.has_value()) {
+            std::abort();
+        }
         const auto applied = projection_.apply(*duplicate_batch_);
         result.apply_disposition = applied.disposition;
         result.status_after = applied.status_after;
         return result;
     }
     case M3ClassificationKind::Gap: {
+        if (!gap_batch_.has_value()) {
+            std::abort();
+        }
         auto& target = pool_.at(pool_index);
         const auto applied = target.apply(*gap_batch_);
         result.apply_disposition = applied.disposition;

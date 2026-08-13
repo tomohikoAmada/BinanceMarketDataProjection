@@ -1,6 +1,7 @@
 #include "phase6_json.hpp"
 
-#include <cstdio>
+#include <array>
+#include <charconv>
 #include <cstdlib>
 #include <string>
 #include <string_view>
@@ -51,10 +52,12 @@ void Writer::raw_string(std::string_view value) {
             break;
         default:
             if (static_cast<unsigned char>(character) < 0x20U) {
-                char buffer[7]{};
-                std::snprintf(buffer, sizeof(buffer), "\\u%04x",
-                              static_cast<unsigned>(static_cast<unsigned char>(character)));
-                out_ += buffer;
+                constexpr std::string_view kHexDigits{"0123456789abcdef"};
+                const auto code =
+                    static_cast<unsigned>(static_cast<unsigned char>(character));
+                out_ += "\\u00";
+                out_.push_back(kHexDigits[code >> 4U]);
+                out_.push_back(kHexDigits[code & 0xFU]);
             } else {
                 out_.push_back(character);
             }
@@ -122,9 +125,9 @@ void Writer::value(std::string_view value) {
     raw_string(value);
 }
 
-void Writer::value(const char* value) { return this->value(std::string_view{value}); }
+void Writer::value(const char* value) { this->value(std::string_view{value}); }
 
-void Writer::value(const std::string& value) { return this->value(std::string_view{value}); }
+void Writer::value(const std::string& value) { this->value(std::string_view{value}); }
 
 void Writer::value(std::uint64_t value) {
     advance_for_value();
@@ -138,9 +141,10 @@ void Writer::value(bool value) {
 
 void Writer::value(double value) {
     advance_for_value();
-    char buffer[40]{};
-    std::snprintf(buffer, sizeof(buffer), "%.17g", value);
-    out_ += buffer;
+    std::array<char, 40> buffer{};
+    const auto result =
+        std::to_chars(buffer.begin(), buffer.end(), value, std::chars_format::general, 17);
+    out_.append(buffer.begin(), result.ptr);
 }
 
 void Writer::value_null() {

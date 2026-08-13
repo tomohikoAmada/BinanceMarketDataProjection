@@ -24,12 +24,13 @@ struct Registry final {
     std::size_t finalized_builders{0};
 };
 
-// Static initialization order is unspecified across translation units; the
-// registry must not be destroyed during shutdown while builders are still
-// running, so it is intentionally leaked.
+// Nothing reads the registry after main returns, so a normal function-local
+// static is safe: static initialization happens on first use (after all
+// static registration calls completed) and destruction runs during normal
+// shutdown.
 Registry& registry() {
-    static Registry* instance = new Registry{};
-    return *instance;
+    static Registry instance{};
+    return instance;
 }
 
 [[nodiscard]] std::string canonical_text_of(const WorkloadSpecBuilder& builder) {

@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace bmd_projection::m5::benchmark::adapter_support {
@@ -25,8 +26,13 @@ namespace market_wire = binance_market_data::market::v1;
 inline constexpr std::size_t kM4UpdateLevelCount = 10;
 
 struct WireIdentity final {
-    core::NumericSpec numeric_spec;
-    adapter::ExpectedIdentity expected;
+    WireIdentity() = default;
+    WireIdentity(core::NumericSpec spec, adapter::ExpectedIdentity identity)
+        : numeric_spec{spec}, expected{std::move(identity)} {}
+
+    core::NumericSpec numeric_spec{core::DecimalScale::create(2).value(),
+                                   core::DecimalScale::create(3).value()};
+    adapter::ExpectedIdentity expected{};
 };
 
 // Spot BTCUSDT identity with the benchmark numeric spec.
@@ -37,7 +43,8 @@ struct WireIdentity final {
 [[nodiscard]] market_wire::ExchangeDepthSnapshot make_snapshot_wire(std::size_t depth);
 
 // DepthUpdate with kM4UpdateLevelCount levels at existing benchmark bid
-// prices.
+// prices. first/final are the wire update-range ids in contract order.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] market_wire::DepthUpdate
 make_update_wire(std::uint64_t first_update_id, std::uint64_t final_update_id,
                  std::optional<std::uint64_t> previous_final_update_id);
@@ -59,8 +66,8 @@ struct PreconstructedEntry final {
 
     PreconstructedKind kind{PreconstructedKind::Baseline};
     // Baseline/Update: the preconstructed wire message plus conversion inputs.
-    market_wire::ExchangeDepthSnapshot baseline_wire;
-    market_wire::DepthUpdate update_wire;
+    market_wire::ExchangeDepthSnapshot baseline_wire{};
+    market_wire::DepthUpdate update_wire{};
     // Rebaseline: direct production install inputs.
     std::uint64_t rebaseline_last_update_id{};
     std::vector<core::BookLevel> rebaseline_bids;

@@ -69,9 +69,9 @@ EnvironmentIdentity collect_environment_identity() {
     EnvironmentIdentity identity;
     utsname info{};
     if (uname(&info) == 0) {
-        identity.os_name = info.sysname;
-        identity.os_version = info.release;
-        identity.architecture = info.machine;
+        identity.os_name = static_cast<const char*>(info.sysname);
+        identity.os_version = static_cast<const char*>(info.release);
+        identity.architecture = static_cast<const char*>(info.machine);
     } else {
         identity.os_name = "unavailable";
         identity.os_version = "unavailable";

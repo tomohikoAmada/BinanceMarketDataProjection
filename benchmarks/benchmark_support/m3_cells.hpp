@@ -67,7 +67,7 @@ class M3AcceptedCell final {
     std::vector<core::LevelUpdate> insert_batch_;
     std::vector<core::LevelUpdate> empty_levels_;
     std::size_t step_{0};
-    std::uint64_t current_id_;
+    std::uint64_t current_id_{0};
     std::string generated_sha_;
 };
 
@@ -82,7 +82,7 @@ enum class M3ClassificationKind : std::uint8_t {
 struct M3ClassificationResult final {
     std::optional<core::ApplyDisposition> apply_disposition;
     std::optional<core::InstallDisposition> install_disposition;
-    core::ProjectionStatus status_after;
+    core::ProjectionStatus status_after{core::ProjectionStatus::AwaitingBaseline};
 };
 
 class M3ClassificationCell final {
