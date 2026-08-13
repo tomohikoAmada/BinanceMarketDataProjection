@@ -292,7 +292,8 @@ struct EntryBuilder final {
         return entry;
     }
 
-    [[nodiscard]] PreconstructedEntry operator()(const replay::AdapterMetadataOp& metadata_op) {
+    [[nodiscard]] PreconstructedEntry
+    operator()(const replay::AdapterMetadataOp& metadata_op) const {
         *pending_metadata = metadata_op.observed_quality;
         return base(PreconstructedKind::Metadata);
     }
