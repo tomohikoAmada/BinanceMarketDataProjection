@@ -451,6 +451,69 @@ snapshot_flag(const core::LocalOrderBookSnapshot& snapshot, int index) noexcept 
     }
 }
 
+[[nodiscard]] CanonicalAdapterCode snapshot_reason_error(common_wire::ReasonCode reason) noexcept {
+    if (reason == common_wire::REASON_CODE_UNSPECIFIED) {
+        return CanonicalAdapterCode::UnspecifiedEnum;
+    }
+    if (common_wire::ReasonCode_IsValid(reason)) {
+        return CanonicalAdapterCode::InvalidGapContext;
+    }
+    return CanonicalAdapterCode::UnknownEnumValue;
+}
+
+[[nodiscard]] CanonicalAdapterCode
+snapshot_recovery_error(common_wire::ResyncState recovery) noexcept {
+    if (recovery == common_wire::RESYNC_STATE_UNSPECIFIED) {
+        return CanonicalAdapterCode::UnspecifiedEnum;
+    }
+    if (common_wire::ResyncState_IsValid(recovery)) {
+        return CanonicalAdapterCode::InvalidGapContext;
+    }
+    return CanonicalAdapterCode::UnknownEnumValue;
+}
+
+using SnapshotFlagsResult =
+    std::variant<std::vector<CanonicalQualityFlag>, SnapshotExtractionError>;
+
+[[nodiscard]] SnapshotFlagsResult extract_snapshot_flags(const core::LocalOrderBookSnapshot& wire) {
+    std::vector<CanonicalQualityFlag> flags;
+    flags.reserve(static_cast<std::size_t>(wire.quality_flags_size()));
+    for (int index = 0; index < wire.quality_flags_size(); ++index) {
+        const auto flag = snapshot_flag(wire, index);
+        if (!flag.has_value()) {
+            const auto code = wire.quality_flags(index) == common_wire::QUALITY_FLAG_UNSPECIFIED
+                                  ? CanonicalAdapterCode::UnspecifiedEnum
+                                  : CanonicalAdapterCode::UnknownEnumValue;
+            return SnapshotExtractionError{code, CanonicalAdapterField::QualityFlag};
+        }
+        flags.push_back(*flag);
+    }
+    return flags;
+}
+
+using SnapshotGapResult =
+    std::variant<std::optional<GapDescriptorObservation>, SnapshotExtractionError>;
+
+[[nodiscard]] SnapshotGapResult extract_snapshot_gap(const core::LocalOrderBookSnapshot& wire) {
+    if (!wire.has_last_gap()) {
+        return std::optional<GapDescriptorObservation>{};
+    }
+    const auto& gap = wire.last_gap();
+    const auto reason = snapshot_reason_code(gap.reason_code());
+    if (!reason.has_value()) {
+        return SnapshotExtractionError{snapshot_reason_error(gap.reason_code()),
+                                       CanonicalAdapterField::CurrentGap};
+    }
+    const auto recovery = snapshot_resync_state(gap.recovery_state());
+    if (!recovery.has_value()) {
+        return SnapshotExtractionError{snapshot_recovery_error(gap.recovery_state()),
+                                       CanonicalAdapterField::GapRecoveryState};
+    }
+    return std::optional<GapDescriptorObservation>{
+        GapDescriptorObservation{gap.detected_at_utc_ns(), gap.previous_sequence(),
+                                 gap.next_sequence(), *reason, *recovery}};
+}
+
 } // namespace
 
 SnapshotExtractionResult extract_snapshot_observation(const core::LocalOrderBookSnapshot& wire,
@@ -497,44 +560,19 @@ SnapshotExtractionResult extract_snapshot_observation(const core::LocalOrderBook
     for (const auto& level : wire.asks()) {
         snapshot.asks.push_back({level.price(), level.quantity()});
     }
-    for (int index = 0; index < wire.quality_flags_size(); ++index) {
-        const auto flag = snapshot_flag(wire, index);
-        if (!flag.has_value()) {
-            return SnapshotExtractionError{wire.quality_flags(index) ==
-                                                   common_wire::QUALITY_FLAG_UNSPECIFIED
-                                               ? CanonicalAdapterCode::UnspecifiedEnum
-                                               : CanonicalAdapterCode::UnknownEnumValue,
-                                           CanonicalAdapterField::QualityFlag};
-        }
-        snapshot.quality_flags.push_back(*flag);
+    auto flags = extract_snapshot_flags(wire);
+    if (const auto* error = std::get_if<SnapshotExtractionError>(&flags)) {
+        return *error;
     }
+    snapshot.quality_flags = std::get<std::vector<CanonicalQualityFlag>>(std::move(flags));
     if (wire.has_depth_limit()) {
         snapshot.depth_limit = wire.depth_limit();
     }
-    if (wire.has_last_gap()) {
-        const auto& gap = wire.last_gap();
-        const auto reason = snapshot_reason_code(gap.reason_code());
-        if (!reason.has_value()) {
-            const auto code = gap.reason_code() == common_wire::REASON_CODE_UNSPECIFIED
-                                  ? CanonicalAdapterCode::UnspecifiedEnum
-                              : common_wire::ReasonCode_IsValid(gap.reason_code())
-                                  ? CanonicalAdapterCode::InvalidGapContext
-                                  : CanonicalAdapterCode::UnknownEnumValue;
-            return SnapshotExtractionError{code, CanonicalAdapterField::CurrentGap};
-        }
-        const auto recovery = snapshot_resync_state(gap.recovery_state());
-        if (!recovery.has_value()) {
-            const auto code = gap.recovery_state() == common_wire::RESYNC_STATE_UNSPECIFIED
-                                  ? CanonicalAdapterCode::UnspecifiedEnum
-                              : common_wire::ResyncState_IsValid(gap.recovery_state())
-                                  ? CanonicalAdapterCode::InvalidGapContext
-                                  : CanonicalAdapterCode::UnknownEnumValue;
-            return SnapshotExtractionError{code, CanonicalAdapterField::GapRecoveryState};
-        }
-        snapshot.gap_descriptor =
-            GapDescriptorObservation{gap.detected_at_utc_ns(), gap.previous_sequence(),
-                                     gap.next_sequence(), *reason, *recovery};
+    auto gap = extract_snapshot_gap(wire);
+    if (const auto* error = std::get_if<SnapshotExtractionError>(&gap)) {
+        return *error;
     }
+    snapshot.gap_descriptor = std::get<std::optional<GapDescriptorObservation>>(gap);
     return snapshot;
 }
 
