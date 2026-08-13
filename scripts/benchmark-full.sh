@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# M5 Phase-6 formal/manual full evidence driver (OD-M5-P6-020/028/029/064/070).
+# M5 Phase-6 formal/manual full evidence driver (OD-M5-P6-020/028/029).
 #
 # Requires a clean committed source tree and the Release benchmark build with
 # ProtoAdapter ON. Runs the complete inventory with >= 5 repetitions, the

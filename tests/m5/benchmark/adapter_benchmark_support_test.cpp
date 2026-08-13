@@ -1,5 +1,5 @@
 // Adapter-conditional Phase-6 benchmark support tests: AdapterWireReplay
-// preconstruction and final-state validation (OD-M5-P6-015/024/068).
+// preconstruction and final-state validation (OD-M5-P6-015/024).
 // Compiled only when the ProtoAdapter is enabled.
 
 #include "adapter_replay_executor.hpp"

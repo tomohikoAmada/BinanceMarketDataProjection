@@ -1,6 +1,6 @@
 #pragma once
 
-// Runtime environment and binary identity collection (OD-M5-P6-038/039/042).
+// Runtime environment and binary identity collection (OD-M5-P6-021/022).
 // The binary SHA-256 is computed from the exact executable that produced the
 // result payload; environment identity is never part of a benchmark name.
 

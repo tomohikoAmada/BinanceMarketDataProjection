@@ -1,6 +1,6 @@
 #pragma once
 
-// M5 Phase-6 synthetic workload identity (OD-M5-P6-023 / OD-M5-P6-036).
+// M5 Phase-6 synthetic workload identity (OD-M5-P6-023).
 //
 // Every registered benchmark owns a canonical workload-spec representation.
 // The canonical text is a deterministic key-sorted "key=value" document; its

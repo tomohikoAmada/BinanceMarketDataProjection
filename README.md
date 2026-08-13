@@ -2,8 +2,8 @@
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. M1 through M4 are complete on `main`; M5 (Differential Validation and
-Performance) implementation is in progress (Phases 1, 2, 3, and 4 merged; Phase 4 merged via
-PR #16; later phases not started).
+Performance) implementation is in progress (Phases 1 through 5 merged; Phase 6 implemented on
+draft PR #21 and pending independent review; later phases not started).
 
 ## For AI agents and independent reviewers
 
@@ -279,10 +279,9 @@ fan-in CI.
 Phase 5 (differential replay fuzzing) is COMPLETE / MERGED (PR #18, final approved Head
 `e56f5dbd12b9e66946343467221e8e3ba9984531`, exact-head CI `31668465623` — 18/18 PASS, squash
 merge `53268d5cd2090f4779ffdc14c070184f470cc899`, post-merge main CI `31671708958` — 18/18
-PASS). See [M5 Phase 5](docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md). Phase 6:
-PRE-IMPLEMENTATION DECISIONS RECORDED / IMPLEMENTATION NOT STARTED (see
-[M5 Phase-6 pre-implementation decisions](docs/M5_PHASE6_PREIMPLEMENTATION_DECISIONS.md)); later
-phases remain not started.
+PASS). See [M5 Phase 5](docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md). Phase 6 is IMPLEMENTED / PENDING
+INDEPENDENT REVIEW on draft PR #21 (see
+[M5 Phase 6](docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md)); later phases remain not started.
 Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
 cross-compiler semantic manifests with artifact fan-in transport, replay/differential fuzzing,

@@ -1,8 +1,8 @@
 // Phase-6 benchmark entry point. A custom display reporter collects run-level
 // measurements while Google Benchmark still writes the official JSON payload
 // through --benchmark_out; after the run completes the M5_BENCHMARK_WRAPPER_V1
-// wrapper binds the payload SHA-256 and the full provenance (OD-M5-P6-037
-// through OD-M5-P6-045).
+// wrapper binds the payload SHA-256 and the full provenance
+// (OD-M5-P6-021/022/023/029).
 
 #include "benchmark_support/environment_identity.hpp"
 #include "benchmark_support/workload_spec.hpp"

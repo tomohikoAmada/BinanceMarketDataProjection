@@ -56,7 +56,7 @@ constexpr std::size_t kOperationBatch = 16;
 }
 
 // ---------------------------------------------------------------------------
-// Static workload-spec registration (OD-M5-P6-003 / OD-M5-P6-036). The
+// Static workload-spec registration (OD-M5-P6-003/023). The
 // registry is complete regardless of the active filter.
 // ---------------------------------------------------------------------------
 namespace {

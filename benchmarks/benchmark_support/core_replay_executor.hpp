@@ -1,6 +1,6 @@
 #pragma once
 
-// Production Core replay executor (OD-M5-P6-014 / OD-M5-P6-023 / OD-M5-P6-030).
+// Production Core replay executor (OD-M5-P6-014/023).
 //
 // The timed production path is: preloaded normalized replay operations ->
 // production M1 decimal parsing (the actual production host path for

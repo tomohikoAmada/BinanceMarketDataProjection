@@ -5,7 +5,7 @@ Fail-closed validators for the Phase-6 machine-readable outputs:
 
   - Google Benchmark JSON payload structure/execution evidence
   - required benchmark inventory (including the full 48-cell M3 accepted
-    matrix and the required M4 names; OD-M5-P6-013/022 fail closed)
+    matrix and the required M4 names; OD-M5-P6-006/013/024 fail closed)
   - smoke expectation sets (zero-match, SkipWithError, error_occurred)
   - M5_BENCHMARK_WRAPPER_V1 schema, provenance, and payload SHA binding
   - M5_REPLAY_LATENCY_V1 recomputation (nearest-rank-v1) and eligibility
@@ -130,7 +130,7 @@ def _smoke_expected_set() -> list[str]:
     expected.append("M2/quantity_at/miss/8")
     expected.append("M2/top_levels/5/8")
     expected.append("M2/all_levels/8")
-    # Locked 8-cell accepted-live M3 CI smoke subset (OD-M5-P6-047).
+    # Locked 8-cell accepted-live M3 CI smoke subset (OD-M5-P6-006/024).
     for policy in POLICIES:
         for depth in [8, 1000]:
             for batch in [0, 10]:

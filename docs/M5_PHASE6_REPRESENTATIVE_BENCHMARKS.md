@@ -57,7 +57,7 @@ APIs only.
   miss workloads; no mixed hit ratio), `M2/top_levels/{1,5,50}/{8,100,1000}` (query limit
   recorded in workload metadata), `M2/all_levels/{0,8,100,1000,5000,10000}`
 
-Stateful-iteration invariance (OD-M5-P6-004/012): insert and delete consume one freshly prepared
+Stateful-iteration invariance (OD-M5-P6-004/005): insert and delete consume one freshly prepared
 book per measured execution from a bounded pool built entirely outside the measured region
 (fixed iteration counts, scaled by depth); update alternates quantities so every execution
 returns `Updated`; missing-delete is idempotent (`Unchanged`); apply_updates uses a 10,007-period
@@ -129,7 +129,7 @@ called "production events/sec" except the wall-denominated production replay pat
 
 ### Event latency (dedicated executable)
 
-`bmd_projection_replay_latency` follows OD-M5-P6-017/030/031/032: preload/pre-touch, immutable
+`bmd_projection_replay_latency` follows OD-M5-P6-017/018/020: preload/pre-touch, immutable
 inputs, one complete untimed warmup pass with discarded state, fresh production state per pass,
 preallocated sample storage, a `steady_clock` bracket around exactly one production event per
 sample (typed evidence capture only; no hashing/formatting/allocation/oracle inside the
@@ -190,15 +190,16 @@ Python tests in `tests/m5/benchmark/test_phase6_validators.py` and C++ tests in
 `scripts/benchmark-smoke.sh` runs the CI-intended smoke (Release, ProtoAdapter ON, 1
 repetition, locked filter, validators) and `scripts/benchmark-full.sh` runs the formal/manual
 full evidence suite (>= 5 repetitions, full matrix, latency small-tier evidence, summary).
-The benchmark-smoke job timeout is 45 minutes: the pinned Contracts package is bootstrapped
-from source on cold CI runners (fail-closed M4 inventory requires it), which alone consumes
-~10-15 minutes; the locked 15-minute recommendation is physically insufficient for the
-complete smoke path.
+OD-M5-P6-024 retains its normative recommendation of a 15-minute job timeout. The current
+benchmark-smoke workflow intentionally uses 45 minutes because fail-closed M4 inventory requires
+ProtoAdapter ON and a pinned Contracts bootstrap; on cold CI runners the dependency path alone can
+consume roughly 10-15 minutes before benchmark execution. The 45-minute value is an implementation
+deviation with cold-run margin, not a claim that accepted authority mandated 45 minutes.
 
 ## CI policy
 
 The existing `benchmark-smoke` job (Ubuntu Clang) is extended: pinned Contracts bootstrap,
-`BMD_PROJECTION_BUILD_PROTO_ADAPTER=ON`, Phase-6 smoke, 15-minute timeout. Blocking failures:
+`BMD_PROJECTION_BUILD_PROTO_ADAPTER=ON`, Phase-6 smoke, current 45-minute timeout. Blocking failures:
 target build failure, missing required inventory, missing required M4 names, zero-match filter,
 missing executed benchmarks, `SkipWithError`/`error_occurred`, invalid Google Benchmark JSON,
 invalid wrapper, payload hash mismatch, missing required metadata, semantic pre/postcondition

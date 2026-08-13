@@ -1,5 +1,5 @@
-// Dedicated production-only event-latency executable (OD-M5-P6-017/018/030
-// through OD-M5-P6-032). Event percentiles are never derived from Google
+// Dedicated production-only event-latency executable (OD-M5-P6-017/018/020/029).
+// Event percentiles are never derived from Google
 // Benchmark repetitions. The required process:
 //
 //   1. preload and pre-touch the workload

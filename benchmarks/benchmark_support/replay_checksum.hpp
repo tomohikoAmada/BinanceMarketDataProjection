@@ -1,6 +1,6 @@
 #pragma once
 
-// Deterministic replay result consumption (OD-M5-P6-045): FNV-1a 64 over the
+// Deterministic replay result consumption (OD-M5-P6-021/024): FNV-1a 64 over the
 // per-event disposition/status/sequence evidence and the final projection
 // state. The methodology version is recorded in the metadata wrapper so a
 // validator can confirm the checksum contract without recomputing it.

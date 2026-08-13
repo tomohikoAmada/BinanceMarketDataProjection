@@ -1,7 +1,7 @@
 #pragma once
 
-// M5_BENCHMARK_WRAPPER_V1 metadata/provenance wrapper (OD-M5-P6-021/022/037
-// through OD-M5-P6-045). The wrapper separates source/binary provenance,
+// M5_BENCHMARK_WRAPPER_V1 metadata/provenance wrapper
+// (OD-M5-P6-021/022/023/029). The wrapper separates source/binary provenance,
 // build identity, environment identity, workload identity, measurement
 // identity, and result-payload binding, and fails closed: the payload SHA-256
 // binds the wrapper to the exact payload file it describes.

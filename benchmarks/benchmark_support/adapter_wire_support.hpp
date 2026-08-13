@@ -1,7 +1,7 @@
 #pragma once
 
 // Benchmark-only wire preconstruction for the M4 benchmarks and
-// AdapterWireReplay (OD-M5-P6-011/015/024). All protobuf messages are built
+// AdapterWireReplay (OD-M5-P6-011/015). All protobuf messages are built
 // before any measured region; adaptation timing excludes wire construction.
 
 #include "book_state.hpp"

@@ -1,6 +1,6 @@
 #pragma once
 
-// Event-latency sample statistics (OD-M5-P6-018 / OD-M5-P6-032).
+// Event-latency sample statistics (OD-M5-P6-018).
 //
 // Estimator: nearest-rank-v1. For ascending samples x[0..n-1]:
 // Q(p) = x[ceil(p*n) - 1]. No interpolation. Calibration samples are reported

@@ -1,4 +1,4 @@
-"""Deterministic tests for the Phase-6 benchmark validators (OD-M5-P6-060)."""
+"""Deterministic tests for the Phase-6 benchmark validators (OD-M5-P6-024)."""
 
 import hashlib
 import json

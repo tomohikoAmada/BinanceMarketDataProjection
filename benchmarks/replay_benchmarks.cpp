@@ -1,5 +1,5 @@
-// Production replay throughput benchmarks (OD-M5-P6-014/015/016/023/024/026
-// through OD-M5-P6-029). Wall time is the primary denominator (UseRealTime);
+// Production replay throughput benchmarks (OD-M5-P6-014/015/016/019/020/028).
+// Wall time is the primary denominator (UseRealTime);
 // CPU time is reported separately by Google Benchmark. Differential
 // verification runs exactly once outside any measured region and is never the
 // production throughput executor.

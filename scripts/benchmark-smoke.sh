@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# M5 Phase-6 benchmark smoke driver (OD-M5-P6-047/048/049/071).
+# M5 Phase-6 benchmark smoke driver (OD-M5-P6-013/020/024/029).
 #
 # Structural execution evidence only: Release, ProtoAdapter ON, 1 repetition,
 # fail-closed inventory/wrapper/latency validation. No numeric performance

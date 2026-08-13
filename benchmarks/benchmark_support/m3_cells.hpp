@@ -1,7 +1,6 @@
 #pragma once
 
-// M3 benchmark cell machinery (OD-M5-P6-006 through OD-M5-P6-009 and
-// OD-M5-P6-017).
+// M3 benchmark cell machinery (OD-M5-P6-006 through OD-M5-P6-009).
 //
 // Accepted live-apply cells: every measured execution begins Synchronized and
 // every intended accepted operation actually returns Applied. D>0 cells use

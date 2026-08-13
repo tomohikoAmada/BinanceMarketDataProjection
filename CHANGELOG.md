@@ -17,7 +17,9 @@ All notable changes will be recorded here.
   exact binary/payload SHA binding, `M5_REPLAY_LATENCY_V1` latency evidence, deterministic
   fail-closed inventory/smoke/wrapper/latency validators with Python and C++ tests,
   `scripts/benchmark-smoke.sh` / `scripts/benchmark-full.sh`, and the extended benchmark-smoke
-  CI job (ProtoAdapter ON, 15-minute timeout, structural evidence only, no numeric threshold).
+  CI job (ProtoAdapter ON, current 45-minute timeout, structural evidence only, no numeric
+  threshold). OD-M5-P6-024 retains its 15-minute recommendation; the workflow uses 45 minutes to
+  allow cold-run margin for the required pinned Contracts bootstrap before benchmark execution.
   Production `src/`/`include/` unchanged. Phase 6: IMPLEMENTED / PENDING INDEPENDENT REVIEW
   (`docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`).
 - M5 Phase-5 differential replay fuzzer (`bmd_projection_replay_fuzz`): direct structured byte

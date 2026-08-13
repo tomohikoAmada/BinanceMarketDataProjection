@@ -4,7 +4,7 @@
 //
 // Represents the source/build state used at CONFIGURE/BUILD time. The dirty
 // bit is captured here, not queried when a result wrapper happens to run
-// (OD-M5-P6-038).
+// (OD-M5-P6-022).
 
 #define BMD_P6_GIT_SHA "@BMD_P6_GIT_SHA@"
 #define BMD_P6_GIT_DIRTY_AT_CONFIGURE "@BMD_P6_GIT_DIRTY_AT_CONFIGURE@"
