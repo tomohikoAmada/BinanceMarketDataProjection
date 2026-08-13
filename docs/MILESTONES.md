@@ -269,7 +269,7 @@ OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions a
 are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
 M5 implementation is authorized. Phases 1, 2, 3, 4, and 5 are complete and merged; Phase 5
 is COMPLETE / MERGED (evidence in the Phase-5 record below).
-Phase 6 is NOT STARTED.
+Phase 6: PRE-IMPLEMENTATION DECISIONS RECORDED / IMPLEMENTATION NOT STARTED.
 
 Phase 1 canonical replay infrastructure is **COMPLETE / MERGED** (PR #11, merge
 `5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — PASS 16/16). It
@@ -332,7 +332,7 @@ unspecified or unknown values, and manifest rendering accepts only V1/V1 or V2/V
 the exact historical V1 JSON shape. M4-IIR-3 is CLOSED by final independent Phase-5 review evidence.
 Post-merge GNU/Clang/AppleClang Release manifests record `head_sha`
 `53268d5cd2090f4779ffdc14c070184f470cc899` and agree on all four authoritative semantic digests.
-`docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`. Phase 6 is NOT STARTED.
+`docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`. Phase 6: PRE-IMPLEMENTATION DECISIONS RECORDED / IMPLEMENTATION NOT STARTED.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 

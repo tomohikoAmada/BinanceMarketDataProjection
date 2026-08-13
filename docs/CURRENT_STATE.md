@@ -105,7 +105,8 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Not Implemented
 
-- Phase 6 (benchmarks) is NOT STARTED.
+- Phase 6 (benchmarks): PRE-IMPLEMENTATION DECISIONS RECORDED / IMPLEMENTATION NOT STARTED (see
+  `docs/M5_PHASE6_PREIMPLEMENTATION_DECISIONS.md`).
 - Phase 7 (allocation/memory) is NOT STARTED.
 - Phase 8 (container spike) is NOT STARTED.
 - M6 Gateway integration is NOT STARTED.
@@ -115,8 +116,8 @@ artifact is a separate identity and remains outside Projection ownership.
 ## Current Blockers
 
 - No implementation blockers: Phase 5 is COMPLETE / MERGED on main and no active Phase-5
-  implementation candidate remains. Phase 6 (benchmarks) is NOT STARTED and remains
-  unauthorized.
+  implementation candidate remains. Phase 6 (benchmarks) is NOT STARTED and implementation
+  authorization remains CONDITIONAL until the docs-only Phase-6 decision record is merged.
 
 ## Accepted Semantic Authorities
 
@@ -176,8 +177,9 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 ## Next Authorized Step
 
 Phase 5 is complete and merged (PR #18, squash merge
-`53268d5cd2090f4779ffdc14c070184f470cc899`). Phase 6 (benchmarks) is NOT STARTED and remains
-unauthorized.
+`53268d5cd2090f4779ffdc14c070184f470cc899`). Phase 6 (benchmarks) is NOT STARTED; its
+pre-implementation decisions are recorded and implementation authorization becomes YES only after
+the docs-only decision record is independently reviewed and merged.
 
 ## AI / Reviewer Reading Order
 
