@@ -264,7 +264,12 @@ PASS):
 canonical OperationObservation serialization (schema v1), semantic SHA-256 digests,
 portable manifest v1, manifest producer, fail-closed shared Python evidence validation, complete
 Debug/Release fixture/build identity checks, and metadata-validated three-cross-compiler artifact
-fan-in CI. Later phases remain not started.
+fan-in CI.
+Phase 5 (differential replay fuzzing) is COMPLETE / MERGED (PR #18, final approved Head
+`e56f5dbd12b9e66946343467221e8e3ba9984531`, exact-head CI `31668465623` — 18/18 PASS, squash
+merge `53268d5cd2090f4779ffdc14c070184f470cc899`, post-merge main CI `31671708958` — 18/18
+PASS). See [M5 Phase 5](docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md). Phase 6 and later remain not
+started.
 Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
 cross-compiler semantic manifests with artifact fan-in transport, replay/differential fuzzing,
@@ -277,11 +282,12 @@ The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
 - The repository includes numeric primitives, a deterministic L2 market-by-price order book, the
   completed M3 sequence/projection implementation, and the merged optional M4 Protobuf adapter on
   `main`.
-- M5 is **APPROVED / MERGED / IN PROGRESS**; Phases 1, 2, 3, and 4 are COMPLETE / MERGED (Phase 3
-  Spot and USD-M 100k corpora validated PASS from the pinned authoritative source under ADR-0008
-  successor coverage; Phase 4 cross-compiler GNU/Clang/AppleClang semantic equality PASS).
-  Phase 5 is IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW
-  (`feat/m5-differential-replay-fuzzing`).
+- M5 is **APPROVED / MERGED / IN PROGRESS**; Phases 1, 2, 3, 4, and 5 are COMPLETE / MERGED
+  (Phase 3 Spot and USD-M 100k corpora validated PASS from the pinned authoritative source under
+  ADR-0008 successor coverage; Phase 4 cross-compiler GNU/Clang/AppleClang semantic equality
+  PASS; Phase 5 differential replay fuzzing merged via PR #18, squash
+  `53268d5cd2090f4779ffdc14c070184f470cc899`, exact-head CI `31668465623` — 18/18 PASS,
+  post-merge CI `31671708958` — 18/18 PASS). Phase 6 is NOT STARTED.
   M6 is not started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.

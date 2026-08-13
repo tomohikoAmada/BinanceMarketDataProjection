@@ -2,9 +2,44 @@
 
 ## Status
 
-**IMPLEMENTED / PENDING FOCUSED INDEPENDENT RE-REVIEW**
+**COMPLETE / MERGED**
 
-NOT MERGED. Do not mark COMPLETE before independent implementation review.
+## Final acceptance record
+
+```text
+Final approved Head:
+e56f5dbd12b9e66946343467221e8e3ba9984531
+
+Final approved exact-head CI:
+31668465623 — 18/18 PASS
+
+Final focused independent review:
+APPROVED (P0: 0, P1: 0, P2: 0)
+
+Squash merge (PR #18):
+53268d5cd2090f4779ffdc14c070184f470cc899
+
+Post-merge main CI:
+31671708958 — 18/18 PASS
+
+Post-merge semantic evidence:
+manifest schema M5_SEMANTIC_MANIFEST_V2
+observation schema M5_SEMANTIC_OBSERVATION_V2
+head_sha 53268d5cd2090f4779ffdc14c070184f470cc899
+cross-compiler equality PASS
+
+Post-merge semantic digests:
+Core Spot   988e96d69f20748af758fd6a9273d2bc3b3d08680a98047c249f1bc0ab07d9e7
+Core USD-M  1b6c0b11a4a601f3efc091c737ba9ddb60b2984854ebdfdf6a2cf3504f74b1fb
+Adapter Spot   797001c2516994ea45b180047dfa2531dba9423d2653027412de9fa7207b55e6
+Adapter USD-M  b9cdd80f6678e771e01d6f238713d3412ce84b99009a0942cf2fe90fba564e74
+
+M4-IIR-3:
+CLOSED
+
+Phase 6:
+NOT STARTED
+```
 
 ## Authoritative base
 

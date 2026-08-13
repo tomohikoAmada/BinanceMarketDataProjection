@@ -9,7 +9,9 @@
 - Phase 4: **COMPLETE / MERGED** (PR #16, final approved Head
   `b612f85d281315346c0ccf6f599d51af538e3cf4`, exact-head CI `31571166506` — PASS 18/18, squash
   merge `7b6d9ef3b222675138fdd34f3fed381216fe9d02`, post-merge main CI `31576511096` — PASS 18/18)
-- Phase 5: **NOT STARTED**
+- Phase 5: **COMPLETE / MERGED** (PR #18, squash merge
+  `53268d5cd2090f4779ffdc14c070184f470cc899`; NOT STARTED at the time of Phase-4 completion) —
+  see `docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`
 - M6: **NOT STARTED**
 
 Phase 4 is test/tool/CI/documentation infrastructure. `include/**`, `src/**`, production Core,
@@ -492,4 +494,6 @@ Post-merge main CI: 31576511096 — PASS 18/18.
 Phase 4: COMPLETE / MERGED.
 ```
 
-Phase 5 is NOT STARTED. Do not start Phase 5 from this documentation.
+Phase 5 was NOT STARTED at the time of Phase-4 completion; it has since been implemented and
+merged (PR #18, squash merge `53268d5cd2090f4779ffdc14c070184f470cc899`). Do not treat this
+Phase-4 documentation as Phase-5 implementation authority.

@@ -16,6 +16,11 @@
   `b612f85d281315346c0ccf6f599d51af538e3cf4`, exact-head CI `31571166506` — PASS 18/18, merge
   `7b6d9ef3b222675138fdd34f3fed381216fe9d02`) — see
   `docs/M5_PHASE4_CROSS_COMPILER_SEMANTIC_MANIFESTS.md`
+- Phase 5 status: **COMPLETE / MERGED** (PR #18, final approved Head
+  `e56f5dbd12b9e66946343467221e8e3ba9984531`, exact-head CI `31668465623` — PASS 18/18, squash
+  merge `53268d5cd2090f4779ffdc14c070184f470cc899`, post-merge main CI `31671708958` — PASS
+  18/18) — see `docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`
+- Phase 6 status: **NOT STARTED**
 - ADR status: **ACCEPTED** (ADR-0007)
 - Design date: 2026-08-08
 - Initial independent architecture review: **CHANGES REQUESTED** (P0: 0, P1 design: 1, P1 implementation: 2, P2: 7)
