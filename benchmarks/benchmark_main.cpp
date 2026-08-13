@@ -52,9 +52,12 @@ class CollectingReporter final : public benchmark::BenchmarkReporter {
             record.iterations = report.iterations;
             const auto iterations =
                 static_cast<double>(report.iterations > 0 ? report.iterations : 1);
-            // real_accumulated_time/cpu_accumulated_time are always nanoseconds.
-            record.real_time_ns = static_cast<double>(report.real_accumulated_time) / iterations;
-            record.cpu_time_ns = static_cast<double>(report.cpu_accumulated_time) / iterations;
+            // Run::real_accumulated_time/cpu_accumulated_time are in seconds;
+            // convert to per-iteration nanoseconds for the wrapper.
+            record.real_time_ns =
+                static_cast<double>(report.real_accumulated_time) * 1e9 / iterations;
+            record.cpu_time_ns =
+                static_cast<double>(report.cpu_accumulated_time) * 1e9 / iterations;
             const auto items = report.counters.find("items_per_second");
             record.items_per_second =
                 items == report.counters.end() ? 0.0 : static_cast<double>(items->second);
