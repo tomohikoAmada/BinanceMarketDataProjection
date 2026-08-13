@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace bmd_projection::m5::benchmark::adapter_support {
@@ -25,8 +26,8 @@ namespace market_wire = binance_market_data::market::v1;
 inline constexpr std::size_t kM4UpdateLevelCount = 10;
 
 struct WireIdentity final {
-    WireIdentity(core::NumericSpec spec, const adapter::ExpectedIdentity& identity)
-        : numeric_spec{spec}, expected{identity} {}
+    WireIdentity(core::NumericSpec spec, adapter::ExpectedIdentity identity)
+        : numeric_spec{spec}, expected{std::move(identity)} {}
 
     core::NumericSpec numeric_spec;
     adapter::ExpectedIdentity expected;
@@ -65,8 +66,8 @@ struct PreconstructedEntry final {
     market_wire::DepthUpdate update_wire;
     // Rebaseline: direct production install inputs.
     std::uint64_t rebaseline_last_update_id{};
-    std::vector<core::BookLevel> rebaseline_bids;
-    std::vector<core::BookLevel> rebaseline_asks;
+    std::vector<core::BookLevel> rebaseline_bids{};
+    std::vector<core::BookLevel> rebaseline_asks{};
     // Snapshot: production snapshot context/options.
     adapter::SnapshotContext snapshot_context;
     adapter::SnapshotOptions snapshot_options;

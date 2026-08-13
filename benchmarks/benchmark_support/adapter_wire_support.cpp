@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -182,19 +183,138 @@ void apply_pending_quality(market_wire::DepthUpdate& wire,
     }
 }
 
+struct EntryBuilder final {
+    core::NumericSpec conversion_spec;
+    const adapter::ExpectedIdentity& expected;
+    common_wire::Market market;
+    std::string_view symbol;
+    std::vector<replay::HostQualityFact>& pending_metadata;
+
+    [[nodiscard]] PreconstructedEntry base(PreconstructedKind kind) const {
+        PreconstructedEntry entry;
+        entry.kind = kind;
+        entry.conversion_spec = conversion_spec;
+        entry.expected = expected;
+        return entry;
+    }
+
+    [[nodiscard]] PreconstructedEntry operator()(const replay::InstallBaselineOp& install) {
+        auto entry = base(PreconstructedKind::Baseline);
+        auto& wire = entry.baseline_wire;
+        wire.set_venue(common_wire::VENUE_BINANCE);
+        wire.set_market(market);
+        wire.set_symbol(std::string{symbol});
+        wire.set_schema_version("exchange-depth-snapshot.v1");
+        wire.set_producer(std::string{kBenchmarkProducer});
+        wire.set_producer_version(std::string{kBenchmarkProducerVersion});
+        wire.set_request_id("phase6-baseline-" + std::to_string(install.source.event_index));
+        apply_pending_quality(wire, pending_metadata);
+        pending_metadata.clear();
+        wire.set_last_update_id(install.last_update_id);
+        for (const auto& level : install.bids) {
+            auto* wire_level = wire.add_bids();
+            wire_level->set_price(level.price);
+            wire_level->set_quantity(level.quantity);
+        }
+        for (const auto& level : install.asks) {
+            auto* wire_level = wire.add_asks();
+            wire_level->set_price(level.price);
+            wire_level->set_quantity(level.quantity);
+        }
+        return entry;
+    }
+
+    [[nodiscard]] PreconstructedEntry operator()(const replay::DepthUpdateOp& update) {
+        auto entry = base(PreconstructedKind::Update);
+        auto& wire = entry.update_wire;
+        auto* metadata = wire.mutable_metadata();
+        metadata->set_venue(common_wire::VENUE_BINANCE);
+        metadata->set_market(market);
+        metadata->set_symbol(std::string{symbol});
+        metadata->set_producer(std::string{kBenchmarkProducer});
+        metadata->set_producer_version(std::string{kBenchmarkProducerVersion});
+        metadata->set_connection_id("phase6-connection-" +
+                                    std::to_string(update.source.event_index));
+        metadata->set_stream(common_wire::STREAM_DIFF_DEPTH);
+        metadata->set_schema_version("depth-update.v1");
+        apply_pending_quality(wire, pending_metadata);
+        pending_metadata.clear();
+        wire.set_first_update_id(update.first_update_id);
+        wire.set_final_update_id(update.final_update_id);
+        if (update.previous_final.has_value()) {
+            wire.set_previous_final_update_id(*update.previous_final);
+        }
+        for (const auto& level : update.levels) {
+            auto* wire_level = level.side == replay::Side::Bid ? wire.add_bids() : wire.add_asks();
+            wire_level->set_price(level.price);
+            wire_level->set_quantity(level.quantity);
+        }
+        return entry;
+    }
+
+    [[nodiscard]] PreconstructedEntry operator()(const replay::RebaselineOp& rebaseline) const {
+        auto entry = base(PreconstructedKind::Rebaseline);
+        entry.rebaseline_last_update_id = rebaseline.last_update_id;
+        entry.rebaseline_bids = parse_levels(rebaseline.bids, conversion_spec);
+        entry.rebaseline_asks = parse_levels(rebaseline.asks, conversion_spec);
+        return entry;
+    }
+
+    [[nodiscard]] PreconstructedEntry operator()(const replay::ResetOp&) const {
+        return base(PreconstructedKind::Reset);
+    }
+
+    [[nodiscard]] PreconstructedEntry operator()(const replay::SnapshotRequestOp& snapshot) const {
+        auto entry = base(PreconstructedKind::Snapshot);
+        if (snapshot.depth_limit.has_value()) {
+            const auto limit = adapter::DepthLimit::create(*snapshot.depth_limit);
+            if (std::holds_alternative<adapter::AdapterError>(limit)) {
+                std::abort();
+            }
+            entry.snapshot_options.depth_limit = std::get<adapter::DepthLimit>(limit);
+        }
+        entry.snapshot_options.host_quality_facts.reserve(snapshot.host_quality_facts.size());
+        for (const auto fact : snapshot.host_quality_facts) {
+            entry.snapshot_options.host_quality_facts.push_back(host_fact(fact));
+        }
+        entry.snapshot_context = {expected,
+                                  snapshot.producer,
+                                  snapshot.producer_version,
+                                  snapshot_origin(snapshot.source_origin),
+                                  snapshot.generated_time_utc_ns,
+                                  snapshot.generated_monotonic_ns,
+                                  std::nullopt};
+        if (snapshot.current_gap.has_value()) {
+            entry.snapshot_context.current_gap = adapter::CurrentGapContext{
+                snapshot.current_gap->first, recovery_state(snapshot.current_gap->second)};
+        }
+        return entry;
+    }
+
+    [[nodiscard]] PreconstructedEntry operator()(const replay::AdapterMetadataOp& metadata_op) {
+        pending_metadata = metadata_op.observed_quality;
+        return base(PreconstructedKind::Metadata);
+    }
+
+    [[nodiscard]] PreconstructedEntry operator()(const replay::MalformedRangeOp& malformed) const {
+        auto entry = base(PreconstructedKind::MalformedRange);
+        entry.malformed_first = malformed.first_update_id;
+        entry.malformed_final = malformed.final_update_id;
+        return entry;
+    }
+};
+
 } // namespace
 
 PreconstructedEntry::PreconstructedEntry()
-    : kind{PreconstructedKind::Baseline}, rebaseline_last_update_id{0},
-      snapshot_context{{"", core::SequencePolicyKind::Spot},
+    : snapshot_context{{"", core::SequencePolicyKind::Spot},
                        "",
                        "",
                        adapter::SnapshotOrigin::GatewayLive,
                        0,
                        std::nullopt,
                        std::nullopt},
-      snapshot_options{std::nullopt, {}}, malformed_first{0}, malformed_final{0},
-      conversion_spec{required_scale(2), required_scale(3)},
+      snapshot_options{std::nullopt, {}}, conversion_spec{required_scale(2), required_scale(3)},
       expected{"", core::SequencePolicyKind::Spot} {}
 
 WireIdentity benchmark_wire_identity() {
@@ -223,6 +343,8 @@ market_wire::ExchangeDepthSnapshot make_snapshot_wire(std::size_t depth) {
     return wire;
 }
 
+// The adjacent ids intentionally follow the exchange wire's first/final order.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 market_wire::DepthUpdate make_update_wire(std::uint64_t first_update_id,
                                           std::uint64_t final_update_id,
                                           std::optional<std::uint64_t> previous_final_update_id) {
@@ -262,135 +384,10 @@ std::vector<PreconstructedEntry> preconstruct_adapter_wire(const replay::ReplayF
     std::vector<PreconstructedEntry> entries;
     entries.reserve(fixture.replay.operations.size());
     std::vector<replay::HostQualityFact> pending_metadata;
+    EntryBuilder builder{conversion_spec, expected, wire_market_value, fixture.identity.symbol,
+                         pending_metadata};
     for (const auto& operation : fixture.replay.operations) {
-        if (const auto* install = std::get_if<replay::InstallBaselineOp>(&operation)) {
-            PreconstructedEntry entry;
-            entry.kind = PreconstructedKind::Baseline;
-            entry.conversion_spec = conversion_spec;
-            entry.expected = expected;
-            auto& wire = entry.baseline_wire;
-            wire.set_venue(common_wire::VENUE_BINANCE);
-            wire.set_market(wire_market_value);
-            wire.set_symbol(fixture.identity.symbol);
-            wire.set_schema_version("exchange-depth-snapshot.v1");
-            wire.set_producer(std::string{kBenchmarkProducer});
-            wire.set_producer_version(std::string{kBenchmarkProducerVersion});
-            wire.set_request_id("phase6-baseline-" + std::to_string(install->source.event_index));
-            apply_pending_quality(wire, pending_metadata);
-            pending_metadata.clear();
-            wire.set_last_update_id(install->last_update_id);
-            for (const auto& level : install->bids) {
-                auto* wire_level = wire.add_bids();
-                wire_level->set_price(level.price);
-                wire_level->set_quantity(level.quantity);
-            }
-            for (const auto& level : install->asks) {
-                auto* wire_level = wire.add_asks();
-                wire_level->set_price(level.price);
-                wire_level->set_quantity(level.quantity);
-            }
-            entries.push_back(std::move(entry));
-            continue;
-        }
-        if (const auto* update = std::get_if<replay::DepthUpdateOp>(&operation)) {
-            PreconstructedEntry entry;
-            entry.kind = PreconstructedKind::Update;
-            entry.conversion_spec = conversion_spec;
-            entry.expected = expected;
-            auto& wire = entry.update_wire;
-            auto* metadata = wire.mutable_metadata();
-            metadata->set_venue(common_wire::VENUE_BINANCE);
-            metadata->set_market(wire_market_value);
-            metadata->set_symbol(fixture.identity.symbol);
-            metadata->set_producer(std::string{kBenchmarkProducer});
-            metadata->set_producer_version(std::string{kBenchmarkProducerVersion});
-            metadata->set_connection_id("phase6-connection-" +
-                                        std::to_string(update->source.event_index));
-            metadata->set_stream(common_wire::STREAM_DIFF_DEPTH);
-            metadata->set_schema_version("depth-update.v1");
-            apply_pending_quality(wire, pending_metadata);
-            pending_metadata.clear();
-            wire.set_first_update_id(update->first_update_id);
-            wire.set_final_update_id(update->final_update_id);
-            if (update->previous_final.has_value()) {
-                wire.set_previous_final_update_id(*update->previous_final);
-            }
-            for (const auto& level : update->levels) {
-                auto* wire_level =
-                    level.side == replay::Side::Bid ? wire.add_bids() : wire.add_asks();
-                wire_level->set_price(level.price);
-                wire_level->set_quantity(level.quantity);
-            }
-            entries.push_back(std::move(entry));
-            continue;
-        }
-        if (const auto* rebaseline = std::get_if<replay::RebaselineOp>(&operation)) {
-            PreconstructedEntry entry;
-            entry.kind = PreconstructedKind::Rebaseline;
-            entry.conversion_spec = conversion_spec;
-            entry.expected = expected;
-            entry.rebaseline_last_update_id = rebaseline->last_update_id;
-            entry.rebaseline_bids = parse_levels(rebaseline->bids, conversion_spec);
-            entry.rebaseline_asks = parse_levels(rebaseline->asks, conversion_spec);
-            entries.push_back(std::move(entry));
-            continue;
-        }
-        if (std::holds_alternative<replay::ResetOp>(operation)) {
-            PreconstructedEntry entry;
-            entry.kind = PreconstructedKind::Reset;
-            entry.conversion_spec = conversion_spec;
-            entry.expected = expected;
-            entries.push_back(std::move(entry));
-            continue;
-        }
-        if (const auto* snapshot = std::get_if<replay::SnapshotRequestOp>(&operation)) {
-            PreconstructedEntry entry;
-            entry.kind = PreconstructedKind::Snapshot;
-            entry.conversion_spec = conversion_spec;
-            entry.expected = expected;
-            if (snapshot->depth_limit.has_value()) {
-                const auto limit = adapter::DepthLimit::create(*snapshot->depth_limit);
-                if (const auto* failure = std::get_if<adapter::AdapterError>(&limit)) {
-                    (void)failure;
-                    std::abort();
-                }
-                entry.snapshot_options.depth_limit = std::get<adapter::DepthLimit>(limit);
-            }
-            entry.snapshot_options.host_quality_facts.reserve(snapshot->host_quality_facts.size());
-            for (const auto fact : snapshot->host_quality_facts) {
-                entry.snapshot_options.host_quality_facts.push_back(host_fact(fact));
-            }
-            entry.snapshot_context = {expected,
-                                      snapshot->producer,
-                                      snapshot->producer_version,
-                                      snapshot_origin(snapshot->source_origin),
-                                      snapshot->generated_time_utc_ns,
-                                      snapshot->generated_monotonic_ns,
-                                      std::nullopt};
-            if (snapshot->current_gap.has_value()) {
-                entry.snapshot_context.current_gap = adapter::CurrentGapContext{
-                    snapshot->current_gap->first, recovery_state(snapshot->current_gap->second)};
-            }
-            entries.push_back(std::move(entry));
-            continue;
-        }
-        if (const auto* metadata_op = std::get_if<replay::AdapterMetadataOp>(&operation)) {
-            PreconstructedEntry entry;
-            entry.kind = PreconstructedKind::Metadata;
-            entry.conversion_spec = conversion_spec;
-            entry.expected = expected;
-            pending_metadata = metadata_op->observed_quality;
-            entries.push_back(std::move(entry));
-            continue;
-        }
-        const auto& malformed = std::get<replay::MalformedRangeOp>(operation);
-        PreconstructedEntry entry;
-        entry.kind = PreconstructedKind::MalformedRange;
-        entry.conversion_spec = conversion_spec;
-        entry.expected = expected;
-        entry.malformed_first = malformed.first_update_id;
-        entry.malformed_final = malformed.final_update_id;
-        entries.push_back(std::move(entry));
+        entries.push_back(std::visit(builder, operation));
     }
     return entries;
 }

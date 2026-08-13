@@ -66,8 +66,8 @@ AdapterReplayExecutor::AdapterReplayExecutor(
                     required_scale(fixture.identity.numeric_spec.quantity_scale)},
       policy_{core_policy(fixture.identity.sequence_policy)} {}
 
-std::uint64_t AdapterReplayExecutor::execute_event(core::BookProjection& projection,
-                                                   std::size_t event_index,
+std::uint64_t AdapterReplayExecutor::execute_event(std::size_t event_index,
+                                                   core::BookProjection& projection,
                                                    std::uint64_t checksum) const {
     const auto& entry = entries_.at(event_index);
     switch (entry.kind) {
@@ -151,7 +151,7 @@ std::uint64_t AdapterReplayExecutor::finalize_checksum(const core::BookProjectio
 std::uint64_t AdapterReplayExecutor::run(core::BookProjection& projection) const {
     std::uint64_t checksum = kReplayChecksumSeed;
     for (std::size_t index = 0; index < entries_.size(); ++index) {
-        checksum = execute_event(projection, index, checksum);
+        checksum = execute_event(index, projection, checksum);
     }
     return finalize_checksum(projection, checksum);
 }

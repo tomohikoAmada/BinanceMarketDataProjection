@@ -26,8 +26,8 @@ class AdapterReplayExecutor final {
     AdapterReplayExecutor(const replay::ReplayFixture& fixture,
                           std::vector<adapter_support::PreconstructedEntry> entries);
 
-    [[nodiscard]] std::uint64_t execute_event(core::BookProjection& projection,
-                                              std::size_t event_index,
+    [[nodiscard]] std::uint64_t execute_event(std::size_t event_index,
+                                              core::BookProjection& projection,
                                               std::uint64_t checksum) const;
 
     [[nodiscard]] static std::uint64_t finalize_checksum(const core::BookProjection& projection,
