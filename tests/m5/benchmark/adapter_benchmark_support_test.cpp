@@ -39,8 +39,11 @@ TEST(Phase6M4CheckedApply, ProvenanceDescribesTheActualSuccessorWorkload) {
 
     auto projection = bm::build_synchronized_projection(core::SequencePolicyKind::Spot, kDepth);
     ASSERT_EQ(projection.status(), core::ProjectionStatus::Synchronized);
-    ASSERT_TRUE(projection.last_update_id().has_value());
-    EXPECT_EQ(projection.last_update_id()->value(), kPreparedUpdateId);
+    const auto prepared_update_id = projection.last_update_id();
+    if (!prepared_update_id.has_value()) {
+        FAIL() << "prepared projection must be synchronized at update id " << kPreparedUpdateId;
+    }
+    EXPECT_EQ(prepared_update_id->value(), kPreparedUpdateId);
 
     const auto identity = wire_support::benchmark_wire_identity();
     const auto wire =
@@ -53,8 +56,11 @@ TEST(Phase6M4CheckedApply, ProvenanceDescribesTheActualSuccessorWorkload) {
     ASSERT_TRUE(std::holds_alternative<core::ApplyResult>(applied));
     const auto& result = std::get<core::ApplyResult>(applied);
     EXPECT_EQ(result.disposition, core::ApplyDisposition::Applied);
-    ASSERT_TRUE(result.last_update_id_after.has_value());
-    EXPECT_EQ(result.last_update_id_after->value(), kSuccessorUpdateId);
+    const auto succeeded_update_id = result.last_update_id_after;
+    if (!succeeded_update_id.has_value()) {
+        FAIL() << "CheckedApply must advance to update id " << kSuccessorUpdateId;
+    }
+    EXPECT_EQ(succeeded_update_id->value(), kSuccessorUpdateId);
 
     const auto wire_bytes = wire.SerializeAsString();
     const std::string expected =
