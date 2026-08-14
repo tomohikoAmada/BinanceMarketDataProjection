@@ -2,8 +2,8 @@
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. M1 through M4 are complete on `main`; M5 (Differential Validation and
-Performance) implementation is in progress (Phases 1 through 5 merged; Phase 6 implemented on
-draft PR #21 and pending independent review; later phases not started).
+Performance) implementation is in progress (Phases 1 through 6 complete/merged; later phases not
+started).
 
 ## For AI agents and independent reviewers
 
@@ -279,8 +279,11 @@ fan-in CI.
 Phase 5 (differential replay fuzzing) is COMPLETE / MERGED (PR #18, final approved Head
 `e56f5dbd12b9e66946343467221e8e3ba9984531`, exact-head CI `31668465623` — 18/18 PASS, squash
 merge `53268d5cd2090f4779ffdc14c070184f470cc899`, post-merge main CI `31671708958` — 18/18
-PASS). See [M5 Phase 5](docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md). Phase 6 is IMPLEMENTED / PENDING
-INDEPENDENT REVIEW on draft PR #21 (see
+PASS). See [M5 Phase 5](docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md). Phase 6 is COMPLETE / MERGED
+(PR #21, accepted implementation Head
+`9776ba6b93990c44e550f289b69127ca721b0d00`, exact-head CI `31803322848` — 18/18 PASS, final
+independent review APPROVED, formal exact-head evidence ACCEPTED, squash merge
+`227524e6d17cce77813c6f26cd65bb8d996f5677`, post-merge main CI `31809917018` — 18/18 PASS; see
 [M5 Phase 6](docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md)); later phases remain not started.
 Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
@@ -294,13 +297,17 @@ The Contracts reference baseline is `01d76a41929f36d89573159f5f458f9f1e378ada`.
 - The repository includes numeric primitives, a deterministic L2 market-by-price order book, the
   completed M3 sequence/projection implementation, and the merged optional M4 Protobuf adapter on
   `main`.
-- M5 is **APPROVED / MERGED / IN PROGRESS**; Phases 1, 2, 3, 4, and 5 are COMPLETE / MERGED
+- M5 is **APPROVED / MERGED / IN PROGRESS**; Phases 1, 2, 3, 4, 5, and 6 are COMPLETE / MERGED
   (Phase 3 Spot and USD-M 100k corpora validated PASS from the pinned authoritative source under
   ADR-0008 successor coverage; Phase 4 cross-compiler GNU/Clang/AppleClang semantic equality
   PASS; Phase 5 differential replay fuzzing merged via PR #18, squash
   `53268d5cd2090f4779ffdc14c070184f470cc899`, exact-head CI `31668465623` — 18/18 PASS,
-  post-merge CI `31671708958` — 18/18 PASS). Phase 6: IMPLEMENTED / PENDING INDEPENDENT REVIEW
-  (`docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`).
+  post-merge CI `31671708958` — 18/18 PASS; Phase 6 representative benchmarks merged via PR #21,
+  accepted implementation Head `9776ba6b93990c44e550f289b69127ca721b0d00`, exact-head CI
+  `31803322848` — 18/18 PASS, final independent review APPROVED, formal exact-head evidence
+  ACCEPTED, squash merge `227524e6d17cce77813c6f26cd65bb8d996f5677`, post-merge CI
+  `31809917018` — 18/18 PASS). See
+  [M5 Phase 6](docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md).
   M6 is not started.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading behavior remain unimplemented.

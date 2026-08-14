@@ -267,10 +267,10 @@ No M5 production change or container migration is authorized by the design.
 
 OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions and CI policy
 are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
-M5 implementation is authorized. Phases 1, 2, 3, 4, and 5 are complete and merged; Phase 5
+M5 implementation is authorized. Phases 1, 2, 3, 4, 5, and 6 are complete and merged; Phase 5
 is COMPLETE / MERGED (evidence in the Phase-5 record below).
-Phase 6: decision record APPROVED / MERGED; implementation IMPLEMENTED / PENDING INDEPENDENT
-REVIEW (see `docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`).
+Phase 6: decision record APPROVED / MERGED; implementation COMPLETE / MERGED (evidence in the
+Phase-6 record below; see `docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`).
 
 Phase 1 canonical replay infrastructure is **COMPLETE / MERGED** (PR #11, merge
 `5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — PASS 16/16). It
@@ -333,9 +333,29 @@ unspecified or unknown values, and manifest rendering accepts only V1/V1 or V2/V
 the exact historical V1 JSON shape. M4-IIR-3 is CLOSED by final independent Phase-5 review evidence.
 Post-merge GNU/Clang/AppleClang Release manifests record `head_sha`
 `53268d5cd2090f4779ffdc14c070184f470cc899` and agree on all four authoritative semantic digests.
-`docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`. Phase 6: decision record APPROVED / MERGED;
-implementation IMPLEMENTED / PENDING INDEPENDENT REVIEW (see
-`docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`).
+`docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`.
+
+Phase 6 (representative benchmarks) is **COMPLETE / MERGED** via PR #21 (final independently
+accepted implementation Head `9776ba6b93990c44e550f289b69127ca721b0d00`; accepted exact-head CI
+`31803322848` — PASS 18/18; final independent review APPROVED, P0: 0, P1: 0, P2: 1; formal
+exact-head Phase-6 evidence ACCEPTED; squash merge `227524e6d17cce77813c6f26cd65bb8d996f5677`;
+post-merge main CI `31809917018` — PASS 18/18). The accepted Head and the squash merge commit
+share the same repository tree (`79aa0151d65d42a1c63e6649bf24bf9053105667`). Delivered:
+normative M1 representative benchmarks; M2 stateful/query workloads; the complete 48-cell M3
+accepted live-apply matrix plus classification and component/proxy measurements; M4
+adaptation/checked/snapshot/serialization benchmarks; CoreNormalizedReplay and AdapterWireReplay
+(Spot + USD-M); the production event-latency sampler; `M5_BENCHMARK_WORKLOAD_SPEC_V1`,
+`M5_BENCHMARK_WRAPPER_V1`, and `M5_REPLAY_LATENCY_V1`; fail-closed
+inventory/smoke/wrapper/latency validation; the formal/manual benchmark-full evidence workflow;
+the benchmark-smoke CI structural gate; and truthful source/binary/dependency/workload/result
+provenance. Final provenance corrections closed the two P1s: P6-FINAL-001 (CheckedApply
+canonical workload identity explicitly records the locked Spot successor `initial_update_id=
+1000001`, `first/final_update_id=1000002`, `previous_final_update_id=not_applicable`, bound to
+the actual timed workload with fail-closed regression/validation) and P6-FINAL-002
+(`contracts_package_id` records the real Conan binary package ID derived from the exact consumed
+package's conaninfo.txt rather than the cache-directory locator). Production `src/**` and public
+`include/**` were unchanged by Phase 6. See
+`docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 

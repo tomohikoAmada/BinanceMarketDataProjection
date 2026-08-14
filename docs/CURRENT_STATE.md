@@ -25,12 +25,13 @@ orientation only.
 
 ## Current Main
 
-- Phase-5 implementation merge baseline: `53268d5cd2090f4779ffdc14c070184f470cc899` (PR #18
-  squash merge, on top of the post-merge Phase-4 documentation synchronization PR #17 at
-  `d287c08ed362c5202f25eb77b411bd24bb82cef0`). Main advances as documentation-state PRs merge;
-  see Git history for the current tip.
+- M5 Phase-6 merge baseline: `227524e6d17cce77813c6f26cd65bb8d996f5677` (PR #21
+  squash merge, on top of the Phase-5 merge `53268d5cd2090f4779ffdc14c070184f470cc899`
+  and the post-merge Phase-4 documentation synchronization PR #17 at
+  `d287c08ed362c5202f25eb77b411bd24bb82cef0`). Main advances as documentation-state PRs
+  merge; see Git history for the current tip.
 - M0-M4 are complete on main.
-- M5 Phase 1 through Phase 5 are complete/merged on main.
+- M5 Phase 1 through Phase 6 are complete/merged on main.
 - ADR-0008 is ACCEPTED: Spot bootstrap uses successor coverage (`U <= L + 1 <= u`,
   overflow-guarded); exact-next `[L+1, ...]` is a valid bridge; `U > L + 1` is the true gap.
   ADR-0008 supersedes only the Spot-bootstrap contains-`L` portion of ADR-0005; USD-M semantics
@@ -38,20 +39,14 @@ orientation only.
 
 ## Recent Pull Requests / Active Candidate
 
-- Phase-6 implementation candidate: PR #21, `feat/m5-phase6-representative-benchmarks`
-  (DRAFT / UNMERGED, pending independent implementation review). Implements the normative
-  OD-M5-P6-001..030 representative benchmark measurement contract: M1/M2/M3/M4 Google
-  Benchmark families (including the full 48-cell M3 accepted live-apply matrix and the
-  fail-closed M4 inventory), CoreNormalizedReplay and AdapterWireReplay production throughput,
-  the dedicated production-only event-latency executable, `M5_BENCHMARK_WORKLOAD_SPEC_V1`
-  workload identity, the `M5_BENCHMARK_WRAPPER_V1` metadata/provenance wrapper, the
-  `M5_REPLAY_LATENCY_V1` latency schema, deterministic inventory/smoke/wrapper/latency
-  validators with tests, and the extended benchmark-smoke CI job. Production `src/**` and
-  public `include/**` are unchanged. Focused measurement-contract corrections now enforce total
-  item accounting, explicit warmup/state isolation, prepared timed-call boundaries, adapter
-  rebaseline, typed latency preparation, generated-workload identity, fail-closed source
-  provenance, and the formal repetition minimum. Phase 6 remains IMPLEMENTED / PENDING
-  INDEPENDENT REVIEW.
+- Phase-6 record: PR #21, `Implement M5 Phase 6 representative benchmarks`, is
+  MERGED (final independently accepted implementation Head
+  `9776ba6b93990c44e550f289b69127ca721b0d00`; accepted exact-head CI `31803322848` — 18/18
+  PASS; final independent review APPROVED, P0: 0, P1: 0, P2: 1; formal exact-head Phase-6
+  evidence ACCEPTED; squash merge `227524e6d17cce77813c6f26cd65bb8d996f5677`; post-merge
+  main CI `31809917018` — 18/18 PASS). The accepted Head and the squash merge commit share
+  the same repository tree (`79aa0151d65d42a1c63e6649bf24bf9053105667`). No active
+  Phase-6 candidate remains.
 - PR #18, `Implement M5 differential replay fuzzing`, is MERGED (squash merge
   `53268d5cd2090f4779ffdc14c070184f470cc899`; final approved Head
   `e56f5dbd12b9e66946343467221e8e3ba9984531`; exact-head CI `31668465623` — 18/18 PASS;
@@ -111,6 +106,26 @@ artifact is a separate identity and remains outside Projection ownership.
   Adapter Spot `797001c2516994ea45b180047dfa2531dba9423d2653027412de9fa7207b55e6`,
   Adapter USD-M `b9cdd80f6678e771e01d6f238713d3412ce84b99009a0942cf2fe90fba564e74`),
   cross-compiler semantic equality PASS. No production-code change.
+- M5 Phase 6: COMPLETE / MERGED (PR #21; final independently accepted implementation Head
+  `9776ba6b93990c44e550f289b69127ca721b0d00`; accepted exact-head CI `31803322848` — PASS
+  18/18; final independent review APPROVED, P0: 0, P1: 0, P2: 1; formal exact-head Phase-6
+  evidence ACCEPTED; squash merge `227524e6d17cce77813c6f26cd65bb8d996f5677`; post-merge main
+  CI `31809917018` — PASS 18/18). Delivered: normative M1 representative benchmarks; M2
+  stateful/query workloads; the complete 48-cell M3 accepted live-apply matrix plus
+  classification and component/proxy measurements; M4 adaptation/checked/snapshot/
+  serialization benchmarks; CoreNormalizedReplay and AdapterWireReplay (Spot + USD-M);
+  the production event-latency sampler; `M5_BENCHMARK_WORKLOAD_SPEC_V1`,
+  `M5_BENCHMARK_WRAPPER_V1`, `M5_REPLAY_LATENCY_V1`; fail-closed
+  inventory/smoke/wrapper/latency validation; the formal/manual benchmark-full evidence
+  workflow; the benchmark-smoke CI structural gate; and truthful
+  source/binary/dependency/workload/result provenance. Final provenance corrections closed
+  two P1s: P6-FINAL-001 (CheckedApply canonical workload identity explicitly records the
+  locked Spot successor `initial_update_id=1000001`, `first/final_update_id=1000002`,
+  `previous_final_update_id=not_applicable`, bound to the actual timed workload with
+  fail-closed regression/validation) and P6-FINAL-002 (`contracts_package_id` records the
+  real Conan binary package ID derived from the exact consumed package's conaninfo.txt, not
+  the cache-directory locator). Production `src/**` and public `include/**` were unchanged by
+  Phase 6.
 - Spot mandatory 100k evidence is validated lifecycle-valid under ADR-0008: exact-next bridge
   `U=98288147168 u=98288147175` against `L=98288147167` Applied/Synchronized, 100,001 Applied
   operations, zero gaps, final Synchronized.
@@ -119,9 +134,6 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Not Implemented
 
-- Phase 6 (benchmarks): IMPLEMENTED / PENDING INDEPENDENT REVIEW (see
-  `docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`); the Phase-6 implementation PR is DRAFT /
-  UNMERGED.
 - Phase 7 (allocation/memory) is NOT STARTED.
 - Phase 8 (container spike) is NOT STARTED.
 - M6 Gateway integration is NOT STARTED.
@@ -130,8 +142,9 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Current Blockers
 
-- No implementation blockers: the Phase-6 decision record is APPROVED / MERGED and the Phase-6
-  implementation is pending independent implementation review.
+- No implementation blockers: M5 Phase 6 is COMPLETE / MERGED; no Phase-6 technical blocker
+  remains. Remaining work is governance/infrastructure (status-document synchronization and a
+  separate toolchain-reproducibility hardening task) plus separately authorized later phases.
 
 ## Accepted Semantic Authorities
 
@@ -184,22 +197,36 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
   `m5-replay`, `m5-semantic-compare`). Its semantic evidence manifests record `head_sha`
   `53268d5cd2090f4779ffdc14c070184f470cc899` (schema `M5_SEMANTIC_MANIFEST_V2`, observation
   schema `M5_SEMANTIC_OBSERVATION_V2`) and pass cross-compiler semantic equality.
+- PR #21 accepted exact-head CI run `31803322848` for the final independently accepted
+  implementation head `9776ba6b93990c44e550f289b69127ca721b0d00` completed `success` — 18/18
+  jobs PASS. This is the acceptance evidence for the merged Phase-6 implementation.
+- Post-merge main push run `31809917018` at Phase-6 merge
+  `227524e6d17cce77813c6f26cd65bb8d996f5677` completed `success` — 18/18 jobs PASS (quality, ASan,
+  UBSan, benchmark smoke, fuzz smoke, Release GCC/Clang/AppleClang, all M4 static/shared gates,
+  `m5-replay`, `m5-semantic-compare`).
 - PR #16 rejected reviewed Head `bf2239206ff74e11e3ce73de73f28465b033f808` had successful run
   `31559019189`, but independent semantic review found seven P1 defects. That historical green run
   is rejection/correction history and is not acceptance evidence for the merged implementation.
 
 ## Next Authorized Step
 
-Phase 5 is complete and merged (PR #18, squash merge
-`53268d5cd2090f4779ffdc14c070184f470cc899`). The Phase-6 decision record is APPROVED / MERGED;
-the Phase-6 implementation is IMPLEMENTED / PENDING INDEPENDENT REVIEW on its DRAFT PR.
-Independent implementation review is the next step before any merge.
+M5 Phase 6 is complete and merged (PR #21, squash merge
+`227524e6d17cce77813c6f26cd65bb8d996f5677`; accepted implementation Head
+`9776ba6b93990c44e550f289b69127ca721b0d00`; exact-head CI `31803322848` — 18/18 PASS;
+post-merge main CI `31809917018` — 18/18 PASS). Immediate sequencing:
+
+1. close governance synchronization (this status sync plus the remaining docs follow-up);
+2. standalone toolchain-reproducibility / Quality-toolchain hardening task;
+3. only afterward proceed to separately authorized Phase-7 work.
+
+Phase 7 has NOT started.
 
 ## AI / Reviewer Reading Order
 
 Read `docs/CURRENT_STATE.md`, `AGENTS.md`, `README.md`, `ARCHITECTURE.md`, `docs/MILESTONES.md`,
 the M5 phase/design documents, accepted ADR-0007 and ADR-0008, actual code/tests, and the merged
-PR #18 record plus its exact-head CI. Do not trust this file alone for independent review.
+PR #21 record (Phase 6) plus its exact-head CI. Do not trust this file alone for independent
+review.
 
 ## Historical Documents
 

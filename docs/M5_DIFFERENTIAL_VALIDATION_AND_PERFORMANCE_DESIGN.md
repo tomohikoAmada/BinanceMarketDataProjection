@@ -20,8 +20,11 @@
   `e56f5dbd12b9e66946343467221e8e3ba9984531`, exact-head CI `31668465623` — PASS 18/18, squash
   merge `53268d5cd2090f4779ffdc14c070184f470cc899`, post-merge main CI `31671708958` — PASS
   18/18) — see `docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md`
-- Phase 6 status: **IMPLEMENTED / PENDING INDEPENDENT REVIEW** — see
-  `docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`
+- Phase 6 status: **COMPLETE / MERGED** (PR #21, accepted implementation Head
+  `9776ba6b93990c44e550f289b69127ca721b0d00`, exact-head CI `31803322848` — PASS 18/18, final
+  independent review APPROVED, formal exact-head evidence ACCEPTED, squash merge
+  `227524e6d17cce77813c6f26cd65bb8d996f5677`, post-merge main CI `31809917018` — PASS 18/18) —
+  see `docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`
 - ADR status: **ACCEPTED** (ADR-0007)
 - Design date: 2026-08-08
 - Initial independent architecture review: **CHANGES REQUESTED** (P0: 0, P1 design: 1, P1 implementation: 2, P2: 7)

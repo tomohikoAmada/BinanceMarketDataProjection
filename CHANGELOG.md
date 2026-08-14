@@ -6,7 +6,7 @@ All notable changes will be recorded here.
 
 ### Added
 
-- M5 Phase-6 representative benchmark infrastructure (implementation PR open, DRAFT / UNMERGED):
+- M5 Phase-6 representative benchmark infrastructure (**COMPLETE / MERGED** via PR #21):
   M1 normative parse/format cases, M2 apply_level/apply_updates/replace_all/query families,
   the full 48-cell M3 accepted live-apply matrix plus classification and component/proxy cells,
   M4 adaptation/install/apply/snapshot/serialization boundaries (fail-closed inventory),
@@ -20,7 +20,17 @@ All notable changes will be recorded here.
   CI job (ProtoAdapter ON, current 45-minute timeout, structural evidence only, no numeric
   threshold). OD-M5-P6-024 retains its 15-minute recommendation; the workflow uses 45 minutes to
   allow cold-run margin for the required pinned Contracts bootstrap before benchmark execution.
-  Production `src/`/`include/` unchanged. Phase 6: IMPLEMENTED / PENDING INDEPENDENT REVIEW
+  Production `src/`/`include/` unchanged. Final provenance corrections closed two P1s:
+  P6-FINAL-001 (CheckedApply canonical workload identity explicitly records the locked Spot
+  successor `initial_update_id=1000001`, `first/final_update_id=1000002`,
+  `previous_final_update_id=not_applicable`, bound to the actual timed workload with fail-closed
+  regression/validation) and P6-FINAL-002 (`contracts_package_id` records the real Conan binary
+  package ID derived from the exact consumed package's conaninfo.txt rather than the cache-
+  directory locator). Accepted implementation Head
+  `9776ba6b93990c44e550f289b69127ca721b0d00`; accepted exact-head CI `31803322848` — 18/18 PASS;
+  independent final review APPROVED (P0 = 0, P1 = 0, P2 = 1); formal exact-head Phase-6 evidence
+  ACCEPTED; squash merge `227524e6d17cce77813c6f26cd65bb8d996f5677`; post-merge main CI
+  `31809917018` — 18/18 PASS.
   (`docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`).
 - M5 Phase-5 differential replay fuzzer (`bmd_projection_replay_fuzz`): direct structured byte
   decoder (no canonical text parser in fuzz semantic path), bounded deterministic
