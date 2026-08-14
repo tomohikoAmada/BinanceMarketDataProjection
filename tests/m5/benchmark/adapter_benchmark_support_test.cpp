@@ -29,7 +29,7 @@ namespace adapter = binance_market_data::projection_adapter::v1;
 namespace core = binance_market_data::projection::v1;
 
 struct CheckedApplyObservation final {
-    core::ApplyDisposition disposition;
+    core::ApplyDisposition disposition{};
     std::optional<core::UpdateId> last_update_id_after;
 };
 
