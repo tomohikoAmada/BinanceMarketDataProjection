@@ -58,9 +58,9 @@ namespace {
     return references;
 }
 
-[[nodiscard]] std::string workload_field(std::string_view canonical_text, std::string_view key) {
+[[nodiscard]] std::string workload_field(const WorkloadRecord& workload, std::string_view key) {
     const auto prefix = std::string{key} + "=";
-    std::istringstream stream{std::string{canonical_text}};
+    std::istringstream stream{workload.canonical_text};
     std::string line;
     while (std::getline(stream, line)) {
         if (line.starts_with(prefix)) {
@@ -231,13 +231,13 @@ std::string build_wrapper_json(const WrapperInput& input) {
         writer.key("workload_spec_sha256");
         writer.value(workload.canonical_sha256);
         writer.key("generator_schema");
-        writer.value(workload_field(workload.canonical_text, "generator_schema"));
+        writer.value(workload_field(workload, "generator_schema"));
         writer.key("generator_version");
-        writer.value(workload_field(workload.canonical_text, "generator_version"));
+        writer.value(workload_field(workload, "generator_version"));
         writer.key("seed");
-        writer.value(workload_field(workload.canonical_text, "seed"));
+        writer.value(workload_field(workload, "seed"));
         writer.key("generated_workload_sha256");
-        writer.value(workload_field(workload.canonical_text, "generated_workload_sha256"));
+        writer.value(workload_field(workload, "generated_workload_sha256"));
         writer.key("canonical_spec_text");
         writer.value(workload.canonical_text);
         writer.end_object();
