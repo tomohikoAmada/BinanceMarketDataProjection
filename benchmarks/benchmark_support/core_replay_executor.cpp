@@ -118,6 +118,77 @@ CoreReplayExecutor::CoreReplayExecutor(const replay::ReplayFixture& fixture)
                                 core::BookLevel{placeholder_price(), placeholder_quantity()});
     scratch_updates_.resize(max_updates, core::LevelUpdate{core::BookSide::Bid, placeholder_price(),
                                                            placeholder_quantity()});
+
+    prepared_events_.reserve(fixture_->replay.operations.size());
+    const auto parse_book_levels = [this](const std::vector<replay::LevelInput>& input,
+                                          std::vector<core::BookLevel>& output) {
+        output.reserve(input.size());
+        for (const auto& level : input) {
+            const auto price = core::parse_price(level.price, numeric_spec_.price_scale);
+            const auto quantity =
+                core::parse_quantity(level.quantity, numeric_spec_.quantity_scale);
+            if (!std::holds_alternative<core::ParsedDecimal<core::PriceUnits>>(price) ||
+                !std::holds_alternative<core::ParsedDecimal<core::QuantityUnits>>(quantity)) {
+                return false;
+            }
+            output.push_back({std::get<core::ParsedDecimal<core::PriceUnits>>(price).value,
+                              std::get<core::ParsedDecimal<core::QuantityUnits>>(quantity).value});
+        }
+        return true;
+    };
+    for (const auto& operation : fixture_->replay.operations) {
+        PreparedEvent prepared;
+        if (const auto* install = std::get_if<replay::InstallBaselineOp>(&operation)) {
+            prepared.kind = PreparedKind::Install;
+            prepared.final_id = install->last_update_id;
+            prepared_inputs_valid_ = parse_book_levels(install->bids, prepared.bids) &&
+                                     parse_book_levels(install->asks, prepared.asks) &&
+                                     prepared_inputs_valid_;
+        } else if (const auto* rebaseline = std::get_if<replay::RebaselineOp>(&operation)) {
+            prepared.kind = PreparedKind::Rebaseline;
+            prepared.final_id = rebaseline->last_update_id;
+            prepared_inputs_valid_ = parse_book_levels(rebaseline->bids, prepared.bids) &&
+                                     parse_book_levels(rebaseline->asks, prepared.asks) &&
+                                     prepared_inputs_valid_;
+        } else if (const auto* update = std::get_if<replay::DepthUpdateOp>(&operation)) {
+            prepared.kind = PreparedKind::DepthUpdate;
+            prepared.first_id = update->first_update_id;
+            prepared.final_id = update->final_update_id;
+            prepared.range = core::UpdateRange::try_create(core::UpdateId{update->first_update_id},
+                                                           core::UpdateId{update->final_update_id});
+            if (update->previous_final.has_value()) {
+                prepared.previous_final = core::UpdateId{*update->previous_final};
+            }
+            prepared.updates.reserve(update->levels.size());
+            for (const auto& level : update->levels) {
+                const auto price = core::parse_price(level.price, numeric_spec_.price_scale);
+                const auto quantity =
+                    core::parse_quantity(level.quantity, numeric_spec_.quantity_scale);
+                if (!std::holds_alternative<core::ParsedDecimal<core::PriceUnits>>(price) ||
+                    !std::holds_alternative<core::ParsedDecimal<core::QuantityUnits>>(quantity)) {
+                    prepared_inputs_valid_ = false;
+                    break;
+                }
+                prepared.updates.push_back(
+                    {core_side(level.side),
+                     std::get<core::ParsedDecimal<core::PriceUnits>>(price).value,
+                     std::get<core::ParsedDecimal<core::QuantityUnits>>(quantity).value});
+            }
+            prepared_inputs_valid_ = prepared.range.has_value() && prepared_inputs_valid_;
+        } else if (std::holds_alternative<replay::ResetOp>(operation)) {
+            prepared.kind = PreparedKind::Reset;
+        } else if (std::holds_alternative<replay::SnapshotRequestOp>(operation)) {
+            prepared.kind = PreparedKind::SnapshotRequest;
+        } else if (std::holds_alternative<replay::AdapterMetadataOp>(operation)) {
+            prepared.kind = PreparedKind::Metadata;
+        } else {
+            const auto& malformed = std::get<replay::MalformedRangeOp>(operation);
+            prepared.kind = PreparedKind::MalformedRange;
+            prepared.first_id = malformed.first_update_id;
+            prepared.final_id = malformed.final_update_id;
+        }
+        prepared_events_.push_back(std::move(prepared));
+    }
 }
 
 bool CoreReplayExecutor::parse_levels(const std::vector<replay::LevelInput>& levels,
@@ -248,6 +319,51 @@ EventEvidence CoreReplayExecutor::execute_event(core::BookProjection& projection
     return {kind, range.has_value() ? 1ULL : 0ULL, kNoDisposition, kNoUpdateIdMarker};
 }
 
+EventEvidence CoreReplayExecutor::execute_prepared_event(core::BookProjection& projection,
+                                                         std::size_t event_index) const {
+    const auto& event = prepared_events_.at(event_index);
+    const auto status_evidence = [&projection](std::uint64_t kind) {
+        return EventEvidence{
+            kind, kNoDisposition,
+            static_cast<std::uint64_t>(static_cast<std::uint8_t>(projection.status())),
+            kNoUpdateIdMarker};
+    };
+    if (event.kind == PreparedKind::Install || event.kind == PreparedKind::Rebaseline) {
+        const auto result =
+            projection.install_baseline({core::UpdateId{event.final_id}, event.bids, event.asks});
+        return {event.kind == PreparedKind::Install ? kKindInstall : kKindRebaseline,
+                static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.disposition)),
+                static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.status_after)),
+                result.last_update_id_after.has_value() ? result.last_update_id_after->value()
+                                                        : kNoUpdateIdMarker};
+    }
+    if (event.kind == PreparedKind::DepthUpdate) {
+        if (!event.range.has_value()) {
+            return {kKindDepthUpdate, kParseErrorDisposition, kNoDisposition, kNoUpdateIdMarker};
+        }
+        const auto result = projection.apply({*event.range, event.previous_final, event.updates});
+        return {kKindDepthUpdate,
+                static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.disposition)),
+                static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.status_after)),
+                result.last_update_id_after.has_value() ? result.last_update_id_after->value()
+                                                        : kNoUpdateIdMarker};
+    }
+    if (event.kind == PreparedKind::Reset) {
+        projection.reset();
+        return status_evidence(kKindReset);
+    }
+    if (event.kind == PreparedKind::SnapshotRequest) {
+        return status_evidence(kKindSnapshotRequest);
+    }
+    if (event.kind == PreparedKind::Metadata) {
+        return status_evidence(kKindMetadata);
+    }
+    const auto range = core::UpdateRange::try_create(core::UpdateId{event.first_id},
+                                                     core::UpdateId{event.final_id});
+    return {kKindMalformedRange, range.has_value() ? 1ULL : 0ULL, kNoDisposition,
+            kNoUpdateIdMarker};
+}
+
 std::uint64_t finalize_projection_checksum(const core::BookProjection& projection,
                                            std::uint64_t checksum) {
     checksum = replay_checksum_append(
@@ -309,6 +425,18 @@ std::string replay_fixture_identity(const replay::ReplayFixture& fixture) {
                          : "UsdMPerpetual");
     append("event_count", std::to_string(fixture.replay.operations.size()));
     append("canonical_log_sha256", fixture.canonical_log_sha256);
+    append("generated_workload_sha256", fixture.canonical_log_sha256);
+    append("generator_schema", "M5_PHASE6_REPLAY_V1");
+    const auto provenance_value = [&fixture](std::string_view key) {
+        const auto found =
+            std::find_if(fixture.manifest.provenance.begin(), fixture.manifest.provenance.end(),
+                         [key](const auto& entry) { return entry.first == key; });
+        return found == fixture.manifest.provenance.end() ? std::string{"not_applicable"}
+                                                          : found->second;
+    };
+    append("generator_version", provenance_value("generator"));
+    append("seed", provenance_value("seed"));
+    append("logical_items_per_iteration", std::to_string(fixture.replay.operations.size()));
     for (const auto& [key, value] : fixture.manifest.provenance) {
         append("provenance_" + key, value);
     }

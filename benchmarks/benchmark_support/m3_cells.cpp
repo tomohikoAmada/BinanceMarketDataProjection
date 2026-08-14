@@ -48,6 +48,75 @@ inline constexpr std::array<std::size_t, 4> kBatchSet{0, 1, 10, 100};
 
 } // namespace
 
+std::string m3_accepted_generated_sha256(const M3AcceptedCell::Config& config) {
+    const BookParams params{};
+    std::string description =
+        "m3_accepted_v1\npolicy=" + policy_label(config.policy) +
+        "\ndepth=" + std::to_string(config.depth) + "\nbatch=" + std::to_string(config.batch) +
+        "\ninitial_bids=" + describe_levels(build_bid_levels(config.depth)) +
+        "\ninitial_asks=" + describe_levels(build_ask_levels(config.depth)) +
+        "\ninitial_update_id=" + std::to_string(params.base_update_id + 1) + "\nupdate_sequence=";
+    if (config.depth == 0 && config.batch > 0) {
+        std::vector<core::LevelUpdate> inserts;
+        inserts.reserve(config.batch);
+        for (std::size_t index = 0; index < config.batch; ++index) {
+            inserts.push_back({core::BookSide::Bid,
+                               price_units(params.bid_start - 1 - static_cast<std::int64_t>(index)),
+                               quantity_units(params.quantity_base + 1)});
+        }
+        description += describe_updates(inserts);
+    } else if (config.depth > 0 && config.batch > 0) {
+        for (std::size_t batch_index = 0; batch_index < kBatchCycleSize; ++batch_index) {
+            std::vector<core::LevelUpdate> updates;
+            updates.reserve(config.batch);
+            for (std::size_t slot = 0; slot < config.batch; ++slot) {
+                const auto price_index = (batch_index * config.batch + slot) % config.depth;
+                updates.push_back(
+                    {core::BookSide::Bid,
+                     price_units(params.bid_start - static_cast<std::int64_t>(price_index)),
+                     cycling_quantity(batch_index + slot)});
+            }
+            description += describe_updates(updates);
+        }
+    } else {
+        description += "advancing_empty_level_batch";
+    }
+    return sha256_of(description);
+}
+
+std::string m3_classification_generated_sha256(const M3ClassificationCell::Config& config) {
+    const auto current = synchronized_id().value();
+    std::string operation;
+    switch (config.kind) {
+    case M3ClassificationKind::Stale:
+        operation =
+            "apply_range=" + std::to_string(current - 3) + ":" + std::to_string(current - 1);
+        break;
+    case M3ClassificationKind::Duplicate:
+        operation = "apply_range=" + std::to_string(current - 1) + ":" + std::to_string(current);
+        break;
+    case M3ClassificationKind::Gap:
+        operation =
+            config.policy == core::SequencePolicyKind::Spot
+                ? "apply_range=" + std::to_string(current + 2) + ":" + std::to_string(current + 2)
+                : "apply_range=" + std::to_string(current + 1) + ":" + std::to_string(current + 1) +
+                      ";previous_final=" + std::to_string(current + 3);
+        break;
+    case M3ClassificationKind::Reset:
+        operation = "reset";
+        break;
+    case M3ClassificationKind::BaselineInstall:
+        operation = "install_baseline=" + std::to_string(BookParams{}.base_update_id);
+        break;
+    }
+    return sha256_of("m3_classification_v1\nkind=" + std::to_string(static_cast<int>(config.kind)) +
+                     "\npolicy=" + policy_label(config.policy) +
+                     "\ndepth=" + std::to_string(config.depth) +
+                     "\ninitial_bids=" + describe_levels(build_bid_levels(config.depth)) +
+                     "\ninitial_asks=" + describe_levels(build_ask_levels(config.depth)) +
+                     "\noperation=" + operation);
+}
+
 M3AcceptedCell::M3AcceptedCell(Config config)
     : config_{config}, projection_{benchmark_numeric_spec(), config.policy} {}
 
@@ -55,7 +124,6 @@ void M3AcceptedCell::prepare() {
     const BookParams params{};
     step_ = 0;
     current_id_ = params.base_update_id + 1;
-    std::string description;
     if (config_.depth == 0 && config_.batch > 0) {
         // Empty-book insertion edge: one bounded pool of empty synchronized
         // books; each measured execution inserts the same `batch` bid levels.
@@ -70,7 +138,6 @@ void M3AcceptedCell::prepare() {
         }
         pool_.fill(pool_iteration_count(0),
                    [this] { return build_synchronized_projection(config_.policy, 0); });
-        description = describe_updates(insert_batch_);
     } else if (config_.depth > 0 && config_.batch > 0) {
         // Existing-price replacement updates: depth stays fixed, mutation is
         // real, and every execution returns Applied.
@@ -87,7 +154,6 @@ void M3AcceptedCell::prepare() {
                      price_units(params.bid_start - static_cast<std::int64_t>(price_index)),
                      cycling_quantity(batch_index + slot)});
             }
-            description += describe_updates(updates);
             cycle_batches_.push_back(std::move(updates));
         }
     } else {
@@ -97,7 +163,7 @@ void M3AcceptedCell::prepare() {
         // returns Applied while executing the logical copy transaction.
         projection_ = build_synchronized_projection(config_.policy, config_.depth);
     }
-    generated_sha_ = sha256_of(description);
+    generated_sha_ = m3_accepted_generated_sha256(config_);
 }
 
 bool M3AcceptedCell::uses_pool() const noexcept { return config_.depth == 0 && config_.batch > 0; }
@@ -184,7 +250,7 @@ M3ClassificationCell::M3ClassificationCell(Config config)
 
 void M3ClassificationCell::prepare() {
     projection_ = build_synchronized_projection(config_.policy, config_.depth);
-    generated_sha_ = sha256_of(describe_levels(baseline_bids_) + describe_levels(baseline_asks_));
+    generated_sha_ = m3_classification_generated_sha256(config_);
     switch (config_.kind) {
     case M3ClassificationKind::Stale:
     case M3ClassificationKind::Duplicate:

@@ -14,6 +14,8 @@ TEST(Phase6AdapterReplay, PreconstructionCoversFullWorkloadAndChecksumIsStable) 
     const auto observation = test_support::observe_spot_replay_repeat();
     EXPECT_TRUE(observation.full_preconstruction);
     EXPECT_TRUE(observation.first_baseline_adapts);
+    EXPECT_TRUE(observation.rebaseline_uses_adapter_wire);
+    EXPECT_TRUE(observation.corrupt_rebaseline_is_rejected);
     EXPECT_EQ(observation.event_count, 2'048U);
     EXPECT_EQ(observation.first_checksum, observation.second_checksum);
     EXPECT_TRUE(observation.first_synchronized);

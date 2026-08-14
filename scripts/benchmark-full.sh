@@ -14,6 +14,11 @@ repetitions="${M5_P6_REPETITIONS:-5}"
 latency_passes="${M5_P6_LATENCY_PASSES:-5}"
 calibration_samples="${M5_P6_CALIBRATION_SAMPLES:-100000}"
 
+if [[ ! "$repetitions" =~ ^[0-9]+$ ]] || (( repetitions < 5 )); then
+    echo "formal Phase-6 evidence requires M5_P6_REPETITIONS >= 5" >&2
+    exit 2
+fi
+
 if [[ -n "$(git status --porcelain)" ]]; then
     echo "WARNING: working tree is dirty; evidence will be labelled exploratory" >&2
 fi

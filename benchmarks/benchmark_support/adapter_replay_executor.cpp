@@ -106,10 +106,21 @@ std::uint64_t AdapterReplayExecutor::execute_event(std::size_t event_index,
         return fold_apply(checksum, std::get<core::ApplyResult>(applied));
     }
     case adapter_support::PreconstructedKind::Rebaseline: {
-        const auto result =
-            projection.install_baseline({core::UpdateId{entry.rebaseline_last_update_id},
-                                         entry.rebaseline_bids, entry.rebaseline_asks});
-        return fold_install(checksum, result);
+        const auto adapted = adapter::adapt_exchange_depth_snapshot(
+            entry.baseline_wire, entry.conversion_spec, entry.expected);
+        checksum = replay_checksum_append(checksum, adapted.index());
+        if (const auto* failure = std::get_if<adapter::AdapterError>(&adapted)) {
+            return replay_checksum_append(
+                checksum, static_cast<std::uint64_t>(static_cast<std::uint8_t>(failure->code)));
+        }
+        const auto& owner = std::get<adapter::AdaptedBookBaseline>(adapted);
+        checksum = replay_checksum_append(checksum, owner.metadata().observed_quality.size());
+        const auto installed = owner.install_into(projection);
+        if (const auto* failure = std::get_if<adapter::AdapterError>(&installed)) {
+            return replay_checksum_append(
+                checksum, static_cast<std::uint64_t>(static_cast<std::uint8_t>(failure->code)));
+        }
+        return fold_install(checksum, std::get<core::InstallResult>(installed));
     }
     case adapter_support::PreconstructedKind::Reset:
         projection.reset();

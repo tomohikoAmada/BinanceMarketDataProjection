@@ -11,6 +11,8 @@
 inline constexpr std::string_view BMD_P6_GIT_SHA{"@BMD_P6_GIT_SHA@"};
 inline constexpr std::string_view BMD_P6_GIT_DIRTY_AT_CONFIGURE{
     "@BMD_P6_GIT_DIRTY_AT_CONFIGURE@"};
+inline constexpr std::string_view BMD_P6_GIT_PROVENANCE_STATUS{
+    "@BMD_P6_GIT_PROVENANCE_STATUS@"};
 inline constexpr std::string_view BMD_P6_COMPILER_ID{"@BMD_P6_COMPILER_ID@"};
 inline constexpr std::string_view BMD_P6_COMPILER_VERSION{"@BMD_P6_COMPILER_VERSION@"};
 inline constexpr std::string_view BMD_P6_CXX_STANDARD{"@BMD_P6_CXX_STANDARD@"};

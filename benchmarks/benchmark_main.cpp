@@ -155,7 +155,7 @@ int main(int argc, char** argv) {
     input.payload_schema = "google_benchmark_json";
     input.timer = "cpu";
     input.primary_denominator = "cpu_time";
-    input.warmup_kind = "google_benchmark_internal_warmup_phase";
+    input.warmup_kind = "explicit_workload_pass_v1";
     input.warmup_count = 1;
     input.repetitions = static_cast<std::uint64_t>(repetitions);
     for (const auto& [name, canonical_text] : bm::registered_workloads()) {

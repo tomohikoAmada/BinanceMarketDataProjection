@@ -278,6 +278,24 @@ TEST(Phase6WorkloadSpec, SeedAloneIsInsufficient) {
     EXPECT_NE(same_seed.canonical_sha256(), other_params.canonical_sha256());
 }
 
+TEST(Phase6WorkloadSpec, GeneratedHashIsStableAndParameterSensitive) {
+    const auto first =
+        bm::m2_apply_updates_generated_sha256({8, 10, bm::M2ApplyUpdatesMix::ReplacementHeavy});
+    EXPECT_EQ(first.size(), 64U);
+    EXPECT_EQ(first, bm::m2_apply_updates_generated_sha256(
+                         {8, 10, bm::M2ApplyUpdatesMix::ReplacementHeavy}));
+    EXPECT_NE(first, bm::m2_apply_updates_generated_sha256(
+                         {100, 10, bm::M2ApplyUpdatesMix::ReplacementHeavy}));
+    EXPECT_NE(first, bm::m2_apply_updates_generated_sha256(
+                         {8, 100, bm::M2ApplyUpdatesMix::ReplacementHeavy}));
+    EXPECT_NE(first,
+              bm::m2_apply_updates_generated_sha256({8, 10, bm::M2ApplyUpdatesMix::Insertion}));
+    EXPECT_NE(bm::m3_accepted_generated_sha256({core::SequencePolicyKind::Spot, 8, 10}),
+              bm::m3_accepted_generated_sha256({core::SequencePolicyKind::UsdMPerpetual, 8, 10}));
+    EXPECT_NE(bm::m3_proxy_generated_sha256("apply_updates", 8),
+              bm::m3_proxy_generated_sha256("replace_all", 8));
+}
+
 // ---------------------------------------------------------------------------
 // M2 state invariance (OD-M5-P6-004/005).
 // ---------------------------------------------------------------------------
@@ -308,6 +326,19 @@ TEST(Phase6M2ApplyLevel, PrepareTwiceRebuildsUpdateState) {
 
     EXPECT_EQ(capture_apply_level_state(cell), first_state);
     EXPECT_TRUE(all_update_steps_are_updated(cell, 256));
+}
+
+TEST(Phase6Warmup, MutatedWarmupStateIsDiscardedBeforeFreshMeasurementState) {
+    bm::M2ApplyLevelCell warmup{bm::M2ApplyLevelKind::Update, 8};
+    warmup.prepare();
+    const auto canonical_precondition = capture_apply_level_state(warmup);
+    ASSERT_EQ(warmup.execute_step(), core::LevelChange::Updated);
+    EXPECT_NE(capture_apply_level_state(warmup), canonical_precondition);
+
+    bm::M2ApplyLevelCell measured{bm::M2ApplyLevelKind::Update, 8};
+    measured.prepare();
+    EXPECT_EQ(capture_apply_level_state(measured), canonical_precondition);
+    EXPECT_EQ(measured.execute_step(), core::LevelChange::Updated);
 }
 
 TEST(Phase6M2ApplyLevel, DeletePoolAlwaysRemovesFreshState) {
@@ -523,6 +554,39 @@ TEST(Phase6CoreReplay, ChecksumsAreStableAndWorkloadIdentityStable) {
     bm::CoreReplayExecutor usdm{usdm_fixture};
     core::BookProjection projection{usdm.numeric_spec(), usdm.policy()};
     EXPECT_NE(usdm.run(projection), first);
+}
+
+TEST(Phase6CoreReplay, LatencyPreparedPathMatchesParsingPath) {
+    const auto fixture = phase3::make_spot_small_workload();
+    bm::CoreReplayExecutor executor{fixture};
+    ASSERT_TRUE(executor.prepared_inputs_valid());
+    core::BookProjection parsed_projection{executor.numeric_spec(), executor.policy()};
+    const auto parsed_checksum = executor.run(parsed_projection);
+
+    core::BookProjection prepared_projection{executor.numeric_spec(), executor.policy()};
+    std::uint64_t prepared_checksum = bm::kReplayChecksumSeed;
+    for (std::size_t index = 0; index < executor.event_count(); ++index) {
+        prepared_checksum = bm::fold_evidence(
+            prepared_checksum, executor.execute_prepared_event(prepared_projection, index));
+    }
+    prepared_checksum = executor.finalize_checksum(prepared_projection, prepared_checksum);
+    EXPECT_EQ(prepared_checksum, parsed_checksum);
+}
+
+TEST(Phase6CoreReplay, LatencyPreparationRejectsInvalidDecimalInput) {
+    auto fixture = phase3::make_spot_small_workload();
+    const auto found = std::find_if(
+        fixture.replay.operations.begin(), fixture.replay.operations.end(),
+        [](const auto& operation) {
+            return std::holds_alternative<bmd_projection::m5::replay::InstallBaselineOp>(operation);
+        });
+    ASSERT_NE(found, fixture.replay.operations.end());
+    auto* install = std::get_if<bmd_projection::m5::replay::InstallBaselineOp>(&*found);
+    ASSERT_NE(install, nullptr);
+    ASSERT_FALSE(install->bids.empty());
+    install->bids.front().price = "not-a-decimal";
+    bm::CoreReplayExecutor executor{fixture};
+    EXPECT_FALSE(executor.prepared_inputs_valid());
 }
 
 } // namespace

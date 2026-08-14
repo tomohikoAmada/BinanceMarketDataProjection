@@ -3,7 +3,6 @@
 #include <binance_market_data/common/v1/enums.pb.h>
 #include <binance_market_data/common/v1/metadata.pb.h>
 #include <binance_market_data/projection/v1/numeric/decimal_format.hpp>
-#include <binance_market_data/projection/v1/numeric/decimal_parse.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -134,23 +133,6 @@ constexpr std::string_view kBenchmarkProducerVersion{"1"};
     return adapter::SnapshotOrigin::GatewayLive;
 }
 
-[[nodiscard]] std::vector<core::BookLevel>
-parse_levels(const std::vector<replay::LevelInput>& levels, core::NumericSpec spec) {
-    std::vector<core::BookLevel> parsed;
-    parsed.reserve(levels.size());
-    for (const auto& level : levels) {
-        const auto price = core::parse_price(level.price, spec.price_scale);
-        const auto quantity = core::parse_quantity(level.quantity, spec.quantity_scale);
-        if (!std::holds_alternative<core::ParsedDecimal<core::PriceUnits>>(price) ||
-            !std::holds_alternative<core::ParsedDecimal<core::QuantityUnits>>(quantity)) {
-            std::abort();
-        }
-        parsed.push_back({std::get<core::ParsedDecimal<core::PriceUnits>>(price).value,
-                          std::get<core::ParsedDecimal<core::QuantityUnits>>(quantity).value});
-    }
-    return parsed;
-}
-
 [[nodiscard]] std::string format_price_text(std::int64_t units) {
     const auto result = core::format_price(price_units(units), benchmark_numeric_spec().price_scale,
                                            kBenchmarkPriceScale);
@@ -252,11 +234,29 @@ struct EntryBuilder final {
         return entry;
     }
 
-    [[nodiscard]] PreconstructedEntry operator()(const replay::RebaselineOp& rebaseline) const {
+    [[nodiscard]] PreconstructedEntry operator()(const replay::RebaselineOp& rebaseline) {
         auto entry = base(PreconstructedKind::Rebaseline);
-        entry.rebaseline_last_update_id = rebaseline.last_update_id;
-        entry.rebaseline_bids = parse_levels(rebaseline.bids, conversion_spec);
-        entry.rebaseline_asks = parse_levels(rebaseline.asks, conversion_spec);
+        auto& wire = entry.baseline_wire;
+        wire.set_venue(common_wire::VENUE_BINANCE);
+        wire.set_market(market);
+        wire.set_symbol(symbol);
+        wire.set_schema_version("exchange-depth-snapshot.v1");
+        wire.set_producer(std::string{kBenchmarkProducer});
+        wire.set_producer_version(std::string{kBenchmarkProducerVersion});
+        wire.set_request_id("phase6-rebaseline-" + std::to_string(rebaseline.source.event_index));
+        apply_pending_quality(wire, *pending_metadata);
+        pending_metadata->clear();
+        wire.set_last_update_id(rebaseline.last_update_id);
+        for (const auto& level : rebaseline.bids) {
+            auto* wire_level = wire.add_bids();
+            wire_level->set_price(level.price);
+            wire_level->set_quantity(level.quantity);
+        }
+        for (const auto& level : rebaseline.asks) {
+            auto* wire_level = wire.add_asks();
+            wire_level->set_price(level.price);
+            wire_level->set_quantity(level.quantity);
+        }
         return entry;
     }
 

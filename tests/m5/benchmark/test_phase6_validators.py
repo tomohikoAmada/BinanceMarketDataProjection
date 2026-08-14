@@ -42,6 +42,7 @@ class BaseTestCase(unittest.TestCase):
             "requested_evidence_class": "formal",
             "source_provenance": {
                 "git_sha": "deadbeef" * 8,
+                "status": "known",
                 "dirty_at_configure": False,
             },
             "binary_provenance": {"path": "/nonexistent/binary", "sha256": "ab" * 32},
@@ -78,7 +79,7 @@ class BaseTestCase(unittest.TestCase):
             "measurement_identity": {
                 "timer": "cpu",
                 "primary_denominator": "cpu_time",
-                "warmup": {"kind": "internal", "count": 1},
+                "warmup": {"kind": "explicit_workload_pass_v1", "count": 1},
                 "repetitions": 5,
             },
             "measurements": [],
@@ -92,12 +93,33 @@ class BaseTestCase(unittest.TestCase):
         return document
 
     def make_workload(self, name: str, **fields) -> dict:
-        canonical = "\n".join(f"{key}={value}" for key, value in
-                              sorted({"benchmark_name": name, **fields}.items())) + "\n"
+        logical_items = 16 if name.startswith("M1/") else (
+            2048 if name.startswith(("CoreNormalizedReplay/", "AdapterWireReplay/")) else 1)
+        generated_fields = {
+            "benchmark_name": name,
+            "generator_schema": "TEST_GENERATOR_V1",
+            "generator_version": "1",
+            "seed": "not_applicable",
+            "logical_items_per_iteration": str(logical_items),
+            **fields,
+        }
+        generated_text = "".join(
+            f"{key}={value}\n" for key, value in sorted(generated_fields.items())
+            if key not in {"primary_timer", "primary_denominator", "throughput_denominator"}
+        )
+        generated_sha = _sha256(generated_text)
+        canonical_fields = {**generated_fields,
+                            "generated_workload_sha256": generated_sha}
+        canonical = "".join(f"{key}={value}\n" for key, value in
+                            sorted(canonical_fields.items()))
         return {
             "benchmark_name": name,
             "workload_spec_schema": validator.WORKLOAD_SPEC_SCHEMA,
             "workload_spec_sha256": _sha256(canonical),
+            "generator_schema": "TEST_GENERATOR_V1",
+            "generator_version": "1",
+            "seed": "not_applicable",
+            "generated_workload_sha256": generated_sha,
             "canonical_spec_text": canonical,
         }
 
@@ -134,6 +156,27 @@ class InventoryTest(BaseTestCase):
     def test_wrong_spec_sha_fails(self) -> None:
         wrapper = self.wrapper_with_inventory()
         wrapper["workload_identities"][0]["workload_spec_sha256"] = "00" * 32
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_inventory(wrapper)
+
+    def test_missing_generated_identity_fails(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        workload = wrapper["workload_identities"][0]
+        workload["generator_version"] = ""
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_inventory(wrapper)
+
+    def test_placeholder_generated_hash_fails(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        workload = wrapper["workload_identities"][0]
+        workload["generated_workload_sha256"] = "0" * 64
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_inventory(wrapper)
+
+    def test_inconsistent_generated_hash_fails(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        workload = wrapper["workload_identities"][0]
+        workload["generated_workload_sha256"] = "ab" * 32
         with self.assertRaises(validator.ValidationError):
             validator.validate_inventory(wrapper)
 
@@ -183,12 +226,15 @@ class SmokeTest(BaseTestCase):
     def make_smoke_payload(self) -> dict:
         entries = []
         for name in validator._smoke_expected_set():
+            logical_items = 16 if name.startswith("M1/") else (
+                2048 if name.startswith(("CoreNormalizedReplay/", "AdapterWireReplay/")) else 1)
             entries.append({
                 "name": name + "/min_time:0.050",
                 "iterations": 100,
                 "real_time": 1.0,
                 "cpu_time": 1.0,
                 "time_unit": "ns",
+                "items_per_second": logical_items * 1_000_000_000.0,
                 "repetitions": 1,
             })
         return {"context": {}, "benchmarks": entries}
@@ -210,7 +256,8 @@ class SmokeTest(BaseTestCase):
         payload = self.make_smoke_payload()
         payload["benchmarks"].append(
             {"name": "Unexpected/Benchmark", "iterations": 1, "real_time": 1.0,
-             "cpu_time": 1.0, "time_unit": "ns", "repetitions": 1}
+             "cpu_time": 1.0, "time_unit": "ns", "items_per_second": 1.0e9,
+             "repetitions": 1}
         )
         with self.assertRaises(validator.ValidationError):
             validator.validate_smoke(payload, wrapper, 1)
@@ -228,6 +275,20 @@ class SmokeTest(BaseTestCase):
             validator.normalize_benchmark_name("CoreNormalizedReplay/Spot/min_time:0.050/real_time"),
             "CoreNormalizedReplay/Spot",
         )
+
+    def test_overwritten_item_count_rate_fails(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        payload = self.make_smoke_payload()
+        target = next(entry for entry in payload["benchmarks"]
+                      if entry["name"].startswith("M1/ParsePrice/MatchedScale/"))
+        target["items_per_second"] = 1_000_000_000.0
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_smoke(payload, wrapper, 1)
+
+    def test_replay_events_rate_and_ns_per_event_are_reciprocal(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        payload = self.make_smoke_payload()
+        validator.validate_item_rates(payload, wrapper)
 
 
 class WrapperTest(BaseTestCase):
@@ -301,6 +362,33 @@ class WrapperTest(BaseTestCase):
     def test_missing_stdlib_identity_fails(self) -> None:
         wrapper = self.wrapper_with_inventory()
         del wrapper["build_identity"]["standard_library"]
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_wrapper("x", wrapper, True, None)
+
+    def test_unknown_source_cannot_be_handcrafted_as_clean_formal(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        wrapper["source_provenance"] = {
+            "git_sha": "unavailable", "status": "unavailable",
+            "dirty_at_configure": False,
+        }
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_wrapper("x", wrapper, True, None)
+
+    def test_formal_google_repetition_minimum(self) -> None:
+        for repetitions in (0, 1, 4):
+            wrapper = self.wrapper_with_inventory()
+            wrapper["measurement_identity"]["repetitions"] = repetitions
+            with self.subTest(repetitions=repetitions), self.assertRaises(
+                    validator.ValidationError):
+                validator.validate_wrapper("x", wrapper, True, None)
+        for repetitions in (5, 6):
+            wrapper = self.wrapper_with_inventory()
+            wrapper["measurement_identity"]["repetitions"] = repetitions
+            validator.validate_wrapper("x", wrapper, True, None)
+
+    def test_wrong_warmup_contract_fails(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        wrapper["measurement_identity"]["warmup"]["kind"] = "internal"
         with self.assertRaises(validator.ValidationError):
             validator.validate_wrapper("x", wrapper, True, None)
 

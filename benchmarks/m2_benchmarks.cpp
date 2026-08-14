@@ -80,6 +80,11 @@ struct Specs {
         builder.set("depth_per_side", depth);
         builder.set("expected_disposition", expected);
         builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
+        const auto kind = family == "insert"   ? bm::M2ApplyLevelKind::Insert
+                          : family == "update" ? bm::M2ApplyLevelKind::Update
+                          : family == "delete" ? bm::M2ApplyLevelKind::Delete
+                                               : bm::M2ApplyLevelKind::MissingDelete;
+        builder.set("generated_workload_sha256", bm::m2_apply_level_generated_sha256(kind, depth));
         builder.set("primary_timer", "cpu");
         builder.set("primary_denominator", "cpu_time");
     }
@@ -93,6 +98,9 @@ struct Specs {
         builder.set("batch", batch);
         builder.set("operation_mix", mix);
         builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
+        builder.set("generated_workload_sha256",
+                    bm::m2_apply_updates_generated_sha256(
+                        {depth, batch, bm::M2ApplyUpdatesMix::ReplacementHeavy}));
         builder.set("primary_timer", "cpu");
         builder.set("primary_denominator", "cpu_time");
     }
@@ -107,6 +115,11 @@ struct Specs {
         builder.set("operation_mix", depth == 0 ? "insert_empty_book_edge" : "replacement_heavy");
         builder.set("primary_scaling_workload", "true");
         builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
+        builder.set("generated_workload_sha256",
+                    bm::m2_apply_updates_generated_sha256(
+                        {depth, 100,
+                         depth == 0 ? bm::M2ApplyUpdatesMix::Insertion
+                                    : bm::M2ApplyUpdatesMix::ReplacementHeavy}));
         builder.set("primary_timer", "cpu");
         builder.set("primary_denominator", "cpu_time");
     }
@@ -118,6 +131,7 @@ struct Specs {
         builder.set("operation", "replace_all");
         builder.set("depth_per_side", depth);
         builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
+        builder.set("generated_workload_sha256", bm::m2_replace_all_generated_sha256(depth));
         builder.set("primary_timer", "cpu");
         builder.set("primary_denominator", "cpu_time");
     }
@@ -132,6 +146,8 @@ struct Specs {
             builder.set("query_limit", limit);
         }
         builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
+        builder.set("generated_workload_sha256",
+                    bm::m2_query_generated_sha256(family, {depth, limit}));
         builder.set("primary_timer", "cpu");
         builder.set("primary_denominator", "cpu_time");
     }
@@ -152,6 +168,9 @@ const auto kM2SpecRegistration = [] {
 template <bm::M2ApplyLevelKind Kind>
 void run_apply_level(benchmark::State& state, const char* name) {
     const auto depth = static_cast<std::size_t>(state.range(0));
+    bm::M2ApplyLevelCell warmup_cell{Kind, depth};
+    warmup_cell.prepare();
+    static_cast<void>(warmup_cell.execute_step(0));
     bm::M2ApplyLevelCell cell{Kind, depth};
     cell.prepare();
     const auto expected =
@@ -178,8 +197,8 @@ void run_apply_level(benchmark::State& state, const char* name) {
         accumulator += static_cast<std::uint64_t>(static_cast<std::uint8_t>(change));
         ++pool_index;
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 static void BM_ApplyLevelInsert(benchmark::State& state) {
@@ -207,6 +226,9 @@ static void run_apply_updates(benchmark::State& state, const char* name,
                               bm::M2ApplyUpdatesMix mix) {
     const auto depth = static_cast<std::size_t>(state.range(0));
     const auto batch = static_cast<std::size_t>(state.range(1));
+    bm::M2ApplyUpdatesCell warmup_cell{bm::M2ApplyUpdatesCell::Config{depth, batch, mix}};
+    warmup_cell.prepare();
+    warmup_cell.execute_step(0);
     bm::M2ApplyUpdatesCell cell{bm::M2ApplyUpdatesCell::Config{depth, batch, mix}};
     cell.prepare();
     std::uint64_t accumulator = 0;
@@ -220,8 +242,8 @@ static void run_apply_updates(benchmark::State& state, const char* name,
         accumulator += cell.book().level_count(core::BookSide::Bid);
         ++pool_index;
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(static_cast<std::int64_t>(batch));
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 static void BM_ApplyUpdatesBatch(benchmark::State& state) {
@@ -244,6 +266,9 @@ static void BM_ApplyUpdatesUpdateMixInsertEdge(benchmark::State& state) {
 // ---------------------------------------------------------------------------
 static void BM_ReplaceAll(benchmark::State& state) {
     const auto depth = static_cast<std::size_t>(state.range(0));
+    bm::M2ReplaceAllCell warmup_cell{depth};
+    warmup_cell.prepare();
+    warmup_cell.execute_step();
     bm::M2ReplaceAllCell cell{depth};
     cell.prepare();
     std::uint64_t accumulator = 0;
@@ -252,8 +277,8 @@ static void BM_ReplaceAll(benchmark::State& state) {
         accumulator += cell.book().level_count(core::BookSide::Bid);
         accumulator += cell.book().level_count(core::BookSide::Ask);
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 // ---------------------------------------------------------------------------
@@ -262,14 +287,20 @@ static void BM_ReplaceAll(benchmark::State& state) {
 // ---------------------------------------------------------------------------
 template <typename Step> void run_query(benchmark::State& state, Step step, std::int64_t items) {
     const auto depth = static_cast<std::size_t>(state.range(0));
+    bm::M2QueryCell warmup_cell{
+        bm::M2QueryCell::Config{depth, static_cast<std::size_t>(state.range(1))}};
+    warmup_cell.prepare();
+    std::uint64_t warmup_accumulator = 0;
+    step(warmup_cell, warmup_accumulator);
+    benchmark::DoNotOptimize(warmup_accumulator);
     bm::M2QueryCell cell{bm::M2QueryCell::Config{depth, static_cast<std::size_t>(state.range(1))}};
     cell.prepare();
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         step(cell, accumulator);
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(items);
     }
+    state.SetItemsProcessed(state.iterations() * items);
 }
 
 static void BM_BestBid(benchmark::State& state) {

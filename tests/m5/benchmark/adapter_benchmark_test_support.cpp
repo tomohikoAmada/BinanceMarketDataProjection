@@ -32,6 +32,21 @@ RepeatObservation observe_spot_replay_repeat() {
                                                                     first_baseline->expected);
         first_baseline_adapts = std::get_if<adapter::AdapterError>(&adapted) == nullptr;
     }
+    const auto rebaseline = std::find_if(
+        entries.begin(), entries.end(), [](const adapter_support::PreconstructedEntry& entry) {
+            return entry.kind == adapter_support::PreconstructedKind::Rebaseline;
+        });
+    bool rebaseline_uses_adapter_wire = false;
+    bool corrupt_rebaseline_is_rejected = false;
+    if (rebaseline != entries.end()) {
+        rebaseline_uses_adapter_wire = rebaseline->baseline_wire.bids_size() > 0 &&
+                                       !rebaseline->baseline_wire.symbol().empty();
+        auto corrupt_wire = rebaseline->baseline_wire;
+        corrupt_wire.set_symbol("WRONG-SYMBOL");
+        const auto adapted = adapter::adapt_exchange_depth_snapshot(
+            corrupt_wire, rebaseline->conversion_spec, rebaseline->expected);
+        corrupt_rebaseline_is_rejected = std::holds_alternative<adapter::AdapterError>(adapted);
+    }
     AdapterReplayExecutor executor{fixture, entries};
 
     core::BookProjection first_projection{executor.numeric_spec(), executor.policy()};
@@ -41,6 +56,8 @@ RepeatObservation observe_spot_replay_repeat() {
 
     return {entries.size() == fixture.replay.operations.size(),
             first_baseline_adapts,
+            rebaseline_uses_adapter_wire,
+            corrupt_rebaseline_is_rejected,
             executor.event_count(),
             first_checksum,
             second_checksum,

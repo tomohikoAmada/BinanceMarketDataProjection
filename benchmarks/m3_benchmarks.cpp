@@ -67,6 +67,8 @@ const auto kM3SpecRegistration = [] {
                     builder.set("edge", "advancing_empty_level_batch");
                 }
                 builder.set("generator_schema", "M5_PHASE6_M3_CELLS_V1");
+                builder.set("generated_workload_sha256",
+                            bm::m3_accepted_generated_sha256({policy, depth, batch}));
                 builder.set("primary_timer", "cpu");
                 builder.set("primary_denominator", "cpu_time");
             }
@@ -84,6 +86,9 @@ const auto kM3SpecRegistration = [] {
             builder.set("classification", kind_label(kind));
             builder.set("depth_per_side", bm::kM3ClassificationDepth);
             builder.set("generator_schema", "M5_PHASE6_M3_CELLS_V1");
+            builder.set(
+                "generated_workload_sha256",
+                bm::m3_classification_generated_sha256({kind, policy, bm::kM3ClassificationDepth}));
             builder.set("primary_timer", "cpu");
             builder.set("primary_denominator", "cpu_time");
         }
@@ -100,6 +105,8 @@ const auto kM3SpecRegistration = [] {
             builder.set("policy", "Spot");
             builder.set("proxy_component_measurement", "true");
             builder.set("generator_schema", "M5_PHASE6_M3_CELLS_V1");
+            builder.set("generated_workload_sha256",
+                        bm::m3_proxy_generated_sha256(operation, depth));
             builder.set("primary_timer", "cpu");
             builder.set("primary_denominator", "cpu_time");
         };
@@ -121,6 +128,13 @@ static void BM_M3AcceptedLiveApply(benchmark::State& state) {
     const auto policy = static_cast<core::SequencePolicyKind>(state.range(0));
     const auto depth = static_cast<std::size_t>(state.range(1));
     const auto batch = static_cast<std::size_t>(state.range(2));
+    bm::M3AcceptedCell warmup_cell{bm::M3AcceptedCell::Config{policy, depth, batch}};
+    warmup_cell.prepare();
+    const auto warmup_result = warmup_cell.execute_step(0);
+    if (warmup_result.disposition != core::ApplyDisposition::Applied) {
+        state.SkipWithError("M3 accepted explicit warmup disposition drift");
+        return;
+    }
     bm::M3AcceptedCell cell{bm::M3AcceptedCell::Config{policy, depth, batch}};
     cell.prepare();
     std::uint64_t accumulator = 0;
@@ -140,8 +154,8 @@ static void BM_M3AcceptedLiveApply(benchmark::State& state) {
         accumulator += cell.current_update_id().value();
         ++pool_index;
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 // ---------------------------------------------------------------------------
@@ -151,6 +165,10 @@ static void BM_M3AcceptedLiveApply(benchmark::State& state) {
 static void BM_M3Classification(benchmark::State& state) {
     const auto kind = static_cast<bm::M3ClassificationKind>(state.range(0));
     const auto policy = static_cast<core::SequencePolicyKind>(state.range(1));
+    bm::M3ClassificationCell warmup_cell{
+        bm::M3ClassificationCell::Config{kind, policy, bm::kM3ClassificationDepth}};
+    warmup_cell.prepare();
+    static_cast<void>(warmup_cell.execute_step(0));
     bm::M3ClassificationCell cell{
         bm::M3ClassificationCell::Config{kind, policy, bm::kM3ClassificationDepth}};
     cell.prepare();
@@ -188,8 +206,8 @@ static void BM_M3Classification(benchmark::State& state) {
         accumulator += static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.status_after));
         ++pool_index;
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 // ---------------------------------------------------------------------------
@@ -197,6 +215,9 @@ static void BM_M3Classification(benchmark::State& state) {
 // ---------------------------------------------------------------------------
 static void BM_M3ComponentAllLevelsBothSides(benchmark::State& state) {
     const auto depth = static_cast<std::size_t>(state.range(0));
+    bm::M3ProxyCells warmup_cells{depth};
+    warmup_cells.prepare();
+    benchmark::DoNotOptimize(warmup_cells.all_levels_both_sides());
     bm::M3ProxyCells cells{depth};
     cells.prepare();
     std::uint64_t accumulator = 0;
@@ -204,42 +225,62 @@ static void BM_M3ComponentAllLevelsBothSides(benchmark::State& state) {
         const auto levels = cells.all_levels_both_sides();
         accumulator += levels.size();
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 static void BM_M3ProxyCandidateRebuildFromVectors(benchmark::State& state) {
     const auto depth = static_cast<std::size_t>(state.range(0));
     bm::M3ProxyCells cells{depth};
     cells.prepare();
+    {
+        auto warmup_candidate = cells.candidate_rebuild_from_vectors();
+        benchmark::DoNotOptimize(warmup_candidate);
+    }
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         auto candidate = cells.candidate_rebuild_from_vectors();
         accumulator += candidate.level_count(core::BookSide::Bid);
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 static void BM_M3ProxyCandidateApplyUpdates(benchmark::State& state) {
     const auto depth = static_cast<std::size_t>(state.range(0));
     bm::M3ProxyCells cells{depth};
     cells.prepare();
+    const auto pool_size = bm::pool_iteration_count(depth);
+    auto warmup_candidate = cells.candidate_rebuild_from_vectors();
+    cells.candidate_apply_updates(warmup_candidate, 0);
+    benchmark::DoNotOptimize(warmup_candidate);
+    bm::StatePool<core::OrderBook> candidate_pool;
+    candidate_pool.fill(pool_size, [&cells] { return cells.candidate_rebuild_from_vectors(); });
     std::uint64_t accumulator = 0;
-    std::size_t step = 0;
+    std::size_t pool_index = 0;
     for ([[maybe_unused]] auto _ : state) {
-        auto candidate = cells.candidate_rebuild_from_vectors();
-        cells.candidate_apply_updates(candidate, step);
+        if (pool_index >= pool_size) {
+            state.SkipWithError("candidate-apply prepared-state pool exhausted");
+            break;
+        }
+        auto& candidate = candidate_pool.at(pool_index);
+        cells.candidate_apply_updates(candidate, pool_index);
         accumulator += candidate.level_count(core::BookSide::Bid);
-        ++step;
+        ++pool_index;
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 static void BM_M3ProxyOrderBookMoveCommit(benchmark::State& state) {
     const auto depth = static_cast<std::size_t>(state.range(0));
     const auto pool_size = bm::pool_iteration_count(depth);
+    {
+        auto warmup_destination = bm::build_order_book(depth);
+        auto warmup_source = bm::build_order_book(depth);
+        bm::M3ProxyCells::move_commit(warmup_destination, std::move(warmup_source));
+        benchmark::DoNotOptimize(warmup_destination);
+    }
     // Prepared pools: destinations hold the populated old book (move-assignment
     // includes destination destruction), sources hold the candidate book.
     bm::StatePool<core::OrderBook> destination_pool;
@@ -274,8 +315,8 @@ static void BM_M3ProxyOrderBookMoveCommit(benchmark::State& state) {
         accumulator += destination_pool.at(pool_index).level_count(core::BookSide::Bid);
         ++pool_index;
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 } // namespace
@@ -359,7 +400,7 @@ const auto kM3Registration = [] {
             ->ArgName("depth")
             ->Arg(static_cast<std::int64_t>(depth))
             ->Unit(benchmark::kMicrosecond)
-            ->MinTime(0.05);
+            ->Iterations(static_cast<std::int64_t>(bm::pool_iteration_count(depth)));
         BMD_PHASE6_REGISTER(BM_M3ProxyOrderBookMoveCommit, BM_M3ProxyOrderBookMoveCommit)
             ->Name("M3/Proxy/OrderBookMoveCommit/" + std::to_string(depth))
             ->ArgName("depth")

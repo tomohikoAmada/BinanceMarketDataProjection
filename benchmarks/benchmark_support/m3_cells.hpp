@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace bmd_projection::m5::benchmark {
@@ -78,6 +79,8 @@ enum class M3ClassificationKind : std::uint8_t {
     BaselineInstall,
 };
 
+[[nodiscard]] std::string m3_proxy_generated_sha256(std::string_view operation, std::size_t depth);
+
 struct M3ClassificationResult final {
     std::optional<core::ApplyDisposition> apply_disposition;
     std::optional<core::InstallDisposition> install_disposition;
@@ -118,6 +121,10 @@ class M3ClassificationCell final {
     std::optional<core::DepthBatch> gap_batch_;
     std::string generated_sha_;
 };
+
+[[nodiscard]] std::string m3_accepted_generated_sha256(const M3AcceptedCell::Config& config);
+[[nodiscard]] std::string
+m3_classification_generated_sha256(const M3ClassificationCell::Config& config);
 
 // The 48 accepted live-apply cell names, generated in the canonical order
 // (policy x depth x batch) used by the inventory validator.

@@ -1,4 +1,5 @@
 #include "benchmark_support/workload_spec.hpp"
+#include "canonical_text.hpp"
 
 #include <binance_market_data/projection/v1/numeric/decimal_format.hpp>
 #include <binance_market_data/projection/v1/numeric/decimal_parse.hpp>
@@ -55,6 +56,14 @@ constexpr std::size_t kOperationBatch = 16;
     return inputs;
 }
 
+template <typename Operation>
+void run_explicit_batch_warmup(const std::array<std::string_view, kOperationBatch>& inputs,
+                               Operation operation) {
+    for (const auto text : inputs) {
+        benchmark::DoNotOptimize(operation(text));
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Static workload-spec registration (OD-M5-P6-003/023). The
 // registry is complete regardless of the active filter.
@@ -90,6 +99,22 @@ constexpr M1CaseSpec kM1Cases[] = {
      "0.00000000"},
 };
 
+[[nodiscard]] std::string generated_case_sha256(const M1CaseSpec& spec) {
+    std::string concrete =
+        "m1_fixed_case_v1\noperation=" + std::string{spec.operation} + "\nstorage_scale=8\ninputs=";
+    for (std::size_t index = 0; index < kOperationBatch; ++index) {
+        concrete += std::to_string(std::string_view{spec.input}.size());
+        concrete += ':';
+        concrete += spec.input;
+        concrete += ';';
+    }
+    const auto hash = bmd_projection::m5::replay::sha256_hex(concrete);
+    if (!std::holds_alternative<std::string>(hash)) {
+        std::abort();
+    }
+    return std::get<std::string>(hash);
+}
+
 const auto kM1SpecRegistration = [] {
     for (const auto& spec : kM1Cases) {
         auto& builder = bm::register_workload(spec.name);
@@ -104,6 +129,7 @@ const auto kM1SpecRegistration = [] {
         builder.set("primary_timer", "cpu");
         builder.set("primary_denominator", "cpu_time");
         builder.set("generator_schema", "M5_PHASE6_M1_FIXED_CASES_V1");
+        builder.set("generated_workload_sha256", generated_case_sha256(spec));
     }
     return 0;
 }();
@@ -129,6 +155,8 @@ static void BM_ParsePriceMatchedScale(benchmark::State& state) {
         }
     }
     const auto inputs = batch_of(input);
+    run_explicit_batch_warmup(
+        inputs, [scale](std::string_view text) { return core::parse_price(text, scale); });
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         for (const auto text : inputs) {
@@ -142,8 +170,9 @@ static void BM_ParsePriceMatchedScale(benchmark::State& state) {
             }
         }
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(static_cast<std::int64_t>(kOperationBatch));
     }
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+                            static_cast<std::int64_t>(kOperationBatch));
 }
 
 static void BM_ParsePositiveQuantityMatchedScale(benchmark::State& state) {
@@ -158,6 +187,9 @@ static void BM_ParsePositiveQuantityMatchedScale(benchmark::State& state) {
         }
     }
     const auto inputs = batch_of(input);
+    run_explicit_batch_warmup(inputs, [scale](std::string_view text) {
+        return core::parse_positive_quantity(text, scale);
+    });
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         for (const auto text : inputs) {
@@ -171,8 +203,9 @@ static void BM_ParsePositiveQuantityMatchedScale(benchmark::State& state) {
             }
         }
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(static_cast<std::int64_t>(kOperationBatch));
     }
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+                            static_cast<std::int64_t>(kOperationBatch));
 }
 
 static void BM_ParseQuantityZeroSuccess(benchmark::State& state) {
@@ -187,6 +220,8 @@ static void BM_ParseQuantityZeroSuccess(benchmark::State& state) {
         }
     }
     const auto inputs = batch_of(input);
+    run_explicit_batch_warmup(
+        inputs, [scale](std::string_view text) { return core::parse_quantity(text, scale); });
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         for (const auto text : inputs) {
@@ -200,8 +235,9 @@ static void BM_ParseQuantityZeroSuccess(benchmark::State& state) {
             }
         }
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(static_cast<std::int64_t>(kOperationBatch));
     }
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+                            static_cast<std::int64_t>(kOperationBatch));
 }
 
 static void BM_ParsePositiveQuantityZeroRejected(benchmark::State& state) {
@@ -218,6 +254,9 @@ static void BM_ParsePositiveQuantityZeroRejected(benchmark::State& state) {
         }
     }
     const auto inputs = batch_of(input);
+    run_explicit_batch_warmup(inputs, [scale](std::string_view text) {
+        return core::parse_positive_quantity(text, scale);
+    });
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         for (const auto text : inputs) {
@@ -230,8 +269,9 @@ static void BM_ParsePositiveQuantityZeroRejected(benchmark::State& state) {
             }
         }
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(static_cast<std::int64_t>(kOperationBatch));
     }
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+                            static_cast<std::int64_t>(kOperationBatch));
 }
 
 static void BM_ParsePriceExactUpscale(benchmark::State& state) {
@@ -247,6 +287,8 @@ static void BM_ParsePriceExactUpscale(benchmark::State& state) {
         }
     }
     const auto inputs = batch_of(input);
+    run_explicit_batch_warmup(
+        inputs, [scale](std::string_view text) { return core::parse_price(text, scale); });
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         for (const auto text : inputs) {
@@ -259,8 +301,9 @@ static void BM_ParsePriceExactUpscale(benchmark::State& state) {
             }
         }
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(static_cast<std::int64_t>(kOperationBatch));
     }
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+                            static_cast<std::int64_t>(kOperationBatch));
 }
 
 static void BM_ParsePriceExactDownscale(benchmark::State& state) {
@@ -276,6 +319,8 @@ static void BM_ParsePriceExactDownscale(benchmark::State& state) {
         }
     }
     const auto inputs = batch_of(input);
+    run_explicit_batch_warmup(
+        inputs, [scale](std::string_view text) { return core::parse_price(text, scale); });
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         for (const auto text : inputs) {
@@ -288,8 +333,9 @@ static void BM_ParsePriceExactDownscale(benchmark::State& state) {
             }
         }
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(static_cast<std::int64_t>(kOperationBatch));
     }
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+                            static_cast<std::int64_t>(kOperationBatch));
 }
 
 static void BM_ParsePriceInexactDownscaleRejected(benchmark::State& state) {
@@ -305,6 +351,8 @@ static void BM_ParsePriceInexactDownscaleRejected(benchmark::State& state) {
         }
     }
     const auto inputs = batch_of(input);
+    run_explicit_batch_warmup(
+        inputs, [scale](std::string_view text) { return core::parse_price(text, scale); });
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         for (const auto text : inputs) {
@@ -317,8 +365,9 @@ static void BM_ParsePriceInexactDownscaleRejected(benchmark::State& state) {
             }
         }
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(static_cast<std::int64_t>(kOperationBatch));
     }
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+                            static_cast<std::int64_t>(kOperationBatch));
 }
 
 static void BM_ParsePriceOverflowRejected(benchmark::State& state) {
@@ -333,6 +382,8 @@ static void BM_ParsePriceOverflowRejected(benchmark::State& state) {
         }
     }
     const auto inputs = batch_of(input);
+    run_explicit_batch_warmup(
+        inputs, [scale](std::string_view text) { return core::parse_price(text, scale); });
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         for (const auto text : inputs) {
@@ -345,8 +396,9 @@ static void BM_ParsePriceOverflowRejected(benchmark::State& state) {
             }
         }
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(static_cast<std::int64_t>(kOperationBatch));
     }
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+                            static_cast<std::int64_t>(kOperationBatch));
 }
 
 static void BM_ParsePriceSyntaxRejected(benchmark::State& state) {
@@ -361,6 +413,8 @@ static void BM_ParsePriceSyntaxRejected(benchmark::State& state) {
         }
     }
     const auto inputs = batch_of(input);
+    run_explicit_batch_warmup(
+        inputs, [scale](std::string_view text) { return core::parse_price(text, scale); });
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         for (const auto text : inputs) {
@@ -373,8 +427,9 @@ static void BM_ParsePriceSyntaxRejected(benchmark::State& state) {
             }
         }
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(static_cast<std::int64_t>(kOperationBatch));
     }
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+                            static_cast<std::int64_t>(kOperationBatch));
 }
 
 template <typename Units, typename Formatter>
@@ -388,6 +443,9 @@ void run_format_benchmark(benchmark::State& state, Units value, Formatter format
             state.SkipWithError(std::string{name} + " semantic precondition failed");
             return;
         }
+    }
+    for (std::size_t index = 0; index < kOperationBatch; ++index) {
+        benchmark::DoNotOptimize(formatter(value, scale));
     }
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
@@ -404,8 +462,9 @@ void run_format_benchmark(benchmark::State& state, Units value, Formatter format
             }
         }
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(static_cast<std::int64_t>(kOperationBatch));
     }
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+                            static_cast<std::int64_t>(kOperationBatch));
 }
 
 static void BM_FormatPriceFixed(benchmark::State& state) {

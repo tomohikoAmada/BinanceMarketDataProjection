@@ -67,6 +67,26 @@ WorkloadSpecBuilder& WorkloadSpecBuilder::set(std::string_view key, std::uint64_
     return set(key, std::to_string(value));
 }
 
+void WorkloadSpecBuilder::complete_generated_identity() {
+    const auto has_field = [this](std::string_view key) {
+        return std::any_of(fields_.begin(), fields_.end(),
+                           [key](const auto& field) { return field.first == key; });
+    };
+    if (!has_field("generator_version")) {
+        set("generator_version", "1");
+    }
+    if (!has_field("seed")) {
+        set("seed", "not_applicable");
+    }
+    if (!has_field("logical_items_per_iteration") && benchmark_name_.starts_with("M1/")) {
+        set("logical_items_per_iteration", 16);
+    } else if (!has_field("logical_items_per_iteration") &&
+               !benchmark_name_.starts_with("CoreNormalizedReplay/") &&
+               !benchmark_name_.starts_with("AdapterWireReplay/")) {
+        set("logical_items_per_iteration", 1);
+    }
+}
+
 std::string WorkloadSpecBuilder::canonical_text() const {
     if (canonical_text_.empty() || !finalized_) {
         canonical_text_ = canonical_text_of(*this);
@@ -102,6 +122,7 @@ const std::vector<std::pair<std::string, std::string>>& registered_workloads() {
     auto& registry_state = registry();
     while (registry_state.finalized_builders < registry_state.builders.size()) {
         auto& builder = *registry_state.builders[registry_state.finalized_builders].second;
+        builder.complete_generated_identity();
         static_cast<void>(builder.canonical_sha256());
         static_cast<void>(builder.canonical_text());
         registry_state.specs.emplace_back(builder.benchmark_name(), builder.canonical_text());

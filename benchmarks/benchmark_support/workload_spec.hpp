@@ -36,6 +36,11 @@ class WorkloadSpecBuilder final {
         return fields_;
     }
 
+    // Completes the generated-workload identity from the deterministic input
+    // description before the registry is frozen. This deliberately happens
+    // independently of the active benchmark filter.
+    void complete_generated_identity();
+
   private:
     std::string benchmark_name_;
     std::vector<std::pair<std::string, std::string>> fields_;

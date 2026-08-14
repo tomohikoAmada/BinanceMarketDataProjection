@@ -27,6 +27,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import sys
 from typing import Any, Optional
 
@@ -68,6 +69,8 @@ M4_FAMILIES = [
 ]
 CLASSIFICATIONS = ["Stale", "Duplicate", "Gap", "Reset", "BaselineInstall"]
 POLICIES = ["Spot", "UsdMPerpetual"]
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
+GIT_SHA = re.compile(r"^[0-9a-fA-F]{40}([0-9a-fA-F]{24})?$")
 
 
 class ValidationError(Exception):
@@ -151,8 +154,6 @@ def _smoke_expected_set() -> list[str]:
     return expected
 
 
-import re
-
 _DECORATION_COMPONENT = re.compile(
     r"^(min_time:[0-9.]+|iterations:[0-9]+|real_time|threads:[0-9]+|"
     r"repetition:[0-9]+|[a-z_]+:[-0-9]+)$"
@@ -215,6 +216,17 @@ def validate_payload_structure(payload: dict[str, Any]) -> None:
                      f"payload benchmark {name} has non-finite/non-positive {time_key}")
 
 
+def _canonical_fields(canonical: str, name: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for line in canonical.splitlines():
+        _require("=" in line, f"workload {name} has malformed canonical field")
+        key, value = line.split("=", 1)
+        _require(bool(key) and key not in fields,
+                 f"workload {name} has duplicate/empty canonical key")
+        fields[key] = value
+    return fields
+
+
 def _workload_names(wrapper: dict[str, Any]) -> set[str]:
     identities = wrapper.get("workload_identities")
     _require(isinstance(identities, list) and identities, "wrapper missing workload_identities")
@@ -226,15 +238,73 @@ def _workload_names(wrapper: dict[str, Any]) -> set[str]:
                  f"workload {name} has wrong workload_spec_schema")
         spec_sha = entry.get("workload_spec_sha256")
         canonical = entry.get("canonical_spec_text")
-        _require(isinstance(spec_sha, str) and len(spec_sha) == 64,
+        _require(isinstance(spec_sha, str) and HEX64.fullmatch(spec_sha) is not None,
                  f"workload {name} missing workload_spec_sha256")
         _require(isinstance(canonical, str) and canonical,
                  f"workload {name} missing canonical_spec_text")
         recomputed = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
         _require(recomputed == spec_sha,
                  f"workload {name} workload_spec_sha256 does not match its canonical text")
+        fields = _canonical_fields(canonical, name)
+        for key in ("generator_schema", "generator_version", "seed",
+                    "generated_workload_sha256", "logical_items_per_iteration"):
+            _require(isinstance(fields.get(key), str) and fields[key],
+                     f"workload {name} missing generated identity field {key}")
+        _require(fields["seed"] == "not_applicable" or fields["seed"].isdigit(),
+                 f"workload {name} has invalid seed")
+        generated_sha = fields["generated_workload_sha256"]
+        _require(HEX64.fullmatch(generated_sha) is not None and
+                 generated_sha not in {"0" * 64, "f" * 64},
+                 f"workload {name} has invalid/placeholder generated workload SHA")
+        if "canonical_log_sha256" in fields:
+            _require(generated_sha == fields["canonical_log_sha256"],
+                     f"workload {name} generated SHA must bind the canonical replay log")
+        for key in ("generator_schema", "generator_version", "seed",
+                    "generated_workload_sha256"):
+            _require(entry.get(key) == fields[key],
+                     f"workload {name} wrapper field {key} disagrees with canonical spec")
         names.add(name)
     return names
+
+
+def validate_item_rates(payload: dict[str, Any], wrapper: dict[str, Any]) -> None:
+    identities = {
+        entry["benchmark_name"]: _canonical_fields(entry["canonical_spec_text"],
+                                                    entry["benchmark_name"])
+        for entry in wrapper.get("workload_identities", [])
+    }
+    unit_scale = {"ns": 1.0, "us": 1_000.0, "ms": 1_000_000.0, "s": 1_000_000_000.0}
+    for entry in payload.get("benchmarks", []):
+        if entry.get("run_type") == "aggregate":
+            continue
+        name = normalize_benchmark_name(entry.get("name", ""))
+        if name == "BM_LibraryVersionAccess":
+            fields = {"logical_items_per_iteration": "1", "primary_denominator": "cpu_time"}
+        else:
+            _require(name in identities, f"executed benchmark {name} lacks workload identity")
+            fields = identities[name]
+        try:
+            logical_items = int(fields["logical_items_per_iteration"])
+        except (KeyError, ValueError) as error:
+            raise ValidationError(f"workload {name} has invalid logical item count") from error
+        _require(logical_items > 0, f"workload {name} has non-positive logical item count")
+        denominator = fields.get("primary_denominator",
+                                 fields.get("throughput_denominator"))
+        time_key = "real_time" if denominator == "wall_time" else "cpu_time"
+        unit = entry.get("time_unit")
+        _require(unit in unit_scale, f"benchmark {name} has unsupported time unit {unit}")
+        time_ns = float(entry[time_key]) * unit_scale[unit]
+        expected_rate = logical_items * 1_000_000_000.0 / time_ns
+        reported_rate = entry.get("items_per_second")
+        _require(isinstance(reported_rate, (int, float)) and math.isfinite(reported_rate),
+                 f"benchmark {name} missing finite items_per_second")
+        _require(math.isclose(float(reported_rate), expected_rate, rel_tol=1e-6, abs_tol=1e-9),
+                 f"benchmark {name} item rate disagrees with total logical items/denominator")
+        if name.startswith(("CoreNormalizedReplay/", "AdapterWireReplay/")):
+            ns_per_event = time_ns / logical_items
+            _require(math.isclose(float(reported_rate) * ns_per_event, 1_000_000_000.0,
+                                  rel_tol=1e-6, abs_tol=1e-3),
+                     f"benchmark {name} events/s and ns/event are not reciprocal")
 
 
 def validate_inventory(wrapper: dict[str, Any]) -> set[str]:
@@ -258,6 +328,7 @@ def validate_smoke(payload: dict[str, Any], wrapper: dict[str, Any],
                    repetitions: int) -> None:
     validate_payload_structure(payload)
     validate_inventory(wrapper)
+    validate_item_rates(payload, wrapper)
     executed = {normalize_benchmark_name(entry.get("name", ""))
                 for entry in payload.get("benchmarks", [])}
     expected = set(_smoke_expected_set())
@@ -293,7 +364,7 @@ def validate_wrapper(path: str, wrapper: dict[str, Any], allow_exploratory: bool
 
     source = wrapper.get("source_provenance")
     _require(isinstance(source, dict), "wrapper missing source_provenance")
-    _require_required_strings(source, ["git_sha"], "source_provenance")
+    _require_required_strings(source, ["git_sha", "status"], "source_provenance")
     _require(isinstance(source.get("dirty_at_configure"), bool),
              "source_provenance missing dirty_at_configure")
 
@@ -301,6 +372,11 @@ def validate_wrapper(path: str, wrapper: dict[str, Any], allow_exploratory: bool
     _require(evidence_class in ("formal", "exploratory"), "invalid evidence_class")
     if source.get("dirty_at_configure") and evidence_class == "formal":
         _fail("dirty source cannot produce formal baseline evidence")
+    if evidence_class == "formal":
+        _require(source.get("status") == "known",
+                 "formal evidence requires known source provenance")
+        _require(GIT_SHA.fullmatch(source["git_sha"]) is not None,
+                 "formal evidence requires a valid Git SHA")
 
     binary_provenance = wrapper.get("binary_provenance")
     _require(isinstance(binary_provenance, dict), "wrapper missing binary_provenance")
@@ -353,6 +429,9 @@ def validate_wrapper(path: str, wrapper: dict[str, Any], allow_exploratory: bool
     warmup = measurement.get("warmup")
     _require(isinstance(warmup, dict), "measurement_identity missing warmup")
     _require_required_strings(warmup, ["kind"], "measurement_identity.warmup")
+    _require(warmup.get("kind") == "explicit_workload_pass_v1" and
+             warmup.get("count") == 1,
+             "measurement identity requires one explicit workload-equivalent warmup")
     _require(isinstance(measurement.get("repetitions"), int)
              and measurement["repetitions"] >= 1,
              "measurement_identity missing/invalid repetitions")
@@ -360,6 +439,9 @@ def validate_wrapper(path: str, wrapper: dict[str, Any], allow_exploratory: bool
     payload = wrapper.get("result_payload")
     _require(isinstance(payload, dict), "wrapper missing result_payload")
     _require_required_strings(payload, ["path", "sha256", "schema"], "result_payload")
+    if evidence_class == "formal" and payload.get("schema") == "google_benchmark_json":
+        _require(measurement["repetitions"] >= 5,
+                 "formal Google Benchmark evidence requires at least 5 repetitions")
     payload_path = payload.get("path")
     if os.path.isabs(payload_path):
         resolved = payload_path
@@ -588,7 +670,8 @@ def main() -> int:
             if args.payload_json:
                 payload = _load_json(args.payload_json, "payload")
                 validate_payload_structure(payload)
-                print("payload structure PASS")
+                validate_item_rates(payload, wrapper)
+                print("payload structure and item-rate contract PASS")
         elif args.mode == "validate-smoke":
             payload = _load_json(args.payload_json, "payload")
             wrapper = _load_json(args.wrapper_json, "wrapper")

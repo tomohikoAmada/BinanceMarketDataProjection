@@ -20,6 +20,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace bmd_projection::m5::benchmark {
@@ -53,6 +54,12 @@ class CoreReplayExecutor final {
     [[nodiscard]] EventEvidence execute_event(core::BookProjection& projection,
                                               std::size_t event_index) const;
 
+    // Latency-only typed path. Decimal parsing and update-range construction
+    // are completed by the constructor, before any timing bracket.
+    [[nodiscard]] EventEvidence execute_prepared_event(core::BookProjection& projection,
+                                                       std::size_t event_index) const;
+    [[nodiscard]] bool prepared_inputs_valid() const noexcept { return prepared_inputs_valid_; }
+
     // Folds the final projection state (status, sequence, book shape) into the
     // checksum.
     [[nodiscard]] static std::uint64_t finalize_checksum(const core::BookProjection& projection,
@@ -71,6 +78,27 @@ class CoreReplayExecutor final {
     void set_expected_checksum(std::uint64_t value) noexcept { expected_checksum_ = value; }
 
   private:
+    enum class PreparedKind : std::uint8_t {
+        Install,
+        Rebaseline,
+        DepthUpdate,
+        Reset,
+        SnapshotRequest,
+        Metadata,
+        MalformedRange,
+    };
+
+    struct PreparedEvent final {
+        PreparedKind kind{PreparedKind::Reset};
+        std::uint64_t first_id{};
+        std::uint64_t final_id{};
+        std::optional<core::UpdateId> previous_final;
+        std::optional<core::UpdateRange> range;
+        std::vector<core::BookLevel> bids;
+        std::vector<core::BookLevel> asks;
+        std::vector<core::LevelUpdate> updates;
+    };
+
     [[nodiscard]] EventEvidence execute_install(core::BookProjection& projection,
                                                 const replay::InstallBaselineOp& operation) const;
     [[nodiscard]] EventEvidence execute_depth_update(core::BookProjection& projection,
@@ -87,6 +115,8 @@ class CoreReplayExecutor final {
     // Preallocated scratch: no allocation inside the measured region.
     mutable std::vector<core::BookLevel> scratch_book_levels_;
     mutable std::vector<core::LevelUpdate> scratch_updates_;
+    std::vector<PreparedEvent> prepared_events_;
+    bool prepared_inputs_valid_{true};
     std::uint64_t expected_checksum_{0};
 };
 

@@ -8,6 +8,8 @@ namespace bmd_projection::m5::benchmark::test_support {
 struct RepeatObservation final {
     bool full_preconstruction;
     bool first_baseline_adapts;
+    bool rebaseline_uses_adapter_wire;
+    bool corrupt_rebaseline_is_rejected;
     std::size_t event_count;
     std::uint64_t first_checksum;
     std::uint64_t second_checksum;

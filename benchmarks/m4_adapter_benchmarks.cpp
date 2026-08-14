@@ -6,6 +6,7 @@
 #include "benchmark_support/benchmark_registration.hpp"
 #include "benchmark_support/book_state.hpp"
 #include "benchmark_support/workload_spec.hpp"
+#include "canonical_text.hpp"
 
 #include <binance_market_data/projection/v1/snapshots.pb.h>
 #include <binance_market_data/projection_adapter/v1/proto_adapter.hpp>
@@ -14,7 +15,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -32,6 +36,45 @@ constexpr std::size_t kM4DepthSet[] = {8, 100, 1'000};
 // Static workload-spec registration.
 // ---------------------------------------------------------------------------
 namespace {
+
+[[nodiscard]] std::string m4_generated_sha256(std::string_view family, std::size_t depth) {
+    std::string concrete =
+        "m4_cell_v1\nfamily=" + std::string{family} + "\ndepth=" + std::to_string(depth) + '\n';
+    const auto append_bytes = [&concrete](std::string_view label, const std::string& bytes) {
+        concrete += label;
+        concrete += '_';
+        concrete += std::to_string(bytes.size());
+        concrete += ':';
+        concrete += bytes;
+        concrete += '\n';
+    };
+    if (family == "AdaptExchangeDepthSnapshot/Spot" || family == "CheckedInstall") {
+        append_bytes("snapshot_wire", wire_support::make_snapshot_wire(depth).SerializeAsString());
+    } else if (family == "AdaptDepthUpdate/Spot" || family == "CheckedApply") {
+        append_bytes(
+            "update_wire",
+            wire_support::make_update_wire(1'000'001, 1'000'001, std::nullopt).SerializeAsString());
+        if (family == "CheckedApply") {
+            concrete += "initial_bids=" + bm::describe_levels(bm::build_bid_levels(depth)) +
+                        "\ninitial_asks=" + bm::describe_levels(bm::build_ask_levels(depth)) +
+                        "\ninitial_update_id=1000001\npolicy=Spot\n";
+        }
+    } else {
+        concrete += "projection_bids=" + bm::describe_levels(bm::build_bid_levels(depth)) +
+                    "\nprojection_asks=" + bm::describe_levels(bm::build_ask_levels(depth)) +
+                    "\nprojection_update_id=1000001\npolicy=Spot\n";
+        if (family == "MakeLocalOrderBookSnapshot/Limited") {
+            concrete += "depth_limit=5\n";
+        } else {
+            concrete += "depth_limit=unlimited\n";
+        }
+    }
+    const auto hash = bmd_projection::m5::replay::sha256_hex(concrete);
+    if (!std::holds_alternative<std::string>(hash)) {
+        std::abort();
+    }
+    return std::get<std::string>(hash);
+}
 
 struct M4Specs {
     static void register_all() {
@@ -52,6 +95,7 @@ struct M4Specs {
                 builder.set("depth_per_side", depth);
                 builder.set("market", "Spot");
                 builder.set("generator_schema", "M5_PHASE6_M4_CELLS_V1");
+                builder.set("generated_workload_sha256", m4_generated_sha256(family, depth));
                 builder.set("primary_timer", "cpu");
                 builder.set("primary_denominator", "cpu_time");
                 if (std::string{family} == "SerializeSnapshot/ReusedBuffer") {
@@ -87,6 +131,8 @@ static void BM_M4AdaptExchangeDepthSnapshot(benchmark::State& state) {
     const auto depth = m4_depth(state);
     const auto identity = wire_support::benchmark_wire_identity();
     const auto wire = wire_support::make_snapshot_wire(depth);
+    benchmark::DoNotOptimize(
+        adapter::adapt_exchange_depth_snapshot(wire, identity.numeric_spec, identity.expected));
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         const auto result =
@@ -98,8 +144,8 @@ static void BM_M4AdaptExchangeDepthSnapshot(benchmark::State& state) {
         const auto& owner = std::get<adapter::AdaptedBookBaseline>(result);
         accumulator += owner.metadata().observed_quality.size();
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 // AdaptDepthUpdate: measures only adapt_depth_update. Wire construction, Core
@@ -107,6 +153,8 @@ static void BM_M4AdaptExchangeDepthSnapshot(benchmark::State& state) {
 static void BM_M4AdaptDepthUpdate(benchmark::State& state) {
     const auto identity = wire_support::benchmark_wire_identity();
     const auto wire = wire_support::make_update_wire(1'000'001, 1'000'001, std::nullopt);
+    benchmark::DoNotOptimize(
+        adapter::adapt_depth_update(wire, identity.numeric_spec, identity.expected));
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         const auto result =
@@ -118,8 +166,8 @@ static void BM_M4AdaptDepthUpdate(benchmark::State& state) {
         const auto& owner = std::get<adapter::AdaptedDepthBatch>(result);
         accumulator += owner.metadata().observed_quality.size();
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 // CheckedInstall: the owner is adapted once outside timing; only install_into
@@ -137,6 +185,10 @@ static void BM_M4CheckedInstall(benchmark::State& state) {
     }
     const auto& owner = std::get<adapter::AdaptedBookBaseline>(adapted);
     const auto pool_size = bm::pool_iteration_count(depth);
+    {
+        core::BookProjection warmup_target{identity.numeric_spec, core::SequencePolicyKind::Spot};
+        benchmark::DoNotOptimize(owner.install_into(warmup_target));
+    }
     bm::StatePool<core::BookProjection> pool;
     pool.fill(pool_size, [&identity] {
         return core::BookProjection{identity.numeric_spec, core::SequencePolicyKind::Spot};
@@ -148,7 +200,7 @@ static void BM_M4CheckedInstall(benchmark::State& state) {
             state.SkipWithError("M4/CheckedInstall prepared-state pool exhausted");
             break;
         }
-        auto target = std::move(pool.at(pool_index));
+        auto& target = pool.at(pool_index);
         const auto installed = owner.install_into(target);
         if (std::holds_alternative<adapter::AdapterError>(installed)) {
             state.SkipWithError("M4/CheckedInstall produced an adapter error");
@@ -162,8 +214,8 @@ static void BM_M4CheckedInstall(benchmark::State& state) {
         accumulator += static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.status_after));
         ++pool_index;
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 // CheckedApply: the owner is adapted once outside timing; only apply_to is
@@ -180,6 +232,11 @@ static void BM_M4CheckedApply(benchmark::State& state) {
     }
     const auto& owner = std::get<adapter::AdaptedDepthBatch>(adapted);
     const auto pool_size = bm::pool_iteration_count(depth);
+    {
+        auto warmup_target =
+            bm::build_synchronized_projection(core::SequencePolicyKind::Spot, depth);
+        benchmark::DoNotOptimize(owner.apply_to(warmup_target));
+    }
     bm::StatePool<core::BookProjection> pool;
     pool.fill(pool_size, [depth] {
         return bm::build_synchronized_projection(core::SequencePolicyKind::Spot, depth);
@@ -191,7 +248,7 @@ static void BM_M4CheckedApply(benchmark::State& state) {
             state.SkipWithError("M4/CheckedApply prepared-state pool exhausted");
             break;
         }
-        auto target = std::move(pool.at(pool_index));
+        auto& target = pool.at(pool_index);
         const auto applied = owner.apply_to(target);
         if (std::holds_alternative<adapter::AdapterError>(applied)) {
             state.SkipWithError("M4/CheckedApply produced an adapter error");
@@ -205,8 +262,8 @@ static void BM_M4CheckedApply(benchmark::State& state) {
         accumulator += static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.status_after));
         ++pool_index;
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 // Prepared projection + snapshot context/options; snapshot construction only
@@ -230,6 +287,7 @@ static void BM_M4MakeLocalOrderBookSnapshotUnlimited(benchmark::State& state) {
     const auto projection = make_prepared_projection(depth);
     const auto context = make_snapshot_context();
     const adapter::SnapshotOptions options;
+    benchmark::DoNotOptimize(adapter::make_local_order_book_snapshot(projection, context, options));
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         const auto produced = adapter::make_local_order_book_snapshot(projection, context, options);
@@ -240,8 +298,8 @@ static void BM_M4MakeLocalOrderBookSnapshotUnlimited(benchmark::State& state) {
         const auto& snapshot = std::get<core::LocalOrderBookSnapshot>(produced);
         accumulator += static_cast<std::uint64_t>(snapshot.bids_size() + snapshot.asks_size());
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 static void BM_M4MakeLocalOrderBookSnapshotLimited(benchmark::State& state) {
@@ -255,6 +313,7 @@ static void BM_M4MakeLocalOrderBookSnapshotLimited(benchmark::State& state) {
     }
     adapter::SnapshotOptions options;
     options.depth_limit = std::get<adapter::DepthLimit>(limit);
+    benchmark::DoNotOptimize(adapter::make_local_order_book_snapshot(projection, context, options));
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         const auto produced = adapter::make_local_order_book_snapshot(projection, context, options);
@@ -265,8 +324,8 @@ static void BM_M4MakeLocalOrderBookSnapshotLimited(benchmark::State& state) {
         const auto& snapshot = std::get<core::LocalOrderBookSnapshot>(produced);
         accumulator += static_cast<std::uint64_t>(snapshot.bids_size() + snapshot.asks_size());
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 // SerializeSnapshot: preconstructed snapshot, serialization only. The fresh
@@ -281,6 +340,10 @@ static void BM_M4SerializeSnapshotFreshBuffer(benchmark::State& state) {
         return;
     }
     const auto& snapshot = std::get<core::LocalOrderBookSnapshot>(produced);
+    {
+        std::string warmup_buffer;
+        benchmark::DoNotOptimize(snapshot.SerializeToString(&warmup_buffer));
+    }
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         std::string buffer;
@@ -293,8 +356,8 @@ static void BM_M4SerializeSnapshotFreshBuffer(benchmark::State& state) {
             accumulator += static_cast<unsigned char>(buffer.front());
         }
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 // Optional diagnostic: reused buffer retains capacity across iterations.
@@ -308,6 +371,10 @@ static void BM_M4SerializeSnapshotReusedBuffer(benchmark::State& state) {
         return;
     }
     const auto& snapshot = std::get<core::LocalOrderBookSnapshot>(produced);
+    {
+        std::string warmup_buffer;
+        benchmark::DoNotOptimize(snapshot.SerializeToString(&warmup_buffer));
+    }
     std::string buffer;
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
@@ -318,8 +385,8 @@ static void BM_M4SerializeSnapshotReusedBuffer(benchmark::State& state) {
         }
         accumulator += buffer.size();
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(1);
     }
+    state.SetItemsProcessed(state.iterations());
 }
 
 } // namespace

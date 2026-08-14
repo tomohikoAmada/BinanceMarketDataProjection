@@ -21,6 +21,7 @@
 
 #include <benchmark/benchmark.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -45,7 +46,24 @@ namespace replay = bmd_projection::m5::replay;
 namespace {
 
 [[nodiscard]] std::string replay_spec_suffix(const replay::ReplayFixture& fixture) {
-    return bm::replay_fixture_identity(fixture);
+    auto identity = bm::replay_fixture_identity(fixture);
+    std::replace(identity.begin(), identity.end(), '\n', ';');
+    return identity;
+}
+
+void set_replay_generated_identity(bm::WorkloadSpecBuilder& builder,
+                                   const replay::ReplayFixture& fixture) {
+    const auto provenance_value = [&fixture](std::string_view key) {
+        const auto found =
+            std::find_if(fixture.manifest.provenance.begin(), fixture.manifest.provenance.end(),
+                         [key](const auto& entry) { return entry.first == key; });
+        return found == fixture.manifest.provenance.end() ? std::string{"not_applicable"}
+                                                          : found->second;
+    };
+    builder.set("canonical_log_sha256", fixture.canonical_log_sha256);
+    builder.set("generated_workload_sha256", fixture.canonical_log_sha256);
+    builder.set("generator_version", provenance_value("generator"));
+    builder.set("seed", provenance_value("seed"));
 }
 
 const auto kCoreReplaySpecs = [] {
@@ -65,6 +83,8 @@ const auto kCoreReplaySpecs = [] {
         builder.set("primary_timer", "wall");
         builder.set("checksum_methodology_version", bm::kReplayChecksumMethodology);
         builder.set("generator_schema", "M5_PHASE6_REPLAY_V1");
+        builder.set("logical_items_per_iteration", fixture.replay.operations.size());
+        set_replay_generated_identity(builder, fixture);
     }
     {
         const auto fixture = phase3::make_usdm_small_workload();
@@ -82,6 +102,8 @@ const auto kCoreReplaySpecs = [] {
         builder.set("primary_timer", "wall");
         builder.set("checksum_methodology_version", bm::kReplayChecksumMethodology);
         builder.set("generator_schema", "M5_PHASE6_REPLAY_V1");
+        builder.set("logical_items_per_iteration", fixture.replay.operations.size());
+        set_replay_generated_identity(builder, fixture);
     }
     return 0;
 }();
@@ -109,6 +131,8 @@ const auto kAdapterReplaySpecs = [] {
         builder.set("primary_timer", "wall");
         builder.set("checksum_methodology_version", bm::kReplayChecksumMethodology);
         builder.set("generator_schema", "M5_PHASE6_REPLAY_V1");
+        builder.set("logical_items_per_iteration", materialized.replay.operations.size());
+        set_replay_generated_identity(builder, materialized);
     }
     return 0;
 }();
@@ -160,6 +184,13 @@ static void run_core_replay(benchmark::State& state,
         core::BookProjection projection{executor.numeric_spec(), executor.policy()};
         executor.set_expected_checksum(executor.run(projection));
     }
+    {
+        core::BookProjection warmup_projection{executor.numeric_spec(), executor.policy()};
+        if (executor.run(warmup_projection) != executor.expected_checksum()) {
+            state.SkipWithError(std::string{name} + " explicit warmup checksum mismatch");
+            return;
+        }
+    }
     const auto expected = executor.expected_checksum();
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
@@ -171,8 +202,9 @@ static void run_core_replay(benchmark::State& state,
         }
         accumulator += checksum;
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(static_cast<std::int64_t>(executor.event_count()));
     }
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+                            static_cast<std::int64_t>(executor.event_count()));
 }
 
 static void BM_CoreNormalizedReplaySpot(benchmark::State& state) {
@@ -203,6 +235,13 @@ static void run_adapter_replay(benchmark::State& state,
         core::BookProjection projection{executor.numeric_spec(), executor.policy()};
         executor.set_expected_checksum(executor.run(projection));
     }
+    {
+        core::BookProjection warmup_projection{executor.numeric_spec(), executor.policy()};
+        if (executor.run(warmup_projection) != executor.expected_checksum()) {
+            state.SkipWithError(std::string{name} + " explicit warmup checksum mismatch");
+            return;
+        }
+    }
     const auto expected = executor.expected_checksum();
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
@@ -214,8 +253,9 @@ static void run_adapter_replay(benchmark::State& state,
         }
         accumulator += checksum;
         benchmark::DoNotOptimize(accumulator);
-        state.SetItemsProcessed(static_cast<std::int64_t>(executor.event_count()));
     }
+    state.SetItemsProcessed(static_cast<std::int64_t>(state.iterations()) *
+                            static_cast<std::int64_t>(executor.event_count()));
 }
 
 static void BM_AdapterWireReplaySpot(benchmark::State& state) {

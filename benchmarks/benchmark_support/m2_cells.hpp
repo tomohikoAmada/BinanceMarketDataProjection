@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace bmd_projection::m5::benchmark {
@@ -79,6 +80,11 @@ enum class M2ApplyUpdatesMix : std::uint8_t {
     Insertion,
 };
 
+// Pure identity generators. They hash the concrete prepared state and update
+// sequence without constructing the bounded execution pools.
+[[nodiscard]] std::string m2_apply_level_generated_sha256(M2ApplyLevelKind kind, std::size_t depth);
+[[nodiscard]] std::string m2_replace_all_generated_sha256(std::size_t depth);
+
 class M2ApplyUpdatesCell final {
   public:
     struct Config final {
@@ -125,6 +131,9 @@ class M2ApplyUpdatesCell final {
     std::string generated_sha_;
 };
 
+[[nodiscard]] std::string
+m2_apply_updates_generated_sha256(const M2ApplyUpdatesCell::Config& config);
+
 // Prepared read-only query state. All query cells are idempotent over a fixed
 // book, so a single prepared book is shared across every measured execution.
 class M2QueryCell final {
@@ -161,6 +170,9 @@ class M2QueryCell final {
     core::OrderBook book_;
     std::string generated_sha_;
 };
+
+[[nodiscard]] std::string m2_query_generated_sha256(std::string_view operation,
+                                                    const M2QueryCell::Config& config);
 
 class M2ReplaceAllCell final {
   public:

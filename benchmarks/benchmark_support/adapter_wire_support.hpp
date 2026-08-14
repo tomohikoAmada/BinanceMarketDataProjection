@@ -61,13 +61,10 @@ struct PreconstructedEntry final {
     PreconstructedEntry();
 
     PreconstructedKind kind{PreconstructedKind::Baseline};
-    // Baseline/Update: the preconstructed wire message plus conversion inputs.
+    // Baseline/Rebaseline/Update: the preconstructed wire message plus
+    // conversion inputs.
     market_wire::ExchangeDepthSnapshot baseline_wire;
     market_wire::DepthUpdate update_wire;
-    // Rebaseline: direct production install inputs.
-    std::uint64_t rebaseline_last_update_id{};
-    std::vector<core::BookLevel> rebaseline_bids;
-    std::vector<core::BookLevel> rebaseline_asks;
     // Snapshot: production snapshot context/options.
     adapter::SnapshotContext snapshot_context;
     adapter::SnapshotOptions snapshot_options;

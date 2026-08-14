@@ -4,6 +4,8 @@
 #include "environment_identity.hpp"
 #include "phase6_json.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <sstream>
@@ -54,6 +56,25 @@ namespace {
         }
     }
     return references;
+}
+
+[[nodiscard]] std::string workload_field(std::string_view canonical_text, std::string_view key) {
+    const auto prefix = std::string{key} + "=";
+    std::istringstream stream{std::string{canonical_text}};
+    std::string line;
+    while (std::getline(stream, line)) {
+        if (line.starts_with(prefix)) {
+            return line.substr(prefix.size());
+        }
+    }
+    return {};
+}
+
+[[nodiscard]] bool valid_git_sha(std::string_view value) {
+    return (value.size() == 40 || value.size() == 64) &&
+           std::all_of(value.begin(), value.end(), [](char character) {
+               return std::isxdigit(static_cast<unsigned char>(character)) != 0;
+           });
 }
 
 void write_build_identity(json::Writer& writer) {
@@ -129,7 +150,13 @@ std::string build_wrapper_json(const WrapperInput& input) {
 
     auto effective_class = input.evidence_class;
     std::string downgrade_reason;
-    const bool dirty_at_configure = std::string{BMD_P6_GIT_DIRTY_AT_CONFIGURE} == "true";
+    const bool source_known =
+        BMD_P6_GIT_PROVENANCE_STATUS == "known" && valid_git_sha(BMD_P6_GIT_SHA) &&
+        (BMD_P6_GIT_DIRTY_AT_CONFIGURE == "true" || BMD_P6_GIT_DIRTY_AT_CONFIGURE == "false");
+    if (!source_known && input.evidence_class == "formal") {
+        return {};
+    }
+    const bool dirty_at_configure = !source_known || BMD_P6_GIT_DIRTY_AT_CONFIGURE == "true";
     if (dirty_at_configure && effective_class == "formal") {
         effective_class = "exploratory";
         downgrade_reason = "dirty_at_configure";
@@ -158,6 +185,8 @@ std::string build_wrapper_json(const WrapperInput& input) {
     writer.begin_object();
     writer.key("git_sha");
     writer.value(BMD_P6_GIT_SHA);
+    writer.key("status");
+    writer.value(source_known ? "known" : "unavailable");
     writer.key("dirty_at_configure");
     writer.value(dirty_at_configure);
     writer.end_object();
@@ -201,6 +230,14 @@ std::string build_wrapper_json(const WrapperInput& input) {
         writer.value("M5_BENCHMARK_WORKLOAD_SPEC_V1");
         writer.key("workload_spec_sha256");
         writer.value(workload.canonical_sha256);
+        writer.key("generator_schema");
+        writer.value(workload_field(workload.canonical_text, "generator_schema"));
+        writer.key("generator_version");
+        writer.value(workload_field(workload.canonical_text, "generator_version"));
+        writer.key("seed");
+        writer.value(workload_field(workload.canonical_text, "seed"));
+        writer.key("generated_workload_sha256");
+        writer.value(workload_field(workload.canonical_text, "generated_workload_sha256"));
         writer.key("canonical_spec_text");
         writer.value(workload.canonical_text);
         writer.end_object();

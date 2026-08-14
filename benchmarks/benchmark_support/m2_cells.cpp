@@ -1,9 +1,11 @@
 #include "m2_cells.hpp"
 
 #include "canonical_text.hpp"
+#include "m3_cells.hpp"
 
 #include <binance_market_data/projection/v1/order_book/book_side.hpp>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -39,6 +41,128 @@ constexpr std::size_t kBatchCycleSize = 64;
 
 } // namespace
 
+std::string m2_apply_level_generated_sha256(M2ApplyLevelKind kind, std::size_t depth) {
+    const BookParams params{};
+    std::string description = "m2_apply_level_v1\nkind=" + std::to_string(static_cast<int>(kind)) +
+                              "\ndepth=" + std::to_string(depth) +
+                              "\ninitial_bids=" + describe_levels(build_bid_levels(depth)) +
+                              "\ninitial_asks=" + describe_levels(build_ask_levels(depth)) +
+                              "\nupdates=";
+    switch (kind) {
+    case M2ApplyLevelKind::Insert: {
+        const core::LevelUpdate update{core::BookSide::Bid, absent_bid_price(depth),
+                                       quantity_units(params.quantity_base + 1)};
+        description += describe_updates(std::span{&update, 1});
+        break;
+    }
+    case M2ApplyLevelKind::Update: {
+        const std::array updates{
+            core::LevelUpdate{core::BookSide::Bid, price_units(params.bid_start),
+                              quantity_units(params.quantity_base + 1)},
+            core::LevelUpdate{core::BookSide::Bid, price_units(params.bid_start),
+                              quantity_units(params.quantity_base + 2)}};
+        description += describe_updates(updates);
+        break;
+    }
+    case M2ApplyLevelKind::Delete: {
+        const core::LevelUpdate update{core::BookSide::Bid, price_units(params.bid_start),
+                                       quantity_units(0)};
+        description += describe_updates(std::span{&update, 1});
+        break;
+    }
+    case M2ApplyLevelKind::MissingDelete: {
+        const core::LevelUpdate update{core::BookSide::Bid, absent_bid_price(depth),
+                                       quantity_units(0)};
+        description += describe_updates(std::span{&update, 1});
+        break;
+    }
+    }
+    return sha256_of(description);
+}
+
+std::string m2_apply_updates_generated_sha256(const M2ApplyUpdatesCell::Config& config) {
+    const BookParams params{};
+    std::string description =
+        "m2_apply_updates_v1\nmix=" + std::to_string(static_cast<int>(config.mix)) +
+        "\ndepth=" + std::to_string(config.depth) + "\nbatch=" + std::to_string(config.batch) +
+        "\ninitial_bids=" + describe_levels(build_bid_levels(config.depth)) +
+        "\ninitial_asks=" + describe_levels(build_ask_levels(config.depth)) + "\nupdate_sequence=";
+    if (config.mix == M2ApplyUpdatesMix::Insertion) {
+        std::vector<core::LevelUpdate> inserts;
+        inserts.reserve(config.batch);
+        for (std::size_t index = 0; index < config.batch; ++index) {
+            inserts.push_back({core::BookSide::Bid,
+                               price_units(params.bid_start - 1 - static_cast<std::int64_t>(index)),
+                               quantity_units(params.quantity_base + 1)});
+        }
+        description += describe_updates(inserts);
+        return sha256_of(description);
+    }
+    for (std::size_t batch_index = 0; batch_index < kBatchCycleSize; ++batch_index) {
+        std::vector<core::LevelUpdate> updates;
+        updates.reserve(config.batch);
+        for (std::size_t slot = 0; slot < config.batch; ++slot) {
+            const auto price_index =
+                (batch_index * config.batch + slot) % (config.depth == 0 ? 1 : config.depth);
+            updates.push_back(
+                {core::BookSide::Bid,
+                 price_units(params.bid_start - static_cast<std::int64_t>(price_index)),
+                 cycling_quantity(batch_index + slot)});
+        }
+        description += describe_updates(updates);
+    }
+    return sha256_of(description);
+}
+
+std::string m2_query_generated_sha256(std::string_view operation,
+                                      const M2QueryCell::Config& config) {
+    return sha256_of("m2_query_v1\noperation=" + std::string{operation} +
+                     "\ndepth=" + std::to_string(config.depth) +
+                     "\nquery_limit=" + std::to_string(config.query_limit) +
+                     "\nbids=" + describe_levels(build_bid_levels(config.depth)) +
+                     "\nasks=" + describe_levels(build_ask_levels(config.depth)));
+}
+
+std::string m2_replace_all_generated_sha256(std::size_t depth) {
+    std::vector<core::BookLevel> old_bids;
+    std::vector<core::BookLevel> old_asks;
+    const BookParams params{};
+    old_bids.reserve(depth);
+    old_asks.reserve(depth);
+    for (std::size_t index = 0; index < depth; ++index) {
+        old_bids.push_back(
+            {price_units(params.bid_start + 20'000 - static_cast<std::int64_t>(index)),
+             quantity_units(1)});
+        old_asks.push_back(
+            {price_units(params.ask_start + 30'000 + static_cast<std::int64_t>(index)),
+             quantity_units(1)});
+    }
+    return sha256_of("m2_replace_all_v1\ndepth=" + std::to_string(depth) + "\nold_bids=" +
+                     describe_levels(old_bids) + "\nold_asks=" + describe_levels(old_asks) +
+                     "\nreplacement_bids=" + describe_levels(build_bid_levels(depth)) +
+                     "\nreplacement_asks=" + describe_levels(build_ask_levels(depth)));
+}
+
+std::string m3_proxy_generated_sha256(std::string_view operation, std::size_t depth) {
+    std::string description = "m3_proxy_v1\noperation=" + std::string{operation} +
+                              "\ndepth=" + std::to_string(depth) +
+                              "\nbids=" + describe_levels(build_bid_levels(depth)) +
+                              "\nasks=" + describe_levels(build_ask_levels(depth));
+    if (operation == "apply_updates") {
+        const BookParams params{};
+        description += "\nupdate_sequence=";
+        for (std::size_t batch_index = 0; batch_index < kBatchCycleSize; ++batch_index) {
+            const core::LevelUpdate update{
+                core::BookSide::Bid,
+                price_units(params.bid_start -
+                            static_cast<std::int64_t>(batch_index % (depth == 0 ? 1 : depth))),
+                cycling_quantity(batch_index)};
+            description += describe_updates(std::span{&update, 1});
+        }
+    }
+    return sha256_of(description);
+}
+
 M2ApplyLevelCell::M2ApplyLevelCell(M2ApplyLevelKind kind, std::size_t depth)
     : kind_{kind}, depth_{depth}, book_{benchmark_numeric_spec()} {}
 
@@ -53,29 +177,25 @@ void M2ApplyLevelCell::prepare() {
         update_ = core::LevelUpdate{core::BookSide::Bid, absent_bid_price(depth_),
                                     quantity_units(params.quantity_base + 1)};
         pool_.fill(pool_iteration_count(depth_), [this] { return build_order_book(depth_); });
-        {
-            const auto bids = build_bid_levels(depth_);
-            generated_sha_ = sha256_of(describe_updates(std::span(&*update_, 1)) +
-                                       describe_levels(std::span{bids}));
-        }
+        { generated_sha_ = m2_apply_level_generated_sha256(kind_, depth_); }
         break;
     case M2ApplyLevelKind::Update:
         update_slots_.push_back({core::BookSide::Bid, price_units(params.bid_start),
                                  quantity_units(params.quantity_base + 1)});
         update_slots_.push_back({core::BookSide::Bid, price_units(params.bid_start),
                                  quantity_units(params.quantity_base + 2)});
-        generated_sha_ = sha256_of(describe_updates(update_slots_));
+        generated_sha_ = m2_apply_level_generated_sha256(kind_, depth_);
         break;
     case M2ApplyLevelKind::Delete:
         update_ = core::LevelUpdate{core::BookSide::Bid, price_units(params.bid_start),
                                     quantity_units(0)};
         pool_.fill(pool_iteration_count(depth_), [this] { return build_order_book(depth_); });
-        generated_sha_ = sha256_of(describe_updates(std::span(&*update_, 1)));
+        generated_sha_ = m2_apply_level_generated_sha256(kind_, depth_);
         break;
     case M2ApplyLevelKind::MissingDelete:
         update_ =
             core::LevelUpdate{core::BookSide::Bid, absent_bid_price(depth_), quantity_units(0)};
-        generated_sha_ = sha256_of(describe_updates(std::span(&*update_, 1)));
+        generated_sha_ = m2_apply_level_generated_sha256(kind_, depth_);
         break;
     }
 }
@@ -131,7 +251,7 @@ void M2ApplyUpdatesCell::prepare() {
         cycle_batches_.push_back(std::move(inserts));
         pool_.fill(pool_iteration_count(0),
                    [] { return core::OrderBook{benchmark_numeric_spec()}; });
-        generated_sha_ = sha256_of(describe_updates(cycle_batches_.front()));
+        generated_sha_ = m2_apply_updates_generated_sha256({depth_, batch_, mix_});
         return;
     }
     book_ = build_order_book(depth_);
@@ -148,11 +268,7 @@ void M2ApplyUpdatesCell::prepare() {
         }
         cycle_batches_.push_back(std::move(updates));
     }
-    std::string description;
-    for (const auto& batch : cycle_batches_) {
-        description += describe_updates(batch);
-    }
-    generated_sha_ = sha256_of(description);
+    generated_sha_ = m2_apply_updates_generated_sha256({depth_, batch_, mix_});
 }
 
 bool M2ApplyUpdatesCell::uses_pool() const noexcept { return mix_ == M2ApplyUpdatesMix::Insertion; }
@@ -173,12 +289,7 @@ M2QueryCell::M2QueryCell(Config config)
 
 void M2QueryCell::prepare() {
     book_ = build_order_book(depth_);
-    {
-        const auto bids = build_bid_levels(depth_);
-        const auto asks = build_ask_levels(depth_);
-        generated_sha_ =
-            sha256_of(describe_levels(std::span{bids}) + describe_levels(std::span{asks}));
-    }
+    generated_sha_ = m2_query_generated_sha256("prepared_book", {depth_, query_limit_});
 }
 
 std::optional<core::BookLevel> M2QueryCell::best(core::BookSide side) const {
@@ -227,7 +338,7 @@ void M2ReplaceAllCell::prepare() {
         }
         book_.replace_all(old_bids, old_asks);
     }
-    generated_sha_ = sha256_of(describe_levels(bids_) + describe_levels(asks_));
+    generated_sha_ = m2_replace_all_generated_sha256(depth_);
 }
 
 void M2ReplaceAllCell::execute_step() { book_.replace_all(bids_, asks_); }
@@ -251,11 +362,7 @@ void M3ProxyCells::prepare() {
                            cycling_quantity(batch_index)});
         cycle_batches_.push_back(std::move(updates));
     }
-    std::string description;
-    for (const auto& batch : cycle_batches_) {
-        description += describe_updates(batch);
-    }
-    generated_sha_ = sha256_of(describe_levels(bids_) + describe_levels(asks_) + description);
+    generated_sha_ = m3_proxy_generated_sha256("prepared_proxy_state", depth_);
 }
 
 std::vector<core::BookLevel> M3ProxyCells::all_levels_both_sides() const {

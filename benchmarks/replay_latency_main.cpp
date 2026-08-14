@@ -153,16 +153,28 @@ int main(int argc, char** argv) {
     // 1. Preload and pre-touch the workload; 2. immutable inputs.
     const auto fixture = make_fixture(options.workload);
     bm::CoreReplayExecutor executor{fixture};
+    if (!executor.prepared_inputs_valid()) {
+        std::fprintf(stderr, "latency workload preparation rejected invalid numeric input\n");
+        return 1;
+    }
     const auto event_count = executor.event_count();
+    const auto run_prepared_pass = [&executor, event_count](core::BookProjection& projection) {
+        std::uint64_t checksum = bm::kReplayChecksumSeed;
+        for (std::size_t index = 0; index < event_count; ++index) {
+            checksum =
+                bm::fold_evidence(checksum, executor.execute_prepared_event(projection, index));
+        }
+        return executor.finalize_checksum(projection, checksum);
+    };
     const auto expected_pass_checksum = [&] {
         core::BookProjection projection{executor.numeric_spec(), executor.policy()};
-        return executor.run(projection);
+        return run_prepared_pass(projection);
     }();
 
     // 3. One full untimed warmup pass; 4. discard its state.
     {
         core::BookProjection projection{executor.numeric_spec(), executor.policy()};
-        const auto warmup_checksum = executor.run(projection);
+        const auto warmup_checksum = run_prepared_pass(projection);
         if (warmup_checksum != expected_pass_checksum) {
             std::fprintf(stderr, "latency warmup checksum mismatch\n");
             return 1;
@@ -184,7 +196,7 @@ int main(int argc, char** argv) {
         pass_evidence.clear();
         for (std::size_t index = 0; index < event_count; ++index) {
             const auto t0 = Clock::now();
-            const auto evidence = executor.execute_event(projection, index);
+            const auto evidence = executor.execute_prepared_event(projection, index);
             const auto t1 = Clock::now();
             samples.push_back(static_cast<std::uint64_t>((t1 - t0).count()));
             pass_evidence.push_back(evidence);
@@ -275,7 +287,7 @@ int main(int argc, char** argv) {
         writer.key("warmup");
         writer.begin_object();
         writer.key("kind");
-        writer.value("full_workload_pass");
+        writer.value("explicit_workload_pass_v1");
         writer.key("count");
         writer.value(static_cast<std::uint64_t>(1));
         writer.key("state_isolation");
@@ -359,7 +371,7 @@ int main(int argc, char** argv) {
         input.payload_schema = bm::kLatencySchema;
         input.timer = "steady_clock";
         input.primary_denominator = "wall_time";
-        input.warmup_kind = "full_workload_pass";
+        input.warmup_kind = "explicit_workload_pass_v1";
         input.warmup_count = 1;
         input.repetitions = 1;
         input.sample_count = report.sample_count;
