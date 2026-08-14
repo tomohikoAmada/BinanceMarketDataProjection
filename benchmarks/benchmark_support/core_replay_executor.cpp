@@ -4,6 +4,7 @@
 #include <binance_market_data/projection/v1/order_book/book_side.hpp>
 #include <binance_market_data/projection/v1/order_book/order_book.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -101,6 +102,11 @@ CoreReplayExecutor::CoreReplayExecutor(const replay::ReplayFixture& fixture)
       numeric_spec_{required_scale(fixture.identity.numeric_spec.price_scale),
                     required_scale(fixture.identity.numeric_spec.quantity_scale)},
       policy_{core_policy(fixture.identity.sequence_policy)} {
+    initialize_scratch();
+    prepare_latency_events();
+}
+
+void CoreReplayExecutor::initialize_scratch() {
     std::size_t max_book_levels = 0;
     std::size_t max_updates = 0;
     for (const auto& operation : fixture_->replay.operations) {
@@ -118,77 +124,113 @@ CoreReplayExecutor::CoreReplayExecutor(const replay::ReplayFixture& fixture)
                                 core::BookLevel{placeholder_price(), placeholder_quantity()});
     scratch_updates_.resize(max_updates, core::LevelUpdate{core::BookSide::Bid, placeholder_price(),
                                                            placeholder_quantity()});
+}
 
+void CoreReplayExecutor::prepare_latency_events() {
     prepared_events_.reserve(fixture_->replay.operations.size());
-    const auto parse_book_levels = [this](const std::vector<replay::LevelInput>& input,
-                                          std::vector<core::BookLevel>& output) {
-        output.reserve(input.size());
-        for (const auto& level : input) {
-            const auto price = core::parse_price(level.price, numeric_spec_.price_scale);
-            const auto quantity =
-                core::parse_quantity(level.quantity, numeric_spec_.quantity_scale);
-            if (!std::holds_alternative<core::ParsedDecimal<core::PriceUnits>>(price) ||
-                !std::holds_alternative<core::ParsedDecimal<core::QuantityUnits>>(quantity)) {
-                return false;
-            }
-            output.push_back({std::get<core::ParsedDecimal<core::PriceUnits>>(price).value,
-                              std::get<core::ParsedDecimal<core::QuantityUnits>>(quantity).value});
-        }
-        return true;
-    };
     for (const auto& operation : fixture_->replay.operations) {
-        PreparedEvent prepared;
-        if (const auto* install = std::get_if<replay::InstallBaselineOp>(&operation)) {
-            prepared.kind = PreparedKind::Install;
-            prepared.final_id = install->last_update_id;
-            prepared_inputs_valid_ = parse_book_levels(install->bids, prepared.bids) &&
-                                     parse_book_levels(install->asks, prepared.asks) &&
-                                     prepared_inputs_valid_;
-        } else if (const auto* rebaseline = std::get_if<replay::RebaselineOp>(&operation)) {
-            prepared.kind = PreparedKind::Rebaseline;
-            prepared.final_id = rebaseline->last_update_id;
-            prepared_inputs_valid_ = parse_book_levels(rebaseline->bids, prepared.bids) &&
-                                     parse_book_levels(rebaseline->asks, prepared.asks) &&
-                                     prepared_inputs_valid_;
-        } else if (const auto* update = std::get_if<replay::DepthUpdateOp>(&operation)) {
-            prepared.kind = PreparedKind::DepthUpdate;
-            prepared.first_id = update->first_update_id;
-            prepared.final_id = update->final_update_id;
-            prepared.range = core::UpdateRange::try_create(core::UpdateId{update->first_update_id},
-                                                           core::UpdateId{update->final_update_id});
-            if (update->previous_final.has_value()) {
-                prepared.previous_final = core::UpdateId{*update->previous_final};
-            }
-            prepared.updates.reserve(update->levels.size());
-            for (const auto& level : update->levels) {
-                const auto price = core::parse_price(level.price, numeric_spec_.price_scale);
-                const auto quantity =
-                    core::parse_quantity(level.quantity, numeric_spec_.quantity_scale);
-                if (!std::holds_alternative<core::ParsedDecimal<core::PriceUnits>>(price) ||
-                    !std::holds_alternative<core::ParsedDecimal<core::QuantityUnits>>(quantity)) {
-                    prepared_inputs_valid_ = false;
-                    break;
-                }
-                prepared.updates.push_back(
-                    {core_side(level.side),
-                     std::get<core::ParsedDecimal<core::PriceUnits>>(price).value,
-                     std::get<core::ParsedDecimal<core::QuantityUnits>>(quantity).value});
-            }
-            prepared_inputs_valid_ = prepared.range.has_value() && prepared_inputs_valid_;
-        } else if (std::holds_alternative<replay::ResetOp>(operation)) {
-            prepared.kind = PreparedKind::Reset;
-        } else if (std::holds_alternative<replay::SnapshotRequestOp>(operation)) {
-            prepared.kind = PreparedKind::SnapshotRequest;
-        } else if (std::holds_alternative<replay::AdapterMetadataOp>(operation)) {
-            prepared.kind = PreparedKind::Metadata;
-        } else {
-            const auto& malformed = std::get<replay::MalformedRangeOp>(operation);
-            prepared.kind = PreparedKind::MalformedRange;
-            prepared.first_id = malformed.first_update_id;
-            prepared.final_id = malformed.final_update_id;
-        }
-        prepared_events_.push_back(std::move(prepared));
+        prepared_events_.push_back(std::visit(
+            [this](const auto& concrete) { return this->prepare_event(concrete); }, operation));
     }
+}
+
+bool CoreReplayExecutor::prepare_book_levels(const std::vector<replay::LevelInput>& input,
+                                             std::vector<core::BookLevel>& output) const {
+    output.reserve(input.size());
+    for (const auto& level : input) {
+        const auto price = core::parse_price(level.price, numeric_spec_.price_scale);
+        const auto quantity = core::parse_quantity(level.quantity, numeric_spec_.quantity_scale);
+        if (!std::holds_alternative<core::ParsedDecimal<core::PriceUnits>>(price) ||
+            !std::holds_alternative<core::ParsedDecimal<core::QuantityUnits>>(quantity)) {
+            return false;
+        }
+        output.push_back({std::get<core::ParsedDecimal<core::PriceUnits>>(price).value,
+                          std::get<core::ParsedDecimal<core::QuantityUnits>>(quantity).value});
+    }
+    return true;
+}
+
+CoreReplayExecutor::PreparedEvent
+CoreReplayExecutor::prepare_event(const replay::InstallBaselineOp& operation) {
+    PreparedEvent prepared;
+    prepared.kind = PreparedKind::Install;
+    prepared.final_id = operation.last_update_id;
+    prepared_inputs_valid_ = prepare_book_levels(operation.bids, prepared.bids) &&
+                             prepare_book_levels(operation.asks, prepared.asks) &&
+                             prepared_inputs_valid_;
+    return prepared;
+}
+
+CoreReplayExecutor::PreparedEvent
+CoreReplayExecutor::prepare_event(const replay::RebaselineOp& operation) {
+    PreparedEvent prepared;
+    prepared.kind = PreparedKind::Rebaseline;
+    prepared.final_id = operation.last_update_id;
+    prepared_inputs_valid_ = prepare_book_levels(operation.bids, prepared.bids) &&
+                             prepare_book_levels(operation.asks, prepared.asks) &&
+                             prepared_inputs_valid_;
+    return prepared;
+}
+
+CoreReplayExecutor::PreparedEvent
+CoreReplayExecutor::prepare_event(const replay::DepthUpdateOp& operation) {
+    PreparedEvent prepared;
+    prepared.kind = PreparedKind::DepthUpdate;
+    prepared.first_id = operation.first_update_id;
+    prepared.final_id = operation.final_update_id;
+    prepared.range = core::UpdateRange::try_create(core::UpdateId{operation.first_update_id},
+                                                   core::UpdateId{operation.final_update_id});
+    if (operation.previous_final.has_value()) {
+        prepared.previous_final = core::UpdateId{*operation.previous_final};
+    }
+    prepared.updates.reserve(operation.levels.size());
+    for (const auto& level : operation.levels) {
+        const auto price = core::parse_price(level.price, numeric_spec_.price_scale);
+        const auto quantity = core::parse_quantity(level.quantity, numeric_spec_.quantity_scale);
+        if (!std::holds_alternative<core::ParsedDecimal<core::PriceUnits>>(price) ||
+            !std::holds_alternative<core::ParsedDecimal<core::QuantityUnits>>(quantity)) {
+            prepared_inputs_valid_ = false;
+            break;
+        }
+        prepared.updates.push_back(
+            {core_side(level.side), std::get<core::ParsedDecimal<core::PriceUnits>>(price).value,
+             std::get<core::ParsedDecimal<core::QuantityUnits>>(quantity).value});
+    }
+    prepared_inputs_valid_ = prepared.range.has_value() && prepared_inputs_valid_;
+    return prepared;
+}
+
+CoreReplayExecutor::PreparedEvent
+CoreReplayExecutor::prepare_event(const replay::ResetOp& operation) {
+    static_cast<void>(operation);
+    PreparedEvent prepared;
+    prepared.kind = PreparedKind::Reset;
+    return prepared;
+}
+
+CoreReplayExecutor::PreparedEvent
+CoreReplayExecutor::prepare_event(const replay::SnapshotRequestOp& operation) {
+    static_cast<void>(operation);
+    PreparedEvent prepared;
+    prepared.kind = PreparedKind::SnapshotRequest;
+    return prepared;
+}
+
+CoreReplayExecutor::PreparedEvent
+CoreReplayExecutor::prepare_event(const replay::AdapterMetadataOp& operation) {
+    static_cast<void>(operation);
+    PreparedEvent prepared;
+    prepared.kind = PreparedKind::Metadata;
+    return prepared;
+}
+
+CoreReplayExecutor::PreparedEvent
+CoreReplayExecutor::prepare_event(const replay::MalformedRangeOp& operation) {
+    PreparedEvent prepared;
+    prepared.kind = PreparedKind::MalformedRange;
+    prepared.first_id = operation.first_update_id;
+    prepared.final_id = operation.final_update_id;
+    return prepared;
 }
 
 bool CoreReplayExecutor::parse_levels(const std::vector<replay::LevelInput>& levels,

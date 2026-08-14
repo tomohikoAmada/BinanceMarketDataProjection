@@ -99,6 +99,18 @@ class CoreReplayExecutor final {
         std::vector<core::LevelUpdate> updates;
     };
 
+    void initialize_scratch();
+    void prepare_latency_events();
+    [[nodiscard]] bool prepare_book_levels(const std::vector<replay::LevelInput>& input,
+                                           std::vector<core::BookLevel>& output) const;
+    [[nodiscard]] PreparedEvent prepare_event(const replay::InstallBaselineOp& operation);
+    [[nodiscard]] PreparedEvent prepare_event(const replay::RebaselineOp& operation);
+    [[nodiscard]] PreparedEvent prepare_event(const replay::DepthUpdateOp& operation);
+    [[nodiscard]] static PreparedEvent prepare_event(const replay::ResetOp& operation);
+    [[nodiscard]] static PreparedEvent prepare_event(const replay::SnapshotRequestOp& operation);
+    [[nodiscard]] static PreparedEvent prepare_event(const replay::AdapterMetadataOp& operation);
+    [[nodiscard]] static PreparedEvent prepare_event(const replay::MalformedRangeOp& operation);
+
     [[nodiscard]] EventEvidence execute_install(core::BookProjection& projection,
                                                 const replay::InstallBaselineOp& operation) const;
     [[nodiscard]] EventEvidence execute_depth_update(core::BookProjection& projection,
