@@ -428,6 +428,15 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
 endif()
 
 include(GoogleTest)
+# CMake 4.4.0 POST_BUILD discovery hashes an empty target name (upstream
+# #27319, fixed in 4.4.1), so every test executable in this directory writes
+# the same cmake_test_discovery_e3b0c44298.json. Ninja links test executables
+# concurrently (e.g. during the staged-install Core-only reconfiguration) and
+# the concurrent JSON writes corrupt the shared file, failing the build with
+# "string sub-command JSON failed parsing json string". PRE_TEST serializes
+# discovery during CTest setup (upstream documents this as race-free) while
+# preserving the same discovered test inventory.
+set(CMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE PRE_TEST)
 gtest_discover_tests(bmd_projection_tests)
 gtest_discover_tests(bmd_projection_m3_allocation_failure_tests)
 gtest_discover_tests(bmd_projection_m5_replay_tests)
