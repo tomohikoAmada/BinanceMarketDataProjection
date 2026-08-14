@@ -82,6 +82,30 @@ if(NOT TARGET bmd_projection_m5_reference_support)
   bmd_projection_apply_project_options(bmd_projection_m5_reference_support)
 endif()
 
+if(NOT TARGET bmd_projection_m5_phase3_support)
+  add_library(
+      bmd_projection_m5_phase3_support
+      "${PROJECT_SOURCE_DIR}/tests/m5/phase3/medium_validity.cpp"
+      "${PROJECT_SOURCE_DIR}/tests/m5/phase3/small_workload.cpp"
+  )
+  target_include_directories(
+      bmd_projection_m5_phase3_support
+      PUBLIC "${PROJECT_SOURCE_DIR}/tests/m5/phase3"
+  )
+  target_link_libraries(
+      bmd_projection_m5_phase3_support
+      PUBLIC bmd_projection_m5_oracle_support
+  )
+  set_target_properties(
+      bmd_projection_m5_phase3_support
+      PROPERTIES
+          CXX_STANDARD 20
+          CXX_STANDARD_REQUIRED YES
+          CXX_EXTENSIONS NO
+  )
+  bmd_projection_apply_project_options(bmd_projection_m5_phase3_support)
+endif()
+
 # Static M5 replay/oracle/reference support is also part of the libFuzzer
 # execution path. The final fuzzer link supplies the runtime; support objects
 # need fuzzer-no-link plus the same ASan/UBSan instrumentation at compile time.

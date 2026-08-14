@@ -53,14 +53,15 @@ for preset in release asan ubsan tsan coverage; do
     scripts/test.sh "$preset"
 done
 
-scripts/configure.sh benchmark -DBMD_PROJECTION_ENABLE_WERROR=ON
+scripts/bootstrap-contracts.sh
+scripts/configure.sh benchmark \
+    -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON \
+    -DBMD_PROJECTION_ENABLE_WERROR=ON
 scripts/build.sh benchmark
-"$repo_root/build/benchmark/cmake/benchmarks/bmd_projection_benchmarks" \
-    --benchmark_format=json \
-    --benchmark_out="$repo_root/build/benchmark/foundation-benchmark.json"
+BMD_PROJECTION_SMOKE_MODE="${BMD_PROJECTION_SMOKE_MODE:-quick}" \
+    scripts/benchmark-smoke.sh
 
 scripts/install-consumer-test.sh
-scripts/bootstrap-contracts.sh
 for preset in debug release asan ubsan tsan; do
     scripts/configure.sh "$preset" \
         -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON \

@@ -1,0 +1,38 @@
+#pragma once
+
+// GENERATED AT CONFIGURE TIME — do not edit manually.
+//
+// Represents the source/build state used at CONFIGURE/BUILD time. The dirty
+// bit is captured here, not queried when a result wrapper happens to run
+// (OD-M5-P6-022).
+
+#include <string_view>
+
+inline constexpr std::string_view BMD_P6_GIT_SHA{"@BMD_P6_GIT_SHA@"};
+inline constexpr std::string_view BMD_P6_GIT_DIRTY_AT_CONFIGURE{
+    "@BMD_P6_GIT_DIRTY_AT_CONFIGURE@"};
+inline constexpr std::string_view BMD_P6_GIT_PROVENANCE_STATUS{
+    "@BMD_P6_GIT_PROVENANCE_STATUS@"};
+inline constexpr std::string_view BMD_P6_COMPILER_ID{"@BMD_P6_COMPILER_ID@"};
+inline constexpr std::string_view BMD_P6_COMPILER_VERSION{"@BMD_P6_COMPILER_VERSION@"};
+inline constexpr std::string_view BMD_P6_CXX_STANDARD{"@BMD_P6_CXX_STANDARD@"};
+inline constexpr std::string_view BMD_P6_BUILD_TYPE{"@BMD_P6_BUILD_TYPE@"};
+inline constexpr std::string_view BMD_P6_SANITIZER_STATE{"@BMD_P6_SANITIZER_STATE@"};
+inline constexpr std::string_view BMD_P6_LTO_STATE{"@BMD_P6_LTO_STATE@"};
+inline constexpr std::string_view BMD_P6_CONAN_LOCK_SHA256{"@BMD_P6_CONAN_LOCK_SHA256@"};
+inline constexpr std::string_view BMD_P6_CONAN_REFERENCES{"@BMD_P6_CONAN_REFERENCES@"};
+inline constexpr std::string_view BMD_P6_GOOGLE_BENCHMARK_VERSION{
+    "@BMD_P6_GOOGLE_BENCHMARK_VERSION@"};
+inline constexpr std::string_view BMD_P6_ADAPTER_ENABLED{"@BMD_P6_ADAPTER_ENABLED@"};
+inline constexpr std::string_view BMD_P6_CONTRACTS_SOURCE_REVISION{
+    "@BMD_P6_CONTRACTS_SOURCE_REVISION@"};
+inline constexpr std::string_view BMD_P6_CONTRACTS_CONAN_REFERENCE{
+    "@BMD_P6_CONTRACTS_CONAN_REFERENCE@"};
+inline constexpr std::string_view BMD_P6_CONTRACTS_RECIPE_REVISION{
+    "@BMD_P6_CONTRACTS_RECIPE_REVISION@"};
+inline constexpr std::string_view BMD_P6_CONTRACTS_PACKAGE_ID{
+    "@BMD_P6_CONTRACTS_PACKAGE_ID@"};
+inline constexpr std::string_view BMD_P6_PROTOBUF_RUNTIME_VERSION{
+    "@BMD_P6_PROTOBUF_RUNTIME_VERSION@"};
+inline constexpr std::string_view BMD_P6_PROTOBUF_RUNTIME_RREV{
+    "@BMD_P6_PROTOBUF_RUNTIME_RREV@"};

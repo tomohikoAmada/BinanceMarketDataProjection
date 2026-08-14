@@ -2,18 +2,22 @@
 
 ## Status
 
-- Status: **APPROVED / RECORDED PENDING MERGE**
+- Status: **APPROVED / MERGED**
 - Repository baseline: `a8cf3dd908a609690f0475bcfa397faa8c5b65a9`
 - Decision review: **APPROVED**
 - P0: `0`
 - P1 Methodology: `0` unresolved
 - P2: `0`
-- Implementation authorization: **CONDITIONAL UNTIL THIS DECISION RECORD IS MERGED**
+- Implementation authorization: **YES / CONSUMED FOR THIS IMPLEMENTATION**
 
 After this exact decision record is independently reviewed and merged without material decision
 changes:
 
 - Phase-6 implementation authorization becomes **YES**.
+
+The merge condition has been satisfied. This decision record is APPROVED / MERGED; the
+Phase-6 implementation authorization was consumed by the unified Phase-6 implementation PR.
+The normative decisions OD-M5-P6-001 through OD-M5-P6-030 below are unchanged.
 
 This document is normative pre-implementation authority for the M5 Phase 6 representative
 benchmark measurement contracts. It records accepted design authority, the independent decision
@@ -128,8 +132,9 @@ They are not renumbered or reinterpreted here. In particular:
 - After this exact decision PR is independently reviewed and merged without material decision
   changes: Phase-6 implementation authorization is **YES**.
 
-This transition must be documented truthfully. Authorization is not claimed to be active while this
-PR remains unmerged.
+This transition is now documented truthfully: the decision record is merged and the
+authorization is **YES / CONSUMED FOR THIS IMPLEMENTATION** (see
+`docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`).
 
 Decision-review baseline: `a8cf3dd908a609690f0475bcfa397faa8c5b65a9`. Once merged, this docs commit
 will advance main; the decision-review baseline above remains fixed to the reviewed tree.
