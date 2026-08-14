@@ -38,38 +38,8 @@ constexpr std::size_t kM4DepthSet[] = {8, 100, 1'000};
 namespace {
 
 [[nodiscard]] std::string m4_generated_sha256(std::string_view family, std::size_t depth) {
-    std::string concrete =
-        "m4_cell_v1\nfamily=" + std::string{family} + "\ndepth=" + std::to_string(depth) + '\n';
-    const auto append_bytes = [&concrete](std::string_view label, const std::string& bytes) {
-        concrete += label;
-        concrete += '_';
-        concrete += std::to_string(bytes.size());
-        concrete += ':';
-        concrete += bytes;
-        concrete += '\n';
-    };
-    if (family == "AdaptExchangeDepthSnapshot/Spot" || family == "CheckedInstall") {
-        append_bytes("snapshot_wire", wire_support::make_snapshot_wire(depth).SerializeAsString());
-    } else if (family == "AdaptDepthUpdate/Spot" || family == "CheckedApply") {
-        append_bytes(
-            "update_wire",
-            wire_support::make_update_wire(1'000'001, 1'000'001, std::nullopt).SerializeAsString());
-        if (family == "CheckedApply") {
-            concrete += "initial_bids=" + bm::describe_levels(bm::build_bid_levels(depth)) +
-                        "\ninitial_asks=" + bm::describe_levels(bm::build_ask_levels(depth)) +
-                        "\ninitial_update_id=1000001\npolicy=Spot\n";
-        }
-    } else {
-        concrete += "projection_bids=" + bm::describe_levels(bm::build_bid_levels(depth)) +
-                    "\nprojection_asks=" + bm::describe_levels(bm::build_ask_levels(depth)) +
-                    "\nprojection_update_id=1000001\npolicy=Spot\n";
-        if (family == "MakeLocalOrderBookSnapshot/Limited") {
-            concrete += "depth_limit=5\n";
-        } else {
-            concrete += "depth_limit=unlimited\n";
-        }
-    }
-    const auto hash = bmd_projection::m5::replay::sha256_hex(concrete);
+    const auto hash = bmd_projection::m5::replay::sha256_hex(
+        wire_support::m4_generated_workload_description(family, depth));
     if (!std::holds_alternative<std::string>(hash)) {
         std::abort();
     }
@@ -152,7 +122,7 @@ static void BM_M4AdaptExchangeDepthSnapshot(benchmark::State& state) {
 // apply, snapshot output, and serialization are excluded.
 static void BM_M4AdaptDepthUpdate(benchmark::State& state) {
     const auto identity = wire_support::benchmark_wire_identity();
-    const auto wire = wire_support::make_update_wire(1'000'001, 1'000'001, std::nullopt);
+    const auto wire = wire_support::make_update_wire(wire_support::kM4AdaptDepthUpdateCell);
     benchmark::DoNotOptimize(
         adapter::adapt_depth_update(wire, identity.numeric_spec, identity.expected));
     std::uint64_t accumulator = 0;
@@ -223,7 +193,7 @@ static void BM_M4CheckedInstall(benchmark::State& state) {
 static void BM_M4CheckedApply(benchmark::State& state) {
     const auto depth = m4_depth(state);
     const auto identity = wire_support::benchmark_wire_identity();
-    const auto wire = wire_support::make_update_wire(1'000'002, 1'000'002, std::nullopt);
+    const auto wire = wire_support::make_update_wire(wire_support::kM4CheckedApplyCell);
     const auto adapted =
         adapter::adapt_depth_update(wire, identity.numeric_spec, identity.expected);
     if (!std::holds_alternative<adapter::AdaptedDepthBatch>(adapted)) {

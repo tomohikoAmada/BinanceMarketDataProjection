@@ -378,6 +378,45 @@ market_wire::DepthUpdate make_update_wire(std::uint64_t first_update_id,
     return wire;
 }
 
+market_wire::DepthUpdate make_update_wire(const M4SpotDepthUpdateCell& cell) {
+    return make_update_wire(cell.first_update_id, cell.final_update_id,
+                            cell.previous_final_update_id);
+}
+
+std::string m4_generated_workload_description(std::string_view family, std::size_t depth) {
+    std::string concrete =
+        "m4_cell_v1\nfamily=" + std::string{family} + "\ndepth=" + std::to_string(depth) + '\n';
+    const auto append_bytes = [&concrete](std::string_view label, const std::string& bytes) {
+        concrete += label;
+        concrete += '_';
+        concrete += std::to_string(bytes.size());
+        concrete += ':';
+        concrete += bytes;
+        concrete += '\n';
+    };
+    if (family == "AdaptExchangeDepthSnapshot/Spot" || family == "CheckedInstall") {
+        append_bytes("snapshot_wire", make_snapshot_wire(depth).SerializeAsString());
+    } else if (family == "AdaptDepthUpdate/Spot" || family == "CheckedApply") {
+        const auto cell = family == "CheckedApply" ? kM4CheckedApplyCell : kM4AdaptDepthUpdateCell;
+        append_bytes("update_wire", make_update_wire(cell).SerializeAsString());
+        if (family == "CheckedApply") {
+            concrete += "initial_bids=" + describe_levels(build_bid_levels(depth)) +
+                        "\ninitial_asks=" + describe_levels(build_ask_levels(depth)) +
+                        "\ninitial_update_id=1000001\npolicy=Spot\n";
+        }
+    } else {
+        concrete += "projection_bids=" + describe_levels(build_bid_levels(depth)) +
+                    "\nprojection_asks=" + describe_levels(build_ask_levels(depth)) +
+                    "\nprojection_update_id=1000001\npolicy=Spot\n";
+        if (family == "MakeLocalOrderBookSnapshot/Limited") {
+            concrete += "depth_limit=5\n";
+        } else {
+            concrete += "depth_limit=unlimited\n";
+        }
+    }
+    return concrete;
+}
+
 std::vector<PreconstructedEntry> preconstruct_adapter_wire(const replay::ReplayFixture& fixture) {
     const auto conversion_spec =
         core::NumericSpec{required_scale(fixture.identity.numeric_spec.price_scale),

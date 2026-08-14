@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -46,6 +47,31 @@ struct WireIdentity final {
 [[nodiscard]] market_wire::DepthUpdate
 make_update_wire(std::uint64_t first_update_id, std::uint64_t final_update_id,
                  std::optional<std::uint64_t> previous_final_update_id);
+
+// One authoritative Spot DepthUpdate successor-range description shared by the
+// M4 update-boundary families. The actual timed wire and the canonical
+// generated-workload identity both derive from the same cell description so
+// the two cannot silently drift (OD-M5-P6-021/023).
+struct M4SpotDepthUpdateCell final {
+    std::uint64_t first_update_id{};
+    std::uint64_t final_update_id{};
+    std::optional<std::uint64_t> previous_final_update_id{std::nullopt};
+};
+
+// AdaptDepthUpdate/Spot adapts the range shape at 1'000'001 (no Core apply).
+inline constexpr M4SpotDepthUpdateCell kM4AdaptDepthUpdateCell{1'000'001, 1'000'001, std::nullopt};
+
+// CheckedApply executes the true successor [1'000'002, 1'000'002] against a
+// prepared projection synchronized at 1'000'001.
+inline constexpr M4SpotDepthUpdateCell kM4CheckedApplyCell{1'000'002, 1'000'002, std::nullopt};
+
+[[nodiscard]] market_wire::DepthUpdate make_update_wire(const M4SpotDepthUpdateCell& cell);
+
+// Canonical M4 generated-workload description (m4_cell_v1) from which the
+// generated-workload SHA-256 is derived. The update-boundary families build
+// their update wire from the authoritative cell descriptions above.
+[[nodiscard]] std::string m4_generated_workload_description(std::string_view family,
+                                                            std::size_t depth);
 
 enum class PreconstructedKind : std::uint8_t {
     Baseline,
