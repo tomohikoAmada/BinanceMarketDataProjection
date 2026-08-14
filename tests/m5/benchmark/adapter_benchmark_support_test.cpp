@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <map>
 #include <optional>
 #include <string>
 #include <variant>
@@ -103,6 +104,22 @@ TEST(Phase6M4AdaptDepthUpdate, ProvenanceBoundToTheAdaptedWire) {
         "update_wire_" + std::to_string(wire_bytes.size()) + ':' + wire_bytes + '\n';
     EXPECT_EQ(wire_support::m4_generated_workload_description("AdaptDepthUpdate/Spot", kDepth),
               expected);
+}
+
+// P6-FINAL-001: the formal canonical CheckedApply sequence parameters must
+// explicitly encode the locked successor operation. Asserted against explicit
+// literals so the fields cannot silently drift from the timed successor wire.
+TEST(Phase6M4CheckedApply, CanonicalSequenceFieldsExposeTheLockedSuccessor) {
+    const auto fields = wire_support::checked_apply_canonical_sequence_fields();
+    std::map<std::string, std::string> by_key(fields.begin(), fields.end());
+    EXPECT_EQ(by_key.at("policy"), "Spot");
+    EXPECT_EQ(by_key.at("initial_update_id"), "1000001");
+    EXPECT_EQ(by_key.at("first_update_id"), "1000002");
+    EXPECT_EQ(by_key.at("final_update_id"), "1000002");
+    EXPECT_EQ(by_key.at("previous_final_update_id"), "not_applicable");
+    EXPECT_EQ(by_key.at("first_update_id"),
+              std::to_string(std::stoull(by_key.at("initial_update_id")) + 1));
+    EXPECT_EQ(by_key.at("final_update_id"), by_key.at("first_update_id"));
 }
 
 TEST(Phase6AdapterReplay, PreconstructionCoversFullWorkloadAndChecksumIsStable) {

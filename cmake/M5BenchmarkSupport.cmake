@@ -2,9 +2,9 @@
 #
 # Computes the configure-time source/build state and generates
 # benchmark_build_identity.hpp for the benchmark and latency executables. The
-# dirty bit and git SHA are captured at CONFIGURE time; the Conan references
-# come from the repository conan.lock (recipe revisions) and the CMakeDeps
-# generator data files (package IDs).
+# dirty bit and git SHA are captured at CONFIGURE time; the Conan recipe
+# revisions come from the repository conan.lock and the Contracts binary
+# package ID is the SHA-1 of the exact consumed package's conaninfo.txt.
 #
 # Guarded target definitions allow this file to be included from
 # benchmarks/CMakeLists.txt and tests/CMakeLists.txt.
@@ -142,18 +142,23 @@ function(bmd_projection_generate_benchmark_build_identity)
   # (cmake_layout: <conan output folder>/build/<build_type>/generators).
   get_filename_component(_conan_output_dir "${CMAKE_BINARY_DIR}" DIRECTORY)
 
-  # Contracts package ID from the CMakeDeps generator data file.
-  # Contracts package ID from the pinned package directory referenced by
-  # BinanceMarketDataContracts_DIR (.../p/<package_id>/p/lib/cmake/...).
+  # Real Conan binary package ID of the exact consumed Contracts package.
+  # Conan package IDs are the SHA-1 of the package's conaninfo.txt content.
+  # BinanceMarketDataContracts_DIR points into
+  # <cache>/p/<locator>/p/lib/cmake/BinanceMarketDataContracts; the package
+  # directory holding conaninfo.txt is three levels up. A missing/unreadable
+  # conaninfo.txt leaves the state unavailable, which formal validation
+  # rejects (REQ-004/005).
   set(BMD_P6_CONTRACTS_PACKAGE_ID "unavailable")
   if(DEFINED BinanceMarketDataContracts_DIR)
     set(_contracts_dir "${BinanceMarketDataContracts_DIR}")
     get_filename_component(_contracts_dir "${_contracts_dir}" DIRECTORY)
     get_filename_component(_contracts_dir "${_contracts_dir}" DIRECTORY)
     get_filename_component(_contracts_dir "${_contracts_dir}" DIRECTORY)
-    get_filename_component(_contracts_dir "${_contracts_dir}" DIRECTORY)
-    get_filename_component(_contracts_package_id "${_contracts_dir}" NAME)
-    set(BMD_P6_CONTRACTS_PACKAGE_ID "${_contracts_package_id}")
+    set(_contracts_conaninfo "${_contracts_dir}/conaninfo.txt")
+    if(EXISTS "${_contracts_conaninfo}")
+      file(SHA1 "${_contracts_conaninfo}" BMD_P6_CONTRACTS_PACKAGE_ID)
+    endif()
   endif()
 
   # Google Benchmark version: primary source is the repository conan.lock

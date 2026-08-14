@@ -65,6 +65,17 @@ inline constexpr M4SpotDepthUpdateCell kM4AdaptDepthUpdateCell{1'000'001, 1'000'
 // prepared projection synchronized at 1'000'001.
 inline constexpr M4SpotDepthUpdateCell kM4CheckedApplyCell{1'000'002, 1'000'002, std::nullopt};
 
+// The prepared synchronized state against which CheckedApply executes
+// (build_synchronized_projection leaves the projection at base + 1).
+inline constexpr std::uint64_t kM4CheckedApplyPreparedUpdateId = 1'000'001;
+
+// Formal canonical sequence parameters of the locked CheckedApply successor
+// cell. Derived from the same authoritative cell used to build the timed wire,
+// so the registered canonical workload spec cannot silently drift from
+// execution (OD-M5-P6-021/023/028; P6-FINAL-001).
+[[nodiscard]] std::vector<std::pair<std::string, std::string>>
+checked_apply_canonical_sequence_fields();
+
 [[nodiscard]] market_wire::DepthUpdate make_update_wire(const M4SpotDepthUpdateCell& cell);
 
 // Canonical M4 generated-workload description (m4_cell_v1) from which the

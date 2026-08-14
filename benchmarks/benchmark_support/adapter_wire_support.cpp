@@ -383,6 +383,16 @@ market_wire::DepthUpdate make_update_wire(const M4SpotDepthUpdateCell& cell) {
                             cell.previous_final_update_id);
 }
 
+std::vector<std::pair<std::string, std::string>> checked_apply_canonical_sequence_fields() {
+    return {
+        {"policy", "Spot"},
+        {"initial_update_id", std::to_string(kM4CheckedApplyPreparedUpdateId)},
+        {"first_update_id", std::to_string(kM4CheckedApplyCell.first_update_id)},
+        {"final_update_id", std::to_string(kM4CheckedApplyCell.final_update_id)},
+        {"previous_final_update_id", "not_applicable"},
+    };
+}
+
 std::string m4_generated_workload_description(std::string_view family, std::size_t depth) {
     std::string concrete =
         "m4_cell_v1\nfamily=" + std::string{family} + "\ndepth=" + std::to_string(depth) + '\n';
@@ -402,7 +412,8 @@ std::string m4_generated_workload_description(std::string_view family, std::size
         if (family == "CheckedApply") {
             concrete += "initial_bids=" + describe_levels(build_bid_levels(depth)) +
                         "\ninitial_asks=" + describe_levels(build_ask_levels(depth)) +
-                        "\ninitial_update_id=1000001\npolicy=Spot\n";
+                        "\ninitial_update_id=" + std::to_string(kM4CheckedApplyPreparedUpdateId) +
+                        "\npolicy=Spot\n";
         }
     } else {
         concrete += "projection_bids=" + describe_levels(build_bid_levels(depth)) +

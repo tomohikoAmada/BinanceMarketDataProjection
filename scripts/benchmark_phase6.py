@@ -71,6 +71,18 @@ CLASSIFICATIONS = ["Stale", "Duplicate", "Gap", "Reset", "BaselineInstall"]
 POLICIES = ["Spot", "UsdMPerpetual"]
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 GIT_SHA = re.compile(r"^[0-9a-fA-F]{40}([0-9a-fA-F]{24})?$")
+CONAN_PACKAGE_ID = re.compile(r"^[0-9a-f]{40}$")
+
+# Locked M4 CheckedApply successor cell (P6-FINAL-001): the prepared
+# synchronized projection is at 1'000'001 and the timed wire is the true
+# successor [1'000'002, 1'000'002] under the Spot policy.
+CHECKED_APPLY_SEQUENCE_FIELDS = {
+    "policy": "Spot",
+    "initial_update_id": "1000001",
+    "first_update_id": "1000002",
+    "final_update_id": "1000002",
+    "previous_final_update_id": "not_applicable",
+}
 
 
 class ValidationError(Exception):
@@ -227,6 +239,27 @@ def _canonical_fields(canonical: str, name: str) -> dict[str, str]:
     return fields
 
 
+def _validate_checked_apply_spec(name: str, fields: dict[str, str]) -> None:
+    # P6-FINAL-001: the formal M4/CheckedApply canonical workload spec must
+    # explicitly encode the locked successor operation, not only generic
+    # generated-identity fields. The fixed exact values are required because
+    # this is the locked Phase-6 canonical workload.
+    for key, expected in CHECKED_APPLY_SEQUENCE_FIELDS.items():
+        _require(fields.get(key) == expected,
+                 f"workload {name} CheckedApply canonical field {key} must be "
+                 f"{expected!r}, got {fields.get(key)!r}")
+    try:
+        initial = int(fields["initial_update_id"])
+        first = int(fields["first_update_id"])
+        final = int(fields["final_update_id"])
+    except ValueError as error:
+        raise ValidationError(f"workload {name} CheckedApply ids are not numeric") from error
+    _require(first == initial + 1,
+             f"workload {name} CheckedApply first_update_id must be initial_update_id + 1")
+    _require(final == first,
+             f"workload {name} CheckedApply final_update_id must equal first_update_id")
+
+
 def _workload_names(wrapper: dict[str, Any]) -> set[str]:
     identities = wrapper.get("workload_identities")
     _require(isinstance(identities, list) and identities, "wrapper missing workload_identities")
@@ -250,6 +283,8 @@ def _workload_names(wrapper: dict[str, Any]) -> set[str]:
                     "generated_workload_sha256", "logical_items_per_iteration"):
             _require(isinstance(fields.get(key), str) and fields[key],
                      f"workload {name} missing generated identity field {key}")
+        if name.startswith("M4/CheckedApply/"):
+            _validate_checked_apply_spec(name, fields)
         _require(fields["seed"] == "not_applicable" or fields["seed"].isdigit(),
                  f"workload {name} has invalid seed")
         generated_sha = fields["generated_workload_sha256"]
@@ -416,6 +451,10 @@ def validate_wrapper(path: str, wrapper: dict[str, Any], allow_exploratory: bool
                                        "contracts_recipe_revision", "contracts_package_id",
                                        "protobuf_runtime_version", "protobuf_runtime_rrev"],
                                   "m4_dependency_identity")
+        package_id = m4.get("contracts_package_id")
+        _require(isinstance(package_id, str) and CONAN_PACKAGE_ID.fullmatch(package_id) is not None,
+                 f"contracts_package_id must be a real 40-hex Conan package ID, "
+                 f"got {package_id!r}")
     elif m4.get("status") == "OFF":
         _require(m4.get("reason") == "not_applicable_core_only_payload",
                  "Core-only payload must record explicit not_applicable")

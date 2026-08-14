@@ -72,7 +72,7 @@ class BaseTestCase(unittest.TestCase):
                                        "contracts_source_revision": "rev",
                                        "contracts_conan_reference": "ref",
                                        "contracts_recipe_revision": "rrev",
-                                       "contracts_package_id": "pid",
+                                       "contracts_package_id": "ab" * 20,
                                        "protobuf_runtime_version": "6.33.5",
                                        "protobuf_runtime_rrev": "prrev"},
             "workload_identities": [],
@@ -103,6 +103,9 @@ class BaseTestCase(unittest.TestCase):
             "logical_items_per_iteration": str(logical_items),
             **fields,
         }
+        if name.startswith("M4/CheckedApply/"):
+            # Locked defaults first; explicit call-site fields override them.
+            generated_fields = {**validator.CHECKED_APPLY_SEQUENCE_FIELDS, **generated_fields}
         generated_text = "".join(
             f"{key}={value}\n" for key, value in sorted(generated_fields.items())
             if key not in {"primary_timer", "primary_denominator", "throughput_denominator"}
@@ -122,6 +125,32 @@ class BaseTestCase(unittest.TestCase):
             "generated_workload_sha256": generated_sha,
             "canonical_spec_text": canonical,
         }
+
+    def checked_apply_workload(self, name: str = "M4/CheckedApply/8",
+                               drop_fields=(), **overrides) -> dict:
+        workload = self.make_workload(name, **overrides)
+        fields = dict(
+            line.split("=", 1) for line in workload["canonical_spec_text"].splitlines()
+        )
+        for key in drop_fields:
+            fields.pop(key, None)
+        fields.update(overrides)
+        canonical = "".join(f"{key}={value}\n" for key, value in sorted(fields.items()))
+        workload["canonical_spec_text"] = canonical
+        workload["workload_spec_sha256"] = _sha256(canonical)
+        return workload
+
+    def wrapper_with_checked_apply(self, **overrides) -> dict:
+        wrapper = self.wrapper_with_inventory()
+        replacements = [self.checked_apply_workload(
+            "M4/CheckedApply/" + str(depth), **overrides)
+            for depth in (8, 100, 1000)]
+        names = {entry["benchmark_name"]: entry for entry in replacements}
+        wrapper["workload_identities"] = [
+            names.get(entry["benchmark_name"], entry)
+            for entry in wrapper["workload_identities"]
+        ]
+        return wrapper
 
     def wrapper_with_inventory(self) -> dict:
         workloads = [self.make_workload(name) for name in validator._required_inventory()]
@@ -220,6 +249,132 @@ class PayloadTest(BaseTestCase):
         )
         with self.assertRaises(validator.ValidationError):
             validator.validate_payload_structure(payload)
+
+
+class CheckedApplySpecTest(BaseTestCase):
+    def test_correct_checked_apply_spec_passes(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        names = validator.validate_inventory(wrapper)
+        checked = [name for name in names if name.startswith("M4/CheckedApply/")]
+        self.assertEqual(len(checked), 3)
+
+    def test_checked_apply_positive_fixture_fields(self) -> None:
+        workload = self.checked_apply_workload("M4/CheckedApply/8")
+        fields = dict(line.split("=", 1)
+                      for line in workload["canonical_spec_text"].splitlines())
+        for key, value in validator.CHECKED_APPLY_SEQUENCE_FIELDS.items():
+            self.assertEqual(fields[key], value)
+
+    def test_missing_policy_fails(self) -> None:
+        wrapper = self.wrapper_with_checked_apply(drop_fields=("policy",))
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_inventory(wrapper)
+
+    def test_wrong_policy_fails(self) -> None:
+        wrapper = self.wrapper_with_checked_apply(policy="UsdMPerpetual")
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_inventory(wrapper)
+
+    def test_missing_initial_update_id_fails(self) -> None:
+        wrapper = self.wrapper_with_checked_apply(drop_fields=("initial_update_id",))
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_inventory(wrapper)
+
+    def test_wrong_initial_update_id_fails(self) -> None:
+        wrapper = self.wrapper_with_checked_apply(initial_update_id="1000000")
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_inventory(wrapper)
+
+    def test_missing_first_update_id_fails(self) -> None:
+        wrapper = self.wrapper_with_checked_apply(drop_fields=("first_update_id",))
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_inventory(wrapper)
+
+    def test_historical_successor_metadata_fails(self) -> None:
+        # The historical defect encoded the prepared id as the successor.
+        wrapper = self.wrapper_with_checked_apply(first_update_id="1000001",
+                                                  final_update_id="1000001")
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_inventory(wrapper)
+
+    def test_missing_final_update_id_fails(self) -> None:
+        wrapper = self.wrapper_with_checked_apply(drop_fields=("final_update_id",))
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_inventory(wrapper)
+
+    def test_wrong_final_update_id_fails(self) -> None:
+        wrapper = self.wrapper_with_checked_apply(final_update_id="1000001")
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_inventory(wrapper)
+
+    def test_invalid_successor_relationship_fails(self) -> None:
+        wrapper = self.wrapper_with_checked_apply(first_update_id="1000003",
+                                                  final_update_id="1000003")
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_inventory(wrapper)
+
+    def test_wrong_previous_final_update_id_fails(self) -> None:
+        wrapper = self.wrapper_with_checked_apply(previous_final_update_id="1000002")
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_inventory(wrapper)
+
+
+class ContractsPackageIdTest(BaseTestCase):
+    def test_valid_40_hex_package_id_passes(self) -> None:
+        wrapper = self.make_wrapper(
+            m4_dependency_identity={
+                "status": "ON",
+                "contracts_source_revision": "rev",
+                "contracts_conan_reference": "ref",
+                "contracts_recipe_revision": "rrev",
+                "contracts_package_id": "a1a286da6ca09b590d78bcb14d8250c025131c29",
+                "protobuf_runtime_version": "6.33.5",
+                "protobuf_runtime_rrev": "prrev",
+            })
+        validator.validate_wrapper("x", wrapper, True, None)
+
+    def test_cache_locator_package_id_fails(self) -> None:
+        # The historical cache-directory locator must be rejected.
+        wrapper = self.wrapper_with_inventory()
+        wrapper["m4_dependency_identity"]["contracts_package_id"] = "binan45ca4a301956d"
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_wrapper("x", wrapper, True, None)
+
+    def test_empty_package_id_fails(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        wrapper["m4_dependency_identity"]["contracts_package_id"] = ""
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_wrapper("x", wrapper, True, None)
+
+    def test_unavailable_package_id_fails(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        wrapper["m4_dependency_identity"]["contracts_package_id"] = "unavailable"
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_wrapper("x", wrapper, True, None)
+
+    def test_short_package_id_fails(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        wrapper["m4_dependency_identity"]["contracts_package_id"] = "ab" * 19 + "a"
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_wrapper("x", wrapper, True, None)
+
+    def test_long_package_id_fails(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        wrapper["m4_dependency_identity"]["contracts_package_id"] = "ab" * 20 + "a"
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_wrapper("x", wrapper, True, None)
+
+    def test_non_hex_package_id_fails(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        wrapper["m4_dependency_identity"]["contracts_package_id"] = "g" * 40
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_wrapper("x", wrapper, True, None)
+
+    def test_uppercase_package_id_fails(self) -> None:
+        wrapper = self.wrapper_with_inventory()
+        wrapper["m4_dependency_identity"]["contracts_package_id"] = "AB" * 20
+        with self.assertRaises(validator.ValidationError):
+            validator.validate_wrapper("x", wrapper, True, None)
 
 
 class SmokeTest(BaseTestCase):

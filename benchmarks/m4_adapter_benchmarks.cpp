@@ -78,6 +78,12 @@ struct M4Specs {
                     std::string{family} == "CheckedApply") {
                     builder.set("update_level_count", wire_support::kM4UpdateLevelCount);
                 }
+                if (std::string{family} == "CheckedApply") {
+                    for (const auto& [key, value] :
+                         wire_support::checked_apply_canonical_sequence_fields()) {
+                        builder.set(key, value);
+                    }
+                }
             }
         }
     }
