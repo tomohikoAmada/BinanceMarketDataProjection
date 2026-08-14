@@ -569,7 +569,8 @@ TEST(Phase6CoreReplay, LatencyPreparedPathMatchesParsingPath) {
         prepared_checksum = bm::fold_evidence(
             prepared_checksum, executor.execute_prepared_event(prepared_projection, index));
     }
-    prepared_checksum = executor.finalize_checksum(prepared_projection, prepared_checksum);
+    prepared_checksum =
+        bm::CoreReplayExecutor::finalize_checksum(prepared_projection, prepared_checksum);
     EXPECT_EQ(prepared_checksum, parsed_checksum);
 }
 

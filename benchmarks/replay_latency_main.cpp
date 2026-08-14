@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
             checksum =
                 bm::fold_evidence(checksum, executor.execute_prepared_event(projection, index));
         }
-        return executor.finalize_checksum(projection, checksum);
+        return bm::CoreReplayExecutor::finalize_checksum(projection, checksum);
     };
     const auto expected_pass_checksum = [&] {
         core::BookProjection projection{executor.numeric_spec(), executor.policy()};
@@ -206,7 +206,7 @@ int main(int argc, char** argv) {
         for (const auto& evidence : pass_evidence) {
             checksum = bm::fold_evidence(checksum, evidence);
         }
-        checksum = executor.finalize_checksum(projection, checksum);
+        checksum = bm::CoreReplayExecutor::finalize_checksum(projection, checksum);
         pass_checksums.push_back(checksum);
     }
 
