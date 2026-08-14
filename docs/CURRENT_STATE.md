@@ -142,9 +142,15 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Current Blockers
 
-- No implementation blockers: M5 Phase 6 is COMPLETE / MERGED; no Phase-6 technical blocker
-  remains. Remaining work is governance/infrastructure (status-document synchronization and a
-  separate toolchain-reproducibility hardening task) plus separately authorized later phases.
+- No Phase-6 technical blockers remain.
+- P6-AUDIT-003 is CLOSED by the post-merge governance/status synchronization (this PR #22):
+  Phase-6 repository status/orientation documents are synchronized with the accepted
+  implementation Head `9776ba6b93990c44e550f289b69127ca721b0d00`, exact-head CI
+  `31803322848` — 18/18 PASS, formal evidence ACCEPTED, independent review APPROVED,
+  PR #21 MERGED, squash merge `227524e6d17cce77813c6f26cd65bb8d996f5677`, and post-merge
+  main CI `31809917018` — 18/18 PASS.
+- Toolchain reproducibility hardening remains a separate future infrastructure task.
+- Later M5 phases remain separately authorized work.
 
 ## Accepted Semantic Authorities
 
@@ -213,11 +219,12 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 M5 Phase 6 is complete and merged (PR #21, squash merge
 `227524e6d17cce77813c6f26cd65bb8d996f5677`; accepted implementation Head
 `9776ba6b93990c44e550f289b69127ca721b0d00`; exact-head CI `31803322848` — 18/18 PASS;
-post-merge main CI `31809917018` — 18/18 PASS). Immediate sequencing:
+post-merge main CI `31809917018` — 18/18 PASS). P6-AUDIT-003 is CLOSED by this
+governance/status synchronization. Immediate sequencing:
 
-1. close governance synchronization (this status sync plus the remaining docs follow-up);
-2. standalone toolchain-reproducibility / Quality-toolchain hardening task;
-3. only afterward proceed to separately authorized Phase-7 work.
+1. standalone Toolchain Reproducibility / Quality Toolchain Hardening task;
+2. after that task is separately completed/accepted, proceed to separately authorized
+   Phase-7 work.
 
 Phase 7 has NOT started.
 
