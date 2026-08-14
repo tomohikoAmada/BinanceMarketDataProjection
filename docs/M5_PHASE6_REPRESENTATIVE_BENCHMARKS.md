@@ -2,7 +2,7 @@
 
 ## Status
 
-- Status: **IMPLEMENTED / PENDING INDEPENDENT REVIEW** (implementation PR open, DRAFT, UNMERGED)
+- Status: **COMPLETE / MERGED** (PR #21)
 - Decision authority: OD-M5-P6-001 through OD-M5-P6-030
   (`docs/M5_PHASE6_PREIMPLEMENTATION_DECISIONS.md`, APPROVED / MERGED)
 - Phase-6 implementation authorization: **YES / CONSUMED FOR THIS IMPLEMENTATION**
@@ -10,6 +10,31 @@
 - Phase 7 (allocation/memory): NOT STARTED
 - Phase 8 (alternative container spike): NOT STARTED
 - Phase 10 (reporting/workflow integration): NOT STARTED
+
+## Completion and Acceptance
+
+Phase 6 is **COMPLETE / MERGED** via PR #21:
+
+- Final independently accepted implementation Head:
+  `9776ba6b93990c44e550f289b69127ca721b0d00`
+- Accepted exact-head CI: `31803322848` — 18/18 PASS
+- Formal exact-head Phase-6 evidence: **ACCEPTED** (generated from the accepted
+  implementation Head above with clean source at configure, Release, ProtoAdapter ON,
+  sanitizers off, 5 benchmark repetitions, 5 latency passes, 169/169 required inventory,
+  complete 48-cell M3 accepted matrix, four production replay workloads, event latency
+  evidence, and source/binary/payload/workload/dependency provenance validated)
+- Independent final review: **APPROVED** — P0 = 0, P1 = 0, P2 = 1
+- P6-FINAL-001 (CheckedApply canonical workload identity): **CLOSED**
+- P6-FINAL-002 (Contracts Conan package-ID provenance): **CLOSED**
+- Squash merge commit: `227524e6d17cce77813c6f26cd65bb8d996f5677`
+- Post-merge main CI: `31809917018` — 18/18 PASS
+
+The accepted Head and the squash merge commit share the same repository tree
+(`79aa0151d65d42a1c63e6649bf24bf9053105667`); the formal benchmark evidence was generated
+and independently accepted for the exact implementation Head above, and the squash merge
+preserves that same tree with post-merge main CI passing 18/18. No numeric performance gate
+exists, and no cross-machine comparability is claimed; detailed characterization numbers are
+not reproduced here.
 
 This document describes the implemented Phase-6 benchmark infrastructure. It is not performance
 evidence by itself; measured numbers live in the machine-readable result files described below.
