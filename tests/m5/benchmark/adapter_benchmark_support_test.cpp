@@ -15,6 +15,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <optional>
 #include <string>
 #include <variant>
 
@@ -26,57 +28,68 @@ namespace wire_support = bmd_projection::m5::benchmark::adapter_support;
 namespace adapter = binance_market_data::projection_adapter::v1;
 namespace core = binance_market_data::projection::v1;
 
+struct CheckedApplyObservation final {
+    core::ApplyDisposition disposition;
+    std::optional<core::UpdateId> last_update_id_after;
+};
+
+// Independent execution of the actual CheckedApply successor event against a
+// freshly prepared synchronized Spot projection. The wire ids are explicit
+// literals, not the producer cell, so the observation cannot drift with it.
+[[nodiscard]] CheckedApplyObservation checked_apply_observation(std::size_t depth) {
+    auto projection = bm::build_synchronized_projection(core::SequencePolicyKind::Spot, depth);
+    const auto identity = wire_support::benchmark_wire_identity();
+    const auto wire = wire_support::make_update_wire(1'000'002, 1'000'002, std::nullopt);
+    const auto adapted =
+        adapter::adapt_depth_update(wire, identity.numeric_spec, identity.expected);
+    if (!std::holds_alternative<adapter::AdaptedDepthBatch>(adapted)) {
+        std::abort();
+    }
+    const auto& owner = std::get<adapter::AdaptedDepthBatch>(adapted);
+    const auto applied = owner.apply_to(projection);
+    if (!std::holds_alternative<core::ApplyResult>(applied)) {
+        std::abort();
+    }
+    const auto& result = std::get<core::ApplyResult>(applied);
+    return {result.disposition, result.last_update_id_after};
+}
+
+// Independent canonical description of that exact successor event, built from
+// explicit literal fields rather than the producer description.
+[[nodiscard]] std::string checked_apply_expected_description(std::size_t depth) {
+    const auto wire_bytes =
+        wire_support::make_update_wire(1'000'002, 1'000'002, std::nullopt).SerializeAsString();
+    return "m4_cell_v1\nfamily=CheckedApply\ndepth=" + std::to_string(depth) + '\n' +
+           "update_wire_" + std::to_string(wire_bytes.size()) + ':' + wire_bytes + '\n' +
+           "initial_bids=" + bm::describe_levels(bm::build_bid_levels(depth)) + '\n' +
+           "initial_asks=" + bm::describe_levels(bm::build_ask_levels(depth)) + '\n' +
+           "initial_update_id=1000001\npolicy=Spot\n";
+}
+
 // Independent regression (REQ-002): the M4 CheckedApply generated-workload
 // identity must describe the actual timed successor event. The prepared
 // projection is synchronized at 1'000'001; the timed event is U = u =
-// 1'000'002. The expected canonical description below is constructed from
-// explicit literals, not from the producer, so the historical defect (a
-// 1'000'001 provenance wire) fails this test.
+// 1'000'002. The expected canonical description is constructed from explicit
+// literals, not from the producer, so the historical defect (a 1'000'001
+// provenance wire) fails this test.
 TEST(Phase6M4CheckedApply, ProvenanceDescribesTheActualSuccessorWorkload) {
     constexpr std::size_t kDepth = 8;
     constexpr std::uint64_t kPreparedUpdateId = 1'000'001;
     constexpr std::uint64_t kSuccessorUpdateId = 1'000'002;
 
     auto projection = bm::build_synchronized_projection(core::SequencePolicyKind::Spot, kDepth);
-    ASSERT_EQ(projection.status(), core::ProjectionStatus::Synchronized);
-    const auto prepared_update_id = projection.last_update_id();
-    if (!prepared_update_id.has_value()) {
-        FAIL() << "prepared projection must be synchronized at update id " << kPreparedUpdateId;
-    }
-    EXPECT_EQ(prepared_update_id->value(), kPreparedUpdateId);
+    EXPECT_EQ(projection.status(), core::ProjectionStatus::Synchronized);
+    EXPECT_EQ(projection.last_update_id(), core::UpdateId{kPreparedUpdateId});
 
-    const auto identity = wire_support::benchmark_wire_identity();
-    const auto wire =
-        wire_support::make_update_wire(kSuccessorUpdateId, kSuccessorUpdateId, std::nullopt);
-    const auto adapted =
-        adapter::adapt_depth_update(wire, identity.numeric_spec, identity.expected);
-    ASSERT_TRUE(std::holds_alternative<adapter::AdaptedDepthBatch>(adapted));
-    const auto& owner = std::get<adapter::AdaptedDepthBatch>(adapted);
-    const auto applied = owner.apply_to(projection);
-    ASSERT_TRUE(std::holds_alternative<core::ApplyResult>(applied));
-    const auto& result = std::get<core::ApplyResult>(applied);
-    EXPECT_EQ(result.disposition, core::ApplyDisposition::Applied);
-    const auto succeeded_update_id = result.last_update_id_after;
-    if (!succeeded_update_id.has_value()) {
-        FAIL() << "CheckedApply must advance to update id " << kSuccessorUpdateId;
-    }
-    EXPECT_EQ(succeeded_update_id->value(), kSuccessorUpdateId);
-
-    const auto wire_bytes = wire.SerializeAsString();
-    const std::string expected =
-        "m4_cell_v1\nfamily=CheckedApply\ndepth=" + std::to_string(kDepth) + '\n' + "update_wire_" +
-        std::to_string(wire_bytes.size()) + ':' + wire_bytes + '\n' +
-        "initial_bids=" + bm::describe_levels(bm::build_bid_levels(kDepth)) + '\n' +
-        "initial_asks=" + bm::describe_levels(bm::build_ask_levels(kDepth)) + '\n' +
-        "initial_update_id=1000001\npolicy=Spot\n";
+    const auto observation = checked_apply_observation(kDepth);
+    EXPECT_EQ(observation.disposition, core::ApplyDisposition::Applied);
+    EXPECT_EQ(observation.last_update_id_after, core::UpdateId{kSuccessorUpdateId});
 
     const auto produced = wire_support::m4_generated_workload_description("CheckedApply", kDepth);
+    const auto expected = checked_apply_expected_description(kDepth);
     EXPECT_EQ(produced, expected);
-    const auto produced_hash = bmd_projection::m5::replay::sha256_hex(produced);
-    const auto expected_hash = bmd_projection::m5::replay::sha256_hex(expected);
-    ASSERT_TRUE(std::holds_alternative<std::string>(produced_hash));
-    ASSERT_TRUE(std::holds_alternative<std::string>(expected_hash));
-    EXPECT_EQ(std::get<std::string>(produced_hash), std::get<std::string>(expected_hash));
+    EXPECT_EQ(std::get<std::string>(bmd_projection::m5::replay::sha256_hex(produced)),
+              std::get<std::string>(bmd_projection::m5::replay::sha256_hex(expected)));
 }
 
 // The AdaptDepthUpdate/Spot cell adapts the range at 1'000'001 without a Core
