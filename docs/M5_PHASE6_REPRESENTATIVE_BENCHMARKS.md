@@ -39,9 +39,10 @@ denominators).
 `M1/ParsePrice/InexactDownscaleRejected`, `M1/ParsePrice/OverflowRejected`,
 `M1/ParsePrice/SyntaxRejected`, `M1/FormatPriceFixed`, `M1/FormatQuantityFixed`.
 
-Inputs are preconstructed outside timing; each measured iteration is a homogeneous batched
-logical-operation block of 16 identical public operations with result consumption
-(`DoNotOptimize` on the accumulated result evidence) and `SetItemsProcessed(16)`. There is no
+Inputs are preconstructed outside timing; one explicit 16-operation warmup block is discarded
+before measurement. Each measured iteration is a homogeneous block of 16 identical public
+operations with result consumption (`DoNotOptimize` on accumulated evidence). Total logical
+items are reported once after the loop as `iterations * 16`. There is no
 standalone rescale benchmark; scale conversion is measured through the real parse/format public
 APIs only.
 
@@ -86,6 +87,8 @@ under one label). The locked PR-CI smoke subset is D{8,1000} x B{0,10} x {Spot,U
 
 `M3/Proxy/OrderBookMoveCommit` move-assigns into a destination holding the populated old book,
 so the measurement includes destination destruction.
+`M3/Proxy/CandidateApplyUpdates` consumes a bounded pool of fully constructed candidates, so
+candidate rebuild is excluded and only the production `apply_updates` operation is timed.
 
 ### M4 (fail-closed availability, OD-M5-P6-013/022)
 
@@ -115,7 +118,8 @@ version (`m5-small-generator-v1`), seed (`548746690337`), canonical log SHA-256,
 and NumericSpec/sequence policy recorded in the workload spec. Differential verification
 (production vs reference oracle) runs exactly once outside any measured region; per-iteration
 checksum mismatches fail closed via `SkipWithError`. `SetItemsProcessed` counts dispatched
-events; `UseRealTime` makes wall time the primary denominator.
+events once as `iterations * event_count`; `UseRealTime` makes wall time the primary denominator,
+so events/second and ns/event are reciprocal views of the same result.
 
 `AdapterWireReplay/{Spot,UsdMPerpetual}`: preconstructed valid wire -> production M4 adaptation
 -> checked production M3 invocation -> minimal consumption. Wire construction, fixture parsing,
@@ -129,8 +133,9 @@ called "production events/sec" except the wall-denominated production replay pat
 
 ### Event latency (dedicated executable)
 
-`bmd_projection_replay_latency` follows OD-M5-P6-017/018/020: preload/pre-touch, immutable
-inputs, one complete untimed warmup pass with discarded state, fresh production state per pass,
+`bmd_projection_replay_latency` follows OD-M5-P6-017/018/020: preload/pre-touch, parse every
+decimal into immutable typed input before timing, one complete untimed typed warmup pass with
+discarded state, fresh production state per pass,
 preallocated sample storage, a `steady_clock` bracket around exactly one production event per
 sample (typed evidence capture only; no hashing/formatting/allocation/oracle inside the
 bracket), post-run final-state/checksum validation, statistics after measurement. Calibration
@@ -159,8 +164,9 @@ corpus p99.9 is OMITTED.
   Protobuf identity, or explicit `not_applicable` for Core-only payloads), workload identities,
   measurement identity (timer, denominator, warmup kind/count, repetitions, sample/unique/pass
   counts, estimator, checksum methodology), and result-payload binding (payload SHA-256).
-- The configure-time dirty bit is captured at CONFIGURE time and embedded in the binary; a
-  dirty tree produces `evidence_class = exploratory` and can never be formal baseline evidence.
+- Configure-time source provenance is captured as known-clean, known-dirty, or unavailable and
+  embedded in the binary. Dirty source produces exploratory evidence; unavailable or malformed
+  provenance is conservatively dirty for exploratory evidence and cannot produce a formal wrapper.
 - Result consumption methodology: `M5_PHASE6_REPLAY_CHECKSUM_V1` (FNV-1a over typed per-event
   evidence plus final projection state).
 
@@ -181,8 +187,13 @@ Python tests in `tests/m5/benchmark/test_phase6_validators.py` and C++ tests in
 - payload structure: non-empty benchmark array (zero-match filter failure), no
   `error_occurred`, no skip records (`SkipWithError`), finite/positive required timings;
 - smoke expectations: the executed set must equal the locked smoke set exactly;
-- wrapper: schema, required provenance/build/environment fields, dirty-formal rejection,
-  payload existence + SHA binding, binary SHA rehash where the binary is available;
+- wrapper: schema, required provenance/build/environment fields, unknown/dirty-formal rejection,
+  concrete generated-workload identity presence/shape, canonical replay-log consistency, explicit
+  warmup and formal repetition checks, payload existence + SHA binding, binary SHA rehash where
+  the binary is available; deterministic C++ tests independently reconstruct representative
+  synthetic identities from their generated state/update sequences;
+- item-rate contract: total logical items and the declared CPU/wall denominator reproduce
+  `items_per_second`; replay events/second and ns/event are reciprocal;
 - latency: nearest-rank-v1 recomputation from stored raw samples, sample_count ==
   passes x event_count, unique_event_count == event_count, eligibility rules, p99.9
   unique-event rule, checksum validation, calibration non-subtraction, wrapper binding.

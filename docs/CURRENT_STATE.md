@@ -47,7 +47,11 @@ orientation only.
   workload identity, the `M5_BENCHMARK_WRAPPER_V1` metadata/provenance wrapper, the
   `M5_REPLAY_LATENCY_V1` latency schema, deterministic inventory/smoke/wrapper/latency
   validators with tests, and the extended benchmark-smoke CI job. Production `src/**` and
-  public `include/**` are unchanged.
+  public `include/**` are unchanged. Focused measurement-contract corrections now enforce total
+  item accounting, explicit warmup/state isolation, prepared timed-call boundaries, adapter
+  rebaseline, typed latency preparation, generated-workload identity, fail-closed source
+  provenance, and the formal repetition minimum. Phase 6 remains IMPLEMENTED / PENDING
+  INDEPENDENT REVIEW.
 - PR #18, `Implement M5 differential replay fuzzing`, is MERGED (squash merge
   `53268d5cd2090f4779ffdc14c070184f470cc899`; final approved Head
   `e56f5dbd12b9e66946343467221e8e3ba9984531`; exact-head CI `31668465623` — 18/18 PASS;

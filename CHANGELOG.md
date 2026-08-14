@@ -39,6 +39,12 @@ All notable changes will be recorded here.
 
 ### Changed
 
+- Repaired the Phase-6 measurement contract after focused review: total logical-item reporting,
+  explicit discarded warmup passes, prepared CandidateApplyUpdates and M4 checked-operation
+  storage, adapter-path rebaseline, pre-parsed typed event latency, complete generated-workload
+  identity, fail-closed unknown Git provenance, and the formal five-repetition minimum are now
+  enforced with deterministic regression coverage. Production `src/`/`include/` remain unchanged.
+
 - Corrected the M5 Phase-5 candidate's final validation blockers: snapshot observations now cover
   actual venue, market, and schema version via explicit observation/manifest V2 schemas while V1
   bytes remain frozen; all ten mandatory replay seeds carry substantive decoded structure with
