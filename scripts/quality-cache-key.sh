@@ -31,6 +31,15 @@ if [[ ! -r "$contract_file" || ! -r "$requirements_file" ]]; then
     exit 1
 fi
 
+# Duplicate assignment of any key is malformed (no first-wins/last-wins
+# interpretation); reject before consuming so the cache namespace can never
+# be derived from a contract the validator would reject.
+duplicate_keys="$(awk -F= '/^[A-Z0-9_]+=/ { key=$1; if (seen[key]++) print key }' "$contract_file")"
+if [[ -n "$duplicate_keys" ]]; then
+    echo "quality-cache-key: contract has duplicate key assignment(s): $(printf '%s ' $duplicate_keys)in $contract_file" >&2
+    exit 1
+fi
+
 sha256_of() {
     if command -v sha256sum >/dev/null 2>&1; then
         sha256sum

@@ -14,9 +14,13 @@
 #   - conan: exact version pinned in requirements-tools.txt (unless --skip-conan)
 #   - cmake: at least CMakePresets.json "cmakeMinimumRequired"
 #   - python3: at least PYTHON_MINIMUM_VERSION from the contract
-#   - UBUNTU_SNAPSHOT_ID: present, YYYYMMDDTHHMMSSZ-formatted, and NOT in the
-#     future relative to the reference UTC time (future snapshot IDs fail
-#     before image construction)
+#   - UBUNTU_SNAPSHOT_ID: present, YYYYMMDDTHHMMSSZ-formatted, a real UTC
+#     calendar moment (20260230T120000Z is rejected), and NOT in the future
+#     relative to the reference UTC time (future snapshot IDs fail before
+#     image construction)
+#   - the contract is a valid KEY=VALUE file: duplicate assignment of any key
+#     is malformed and FAILS CLOSED (there is no first-wins or last-wins
+#     interpretation; the file is rejected before any value is consumed)
 # Recorded (printed, not asserted):
 #   - ninja
 #
@@ -29,7 +33,9 @@
 #                    (used by scripts/quality.sh before any container work)
 #   --skip-conan     run without the Conan assertion (used before bootstrap)
 #
-# Test hooks (deterministic tests, no network):
+# Test hooks (deterministic tests only, no network; scripts/quality.sh REJECTS
+# all of them in its environment, so they can never influence canonical
+# acceptance):
 #   BMD_QUALITY_CONTRACT_FILE   contract path override (default: repo .toolchain/quality.env)
 #   BMD_QUALITY_TOOLCHAIN_DIR   fake-tool root; tools are then expected under
 #                               <dir>/usr/bin and canonical-path policy applies
@@ -86,10 +92,48 @@ for required_key in LLVM_MAJOR LLVM_MINOR LLVM_PATCH PYTHON_MINIMUM_VERSION UBUN
         || fail "contract file malformed: missing or empty key '${required_key}' in ${contract_file}"
 done
 
+# Duplicate assignment of ANY key is malformed. The repository parser
+# (first occurrence) and the shell sourcing used by the Dockerfile/container
+# (last occurrence) must never be able to interpret one file differently:
+# the file is rejected before any canonical value is consumed.
+duplicate_keys="$(awk -F= '/^[A-Z0-9_]+=/ { key=$1; if (seen[key]++) print key }' "$contract_file")"
+if [[ -n "$duplicate_keys" ]]; then
+    fail "contract file malformed: duplicate key assignment(s): $(printf '%s ' $duplicate_keys)in ${contract_file}"
+fi
+
 contract_key() {
-    # NOTE: must never fail() — output is captured by the caller
+    # NOTE: must never fail() — output is captured by the caller.
+    # Safe first-occurrence read: duplicate keys are rejected above, so the
+    # file holds at most one assignment per key.
     local key="$1"
     sed -n "s/^${key}=//p" "$contract_file" | head -n1
+}
+
+utc_calendar_valid() {
+    # $1 = YYYYMMDDTHHMMSSZ; returns 0 iff a real UTC calendar moment
+    # (leap-year aware; century years need %400). No Python or host extras;
+    # pure POSIX-Bash arithmetic with explicit 10# base (leading zeros must
+    # never be parsed as octal).
+    local ts="$1" y m d h mi s dim
+    [[ "$ts" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] || return 1
+    y="${ts:0:4}"; m="${ts:4:2}"; d="${ts:6:2}"
+    h="${ts:9:2}"; mi="${ts:11:2}"; s="${ts:13:2}"
+    (( 10#$y >= 1 && 10#$y <= 9999 )) || return 1
+    (( 10#$m >= 1 && 10#$m <= 12 )) || return 1
+    (( 10#$h <= 23 && 10#$mi <= 59 && 10#$s <= 59 )) || return 1
+    case "$m" in
+        01|03|05|07|08|10|12) dim=31 ;;
+        04|06|09|11) dim=30 ;;
+        02)
+            if (( 10#$y % 4 != 0 )); then dim=28
+            elif (( 10#$y % 100 != 0 )); then dim=29
+            elif (( 10#$y % 400 != 0 )); then dim=28
+            else dim=29
+            fi
+            ;;
+    esac
+    (( 10#$d >= 1 && 10#$d <= dim )) || return 1
+    return 0
 }
 
 llvm_major="$(contract_key LLVM_MAJOR)"
@@ -105,9 +149,13 @@ python_minimum="$(contract_key PYTHON_MINIMUM_VERSION)"
 snapshot_id="$(contract_key UBUNTU_SNAPSHOT_ID)"
 [[ "$snapshot_id" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] \
     || fail "contract file malformed: UBUNTU_SNAPSHOT_ID '${snapshot_id}' not in YYYYMMDDTHHMMSSZ format"
+utc_calendar_valid "$snapshot_id" \
+    || fail "contract file malformed: UBUNTU_SNAPSHOT_ID '${snapshot_id}' is not a valid UTC calendar date/time"
 reference_time="${BMD_QUALITY_REFERENCE_TIME:-$(date -u +%Y%m%dT%H%M%SZ)}"
 [[ "$reference_time" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] \
     || fail "reference time invalid: '${reference_time}' (expected YYYYMMDDTHHMMSSZ)"
+utc_calendar_valid "$reference_time" \
+    || fail "reference time invalid: '${reference_time}' is not a valid UTC calendar date/time"
 if [[ "$snapshot_id" > "$reference_time" ]]; then
     fail "contract file: UBUNTU_SNAPSHOT_ID '${snapshot_id}' is in the future (reference UTC ${reference_time}); a historical snapshot is required"
 fi

@@ -19,6 +19,15 @@ if [[ ! -r "$contract_file" ]]; then
     exit 1
 fi
 
+# Duplicate assignment of any key is malformed (no first-wins/last-wins
+# interpretation); reject before consuming any value so this consumer can
+# never observe a different contract interpretation than the validator.
+duplicate_keys="$(awk -F= '/^[A-Z0-9_]+=/ { key=$1; if (seen[key]++) print key }' "$contract_file")"
+if [[ -n "$duplicate_keys" ]]; then
+    echo "quality-base-ref: contract has duplicate key assignment(s): $(printf '%s ' $duplicate_keys)in $contract_file" >&2
+    exit 1
+fi
+
 image="$(sed -n 's/^CANONICAL_QUALITY_BASE_IMAGE=//p' "$contract_file" | head -n1)"
 digest="$(sed -n 's/^CANONICAL_QUALITY_BASE_IMAGE_DIGEST=//p' "$contract_file" | head -n1)"
 

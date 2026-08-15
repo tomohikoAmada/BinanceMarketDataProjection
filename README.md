@@ -44,9 +44,10 @@ extensions.
 - Ninja.
 - Python 3 with `venv`.
 - A C++20 compiler.
-- Docker or Podman for the canonical Quality gate (`scripts/quality.sh`); the canonical
-  clang/clang-tidy/clang-format 18.1.3 toolchain runs inside a repository-pinned container
-  (see [docs/QUALITY_TOOLCHAIN.md](docs/QUALITY_TOOLCHAIN.md)).
+- Docker (Docker Desktop on macOS) for the canonical Quality gate (`scripts/quality.sh`); the
+  canonical clang/clang-tidy/clang-format 18.1.3 toolchain runs inside a repository-pinned
+  container (see [docs/QUALITY_TOOLCHAIN.md](docs/QUALITY_TOOLCHAIN.md)). Podman is not a
+  validated canonical acceptance runtime.
 - A local `clang-format` for the broad `verify.sh` gate. Local hosts without clang-tidy may skip
   it explicitly; canonical containerized clang-tidy remains the authoritative gate.
 

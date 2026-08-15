@@ -30,8 +30,10 @@ Canonical Quality runs inside a repository-owned container image:
   build (`base name should not be blank`) or fails the pull. Drift between the contract and the
   actual base image is therefore impossible.
 - **Ubuntu archive state** is pinned to one official Ubuntu Snapshot Service identity
-  (`UBUNTU_SNAPSHOT_ID=20260814T120000Z`, format `YYYYMMDDTHHMMSSZ`). The ID MUST be
-  historical: the toolchain check rejects any snapshot later than the current UTC time
+  (`UBUNTU_SNAPSHOT_ID=20260814T120000Z`, format `YYYYMMDDTHHMMSSZ`). The ID must be a **real
+  UTC calendar moment** (format alone is never sufficient: `20260230T120000Z`, month 13,
+  day 32, hour 24, minute/second 60, and non-leap-day February 29 are all rejected) and MUST
+  be historical: the toolchain check rejects any snapshot later than the current UTC time
   (deterministic, before any image construction). The image build rewrites
   `/etc/apt/sources.list.d/ubuntu.sources` (via `scripts/quality-apt-sources.sh`) so that BOTH
   the archive pockets (`noble`, `noble-updates`, `noble-backports`) and the security pocket
@@ -69,7 +71,7 @@ actual, and resolved path):
 | conan         | pinned     | `requirements-tools.txt` (`conan==2.31.2`)                 |
 | cmake         | >= 3.24.0  | `CMakePresets.json` `cmakeMinimumRequired`                 |
 | python3       | >= 3.10.0  | `PYTHON_MINIMUM_VERSION`                                   |
-| snapshot      | historical  | `UBUNTU_SNAPSHOT_ID` format- AND temporal-validated (never in the future) |
+| snapshot      | historical  | `UBUNTU_SNAPSHOT_ID` format-, real-calendar-, and temporal-validated (never in the future) |
 
 LLVM provenance: the resolved real executable must be owned (per dpkg metadata) by the exact
 expected Ubuntu package, that package's installed version must equal the contract pin, and the
@@ -107,9 +109,16 @@ Local canonical Quality is **working-tree content acceptance**, not exact Git-co
 bash scripts/quality.sh
 ```
 
-- Linux: uses Docker or Podman; macOS: Docker Desktop (the amd64 container runs through
-  Rosetta 2). If no container runtime is present or its daemon is not running, `quality.sh`
-  fails with explicit instructions. Native AppleClang is **never** canonical Quality.
+- Linux: uses Docker; macOS: Docker Desktop (the amd64 container runs through Rosetta 2).
+  **Podman is NOT a validated canonical acceptance runtime** (SELinux/rootless/runtime
+  integration evidence would be required by a separate task); if Docker is absent or its
+  daemon is not running, `quality.sh` fails with explicit instructions. Native AppleClang is
+  **never** canonical Quality.
+- Test-only validation hooks (`BMD_QUALITY_CONTRACT_FILE`, `BMD_QUALITY_REFERENCE_TIME`,
+  `BMD_QUALITY_TOOLCHAIN_DIR`, `BMD_QUALITY_DPKG_INFO_DIR`, `BMD_QUALITY_WORK_KEEP`) are
+  **rejected by the canonical entrypoint**: if any is present in the environment, `quality.sh`
+  aborts before container image construction. They exist only for the deterministic tests,
+  which invoke the checker directly.
 - The working tree is mounted read-only; Quality runs from the fresh scratch copy inside the
   container, so the host tree is never polluted.
 - The image is rebuilt whenever the contract fingerprint changes; a cache hit is never trusted
@@ -117,16 +126,19 @@ bash scripts/quality.sh
 
 The entrypoint performs, in order:
 
-1. contract validation (fail closed if malformed);
-2. base-reference computation from the contract and image build with
+1. rejection of test-only `BMD_QUALITY_*` hooks (canonical runs cannot be influenced by
+   test-only contract/time/tool-tree/dpkg overrides);
+2. contract validation (fail closed if malformed, duplicate-keyed, calendar-invalid, or
+   future-dated);
+3. base-reference computation from the contract and image build with
    `--build-arg BMD_CANONICAL_BASE_IMAGE_REF=<authoritative ref>` and the pinned snapshot;
-3. image-vs-worktree contract identity check (fail closed on stale images);
-4. exact toolchain identity + dpkg provenance check (fail closed);
-5. formatting check with canonical clang-format 18.1.3;
-6. repository-local Conan bootstrap; 7. pinned Contracts bootstrap;
-8. Debug configure with ProtoAdapter ON, clang-tidy ON, Werror ON;
-9. build, tests, staged-install consumer;
-10. final `CANONICAL QUALITY: PASS` line carrying the exact tool and snapshot identity.
+4. image-vs-worktree contract identity check (fail closed on stale images);
+5. exact toolchain identity + dpkg provenance check (fail closed);
+6. formatting check with canonical clang-format 18.1.3;
+7. repository-local Conan bootstrap; 8. pinned Contracts bootstrap;
+9. Debug configure with ProtoAdapter ON, clang-tidy ON, Werror ON;
+10. build, tests, staged-install consumer;
+11. final `CANONICAL QUALITY: PASS` line carrying the exact tool and snapshot identity.
 
 ## Canonical acceptance vs. supplemental local checks
 
@@ -161,8 +173,19 @@ The `quality-toolchain-tests` job runs the deterministic contract tests
 - Missing tool, unparseable version output, AppleClang resolution, PATH selecting a non-canonical
   installation → abort.
 - Malformed contract (missing/empty key, non-numeric version) → abort.
-- Snapshot ID malformed, missing, or **in the future relative to the current UTC time** → abort
-  before any image construction (future IDs can never be an acceptance snapshot).
+- **Duplicate key assignment in the contract → abort.** A contract may not assign any key
+  twice; there is no first-wins or last-wins interpretation. All consumers
+  (`quality-toolchain-check.sh`, `quality-base-ref.sh`, `quality-cache-key.sh`) reject the
+  file before consuming any value, so the repository parser and the shell sourcing used by
+  the Dockerfile can never interpret one file differently.
+- **Test-only `BMD_QUALITY_*` hooks in the canonical entrypoint environment → abort** before
+  image construction: the authoritative contract path is always
+  `<repo>/.toolchain/quality.env` and the reference UTC time is always the real current
+  clock; an ambient environment can never redefine contract, reference time, tool tree, or
+  dpkg metadata for canonical acceptance.
+- Snapshot ID malformed, calendar-invalid, or **in the future relative to the current UTC
+  time** → abort before any image construction (future IDs can never be an acceptance
+  snapshot).
 - Conan differing from `requirements-tools.txt` → abort.
 - Image not built from the current contract → abort.
 - Base-image reference missing/empty/mutated → build fails (no default fallback, no second digest
@@ -171,12 +194,13 @@ The `quality-toolchain-tests` job runs the deterministic contract tests
 - No package-resolution operation ever touches a mutable live archive: the only apt sources are
   the historical snapshot URIs (both pockets), archive signatures verified via `Signed-By`.
 
-Deterministic offline tests: `scripts/test-quality-toolchain.sh` (47 cases, no network; fake
+Deterministic offline tests: `scripts/test-quality-toolchain.sh` (69 cases, no network; fake
 shims generated from the repository's own contract files) — including adversarial stale-object
 reuse against the production work-preparation mechanism, source deletion/rollback, base-ref
-mutation, snapshot temporal plumbing, cache-namespace key changes, payload tamper, and
-provenance negatives. Live integration proof comes from the canonical image build itself (CI
-quality job) and the documented local failure proofs.
+mutation, snapshot temporal/calendar plumbing, duplicate-key fail-closed, cache-namespace key
+changes, payload tamper, entrypoint-level test-hook isolation proofs (fake docker shim, no
+image-build command reached), and provenance negatives. Live integration proof comes from the
+canonical image build itself (CI quality job) and the documented local failure proofs.
 
 ## Intentional upgrade procedure
 

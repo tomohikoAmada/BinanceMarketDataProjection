@@ -157,17 +157,22 @@ artifact is a separate identity and remains outside Projection ownership.
   RE-REVIEW. Active candidate: PR #23, branch `chore/reproducible-quality-toolchain`. The
   exact current PR Head and exact-head CI are GitHub/PR evidence and are intentionally not
   duplicated in this orientation document because they change when this document itself is
-  committed. Two review rounds requested changes; all corrections are implemented and the
+  committed. Three review rounds requested changes; all corrections are implemented and the
   candidate is awaiting the final focused independent re-review. CI success is NOT independent
   acceptance. Implementation facts: exact clang/clang++/clang-tidy/clang-format identity in
   `.toolchain/quality.env` (single source of truth), one repo-owned canonical Quality
   entrypoint `scripts/quality.sh` used by CI and local developers, base-image digest bound
   through a build argument (no independent Dockerfile literal), Ubuntu archive state pinned
-  to the HISTORICAL snapshot `UBUNTU_SNAPSHOT_ID=20260814T120000Z` (future IDs fail closed),
-  immutable SHA-256-pinned TLS bootstrap artifact (no mutable live archive), cache
-  namespaces keyed by the canonical contract, ephemeral /work with never-persisted build
-  trees, dpkg provenance plus installed payload md5 verification, and 47
-  deterministic/adversarial contract tests. See `docs/QUALITY_TOOLCHAIN.md` and the PR body
+  to the HISTORICAL snapshot `UBUNTU_SNAPSHOT_ID=20260814T120000Z` (format + real UTC
+  calendar + temporal validation; future IDs fail closed), duplicate contract key assignments
+  invalid and fail closed in every consumer (no first-wins/last-wins), test-only
+  `BMD_QUALITY_*` hooks rejected by the canonical entrypoint before image construction
+  (authoritative contract path and real UTC clock cannot be redefined by an ambient
+  environment), canonical local runtime is Docker (Podman is not a validated canonical
+  acceptance runtime), immutable SHA-256-pinned TLS bootstrap artifact (no mutable live
+  archive), cache namespaces keyed by the canonical contract, ephemeral /work with
+  never-persisted build trees, dpkg provenance plus installed payload md5 verification, and
+  69 deterministic/adversarial contract tests. See `docs/QUALITY_TOOLCHAIN.md` and the PR body
   for the implementation/evidence report. Do NOT treat INFRA-TC-001 as accepted until the
   final independent re-review passes.
 - Later M5 phases remain separately authorized work.
@@ -249,11 +254,12 @@ post-merge main CI `31809917018` — 18/18 PASS). P6-AUDIT-003 is CLOSED by the 
 governance/status synchronization. Immediate sequencing:
 
 1. INFRA-TC-001 (reproducible Quality toolchain): IMPLEMENTED / PENDING FINAL INDEPENDENT
-   RE-REVIEW (PR #23, branch `chore/reproducible-quality-toolchain`; corrections for all nine
-   findings — INFRA-TC-FINAL-003/004/005/006 and INFRA-TC-REREVIEW-001/002/003 — are
-   implemented; INFRA-TC-FINAL-001/002 were closed by the prior independent re-review; the
-   exact current PR Head and exact-head CI are GitHub/PR evidence, see the PR body). It is
-   not merged yet.
+   RE-REVIEW (PR #23, branch `chore/reproducible-quality-toolchain`; corrections for all
+   findings — INFRA-TC-FINAL-003/004/005/006, INFRA-TC-REREVIEW-001/002/003, and the
+   INFRA-TC-REREVIEW-001/FINALREREVIEW-001 re-review findings on test-hook isolation and
+   duplicate-key fail-closed — are implemented; INFRA-TC-FINAL-001/002 were closed by the
+   prior independent re-review; the exact current PR Head and exact-head CI are GitHub/PR
+   evidence, see the PR body). It is not merged yet.
 2. After INFRA-TC-001 is separately completed/accepted, proceed to separately authorized
    Phase-7 work.
 

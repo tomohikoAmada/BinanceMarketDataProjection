@@ -4,9 +4,15 @@
 #
 # Categories:
 #   unit (offline): exact/missing/wrong tool identity, malformed contract,
-#     AppleClang rejection, wrong-PATH rejection, conan/cmake/python floors,
-#     dpkg package provenance, UBUNTU_SNAPSHOT_ID validation, base-reference
-#     plumbing, snapshot apt-sources generation, Dockerfile base binding.
+#     duplicate-key fail-closed, real-UTC calendar validation, AppleClang
+#     rejection, wrong-PATH rejection, conan/cmake/python floors, dpkg package
+#     provenance, UBUNTU_SNAPSHOT_ID validation, base-reference plumbing,
+#     snapshot apt-sources generation, Dockerfile base binding.
+#   entrypoint adversarial (offline): the PRODUCTION canonical entrypoint
+#     (scripts/quality.sh) must reject test-only BMD_QUALITY_* hooks and
+#     calendar/temporal-invalid authoritative contracts BEFORE any
+#     image-build command (proved with a fake docker shim recording
+#     invocations).
 #   adversarial (offline, requires cmake + ninja): stale-object build reuse
 #     against the production work-preparation mechanism, source deletion and
 #     rollback between runs.
@@ -213,6 +219,62 @@ run_cmd_case() {
 }
 
 tree() { printf '%s/case-%s' "$work_root" "$1"; }
+
+contract_variant() {
+    # contract_variant <case-dir> <sed-expr> — a copy of the real repository
+    # contract with exactly one sed transformation applied. The real contract
+    # is never mutated.
+    local dir="$1" expr="$2"
+    rm -rf "$dir"
+    mkdir -p "$dir"
+    sed "$expr" "$repo_root/.toolchain/quality.env" > "$dir/quality.env"
+}
+
+dup_contract() {
+    # dup_contract <case-dir> <key> — the real contract plus one additional
+    # assignment of <key> (same value) prepended; a duplicate key contract
+    # must FAIL CLOSED in every consumer.
+    local dir="$1" key="$2"
+    rm -rf "$dir"
+    mkdir -p "$dir"
+    {
+        grep "^${key}=" "$repo_root/.toolchain/quality.env"
+        cat "$repo_root/.toolchain/quality.env"
+    } > "$dir/quality.env"
+}
+
+run_entrypoint_case() {
+    # run_entrypoint_case <name> <required-diagnostic-regex> <env...> -- <args...>
+    # Runs the PRODUCTION canonical entrypoint (scripts/quality.sh) with a
+    # fake docker shim on PATH that records any invocation in
+    # $fake_docker_marker. PASS requires: nonzero exit, the required
+    # diagnostic, and NO container-runtime invocation (proof that the failure
+    # happened before any image-build command was reached).
+    local name="$1" diag_re="$2"
+    shift 2
+    local envs=() args=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --) shift; break ;;
+            *) envs+=("$1"); shift ;;
+        esac
+    done
+    args+=("$@")
+    local out rc
+    rm -f "$fake_docker_marker"
+    out="$(PATH="$fake_docker_dir:$PATH" env "${envs[@]+"${envs[@]}"}" bash "${args[@]}" 2>&1)" && rc=0 || rc=$?
+    if [[ "$rc" -ne 0 && "$out" =~ $diag_re && ! -f "$fake_docker_marker" ]]; then
+        verdict="PASS"
+        pass_count=$((pass_count + 1))
+    else
+        verdict="FAIL(rc=$rc, diag ~${diag_re}, build reached: $([[ -f "$fake_docker_marker" ]] && echo YES || echo NO))"
+        fail_count=$((fail_count + 1))
+    fi
+    if [[ "$verdict" != "PASS" ]]; then
+        printf '%s\n' "$out"
+    fi
+    printf '  [%s] %s\n' "$verdict" "$name"
+}
 
 rm -rf "$work_root"
 mkdir -p "$work_root"
@@ -436,6 +498,87 @@ run_case "snapshot equal to reference accepted -> PASS" yes \
 run_case "future snapshot rejected (real clock) -> FAIL" no \
     BMD_QUALITY_CONTRACT_FILE="$(tree snapfuture)/contract/quality.env" \
     -- --contract-only
+
+# ============================================================================
+# Unit: duplicate contract keys fail closed (no first-wins/last-wins)
+# ============================================================================
+
+# A. duplicate UBUNTU_SNAPSHOT_ID -> FAIL
+dup_contract "$(tree dup-snapshot)" UBUNTU_SNAPSHOT_ID
+run_case "duplicate UBUNTU_SNAPSHOT_ID -> FAIL" no \
+    BMD_QUALITY_CONTRACT_FILE="$(tree dup-snapshot)/quality.env" \
+    -- --contract-only
+
+# B. duplicate LLVM_MAJOR -> FAIL
+dup_contract "$(tree dup-llvm)" LLVM_MAJOR
+run_case "duplicate LLVM_MAJOR -> FAIL" no \
+    BMD_QUALITY_CONTRACT_FILE="$(tree dup-llvm)/quality.env" \
+    -- --contract-only
+
+# C. duplicate base-image digest -> FAIL
+dup_contract "$(tree dup-digest)" CANONICAL_QUALITY_BASE_IMAGE_DIGEST
+run_case "duplicate base-image digest -> FAIL" no \
+    BMD_QUALITY_CONTRACT_FILE="$(tree dup-digest)/quality.env" \
+    -- --contract-only
+
+# D. duplicate bootstrap artifact hash -> FAIL
+dup_contract "$(tree dup-artifact)" CA_CERTIFICATES_BOOTSTRAP_SHA256
+run_case "duplicate bootstrap artifact hash -> FAIL" no \
+    BMD_QUALITY_CONTRACT_FILE="$(tree dup-artifact)/quality.env" \
+    -- --contract-only
+
+# ============================================================================
+# Unit: real UTC calendar validation of UBUNTU_SNAPSHOT_ID
+# ============================================================================
+
+# E/F. calendar-invalid snapshot IDs -> FAIL (format alone must not pass)
+snapshot_invalid_cases=(
+    "20260230T120000Z:Feb 30 (2026, non-leap)"
+    "20261301T120000Z:month 13"
+    "20260001T120000Z:month 00"
+    "20260832T120000Z:day 32 (August has 31)"
+    "20260814T240000Z:hour 24"
+    "20260814T126000Z:minute 60"
+    "20260814T120060Z:second 60"
+)
+snapshot_cal_n=0
+for entry in "${snapshot_invalid_cases[@]}"; do
+    bad_id="${entry%%:*}"
+    label="${entry#*:}"
+    snapshot_cal_n=$((snapshot_cal_n + 1))
+    contract_variant "$(tree "snapcal-$snapshot_cal_n")" "s/^UBUNTU_SNAPSHOT_ID=.*/UBUNTU_SNAPSHOT_ID=${bad_id}/"
+    run_case "calendar-invalid snapshot ${label} -> FAIL" no \
+        BMD_QUALITY_CONTRACT_FILE="$(tree "snapcal-$snapshot_cal_n")/quality.env" \
+        -- --contract-only
+done
+
+# G. valid leap-day snapshot (2024-02-29) -> PASS
+contract_variant "$(tree snap-leap-ok)" "s/^UBUNTU_SNAPSHOT_ID=.*/UBUNTU_SNAPSHOT_ID=20240229T120000Z/"
+run_case "valid leap-day snapshot 20240229T120000Z -> PASS" yes \
+    BMD_QUALITY_CONTRACT_FILE="$(tree snap-leap-ok)/quality.env" \
+    -- --contract-only
+
+# H. invalid non-leap-day snapshot (2025-02-29) -> FAIL
+contract_variant "$(tree snap-leap-bad)" "s/^UBUNTU_SNAPSHOT_ID=.*/UBUNTU_SNAPSHOT_ID=20250229T120000Z/"
+run_case "invalid non-leap-day snapshot 20250229T120000Z -> FAIL" no \
+    BMD_QUALITY_CONTRACT_FILE="$(tree snap-leap-bad)/quality.env" \
+    -- --contract-only
+
+# injected reference time must itself be calendar valid
+run_case "calendar-invalid BMD_QUALITY_REFERENCE_TIME -> FAIL" no \
+    BMD_QUALITY_CONTRACT_FILE="$repo_root/.toolchain/quality.env" \
+    BMD_QUALITY_REFERENCE_TIME="20260230T120000Z" \
+    -- --contract-only
+
+# ============================================================================
+# Unit: every canonical consumer rejects duplicate-key contracts
+# ============================================================================
+
+run_cmd_case "base-ref rejects duplicate-key contract -> FAIL" no \
+    bash "$repo_root/scripts/quality-base-ref.sh" "$(tree dup-digest)/quality.env"
+
+run_cmd_case "cache-key rejects duplicate-key contract -> FAIL" no \
+    bash "$repo_root/scripts/quality-cache-key.sh" "$(tree dup-snapshot)/quality.env" "$repo_root/requirements-tools.txt"
 
 # ============================================================================
 # Unit: base-reference plumbing (production scripts/quality-base-ref.sh)
@@ -713,6 +856,77 @@ EOF
             '$adv_work/build/stale_probe'
         "
 fi
+
+# ============================================================================
+# Entrypoint adversarial: canonical quality.sh must fail closed on test-only
+# hooks and calendar/temporal-invalid authoritative contracts, BEFORE any
+# image-build command is reached.
+# ============================================================================
+fake_docker_dir="$work_root/fake-docker-bin"
+fake_docker_marker="$work_root/fake-docker-invoked.marker"
+mkdir -p "$fake_docker_dir"
+cat > "$fake_docker_dir/docker" <<'EOF'
+#!/usr/bin/env bash
+echo "FAKE DOCKER INVOKED: $*" >> "${BMD_FAKE_DOCKER_MARKER}"
+exit 0
+EOF
+chmod +x "$fake_docker_dir/docker"
+
+# a temporary authoritative repository root whose contract differs from the
+# real repository contract (never mutated); quality.sh computes repo_root
+# from its own location, so this exercises the production entrypoint against
+# a different authoritative contract.
+temp_repo="$work_root/temp-repo"
+rm -rf "$temp_repo"
+mkdir -p "$temp_repo/scripts" "$temp_repo/.toolchain"
+for script_name in quality.sh quality-toolchain-check.sh quality-base-ref.sh quality-cache-key.sh; do
+    cp "$repo_root/scripts/$script_name" "$temp_repo/scripts/$script_name"
+done
+cp "$repo_root/requirements-tools.txt" "$temp_repo/requirements-tools.txt"
+sed 's/^UBUNTU_SNAPSHOT_ID=.*/UBUNTU_SNAPSHOT_ID=20990101T000000Z/' \
+    "$repo_root/.toolchain/quality.env" > "$temp_repo/.toolchain/quality.env"
+
+# a benign alternate contract (a plain copy of the real one) that must NOT be
+# promoted to canonical authority
+benign_contract="$work_root/benign-contract/quality.env"
+mkdir -p "$(dirname "$benign_contract")"
+cp "$repo_root/.toolchain/quality.env" "$benign_contract"
+
+# I. canonical quality.sh with a test-only BMD_QUALITY_REFERENCE_TIME
+run_entrypoint_case "canonical quality.sh rejects BMD_QUALITY_REFERENCE_TIME -> FAIL before image build" \
+    "BMD_QUALITY_REFERENCE_TIME" \
+    BMD_QUALITY_REFERENCE_TIME="20991231T000000Z" \
+    -- "$repo_root/scripts/quality.sh"
+
+# J. canonical quality.sh with BMD_QUALITY_CONTRACT_FILE -> alternate benign contract
+run_entrypoint_case "canonical quality.sh rejects BMD_QUALITY_CONTRACT_FILE alternate contract -> FAIL before image build" \
+    "BMD_QUALITY_CONTRACT_FILE" \
+    BMD_QUALITY_CONTRACT_FILE="$benign_contract" \
+    -- "$repo_root/scripts/quality.sh"
+
+# K. canonical quality.sh with the remaining documented test-only hooks
+run_entrypoint_case "canonical quality.sh rejects BMD_QUALITY_TOOLCHAIN_DIR -> FAIL before image build" \
+    "BMD_QUALITY_TOOLCHAIN_DIR" \
+    BMD_QUALITY_TOOLCHAIN_DIR="$work_root/fake-tool-root" \
+    -- "$repo_root/scripts/quality.sh"
+
+run_entrypoint_case "canonical quality.sh rejects BMD_QUALITY_DPKG_INFO_DIR -> FAIL before image build" \
+    "BMD_QUALITY_DPKG_INFO_DIR" \
+    BMD_QUALITY_DPKG_INFO_DIR="$work_root/fake-dpkg-info" \
+    -- "$repo_root/scripts/quality.sh"
+
+# L. a future authoritative snapshot cannot be made acceptable by forging the
+# reference time (the test-only hook itself is rejected)
+run_entrypoint_case "forged BMD_QUALITY_REFERENCE_TIME cannot accept a future authoritative snapshot -> FAIL before image build" \
+    "BMD_QUALITY_REFERENCE_TIME" \
+    BMD_QUALITY_REFERENCE_TIME="20991231T000000Z" \
+    -- "$temp_repo/scripts/quality.sh"
+
+# M. a future authoritative repository snapshot fails against the real UTC
+# clock, with no hook set, before image construction
+run_entrypoint_case "future authoritative repository snapshot rejected by canonical quality.sh -> FAIL before image build" \
+    "in the future" \
+    -- "$temp_repo/scripts/quality.sh"
 
 echo
 if [[ "$fail_count" -eq 0 ]]; then

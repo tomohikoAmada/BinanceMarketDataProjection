@@ -7,7 +7,11 @@
 #
 # Host branch:
 #   - validates the toolchain contract file (.toolchain/quality.env)
-#   - requires Docker (or Podman); fails with instructions when absent
+#   - rejects test-only environment hooks (BMD_QUALITY_*): canonical
+#     acceptance must never validate one contract/time identity and execute
+#     another
+#   - requires Docker; fails with instructions when absent (Podman is NOT a
+#     validated canonical acceptance runtime)
 #   - builds the canonical image from the pinned base digest and exact
 #     package pins in the contract (fail closed if apt cannot install the
 #     exact versions)
@@ -30,12 +34,36 @@
 #
 # Local reproduction: bash scripts/quality.sh
 #   macOS: Docker Desktop (amd64 containers run through Rosetta 2).
-#   Linux: Docker or Podman.
+#   Linux: Docker.
+# Podman is NOT a validated canonical acceptance runtime; supporting it is a
+# separate task requiring SELinux/rootless/runtime integration evidence.
 #
 # See docs/QUALITY_TOOLCHAIN.md for the contract and upgrade procedure.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# --------------------------------------------------------------------------
+# Test-only hooks are forbidden in canonical Quality. The deterministic
+# contract tests may set BMD_QUALITY_* when invoking the checker directly;
+# the canonical entrypoint must FAIL CLOSED before any image construction if
+# an ambient developer/CI environment tries to redefine the authoritative
+# contract path, the reference UTC time, the fake tool tree, or the fake
+# dpkg metadata directory.
+# --------------------------------------------------------------------------
+for hook in \
+    BMD_QUALITY_CONTRACT_FILE \
+    BMD_QUALITY_REFERENCE_TIME \
+    BMD_QUALITY_TOOLCHAIN_DIR \
+    BMD_QUALITY_DPKG_INFO_DIR \
+    BMD_QUALITY_WORK_KEEP; do
+    if [[ -n "${!hook:-}" ]]; then
+        echo "QUALITY FAIL: test-only hook ${hook} is set in the environment" >&2
+        echo "QUALITY FAIL: canonical Quality must not be influenced by test-only validation hooks" >&2
+        echo "QUALITY FAIL: unset ${hook} and retry (authoritative contract: ${repo_root}/.toolchain/quality.env; reference time: real UTC clock)" >&2
+        exit 1
+    fi
+done
 
 if [[ "${BMD_CANONICAL_QUALITY_CONTAINER:-0}" == "1" ]]; then
     # ------------------------------------------------------------------
@@ -134,18 +162,16 @@ echo "Canonical Quality: ubuntu snapshot $snapshot_id"
 runtime=""
 if command -v docker >/dev/null 2>&1; then
     runtime="docker"
-elif command -v podman >/dev/null 2>&1; then
-    runtime="podman"
 else
-    echo "QUALITY FAIL: canonical Quality requires Docker or Podman" >&2
+    echo "QUALITY FAIL: canonical Quality requires Docker" >&2
     echo "  macOS: install and start Docker Desktop" >&2
     echo "         (https://docs.docker.com/desktop/setup/install/mac-install/)" >&2
-    echo "  Linux: install docker or podman" >&2
+    echo "  Linux: install Docker (podman is not a validated canonical acceptance runtime)" >&2
     exit 1
 fi
 if ! "$runtime" info >/dev/null 2>&1; then
-    echo "QUALITY FAIL: '$runtime' is installed but not usable (daemon not running?)" >&2
-    echo "  Start Docker Desktop / the container runtime and retry." >&2
+    echo "QUALITY FAIL: 'docker' is installed but not usable (daemon not running?)" >&2
+    echo "  Start Docker Desktop and retry." >&2
     exit 1
 fi
 
