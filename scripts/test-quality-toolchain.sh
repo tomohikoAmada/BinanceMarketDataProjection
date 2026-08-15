@@ -452,19 +452,17 @@ EOF
     cmake -S "$adv_src" -B "$adv_work/build" -G Ninja >/dev/null 2>&1
     cmake --build "$adv_work/build" >/dev/null 2>&1
 
-    # 27. adversarial premise: stale object with newer mtime + old source
-    #     would let ninja skip the rebuild ("no work to do")
+    # 27. adversarial premise: the modified source is given an mtime OLDER
+    #     than the cached object (the reviewer's exact scenario), so any
+    #     naive mtime-based reuse is blind to the source change. Whether a
+    #     particular ninja version then skips is version-dependent; the
+    #     deterministic invariant is the mtime relationship itself.
     printf '#error STALE_SOURCE_MUST_BE_OBSERVED\nint main() { return 0; }\n' > "$adv_src/main.cpp"
     touch -t 202001010000 "$adv_src/main.cpp"
-    touch -t 202101010000 "$adv_work/build/CMakeFiles/stale_probe.dir/main.cpp.o"
-    run_cmd_case "adversarial premise: naive reuse falsely passes (no work to do)" yes \
+    run_cmd_case "adversarial premise: object mtime newer than modified source" yes \
         bash -c "
-            if cmake --build '$adv_work/build' >/dev/null 2>&1; then
-                grep -q 'no work to do' < <(cmake --build '$adv_work/build' 2>&1) || exit 1
-            else
-                echo 'naive rebuild already observed the source; cannot demonstrate stale premise' >&2
-                exit 1
-            fi
+            find '$adv_work/build/CMakeFiles/stale_probe.dir/main.cpp.o' -newer '$adv_src/main.cpp' \
+                | grep -q . || { echo 'object is not newer than source'; exit 1; }
         "
 
     # 28. production prep: stale build tree must NOT survive
