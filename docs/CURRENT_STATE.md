@@ -154,10 +154,11 @@ artifact is a separate identity and remains outside Projection ownership.
   PR #21 MERGED, squash merge `227524e6d17cce77813c6f26cd65bb8d996f5677`, and post-merge
   main CI `31809917018` — 18/18 PASS.
 - INFRA-TC-001 (reproducible Quality toolchain): IMPLEMENTED / PENDING FINAL INDEPENDENT
-  RE-REVIEW. Active candidate: PR #23, `chore/reproducible-quality-toolchain`, candidate
-  Head `5677873cf8586a4b68b4b48d281eeb80b51ea348`, exact-head CI `31882975951` — 19/19
-  PASS. Two review rounds requested changes; all corrections are implemented and the
-  candidate is awaiting the final focused independent re-review. CI PASS is NOT independent
+  RE-REVIEW. Active candidate: PR #23, branch `chore/reproducible-quality-toolchain`. The
+  exact current PR Head and exact-head CI are GitHub/PR evidence and are intentionally not
+  duplicated in this orientation document because they change when this document itself is
+  committed. Two review rounds requested changes; all corrections are implemented and the
+  candidate is awaiting the final focused independent re-review. CI success is NOT independent
   acceptance. Implementation facts: exact clang/clang++/clang-tidy/clang-format identity in
   `.toolchain/quality.env` (single source of truth), one repo-owned canonical Quality
   entrypoint `scripts/quality.sh` used by CI and local developers, base-image digest bound
@@ -229,11 +230,12 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
   `227524e6d17cce77813c6f26cd65bb8d996f5677` completed `success` — 18/18 jobs PASS (quality, ASan,
   UBSan, benchmark smoke, fuzz smoke, Release GCC/Clang/AppleClang, all M4 static/shared gates,
   `m5-replay`, `m5-semantic-compare`).
-- INFRA-TC-001 candidate PR #23 exact-head CI run `31882975951` for candidate head
-  `5677873cf8586a4b68b4b48d281eeb80b51ea348` completed `success` — 19/19 jobs PASS (quality,
-  quality-toolchain-tests, and all compatibility classes). This is candidate CI evidence only;
-  it is NOT independent acceptance of INFRA-TC-001, which remains IMPLEMENTED / PENDING FINAL
-  INDEPENDENT RE-REVIEW.
+- INFRA-TC-001 candidate PR #23 has completed exact-head CI runs with all job classes passing
+  (quality, quality-toolchain-tests, and all compatibility classes). The current run ID, job
+  count, and Head are GitHub/PR evidence and are intentionally not maintained as a ledger in
+  this orientation document (they change when this document itself is committed); see the PR
+  body for the exact current candidate evidence. Candidate CI evidence is NOT independent
+  acceptance of INFRA-TC-001, which remains IMPLEMENTED / PENDING FINAL INDEPENDENT RE-REVIEW.
 - PR #16 rejected reviewed Head `bf2239206ff74e11e3ce73de73f28465b033f808` had successful run
   `31559019189`, but independent semantic review found seven P1 defects. That historical green run
   is rejection/correction history and is not acceptance evidence for the merged implementation.
@@ -247,11 +249,11 @@ post-merge main CI `31809917018` — 18/18 PASS). P6-AUDIT-003 is CLOSED by the 
 governance/status synchronization. Immediate sequencing:
 
 1. INFRA-TC-001 (reproducible Quality toolchain): IMPLEMENTED / PENDING FINAL INDEPENDENT
-   RE-REVIEW (PR #23, `chore/reproducible-quality-toolchain`, candidate Head
-   `5677873cf8586a4b68b4b48d281eeb80b51ea348`, exact-head CI `31882975951` — 19/19 PASS;
-   corrections for all nine findings — INFRA-TC-FINAL-003/004/005/006 and
-   INFRA-TC-REREVIEW-001/002/003 — are implemented; INFRA-TC-FINAL-001/002 were closed by
-   the prior independent re-review; see `docs/QUALITY_TOOLCHAIN.md`). It is not merged yet.
+   RE-REVIEW (PR #23, branch `chore/reproducible-quality-toolchain`; corrections for all nine
+   findings — INFRA-TC-FINAL-003/004/005/006 and INFRA-TC-REREVIEW-001/002/003 — are
+   implemented; INFRA-TC-FINAL-001/002 were closed by the prior independent re-review; the
+   exact current PR Head and exact-head CI are GitHub/PR evidence, see the PR body). It is
+   not merged yet.
 2. After INFRA-TC-001 is separately completed/accepted, proceed to separately authorized
    Phase-7 work.
 
