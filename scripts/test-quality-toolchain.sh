@@ -37,6 +37,35 @@ format_pkg_version="${format_pkg_version#clang-format-18=}"
 pass_count=0
 fail_count=0
 
+md5_of() {
+    # portable md5 of stdin/file
+    if command -v md5sum >/dev/null 2>&1; then
+        md5sum
+    elif command -v md5 >/dev/null 2>&1; then
+        md5 -q
+    else
+        echo "no md5 tool found" >&2
+        exit 1
+    fi
+}
+
+sha256_of() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256
+    else
+        echo "no sha256 tool found" >&2
+        exit 1
+    fi
+}
+
+if command -v sha256sum >/dev/null 2>&1; then
+    sha256_cmd="sha256sum"
+else
+    sha256_cmd="shasum -a 256"
+fi
+
 make_shim() {
     local dir="$1" name="$2" version_line="$3"
     mkdir -p "$dir"
@@ -81,6 +110,24 @@ EOF
     chmod +x "$dir/dpkg"
 }
 
+make_md5sums() {
+    # fake dpkg md5sums database entries for the fake tree's shims; rel paths
+    # mirror the container layout (real path minus leading '/')
+    local dir="$1"
+    mkdir -p "$dir/info"
+    for t in clang clang++ clang-tidy clang-format; do
+        local pkg real md5
+        case "$t" in
+            clang | clang++) pkg="clang-$llvm_major" ;;
+            clang-tidy) pkg="clang-tidy-$llvm_major" ;;
+            clang-format) pkg="clang-format-$llvm_major" ;;
+        esac
+        real="$(cd "$dir" && pwd)/$t"
+        md5="$(md5_of < "$dir/$t" | cut -d' ' -f1)"
+        printf '%s  %s\n' "$md5" "${real#/}" >> "$dir/info/$pkg.md5sums"
+    done
+}
+
 build_tree() {
     local tree="$1"
     local clang_line="${2:-Ubuntu clang version $llvm_version (1ubuntu1)}"
@@ -103,6 +150,7 @@ build_tree() {
     make_shim "$tree/usr/bin" conan "$conan_line"
     make_shim "$tree/usr/bin" ninja "$ninja_line"
     make_dpkg_shim "$tree/usr/bin"
+    make_md5sums "$tree/usr/bin"
 }
 
 run_case() {
@@ -346,6 +394,49 @@ run_case "malformed UBUNTU_SNAPSHOT_ID -> FAIL" no \
     PATH="$(tree snapbad)/usr/bin:$PATH" \
     --
 
+# 17b. snapshot: missing UBUNTU_SNAPSHOT_ID -> FAIL
+build_tree "$(tree snapmissing)"
+grep -v '^UBUNTU_SNAPSHOT_ID=' "$(tree snapmissing)/contract/quality.env" \
+    > "$(tree snapmissing)/contract/quality.env.tmp"
+mv "$(tree snapmissing)/contract/quality.env.tmp" "$(tree snapmissing)/contract/quality.env"
+run_case "missing UBUNTU_SNAPSHOT_ID -> FAIL" no \
+    BMD_QUALITY_CONTRACT_FILE="$(tree snapmissing)/contract/quality.env" \
+    BMD_QUALITY_TOOLCHAIN_DIR="$(tree snapmissing)" \
+    PATH="$(tree snapmissing)/usr/bin:$PATH" \
+    --
+
+# 17c. snapshot temporal: historical snapshot accepted
+run_case "historical snapshot accepted (real contract) -> PASS" yes \
+    BMD_QUALITY_CONTRACT_FILE="$repo_root/.toolchain/quality.env" \
+    -- --contract-only
+
+# 17d. snapshot temporal: future snapshot rejected (deterministic reference)
+build_tree "$(tree snapfuture)"
+sed 's/^UBUNTU_SNAPSHOT_ID=.*/UBUNTU_SNAPSHOT_ID=20990101T000000Z/' \
+    "$(tree snapfuture)/contract/quality.env" \
+    > "$(tree snapfuture)/contract/quality.env.tmp"
+mv "$(tree snapfuture)/contract/quality.env.tmp" "$(tree snapfuture)/contract/quality.env"
+run_case "future snapshot rejected (fixed reference) -> FAIL" no \
+    BMD_QUALITY_CONTRACT_FILE="$(tree snapfuture)/contract/quality.env" \
+    BMD_QUALITY_REFERENCE_TIME="20260815T000000Z" \
+    -- --contract-only
+
+# 17e. snapshot temporal: snapshot equal to reference accepted
+build_tree "$(tree snapequal)"
+sed 's/^UBUNTU_SNAPSHOT_ID=.*/UBUNTU_SNAPSHOT_ID=20260814T120000Z/' \
+    "$(tree snapequal)/contract/quality.env" \
+    > "$(tree snapequal)/contract/quality.env.tmp"
+mv "$(tree snapequal)/contract/quality.env.tmp" "$(tree snapequal)/contract/quality.env"
+run_case "snapshot equal to reference accepted -> PASS" yes \
+    BMD_QUALITY_CONTRACT_FILE="$(tree snapequal)/contract/quality.env" \
+    BMD_QUALITY_REFERENCE_TIME="20260814T120000Z" \
+    -- --contract-only
+
+# 17f. snapshot temporal: future snapshot rejected against real clock
+run_case "future snapshot rejected (real clock) -> FAIL" no \
+    BMD_QUALITY_CONTRACT_FILE="$(tree snapfuture)/contract/quality.env" \
+    -- --contract-only
+
 # ============================================================================
 # Unit: base-reference plumbing (production scripts/quality-base-ref.sh)
 # ============================================================================
@@ -430,6 +521,108 @@ run_cmd_case "quality.sh passes --build-arg BMD_CANONICAL_BASE_IMAGE_REF -> PASS
         grep -q -- '--build-arg \"BMD_CANONICAL_BASE_IMAGE_REF=\$base_ref\"' '$repo_root/scripts/quality.sh' || { echo 'missing build-arg plumbing'; exit 1; }
         grep -q 'quality-base-ref.sh' '$repo_root/scripts/quality.sh' || { echo 'base ref not derived from contract'; exit 1; }
     "
+
+# 27. no mutable live archive anywhere in the canonical build
+run_cmd_case "no live-archive references in Dockerfile -> PASS" yes \
+    bash -c "
+        ! grep -qE 'archive\.ubuntu\.com|security\.ubuntu\.com' '$dockerfile' || { echo 'live archive reference in Dockerfile'; exit 1; }
+        ! grep -qE 'archive\.ubuntu\.com|security\.ubuntu\.com' '$repo_root/scripts/quality-apt-sources.sh' || { echo 'live archive reference in sources script'; exit 1; }
+        grep -q 'apt-get update' '$dockerfile' || { echo 'no apt-get update at all'; exit 1; }
+    "
+
+# 28. bootstrap artifact is committed and matches the contract hash
+bootstrap_sha="$(sed -n 's/^CA_CERTIFICATES_BOOTSTRAP_SHA256=//p' "$repo_root/.toolchain/quality.env")"
+run_cmd_case "committed bootstrap artifact matches contract sha256 -> PASS" yes \
+    bash -c "
+        f='$repo_root/.toolchain/bootstrap/ca-certificates.deb'
+        [[ -f \"\$f\" ]] || { echo 'bootstrap artifact missing'; exit 1; }
+        actual=\"\$(${sha256_cmd} \"\$f\" | cut -d' ' -f1)\"
+        [[ \"\$actual\" == '$bootstrap_sha' ]] || { echo \"sha mismatch: \$actual\"; exit 1; }
+        grep -q 'CA_CERTIFICATES_BOOTSTRAP_SHA256' '$dockerfile' || { echo 'Dockerfile does not verify artifact'; exit 1; }
+    "
+
+# ============================================================================
+# Unit: cache namespace identity (production scripts/quality-cache-key.sh)
+# ============================================================================
+cache_key_script="$repo_root/scripts/quality-cache-key.sh"
+contract_real="$repo_root/.toolchain/quality.env"
+reqs_real="$repo_root/requirements-tools.txt"
+
+# 29. same contract -> same key
+run_cmd_case "cache key stable for identical contract -> PASS" yes \
+    bash -c "
+        k1=\"\$(bash '$cache_key_script' '$contract_real' '$reqs_real')\"
+        k2=\"\$(bash '$cache_key_script' '$contract_real' '$reqs_real')\"
+        [[ \"\$k1\" == \"\$k2\" && \"\$k1\" =~ ^[0-9a-f]{64}$ ]] || { echo \"unstable/invalid key: \$k1 / \$k2\"; exit 1; }
+    "
+
+# 30. LLVM patch change -> different key
+run_cmd_case "cache key changes on LLVM patch change -> PASS" yes \
+    bash -c "
+        k1=\"\$(bash '$cache_key_script' '$contract_real' '$reqs_real')\"
+        sed 's/^LLVM_PATCH=.*/LLVM_PATCH=4/' '$contract_real' > '$work_root/contract-patch4.env'
+        k2=\"\$(bash '$cache_key_script' '$work_root/contract-patch4.env' '$reqs_real')\"
+        [[ \"\$k1\" != \"\$k2\" ]] || { echo 'key unchanged on LLVM patch change'; exit 1; }
+    "
+
+# 31. snapshot change -> different key
+run_cmd_case "cache key changes on snapshot change -> PASS" yes \
+    bash -c "
+        k1=\"\$(bash '$cache_key_script' '$contract_real' '$reqs_real')\"
+        sed 's/^UBUNTU_SNAPSHOT_ID=.*/UBUNTU_SNAPSHOT_ID=20260813T120000Z/' '$contract_real' > '$work_root/contract-snap2.env'
+        k2=\"\$(bash '$cache_key_script' '$work_root/contract-snap2.env' '$reqs_real')\"
+        [[ \"\$k1\" != \"\$k2\" ]] || { echo 'key unchanged on snapshot change'; exit 1; }
+    "
+
+# 32. bootstrap artifact hash change -> different key
+run_cmd_case "cache key changes on bootstrap artifact change -> PASS" yes \
+    bash -c "
+        k1=\"\$(bash '$cache_key_script' '$contract_real' '$reqs_real')\"
+        sed 's/^CA_CERTIFICATES_BOOTSTRAP_SHA256=.*/CA_CERTIFICATES_BOOTSTRAP_SHA256=0000000000000000000000000000000000000000000000000000000000000000/' '$contract_real' > '$work_root/contract-art2.env'
+        k2=\"\$(bash '$cache_key_script' '$work_root/contract-art2.env' '$reqs_real')\"
+        [[ \"\$k1\" != \"\$k2\" ]] || { echo 'key unchanged on artifact change'; exit 1; }
+    "
+
+# 33. Conan tool pin change -> different key
+run_cmd_case "cache key changes on requirements-tools change -> PASS" yes \
+    bash -c "
+        k1=\"\$(bash '$cache_key_script' '$contract_real' '$reqs_real')\"
+        sed 's/^conan==.*/conan==2.31.1/' '$reqs_real' > '$work_root/requirements-tools.2.txt'
+        k2=\"\$(bash '$cache_key_script' '$contract_real' '$work_root/requirements-tools.2.txt')\"
+        [[ \"\$k1\" != \"\$k2\" ]] || { echo 'key unchanged on conan pin change'; exit 1; }
+    "
+
+# 34. quality.sh uses the cache key for persistent volume names only
+run_cmd_case "quality.sh namespaces caches by cache key -> PASS" yes \
+    bash -c "
+        grep -q 'quality-cache-key.sh' '$repo_root/scripts/quality.sh' || { echo 'cache key not used'; exit 1; }
+        grep -q 'bmd-projection-quality-cache-\${cache_key}' '$repo_root/scripts/quality.sh' || { echo 'cache volume not keyed'; exit 1; }
+        grep -q 'bmd-projection-quality-venv-\${cache_key}' '$repo_root/scripts/quality.sh' || { echo 'venv volume not keyed'; exit 1; }
+        ! grep -q 'bmd-projection-quality-work' '$repo_root/scripts/quality.sh' || { echo 'persistent /work volume still present'; exit 1; }
+        ! grep -q 'bmd-quality-contract-fingerprint' '$repo_root/scripts/quality.sh' || { echo 'fingerprint lifecycle still present'; exit 1; }
+    "
+
+# ============================================================================
+# Unit: installed payload integrity (md5 vs package md5sums database)
+# ============================================================================
+
+# 35. payload tamper -> FAIL (shim modified, dpkg metadata unchanged)
+build_tree "$(tree payload)"
+printf '\n' >> "$(tree payload)/usr/bin/clang-tidy"
+run_case "payload modification detected -> FAIL" no \
+    BMD_QUALITY_CONTRACT_FILE="$(tree payload)/contract/quality.env" \
+    BMD_QUALITY_TOOLCHAIN_DIR="$(tree payload)" \
+    PATH="$(tree payload)/usr/bin:$PATH" \
+    -- --skip-conan
+
+# 36. missing md5sums database -> FAIL
+build_tree "$(tree payload2)"
+rm "$(tree payload2)/usr/bin/info/clang-18.md5sums"
+run_case "missing md5sums database -> FAIL" no \
+    BMD_QUALITY_CONTRACT_FILE="$(tree payload2)/contract/quality.env" \
+    BMD_QUALITY_TOOLCHAIN_DIR="$(tree payload2)" \
+    PATH="$(tree payload2)/usr/bin:$PATH" \
+    -- --skip-conan
 
 # ============================================================================
 # Adversarial: stale build reuse vs production work preparation
