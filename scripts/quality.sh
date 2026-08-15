@@ -41,15 +41,8 @@ if [[ "${BMD_CANONICAL_QUALITY_CONTAINER:-0}" == "1" ]]; then
     work="${BMD_CANONICAL_QUALITY_WORK:-/work}"
 
     if [[ "$(pwd)" != "$work" ]]; then
-        echo "Canonical Quality: copying source into scratch root $work"
-        mkdir -p "$work"
-        find "$work" -mindepth 1 -maxdepth 1 \
-            ! -name .cache ! -name .venv-tools ! -name build \
-            -exec rm -rf {} +
-        tar \
-            --exclude='./.git' --exclude='./build' \
-            --exclude='./.cache' --exclude='./.venv-tools' \
-            -C "$src" -cf - . | tar -C "$work" -xf -
+        echo "Canonical Quality: preparing canonical scratch root"
+        scripts/quality-work-prep.sh "$src" "$work"
         cd "$work"
         exec bash scripts/quality.sh
     fi
@@ -93,6 +86,7 @@ if [[ "${BMD_CANONICAL_QUALITY_CONTAINER:-0}" == "1" ]]; then
     echo "  clang/clang++/clang-tidy/clang-format $LLVM_MAJOR.$LLVM_MINOR.$LLVM_PATCH"
     echo "  $CANONICAL_QUALITY_OS $CANONICAL_QUALITY_ARCH"
     echo "  base $CANONICAL_QUALITY_BASE_IMAGE $CANONICAL_QUALITY_BASE_IMAGE_DIGEST"
+    echo "  ubuntu snapshot $UBUNTU_SNAPSHOT_ID"
     echo "  C++ standard $CPP_STANDARD"
 
     scripts/quality-toolchain-check.sh --skip-conan
@@ -128,7 +122,7 @@ if [[ "${BMD_CANONICAL_QUALITY_CONTAINER:-0}" == "1" ]]; then
     echo "Canonical Quality: staged install consumer"
     scripts/install-consumer-test.sh
 
-    echo "CANONICAL QUALITY: PASS (clang/clang++/clang-tidy/clang-format $LLVM_MAJOR.$LLVM_MINOR.$LLVM_PATCH, $CANONICAL_QUALITY_OS $CANONICAL_QUALITY_ARCH)"
+    echo "CANONICAL QUALITY: PASS (clang/clang++/clang-tidy/clang-format $LLVM_MAJOR.$LLVM_MINOR.$LLVM_PATCH, $CANONICAL_QUALITY_OS $CANONICAL_QUALITY_ARCH, snapshot $UBUNTU_SNAPSHOT_ID)"
     exit 0
 fi
 
@@ -139,6 +133,11 @@ cd "$repo_root"
 
 echo "Canonical Quality: validating toolchain contract"
 scripts/quality-toolchain-check.sh --contract-only
+
+base_ref="$(bash scripts/quality-base-ref.sh)"
+snapshot_id="$(sed -n 's/^UBUNTU_SNAPSHOT_ID=//p' .toolchain/quality.env | head -n1)"
+echo "Canonical Quality: base reference $base_ref"
+echo "Canonical Quality: ubuntu snapshot $snapshot_id"
 
 runtime=""
 if command -v docker >/dev/null 2>&1; then
@@ -176,7 +175,9 @@ sha256_of() {
 image_tag="bmd-projection-quality:$(grep -vE '^[[:space:]]*(#|$)' .toolchain/quality.env | sha256_of | cut -c1-16)"
 
 echo "Canonical Quality: building pinned toolchain image ($runtime)"
-"$runtime" build --platform linux/amd64 -t "$image_tag" -f .toolchain/Dockerfile .
+"$runtime" build --platform linux/amd64 \
+    --build-arg "BMD_CANONICAL_BASE_IMAGE_REF=$base_ref" \
+    -t "$image_tag" -f .toolchain/Dockerfile .
 
 echo "Canonical Quality: running canonical acceptance in the pinned container"
 "$runtime" run --rm --platform linux/amd64 \
