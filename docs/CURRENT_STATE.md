@@ -149,13 +149,16 @@ artifact is a separate identity and remains outside Projection ownership.
   `31803322848` — 18/18 PASS, formal evidence ACCEPTED, independent review APPROVED,
   PR #21 MERGED, squash merge `227524e6d17cce77813c6f26cd65bb8d996f5677`, and post-merge
   main CI `31809917018` — 18/18 PASS.
-- The toolchain reproducibility gap is closed by INFRA-TC-001 (canonical Quality toolchain
-  contract, open PR #23, `chore/reproducible-quality-toolchain`): exact
-  clang/clang++/clang-tidy/clang-format identity in
-  `.toolchain/quality.env`, one repo-owned canonical Quality entrypoint `scripts/quality.sh`
-  used by CI and local developers, fail-closed identity validation, and deterministic contract
-  tests. See `docs/QUALITY_TOOLCHAIN.md` and the PR body for the exact implementation/evidence
-  report.
+- INFRA-TC-001 (reproducible Quality toolchain): IMPLEMENTED / PENDING FINAL INDEPENDENT
+  RE-REVIEW (PR #23, `chore/reproducible-quality-toolchain`; independent review requested
+  changes, corrections implemented, awaiting re-review). Exact
+  clang/clang++/clang-tidy/clang-format identity in `.toolchain/quality.env` (single source of
+  truth), one repo-owned canonical Quality entrypoint `scripts/quality.sh` used by CI and local
+  developers, base-image digest bound through a build argument (no independent Dockerfile
+  literal), Ubuntu archive state pinned to `UBUNTU_SNAPSHOT_ID=20260815T120000Z`, never-persisted
+  build trees, dpkg package provenance binding, and deterministic/adversarial contract tests.
+  See `docs/QUALITY_TOOLCHAIN.md` and the PR body for the implementation/evidence report. Do NOT
+  treat INFRA-TC-001 as accepted until the final independent re-review passes.
 - Later M5 phases remain separately authorized work.
 
 ## Accepted Semantic Authorities
@@ -228,8 +231,9 @@ M5 Phase 6 is complete and merged (PR #21, squash merge
 post-merge main CI `31809917018` — 18/18 PASS). P6-AUDIT-003 is CLOSED by this
 governance/status synchronization. Immediate sequencing:
 
-1. INFRA-TC-001 (reproducible Quality toolchain) is implemented and open for independent review
-   (PR #23, `chore/reproducible-quality-toolchain`; see `docs/QUALITY_TOOLCHAIN.md`); it is not
+1. INFRA-TC-001 (reproducible Quality toolchain): IMPLEMENTED / PENDING FINAL INDEPENDENT
+   RE-REVIEW (PR #23, `chore/reproducible-quality-toolchain`; corrections for the six
+   INFRA-TC-FINAL findings are implemented; see `docs/QUALITY_TOOLCHAIN.md`). It is not
    merged yet.
 2. After INFRA-TC-001 is separately completed/accepted, proceed to separately authorized
    Phase-7 work.
