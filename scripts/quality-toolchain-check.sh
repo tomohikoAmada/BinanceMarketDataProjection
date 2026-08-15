@@ -7,13 +7,16 @@
 # Asserted (fail closed):
 #   - clang, clang++, clang-tidy, clang-format: exact LLVM_MAJOR.MINOR.PATCH
 #     AND Ubuntu package provenance (owning package name and installed
-#     package version from dpkg metadata must match the contract pins —
-#     correct version text from an arbitrary replacement binary is not
-#     sufficient)
+#     package version from dpkg metadata must match the contract pins) AND
+#     installed payload integrity (the real executable's md5 must match the
+#     owning package's recorded md5sum — a modified payload is detected even
+#     when dpkg metadata and --version text are unchanged)
 #   - conan: exact version pinned in requirements-tools.txt (unless --skip-conan)
 #   - cmake: at least CMakePresets.json "cmakeMinimumRequired"
 #   - python3: at least PYTHON_MINIMUM_VERSION from the contract
-#   - UBUNTU_SNAPSHOT_ID: present and YYYYMMDDTHHMMSSZ-formatted
+#   - UBUNTU_SNAPSHOT_ID: present, YYYYMMDDTHHMMSSZ-formatted, and NOT in the
+#     future relative to the reference UTC time (future snapshot IDs fail
+#     before image construction)
 # Recorded (printed, not asserted):
 #   - ninja
 #
@@ -31,6 +34,10 @@
 #   BMD_QUALITY_TOOLCHAIN_DIR   fake-tool root; tools are then expected under
 #                               <dir>/usr/bin and canonical-path policy applies
 #                               within <dir> (mirrors /usr/bin in the container)
+#   BMD_QUALITY_REFERENCE_TIME  fixed UTC reference for snapshot temporal
+#                               validation (default: current UTC clock)
+#   BMD_QUALITY_DPKG_INFO_DIR   dpkg md5sums directory override (default:
+#                               /var/lib/dpkg/info) for payload checks
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -98,6 +105,12 @@ python_minimum="$(contract_key PYTHON_MINIMUM_VERSION)"
 snapshot_id="$(contract_key UBUNTU_SNAPSHOT_ID)"
 [[ "$snapshot_id" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] \
     || fail "contract file malformed: UBUNTU_SNAPSHOT_ID '${snapshot_id}' not in YYYYMMDDTHHMMSSZ format"
+reference_time="${BMD_QUALITY_REFERENCE_TIME:-$(date -u +%Y%m%dT%H%M%SZ)}"
+[[ "$reference_time" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] \
+    || fail "reference time invalid: '${reference_time}' (expected YYYYMMDDTHHMMSSZ)"
+if [[ "$snapshot_id" > "$reference_time" ]]; then
+    fail "contract file: UBUNTU_SNAPSHOT_ID '${snapshot_id}' is in the future (reference UTC ${reference_time}); a historical snapshot is required"
+fi
 
 if [[ "$mode" == "contract-only" ]]; then
     echo "QUALITY TOOLCHAIN CHECK: PASS (contract well formed: $contract_file)"
@@ -204,6 +217,50 @@ check_package_identity() {
     echo "  OK   $name: package $owned_pkg $actual_version ($real_path)"
 }
 
+md5_of() {
+    # portable md5 of a file (GNU md5sum; BSD md5)
+    if command -v md5sum >/dev/null 2>&1; then
+        md5sum "$1"
+    elif command -v md5 >/dev/null 2>&1; then
+        md5 -q "$1"
+    else
+        echo "no md5 tool found" >&2
+        exit 1
+    fi
+}
+
+check_payload_integrity() {
+    # Installed-package payload verification: the real executable's md5 must
+    # match the md5 recorded by the owning package in its md5sums database.
+    # A payload modified while the dpkg database stays unchanged (and while
+    # --version output still matches) is detected here.
+    local name="$1" real_path="$2" pkg="$3"
+    local info_dir
+    info_dir="${BMD_QUALITY_DPKG_INFO_DIR:-}"
+    if [[ -z "$info_dir" && -n "$toolchain_dir" ]]; then
+        info_dir="$toolchain_dir/usr/bin/info"
+    fi
+    info_dir="${info_dir:-/var/lib/dpkg/info}"
+    local md5sums_file="$info_dir/${pkg}.md5sums"
+    local rel_path="${real_path#/}"
+    if [[ ! -r "$md5sums_file" ]]; then
+        note_failure "$name: md5sums database missing for package $pkg ($md5sums_file)"
+        return
+    fi
+    local expected actual
+    expected="$(awk -v p="$rel_path" 'NF == 2 && $2 == p { print $1 }' "$md5sums_file" | head -n1)"
+    if [[ -z "$expected" ]]; then
+        note_failure "$name: no md5sums entry for $rel_path in package $pkg"
+        return
+    fi
+    actual="$(md5_of "$real_path" | cut -d' ' -f1)"
+    if [[ "$actual" != "$expected" ]]; then
+        note_failure "$name: payload modification detected ($rel_path: expected md5 $expected, actual $actual)"
+        return
+    fi
+    echo "  OK   $name: payload md5 verified ($rel_path)"
+}
+
 check_llvm_tool() {
     local name="$1"
     local expected="$2"
@@ -250,6 +307,7 @@ check_llvm_tool() {
             ;;
     esac
     check_package_identity "$name" "$real_path" "$expected_pkg" "$expected_version"
+    check_payload_integrity "$name" "$real_path" "$expected_pkg"
 }
 
 ver_ge() {
@@ -324,8 +382,8 @@ check_conan() {
 # Run the checks
 # ---------------------------------------------------------------------------
 echo "QUALITY TOOLCHAIN CHECK (contract: $contract_file)"
-echo "  canonical identity: clang/clang++/clang-tidy/clang-format $llvm_version (packages clang-$llvm_major, clang-tidy-$llvm_major, clang-format-$llvm_major)"
-echo "  ubuntu snapshot: $snapshot_id"
+echo "  canonical identity: clang/clang++/clang-tidy/clang-format $llvm_version (packages clang-$llvm_major, clang-tidy-$llvm_major, clang-format-$llvm_major, payload md5 verified)"
+echo "  ubuntu snapshot: $snapshot_id (must not be later than reference UTC ${reference_time})"
 
 for tool in clang clang++ clang-tidy clang-format; do
     check_llvm_tool "$tool" "$llvm_version"
