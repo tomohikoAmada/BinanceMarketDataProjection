@@ -6,9 +6,14 @@
 #
 # Asserted (fail closed):
 #   - clang, clang++, clang-tidy, clang-format: exact LLVM_MAJOR.MINOR.PATCH
+#     AND Ubuntu package provenance (owning package name and installed
+#     package version from dpkg metadata must match the contract pins —
+#     correct version text from an arbitrary replacement binary is not
+#     sufficient)
 #   - conan: exact version pinned in requirements-tools.txt (unless --skip-conan)
 #   - cmake: at least CMakePresets.json "cmakeMinimumRequired"
 #   - python3: at least PYTHON_MINIMUM_VERSION from the contract
+#   - UBUNTU_SNAPSHOT_ID: present and YYYYMMDDTHHMMSSZ-formatted
 # Recorded (printed, not asserted):
 #   - ninja
 #
@@ -69,7 +74,7 @@ while IFS= read -r line; do
         || fail "contract file malformed: unexpected line '${line}' in ${contract_file}"
 done < "$contract_file"
 
-for required_key in LLVM_MAJOR LLVM_MINOR LLVM_PATCH PYTHON_MINIMUM_VERSION; do
+for required_key in LLVM_MAJOR LLVM_MINOR LLVM_PATCH PYTHON_MINIMUM_VERSION UBUNTU_SNAPSHOT_ID; do
     grep -q "^${required_key}=..*$" "$contract_file" \
         || fail "contract file malformed: missing or empty key '${required_key}' in ${contract_file}"
 done
@@ -90,6 +95,9 @@ llvm_version="$llvm_major.$llvm_minor.$llvm_patch"
 python_minimum="$(contract_key PYTHON_MINIMUM_VERSION)"
 [[ "$python_minimum" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
     || fail "contract file malformed: non-numeric PYTHON_MINIMUM_VERSION '${python_minimum}'"
+snapshot_id="$(contract_key UBUNTU_SNAPSHOT_ID)"
+[[ "$snapshot_id" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] \
+    || fail "contract file malformed: UBUNTU_SNAPSHOT_ID '${snapshot_id}' not in YYYYMMDDTHHMMSSZ format"
 
 if [[ "$mode" == "contract-only" ]]; then
     echo "QUALITY TOOLCHAIN CHECK: PASS (contract well formed: $contract_file)"
@@ -153,6 +161,49 @@ is_canonical_path() {
     return 1
 }
 
+package_pin_version() {
+    # version part of a "<pkg>=<version>" contract pin (e.g. 1:18.1.3-1ubuntu1)
+    local key="$1"
+    local value
+    value="$(contract_key "$key")"
+    printf '%s' "${value#*=}"
+}
+
+check_package_identity() {
+    # Binds the resolved real executable to the expected Ubuntu package
+    # installation: owning package name and installed package version must
+    # match the contract exactly. Correct text output by an arbitrary
+    # replacement binary is NOT sufficient by itself.
+    local name="$1" real_path="$2" expected_pkg="$3" expected_version="$4"
+    local dpkg_bin owned_line owned_pkg version_line actual_version
+    dpkg_bin="$(resolve_tool dpkg)"
+    if [[ -z "$dpkg_bin" || ! -x "$dpkg_bin" ]]; then
+        note_failure "$name: dpkg not found; cannot verify package provenance"
+        return
+    fi
+    owned_line="$("$dpkg_bin" -S "$real_path" 2>&1 | head -n1)" || true
+    owned_pkg="$(sed -n 's/^\([^:]*\): .*/\1/p' <<<"$owned_line")"
+    if [[ -z "$owned_pkg" ]]; then
+        note_failure "$name: real executable not owned by any installed package (real $real_path)"
+        return
+    fi
+    if [[ "$owned_pkg" != "$expected_pkg" ]]; then
+        note_failure "$name: unexpected package owner (expected $expected_pkg, actual $owned_pkg, real $real_path)"
+        return
+    fi
+    version_line="$("$dpkg_bin" -s "$owned_pkg" 2>&1 | grep -E '^Version:' | head -n1)" || true
+    actual_version="$(sed -n 's/^Version: //p' <<<"$version_line")"
+    if [[ -z "$actual_version" ]]; then
+        note_failure "$name: cannot read installed version of $owned_pkg"
+        return
+    fi
+    if [[ "$actual_version" != "$expected_version" ]]; then
+        note_failure "$name: package $owned_pkg version mismatch (expected $expected_version, actual $actual_version)"
+        return
+    fi
+    echo "  OK   $name: package $owned_pkg $actual_version ($real_path)"
+}
+
 check_llvm_tool() {
     local name="$1"
     local expected="$2"
@@ -183,7 +234,22 @@ check_llvm_tool() {
         note_failure "$name: resolved outside canonical installation (actual $actual, resolved $resolved, real $real_path)"
         return
     fi
-    echo "  OK   $name: $actual ($real_path)"
+    local expected_pkg expected_version
+    case "$name" in
+        clang | clang++)
+            expected_pkg="clang-${llvm_major}"
+            expected_version="$(package_pin_version CLANG_PACKAGE_PIN)"
+            ;;
+        clang-tidy)
+            expected_pkg="clang-tidy-${llvm_major}"
+            expected_version="$(package_pin_version CLANG_TIDY_PACKAGE_PIN)"
+            ;;
+        clang-format)
+            expected_pkg="clang-format-${llvm_major}"
+            expected_version="$(package_pin_version CLANG_FORMAT_PACKAGE_PIN)"
+            ;;
+    esac
+    check_package_identity "$name" "$real_path" "$expected_pkg" "$expected_version"
 }
 
 ver_ge() {
@@ -258,7 +324,8 @@ check_conan() {
 # Run the checks
 # ---------------------------------------------------------------------------
 echo "QUALITY TOOLCHAIN CHECK (contract: $contract_file)"
-echo "  canonical identity: clang/clang++/clang-tidy/clang-format $llvm_version"
+echo "  canonical identity: clang/clang++/clang-tidy/clang-format $llvm_version (packages clang-$llvm_major, clang-tidy-$llvm_major, clang-format-$llvm_major)"
+echo "  ubuntu snapshot: $snapshot_id"
 
 for tool in clang clang++ clang-tidy clang-format; do
     check_llvm_tool "$tool" "$llvm_version"
