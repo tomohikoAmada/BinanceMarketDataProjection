@@ -1,5 +1,12 @@
 # Quality Toolchain Contract (INFRA-TC-001)
 
+## Status
+
+INFRA-TC-001 is **IMPLEMENTED / PENDING FINAL INDEPENDENT RE-REVIEW** (PR #23). A green
+exact-head CI run is candidate evidence only and is **not** independent acceptance of this
+contract. This document describes the candidate as implemented; it does not declare the
+contract accepted.
+
 This document is the reference for the canonical Quality acceptance environment. It records the
 exact toolchain identity, the single repository-owned entrypoint, how CI and local developers
 invoke it, the distinction between canonical acceptance and supplemental local checks, and the
@@ -197,12 +204,17 @@ repository-owned, and the contract change itself requires the PR process above.
 
 ## Retention truthfulness
 
-Reproducibility is guaranteed **against the declared snapshot identity while that official
-snapshot remains available on the Ubuntu Snapshot Service**. The official retention contract is:
-snapshots are available for any date/time after 1 March 2023, and Canonical "intend[s] to ensure
-snapshots are available for dates up to at least 2 years in the past, which [they] may extend if
-there is demand". This project makes no stronger or indefinite retention claim; a future
-long-term archival policy decision would be a separate task.
+Clean reconstruction depends on continued availability of external immutable inputs including:
+
+- the pinned Docker base-image digest; and
+- the declared Ubuntu Snapshot Service snapshot.
+
+The committed CA bootstrap artifact is repository-owned. No indefinite external-artifact
+retention guarantee is claimed. For the snapshot specifically: the official Ubuntu Snapshot
+Service retention contract states snapshots are available for any date/time after 1 March 2023,
+and Canonical "intend[s] to ensure snapshots are available for dates up to at least 2 years in
+the past, which [they] may extend if there is demand". A future long-term archival policy
+decision would be a separate task.
 
 ## Related files
 
