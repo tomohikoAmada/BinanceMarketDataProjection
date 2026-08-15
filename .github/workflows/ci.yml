@@ -29,36 +29,26 @@ env:
 
 jobs:
   quality:
-    name: quality (Ubuntu Clang)
-    runs-on: ubuntu-latest
-    env:
-      CC: clang
-      CXX: clang++
+    name: quality (canonical pinned toolchain)
+    # Canonical Quality runs entirely inside the repository-pinned container
+    # (see .toolchain/quality.env); the runner label therefore cannot silently
+    # change the acceptance toolchain, but a concrete 24.04 label keeps the
+    # Docker runtime stable.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Bootstrap repository-local Conan
-        run: bash scripts/bootstrap.sh
-      - name: Bootstrap pinned Contracts package
-        run: bash scripts/bootstrap-contracts.sh
-      - name: Check formatting
-        run: |
-          find include src tests benchmarks fuzz -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
-            | xargs -0 clang-format --dry-run --Werror
-      - name: Configure with clang-tidy and warnings-as-errors
-        run: >-
-          bash scripts/configure.sh debug
-          -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=ON
-          -DBMD_PROJECTION_ENABLE_CLANG_TIDY=ON
-          -DBMD_PROJECTION_ENABLE_WERROR=ON
-      - name: Build
-        run: bash scripts/build.sh debug
-      - name: Test
-        run: bash scripts/test.sh debug
-      - name: Staged install consumer
-        run: bash scripts/install-consumer-test.sh
+      - name: Report canonical Quality toolchain contract
+        run: cat .toolchain/quality.env
+      - name: Canonical Quality (containerized pinned toolchain)
+        run: bash scripts/quality.sh
+
+  quality-toolchain-tests:
+    name: quality toolchain contract tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deterministic toolchain identity tests
+        run: bash scripts/test-quality-toolchain.sh
 
   build-matrix:
     name: release (${{ matrix.name }})
