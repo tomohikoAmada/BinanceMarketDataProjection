@@ -150,7 +150,8 @@ artifact is a separate identity and remains outside Projection ownership.
   PR #21 MERGED, squash merge `227524e6d17cce77813c6f26cd65bb8d996f5677`, and post-merge
   main CI `31809917018` — 18/18 PASS.
 - The toolchain reproducibility gap is closed by INFRA-TC-001 (canonical Quality toolchain
-  contract, open PR): exact clang/clang++/clang-tidy/clang-format identity in
+  contract, open PR #23, `chore/reproducible-quality-toolchain`): exact
+  clang/clang++/clang-tidy/clang-format identity in
   `.toolchain/quality.env`, one repo-owned canonical Quality entrypoint `scripts/quality.sh`
   used by CI and local developers, fail-closed identity validation, and deterministic contract
   tests. See `docs/QUALITY_TOOLCHAIN.md` and the PR body for the exact implementation/evidence
@@ -228,7 +229,8 @@ post-merge main CI `31809917018` — 18/18 PASS). P6-AUDIT-003 is CLOSED by this
 governance/status synchronization. Immediate sequencing:
 
 1. INFRA-TC-001 (reproducible Quality toolchain) is implemented and open for independent review
-   (see the PR entry above and `docs/QUALITY_TOOLCHAIN.md`); it is not merged yet.
+   (PR #23, `chore/reproducible-quality-toolchain`; see `docs/QUALITY_TOOLCHAIN.md`); it is not
+   merged yet.
 2. After INFRA-TC-001 is separately completed/accepted, proceed to separately authorized
    Phase-7 work.
 
