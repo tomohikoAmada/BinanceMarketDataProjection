@@ -23,20 +23,27 @@ Canonical Quality runs inside a repository-owned container image:
   build (`base name should not be blank`) or fails the pull. Drift between the contract and the
   actual base image is therefore impossible.
 - **Ubuntu archive state** is pinned to one official Ubuntu Snapshot Service identity
-  (`UBUNTU_SNAPSHOT_ID=20260815T120000Z`, format `YYYYMMDDTHHMMSSZ`). The image build rewrites
+  (`UBUNTU_SNAPSHOT_ID=20260814T120000Z`, format `YYYYMMDDTHHMMSSZ`). The ID MUST be
+  historical: the toolchain check rejects any snapshot later than the current UTC time
+  (deterministic, before any image construction). The image build rewrites
   `/etc/apt/sources.list.d/ubuntu.sources` (via `scripts/quality-apt-sources.sh`) so that BOTH
   the archive pockets (`noble`, `noble-updates`, `noble-backports`) and the security pocket
   (`noble-security`) resolve exclusively from `https://snapshot.ubuntu.com/ubuntu/<ID>/`. No
-  live-archive reference exists in the final sources; build logs show the snapshot Get lines and
-  the declared snapshot identity.
-- **TLS bootstrap before snapshot mode**: the official base image ships no CA store, and the
-  snapshot service requires TLS. The single pre-snapshot apt step installs the exact pinned
-  `ca-certificates` package from the base image's own shipped default sources (plain HTTP with
-  GPG-verified indexes). Every later apt operation runs against the snapshot only, and the
-  final image's ca-certificates version is asserted against the contract pin.
+  live-archive reference exists anywhere in the build; build logs show only snapshot Get lines
+  and the declared snapshot identity.
+- **TLS bootstrap is an immutable artifact, not a live-archive install.** The pristine base
+  image ships no CA store and the snapshot service requires TLS (the officially documented
+  deb822 `Snapshot:` mechanism was evaluated from the pristine base and does not work without
+  CA material: index fetches fall back to live hosts and no pinned version resolves). The
+  exact `ca-certificates` package payload retrieved from the historical snapshot is committed
+  at `.toolchain/bootstrap/ca-certificates.deb` and pinned by
+  `CA_CERTIFICATES_BOOTSTRAP_SHA256` in the contract. The Dockerfile verifies the artifact
+  bytes before use and extracts only TLS trust material (`Acquire::https::CaInfo`); no package
+  is installed and no network contact happens before snapshot mode. The same package version is
+  installed properly from the snapshot itself.
 - Packages are installed with exact version pins resolved from the snapshot (for example
-  `clang-18=1:18.1.3-1ubuntu1`). If the snapshot cannot satisfy any pin, the image build fails
-  closed.
+  `clang-18=1:18.1.3-1ubuntu1`), with archive signature verification (`Signed-By`) intact. If
+  the snapshot cannot satisfy any pin, the image build fails closed.
 - `clang`, `clang++`, `clang-tidy`, `clang-format` are the versioned `*-18` binaries registered
   through `update-alternatives`. `g++-13` is installed for the libstdc++ headers used by the
   canonical clang build.
@@ -48,19 +55,20 @@ actual, and resolved path):
 
 | Tool          | Identity   | Binding                                                    |
 | ------------- | ---------- | ---------------------------------------------------------- |
-| clang         | 18.1.3     | version output + dpkg provenance (package `clang-18`)      |
-| clang++       | 18.1.3     | version output + dpkg provenance (package `clang-18`)      |
-| clang-tidy    | 18.1.3     | version output + dpkg provenance (package `clang-tidy-18`) |
-| clang-format  | 18.1.3     | version output + dpkg provenance (package `clang-format-18`) |
+| clang         | 18.1.3     | version output + dpkg provenance (package `clang-18`) + payload md5 |
+| clang++       | 18.1.3     | version output + dpkg provenance (package `clang-18`) + payload md5 |
+| clang-tidy    | 18.1.3     | version output + dpkg provenance (package `clang-tidy-18`) + payload md5 |
+| clang-format  | 18.1.3     | version output + dpkg provenance (package `clang-format-18`) + payload md5 |
 | conan         | pinned     | `requirements-tools.txt` (`conan==2.31.2`)                 |
 | cmake         | >= 3.24.0  | `CMakePresets.json` `cmakeMinimumRequired`                 |
 | python3       | >= 3.10.0  | `PYTHON_MINIMUM_VERSION`                                   |
-| snapshot      | exact ID   | `UBUNTU_SNAPSHOT_ID` (format-validated)                    |
+| snapshot      | historical  | `UBUNTU_SNAPSHOT_ID` format- AND temporal-validated (never in the future) |
 
 LLVM provenance: the resolved real executable must be owned (per dpkg metadata) by the exact
-expected Ubuntu package, and that package's installed version must equal the contract pin. A
-correct `--version` text emitted by an arbitrary replacement binary is not sufficient by itself.
-Recorded but not asserted: Ninja.
+expected Ubuntu package, that package's installed version must equal the contract pin, and the
+executable payload's md5 must match the owning package's recorded md5sum — a payload modified
+while the dpkg database (and `--version` output) stays unchanged is detected. Recorded but not
+asserted: Ninja.
 
 The canonical C++ standard is C++20; the canonical standard library is libstdc++.
 
@@ -69,14 +77,20 @@ The canonical C++ standard is C++20; the canonical standard library is libstdc++
 Every canonical run executes from a scratch root rebuilt to exactly reflect the current working
 tree (`scripts/quality-work-prep.sh`):
 
-- the scratch root is cleaned of every entry except the explicitly permitted persistent caches
-  (`.cache` — Conan and pip — and `.venv-tools`, both reconciled against exact pins on every
-  run);
+- **`/work` is ephemeral per run** (no persistent /work volume); the scratch root is a fresh
+  content copy of the working tree every run, so previously deleted source files cannot survive
+  and source identity never depends on mtimes;
 - **`build/` never persists**: no CMake/Ninja object, link, or configuration output survives a
   run, so a stale object file cannot produce a false PASS regardless of mtimes;
-- previously deleted source files cannot survive a run; source identity is a fresh content copy,
-  never mtime-based;
-- caches are additionally invalidated whenever the contract fingerprint changes.
+- persistent named volumes are mounted only at `/work/.cache` and `/work/.venv-tools`, and their
+  names are namespaced by the canonical CACHE KEY (`scripts/quality-cache-key.sh`):
+  `bmd-projection-quality-cache-${CACHE_KEY}` / `bmd-projection-quality-venv-${CACHE_KEY}`;
+- the cache key is the SHA-256 of the normalized `.toolchain/quality.env` plus the exact
+  `requirements-tools.txt` contents — covering the base identity, the historical snapshot, every
+  exact package pin (including LLVM patch), the bootstrap artifact hash, and the Conan tool
+  version. A contract change therefore produces a different namespace: old-contract Conan
+  binaries are structurally invisible to a new contract, and no lifecycle-sensitive fingerprint
+  file is needed.
 
 Local canonical Quality is **working-tree content acceptance**, not exact Git-commit acceptance.
 
@@ -135,39 +149,48 @@ The `quality-toolchain-tests` job runs the deterministic contract tests
 - Wrong/missing major, minor, or patch of clang, clang++, clang-tidy, clang-format → abort.
 - dpkg provenance mismatch (wrong owning package, wrong installed package version, unowned real
   executable) → abort.
+- Installed payload modification (real executable md5 differs from the owning package's recorded
+  md5sum) → abort, even when dpkg metadata and `--version` output are unchanged.
 - Missing tool, unparseable version output, AppleClang resolution, PATH selecting a non-canonical
   installation → abort.
-- Malformed contract (missing/empty key, non-numeric version, malformed `UBUNTU_SNAPSHOT_ID`) →
-  abort.
+- Malformed contract (missing/empty key, non-numeric version) → abort.
+- Snapshot ID malformed, missing, or **in the future relative to the current UTC time** → abort
+  before any image construction (future IDs can never be an acceptance snapshot).
 - Conan differing from `requirements-tools.txt` → abort.
 - Image not built from the current contract → abort.
 - Base-image reference missing/empty/mutated → build fails (no default fallback, no second digest
   source).
-- Snapshot identity malformed or unresolvable → build fails; no fallback to the live archive
-  (the final sources contain only snapshot URIs, asserted by tests).
+- TLS bootstrap artifact bytes not matching `CA_CERTIFICATES_BOOTSTRAP_SHA256` → build fails.
+- No package-resolution operation ever touches a mutable live archive: the only apt sources are
+  the historical snapshot URIs (both pockets), archive signatures verified via `Signed-By`.
 
-Deterministic offline tests: `scripts/test-quality-toolchain.sh` (32 cases, no network; fake
+Deterministic offline tests: `scripts/test-quality-toolchain.sh` (47 cases, no network; fake
 shims generated from the repository's own contract files) — including adversarial stale-object
 reuse against the production work-preparation mechanism, source deletion/rollback, base-ref
-mutation, snapshot plumbing, and provenance negatives. Live integration proof comes from the
-canonical image build itself (CI quality job) and the documented local failure proofs.
+mutation, snapshot temporal plumbing, cache-namespace key changes, payload tamper, and
+provenance negatives. Live integration proof comes from the canonical image build itself (CI
+quality job) and the documented local failure proofs.
 
 ## Intentional upgrade procedure
 
 An LLVM/Quality upgrade is a deliberate act requiring an explicit PR that changes the canonical
 version identity:
 
-1. Update the single source of truth `.toolchain/quality.env` (LLVM version components, exact
-   noble package pins, and — when the archive state must move — a new `UBUNTU_SNAPSHOT_ID`
-   that demonstrably contains the full exact pin set; verify candidate pins and snapshots with
-   `apt-cache policy` inside the pinned base image).
-2. Run canonical Quality locally: `bash scripts/quality.sh` (rebuilds the image from the new
-   contract, invalidates stale caches via the fingerprint).
-3. Run the normal compatibility CI (GCC, Clang, AppleClang, sanitizers, M4, replay, fuzz,
+1. Choose an **already historical** `UBUNTU_SNAPSHOT_ID` (never a future timestamp) and prove it
+   resolves the full exact pinned package set (probe `apt-cache policy` inside the pinned base
+   image with the artifact-provided TLS trust).
+2. Update the single source of truth `.toolchain/quality.env` (LLVM version components, exact
+   noble package pins, snapshot ID; re-pin `CA_CERTIFICATES_BOOTSTRAP_SHA256` if the bootstrap
+   artifact moves).
+3. The cache namespace changes automatically with the contract (cache key), so prior-contract
+   Conan/tool caches are structurally invisible to the new contract.
+4. Run canonical Quality locally: `bash scripts/quality.sh` (rebuilds the image from the new
+   contract; /work is ephemeral, so Projection build outputs are always fresh).
+5. Run the normal compatibility CI (GCC, Clang, AppleClang, sanitizers, M4, replay, fuzz,
    benchmarks).
-4. Newly introduced diagnostics must be exposed and resolved through the normal review process;
+6. Newly introduced diagnostics must be exposed and resolved through the normal review process;
    they must never be silently suppressed to make CI green.
-5. The PR receives independent review.
+7. The PR receives independent review.
 
 Hosted-runner image updates cannot redefine acceptance: the acceptance toolchain is
 repository-owned, and the contract change itself requires the PR process above.
@@ -183,15 +206,19 @@ long-term archival policy decision would be a separate task.
 
 ## Related files
 
-- `.toolchain/quality.env` — contract, single source of truth.
+- `.toolchain/quality.env` — contract, single source of truth (includes
+  `CA_CERTIFICATES_BOOTSTRAP_SHA256`).
+- `.toolchain/bootstrap/ca-certificates.deb` — committed immutable TLS bootstrap artifact
+  (bytes pinned by the contract hash; retrieved from the historical snapshot).
 - `.toolchain/Dockerfile` — canonical image definition (FROM bound to the contract-provided
-  build argument; snapshot-pinned apt sources; TLS bootstrap step).
+  build argument; artifact-verified TLS bootstrap; snapshot-pinned apt sources).
 - `scripts/quality-base-ref.sh` — authoritative `<image>@<digest>` computation.
 - `scripts/quality-apt-sources.sh` — snapshot-only apt sources generation.
-- `scripts/quality-work-prep.sh` — canonical scratch preparation (fresh source, never-persisted
-  build tree).
+- `scripts/quality-cache-key.sh` — canonical cache namespace identity.
+- `scripts/quality-work-prep.sh` — canonical scratch preparation (fresh source, ephemeral
+  /work, never-persisted build tree).
 - `scripts/quality.sh` — canonical Quality entrypoint (CI and local).
-- `scripts/quality-toolchain-check.sh` — deterministic fail-closed identity/provenance
-  validation.
+- `scripts/quality-toolchain-check.sh` — deterministic fail-closed identity/provenance/payload/
+  snapshot-temporal validation.
 - `scripts/test-quality-toolchain.sh` — deterministic contract/negative/adversarial tests.
 - `.github/workflows/ci.yml` — CI orchestration (quality job, quality-toolchain-tests job).

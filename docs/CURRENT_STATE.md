@@ -150,14 +150,17 @@ artifact is a separate identity and remains outside Projection ownership.
   PR #21 MERGED, squash merge `227524e6d17cce77813c6f26cd65bb8d996f5677`, and post-merge
   main CI `31809917018` — 18/18 PASS.
 - INFRA-TC-001 (reproducible Quality toolchain): IMPLEMENTED / PENDING FINAL INDEPENDENT
-  RE-REVIEW (PR #23, `chore/reproducible-quality-toolchain`; independent review requested
-  changes, corrections implemented, awaiting re-review). Exact
+  RE-REVIEW (PR #23, `chore/reproducible-quality-toolchain`; two review rounds requested
+  changes, corrections implemented, awaiting the final focused re-review). Exact
   clang/clang++/clang-tidy/clang-format identity in `.toolchain/quality.env` (single source of
   truth), one repo-owned canonical Quality entrypoint `scripts/quality.sh` used by CI and local
   developers, base-image digest bound through a build argument (no independent Dockerfile
-  literal), Ubuntu archive state pinned to `UBUNTU_SNAPSHOT_ID=20260815T120000Z`, never-persisted
-  build trees, dpkg package provenance binding, and deterministic/adversarial contract tests.
-  See `docs/QUALITY_TOOLCHAIN.md` and the PR body for the implementation/evidence report. Do NOT
+  literal), Ubuntu archive state pinned to the HISTORICAL snapshot
+  `UBUNTU_SNAPSHOT_ID=20260814T120000Z` (future IDs fail closed), immutable SHA-256-pinned TLS
+  bootstrap artifact (no mutable live archive), cache namespaces keyed by the canonical
+  contract, ephemeral /work with never-persisted build trees, dpkg provenance plus installed
+  payload md5 verification, and 47 deterministic/adversarial contract tests. See
+  `docs/QUALITY_TOOLCHAIN.md` and the PR body for the implementation/evidence report. Do NOT
   treat INFRA-TC-001 as accepted until the final independent re-review passes.
 - Later M5 phases remain separately authorized work.
 

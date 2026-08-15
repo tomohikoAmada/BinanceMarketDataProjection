@@ -246,10 +246,13 @@ bash scripts/quality.sh
 This is the single repository-owned entrypoint for authoritative CI-equivalent Quality semantics.
 It builds the canonical container from the contract in `.toolchain/quality.env`: base image
 `ubuntu:24.04` pinned by digest and passed to Docker as the FROM build argument (the Dockerfile
-has no independent digest literal), Ubuntu archive state pinned to one Ubuntu Snapshot Service
-identity, and exact clang 18.1.3 / clang-tidy 18.1.3 / clang-format 18.1.3 packages verified by
-version AND dpkg package provenance. It fails closed on any mismatch, runs from a fresh scratch
-copy (build trees never persist across runs, so stale objects cannot produce a false PASS), and
+has no independent digest literal), Ubuntu archive state pinned to one HISTORICAL Ubuntu
+Snapshot Service identity (future snapshot IDs fail closed), TLS bootstrap from a committed
+SHA-256-pinned ca-certificates artifact (no mutable live archive anywhere), and exact
+clang 18.1.3 / clang-tidy 18.1.3 / clang-format 18.1.3 packages verified by version, dpkg
+package provenance, and installed payload md5. It fails closed on any mismatch, runs from a
+fresh ephemeral scratch copy (build trees never persist across runs, so stale objects cannot
+produce a false PASS), namespaces persistent dependency caches by the canonical contract, and
 executes formatting, the repository-local Conan and pinned Contracts bootstraps, a Debug
 configure with ProtoAdapter ON / clang-tidy ON / WarningsAsErrors ON, build, tests, and the
 staged-install consumer. CI invokes the same command; the workflow contains no second definition
