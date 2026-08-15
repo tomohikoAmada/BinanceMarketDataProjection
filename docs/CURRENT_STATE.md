@@ -149,7 +149,12 @@ artifact is a separate identity and remains outside Projection ownership.
   `31803322848` — 18/18 PASS, formal evidence ACCEPTED, independent review APPROVED,
   PR #21 MERGED, squash merge `227524e6d17cce77813c6f26cd65bb8d996f5677`, and post-merge
   main CI `31809917018` — 18/18 PASS.
-- Toolchain reproducibility hardening remains a separate future infrastructure task.
+- The toolchain reproducibility gap is closed by INFRA-TC-001 (canonical Quality toolchain
+  contract, open PR): exact clang/clang++/clang-tidy/clang-format identity in
+  `.toolchain/quality.env`, one repo-owned canonical Quality entrypoint `scripts/quality.sh`
+  used by CI and local developers, fail-closed identity validation, and deterministic contract
+  tests. See `docs/QUALITY_TOOLCHAIN.md` and the PR body for the exact implementation/evidence
+  report.
 - Later M5 phases remain separately authorized work.
 
 ## Accepted Semantic Authorities
@@ -222,8 +227,9 @@ M5 Phase 6 is complete and merged (PR #21, squash merge
 post-merge main CI `31809917018` — 18/18 PASS). P6-AUDIT-003 is CLOSED by this
 governance/status synchronization. Immediate sequencing:
 
-1. standalone Toolchain Reproducibility / Quality Toolchain Hardening task;
-2. after that task is separately completed/accepted, proceed to separately authorized
+1. INFRA-TC-001 (reproducible Quality toolchain) is implemented and open for independent review
+   (see the PR entry above and `docs/QUALITY_TOOLCHAIN.md`); it is not merged yet.
+2. After INFRA-TC-001 is separately completed/accepted, proceed to separately authorized
    Phase-7 work.
 
 Phase 7 has NOT started.

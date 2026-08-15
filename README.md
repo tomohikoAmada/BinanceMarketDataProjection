@@ -44,9 +44,11 @@ extensions.
 - Ninja.
 - Python 3 with `venv`.
 - A C++20 compiler.
-- `clang-format` for the local quality gate.
-- `clang-tidy` is mandatory in CI. Local hosts without clang-tidy may skip it explicitly; CI
-  clang-tidy remains the authoritative gate.
+- Docker or Podman for the canonical Quality gate (`scripts/quality.sh`); the canonical
+  clang/clang-tidy/clang-format 18.1.3 toolchain runs inside a repository-pinned container
+  (see [docs/QUALITY_TOOLCHAIN.md](docs/QUALITY_TOOLCHAIN.md)).
+- A local `clang-format` for the broad `verify.sh` gate. Local hosts without clang-tidy may skip
+  it explicitly; canonical containerized clang-tidy remains the authoritative gate.
 
 Conan 2, GoogleTest 1.17.0, and Google Benchmark 1.9.5 are installed/resolved into repository-local
 directories. No global installation is performed.
@@ -228,10 +230,29 @@ bash scripts/verify.sh
 ```
 
 This runs formatting, warnings-as-errors, Core-only and M4 Debug/Release tests, required sanitizers,
-the benchmark/fuzz smoke tests, both staged-install consumers, static/shared M4 packaging, and
-`git diff --check`. When the host
+the benchmark/fuzz smoke tests, both staged-install consumers, static/shared M4 packaging, the
+deterministic toolchain contract tests, and `git diff --check`. When the host
 has clang-tidy the gate enables it automatically; otherwise it skips with a clear message.
-CI clang-tidy is mandatory regardless of local skip.
+The output ends with `CANONICAL QUALITY: NOT RUN` (or `PASS` if
+`BMD_PROJECTION_RUN_CANONICAL_QUALITY=1` was set): `verify.sh` is broad developer verification,
+not canonical acceptance.
+
+## Canonical Quality acceptance
+
+```bash
+bash scripts/quality.sh
+```
+
+This is the single repository-owned entrypoint for authoritative CI-equivalent Quality semantics.
+It builds the pinned canonical container (Ubuntu 24.04 amd64 with exact clang 18.1.3,
+clang-tidy 18.1.3, clang-format 18.1.3 from the contract in `.toolchain/quality.env`), fails closed
+when the toolchain does not match the contract, and runs formatting, the repository-local Conan
+and pinned Contracts bootstraps, a Debug configure with ProtoAdapter ON / clang-tidy ON /
+WarningsAsErrors ON, build, tests, and the staged-install consumer. CI invokes the same command;
+the workflow contains no second definition of Quality semantics. Local clang-format/clang-tidy
+runs are supplemental and never canonical acceptance. See
+[docs/QUALITY_TOOLCHAIN.md](docs/QUALITY_TOOLCHAIN.md) for the contract, identity table, and the
+intentional upgrade procedure.
 
 ## Directory structure
 
@@ -244,6 +265,7 @@ cmake/         Target-local quality and package-export helpers
 scripts/       Repository-local development workflows
 docs/          Milestones, open questions, and ADRs
 fuzz/          libFuzzer harnesses and checked-in seed corpus
+.toolchain/    Canonical Quality toolchain contract and container
 .github/       CI workflows
 ```
 
