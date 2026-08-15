@@ -25,17 +25,19 @@ elif [[ -z "$clang_tidy" ]] && xcrun --find clang-tidy >/dev/null 2>&1; then
 fi
 
 if [[ -n "$clang_tidy" && -x "$clang_tidy" ]]; then
-    echo "clang-tidy: ENABLED ($clang_tidy)"
+    echo "clang-tidy: ENABLED ($clang_tidy) [supplemental local check; canonical clang-tidy identity is enforced by scripts/quality.sh]"
     tidy_flag_enable="-DBMD_PROJECTION_ENABLE_CLANG_TIDY=ON"
     tidy_flag_exe="-DBMD_PROJECTION_CLANG_TIDY_EXECUTABLE=$clang_tidy"
 elif [[ "$BMD_PROJECTION_REQUIRE_CLANG_TIDY" == "1" ]]; then
     echo "clang-tidy is required but could not be found" >&2
     exit 1
 else
-    echo "clang-tidy: SKIPPED locally; mandatory CI clang-tidy remains authoritative"
+    echo "clang-tidy: SKIPPED locally; mandatory canonical clang-tidy (scripts/quality.sh) remains authoritative"
     tidy_flag_enable=""
     tidy_flag_exe=""
 fi
+
+scripts/test-quality-toolchain.sh
 
 find include src tests benchmarks fuzz -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
     | xargs -0 "$clang_format" --dry-run --Werror
@@ -73,3 +75,14 @@ scripts/install-adapter-consumer-test.sh
 BMD_PROJECTION_SHARED=1 scripts/install-adapter-consumer-test.sh
 scripts/fuzz-smoke.sh
 git diff --check
+
+if [[ "${BMD_PROJECTION_RUN_CANONICAL_QUALITY:-0}" == "1" ]]; then
+    echo "BMD_PROJECTION_RUN_CANONICAL_QUALITY=1: running canonical Quality"
+    scripts/quality.sh
+    echo "CANONICAL QUALITY: PASS"
+else
+    echo "CANONICAL QUALITY: NOT RUN"
+    echo "The checks above are broad developer verification and are NOT canonical acceptance."
+    echo "CI-equivalent canonical Quality (pinned clang/clang-tidy/clang-format container):"
+    echo "  bash scripts/quality.sh"
+fi
