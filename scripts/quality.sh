@@ -16,13 +16,17 @@
 # Container branch (inside the canonical image):
 #   1. copies the mounted source into the canonical scratch root /work
 #      (fresh copy per run; the host working tree is never polluted)
-#   2. invalidates /work caches when the contract fingerprint changed
-#   3. verifies the image was baked from this exact contract
-#   4. fails closed unless the running toolchain matches the contract
-#   5. runs the exact Quality semantics: formatting, repository-local Conan
+#   2. verifies the image was baked from this exact contract
+#   3. fails closed unless the running toolchain matches the contract
+#   4. runs the exact Quality semantics: formatting, repository-local Conan
 #      bootstrap, pinned Contracts bootstrap, Debug configure with
 #      ProtoAdapter ON, clang-tidy ON, Werror ON, build, tests, and the
 #      staged-install consumer
+#
+# Persistent caches (.cache, .venv-tools) are namespaced by the canonical
+# cache key (scripts/quality-cache-key.sh) and mounted as named volumes by
+# the host branch; /work itself is ephemeral per run and build outputs never
+# persist, so no lifecycle-sensitive fingerprint file is needed.
 #
 # Local reproduction: bash scripts/quality.sh
 #   macOS: Docker Desktop (amd64 containers run through Rosetta 2).
@@ -56,18 +60,6 @@ if [[ "${BMD_CANONICAL_QUALITY_CONTAINER:-0}" == "1" ]]; then
     contract_normalize() {
         grep -vE '^[[:space:]]*(#|$)' "$1"
     }
-    fingerprint() {
-        contract_normalize "$1" | sha256sum | cut -d' ' -f1
-    }
-
-    fingerprint_file="$work/.bmd-quality-contract-fingerprint"
-    current_fp="$(fingerprint .toolchain/quality.env)"
-    if [[ -f "$fingerprint_file" ]] \
-        && [[ "$(cat "$fingerprint_file")" != "$current_fp" ]]; then
-        echo "Canonical Quality: contract changed; invalidating cached build/cache/venv"
-        rm -rf "$work/build" "$work/.cache" "$work/.venv-tools"
-    fi
-    printf '%s' "$current_fp" > "$fingerprint_file"
 
     if [[ -f /opt/toolchain/quality.env ]]; then
         if ! diff -q \
@@ -180,9 +172,15 @@ echo "Canonical Quality: building pinned toolchain image ($runtime)"
     -t "$image_tag" -f .toolchain/Dockerfile .
 
 echo "Canonical Quality: running canonical acceptance in the pinned container"
+cache_key="$(bash scripts/quality-cache-key.sh)"
+cache_volume="bmd-projection-quality-cache-${cache_key}"
+venv_volume="bmd-projection-quality-venv-${cache_key}"
+echo "Canonical Quality: cache namespace ${cache_key}"
+echo "Canonical Quality: persistent volumes ${cache_volume} / ${venv_volume} (dependency caches only; /work is ephemeral)"
 "$runtime" run --rm --platform linux/amd64 \
     -v "$repo_root":/src:ro \
-    -v bmd-projection-quality-work:/work \
+    -v "$cache_volume":/work/.cache \
+    -v "$venv_volume":/work/.venv-tools \
     -e BMD_CANONICAL_QUALITY_CONTAINER=1 \
     -w /src \
     "$image_tag" \
