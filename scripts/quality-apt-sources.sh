@@ -8,7 +8,7 @@
 # mode after the TLS bootstrap; also used by the deterministic offline tests.
 #
 # usage: quality-apt-sources.sh <SNAPSHOT_ID> <SUITE>
-#   SNAPSHOT_ID  e.g. 20260815T120000Z (YYYYMMDDTHHMMSSZ)
+#   SNAPSHOT_ID  e.g. 20260814T120000Z (YYYYMMDDTHHMMSSZ)
 #   SUITE        e.g. noble
 set -euo pipefail
 

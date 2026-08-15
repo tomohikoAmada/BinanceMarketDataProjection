@@ -6,14 +6,16 @@
 #   - the authoritative base reference (<image>@<digest>) is computed by
 #     scripts/quality-base-ref.sh from the contract and MUST be passed as the
 #     BMD_CANONICAL_BASE_IMAGE_REF build argument (no default, no fallback);
-#   - Ubuntu archive state is pinned to the contract's UBUNTU_SNAPSHOT_ID on
-#     the official Ubuntu Snapshot Service for BOTH the archive pockets and
-#     the security pocket;
-#   - the only pre-snapshot apt operation is the exact-pinned ca-certificates
-#     TLS bootstrap from the base image's shipped default sources (the base
-#     image ships no CA store and the snapshot service requires TLS);
-#   - every other package is installed with an exact version pin resolved
-#     against the snapshot.
+#   - Ubuntu archive state is pinned to the contract's UBUNTU_SNAPSHOT_ID
+#     (historical) on the official Ubuntu Snapshot Service for BOTH the
+#     archive pockets and the security pocket; direct snapshot URIs only;
+#   - TLS bootstrap uses a repository-committed, SHA-256-pinned
+#     ca-certificates artifact (.toolchain/bootstrap/ca-certificates.deb,
+#     retrieved from the same historical snapshot): bytes are verified and
+#     only TLS trust material is extracted. NO mutable live archive is ever
+#     contacted anywhere in this build;
+#   - every package is installed with an exact version pin resolved against
+#     the snapshot, with archive signature verification (Signed-By) intact.
 #
 # Build with: docker build --platform linux/amd64 \
 #     --build-arg BMD_CANONICAL_BASE_IMAGE_REF=$(bash scripts/quality-base-ref.sh) \
@@ -33,25 +35,31 @@ RUN test "$TARGETARCH" = "amd64" \
     || { echo "Canonical Quality requires amd64; got: ${TARGETARCH:-<unset>}" >&2; exit 1; }
 
 COPY .toolchain/quality.env /opt/toolchain/quality.env
+COPY .toolchain/bootstrap/ca-certificates.deb /opt/toolchain/bootstrap/ca-certificates.deb
 COPY scripts/quality-apt-sources.sh /opt/toolchain/quality-apt-sources.sh
 
-# ---- TLS bootstrap (BEFORE snapshot mode) --------------------------------
-# The pinned base image ships no CA store and the Ubuntu Snapshot Service
-# requires TLS, so this single exact-pinned step installs ca-certificates
-# from the base image's own shipped default sources (plain HTTP, GPG-verified
-# indexes). Snapshot mode is established immediately afterwards; no live
-# archive reference exists in the final sources and no later apt operation
-# touches the live archive.
+# ---- Immutable TLS bootstrap (NO live archive) ----------------------------
+# The pristine base image ships no CA store and the Ubuntu Snapshot Service
+# requires TLS. The committed ca-certificates package payload is pinned by
+# CA_CERTIFICATES_BOOTSTRAP_SHA256 in the contract; its bytes are verified
+# before use and only TLS trust material is extracted (no package install,
+# no apt operation, no network contact before snapshot mode).
 RUN set -eu; \
     . /opt/toolchain/quality.env; \
-    echo "TLS bootstrap: installing ${CA_CERTIFICATES_PACKAGE_PIN} from shipped base sources"; \
-    apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        "$CA_CERTIFICATES_PACKAGE_PIN"; \
-    rm -rf /var/lib/apt/lists/*
+    echo "TLS bootstrap artifact sha256: ${CA_CERTIFICATES_BOOTSTRAP_SHA256}"; \
+    test "$(sha256sum /opt/toolchain/bootstrap/ca-certificates.deb | cut -d' ' -f1)" = "$CA_CERTIFICATES_BOOTSTRAP_SHA256" \
+        || { echo "TLS bootstrap artifact checksum mismatch" >&2; exit 1; }; \
+    rm -rf /opt/toolchain/ca-bootstrap; \
+    dpkg-deb -x /opt/toolchain/bootstrap/ca-certificates.deb /opt/toolchain/ca-bootstrap; \
+    find /opt/toolchain/ca-bootstrap/usr/share/ca-certificates -type f -name '*.crt' -exec cat {} + \
+        > /opt/toolchain/ca-bootstrap/ca-certificates.crt; \
+    grep -q 'BEGIN CERTIFICATE' /opt/toolchain/ca-bootstrap/ca-certificates.crt \
+        || { echo "TLS bootstrap bundle empty or malformed" >&2; exit 1; }; \
+    printf 'Acquire::https::CaInfo "/opt/toolchain/ca-bootstrap/ca-certificates.crt";\n' \
+        > /etc/apt/apt.conf.d/50snapshot-ca
 
 # ---- Snapshot mode --------------------------------------------------------
-# Every apt operation below resolves against the pinned Ubuntu snapshot.
+# Every apt operation below resolves against the pinned HISTORICAL snapshot.
 RUN set -eu; \
     . /opt/toolchain/quality.env; \
     echo "Ubuntu snapshot: ${UBUNTU_SNAPSHOT_ID} (${UBUNTU_SUITE}, archive + security pockets)"; \
@@ -69,7 +77,8 @@ RUN set -eu; \
         "$MAKE_PACKAGE_PIN" \
         "$PATCH_PACKAGE_PIN" \
         "$PYTHON_VENV_PACKAGE_PIN" \
-        "$GIT_PACKAGE_PIN"; \
+        "$GIT_PACKAGE_PIN" \
+        "$CA_CERTIFICATES_PACKAGE_PIN"; \
     update-alternatives --install /usr/bin/clang clang "/usr/bin/clang-${LLVM_MAJOR}" 100; \
     update-alternatives --install /usr/bin/clang++ clang++ "/usr/bin/clang++-${LLVM_MAJOR}" 100; \
     update-alternatives --install /usr/bin/clang-tidy clang-tidy "/usr/bin/clang-tidy-${LLVM_MAJOR}" 100; \
