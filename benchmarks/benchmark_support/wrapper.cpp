@@ -168,6 +168,7 @@ void write_source_provenance_section(json::Writer& writer, const SourceProvenanc
     writer.end_object();
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 void write_binary_provenance_section(json::Writer& writer, std::string_view path,
                                      std::string_view sha256) {
     writer.key("binary_provenance");

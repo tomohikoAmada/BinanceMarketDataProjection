@@ -397,6 +397,7 @@ void write_measurement_fields(json::Writer& writer, const AllocationRecordInput&
 
 std::string json_text_sha256(std::string_view text) { return sha256_of(text); }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 std::string workload_spec_field(std::string_view canonical_text, std::string_view key) {
     const auto prefix = std::string{key} + "=";
     std::istringstream stream{std::string{canonical_text}};
@@ -688,6 +689,7 @@ std::string build_calibration_record_json(const CalibrationRecordInput& input) {
     return writer.str();
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 std::string build_allocation_payload_json(const std::vector<std::string>& records,
                                           const std::vector<std::string>& calibration_records,
                                           const std::string& measurement_contract) {

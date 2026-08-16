@@ -17,6 +17,7 @@ using alloc::MeasurementResult;
 using alloc::PersistentLiveDelta;
 using alloc::PersistentLiveDeltaSign;
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] MeasurementResult
 eligible_measurement(std::uint64_t before, std::uint64_t peak, std::uint64_t after,
                      std::uint64_t allocs, std::uint64_t bytes, std::uint64_t frees,
