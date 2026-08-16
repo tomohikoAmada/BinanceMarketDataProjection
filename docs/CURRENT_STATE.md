@@ -152,16 +152,13 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Not Implemented
 
-- Phase 7 (allocation/memory) implementation is NOT STARTED. Its
-  pre-implementation methodology
-  (`docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md`, decisions OD-M5-P7-001 through
-  OD-M5-P7-023) is **APPROVED / MERGED** via PR #25: final independent
-  methodology review APPROVED (P0: 0, P1: 0, P2: 0); all findings
-  M5-P7-MR-001..010 and M5-P7-RR-001 CLOSED; approved Head
-  `92288927165f2d7486491371a11a7a586c645565`; squash merge
-  `c2ad198677130d05ad054ea48ade3a1d8021c153` (merged tree == approved Head
-  tree). Implementation is AUTHORIZED / NOT STARTED; no Phase-7 instrumentation
-  or implementation exists.
+- Phase 7 (allocation/memory) methodology is APPROVED / MERGED (PR #25). Phase-7
+  implementation is **IN PROGRESS**: PR-A (work package WP1) implements the
+  executable-local allocation instrumentation substrate and its adversarial
+  validation executable only. NOT implemented yet: the formal M2/M3/M4/replay
+  measurement inventory, the Phase-7 evidence schemas/validator, the formal
+  Release runner, and formal evidence (all later PRs of the approved Phase-7
+  implementation plan).
 - Phase 8 (container spike) is NOT STARTED.
 - M6 Gateway integration is NOT STARTED.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
@@ -312,13 +309,19 @@ satisfied. Immediate sequencing:
    `92288927165f2d7486491371a11a7a586c645565`; squash merge
    `c2ad198677130d05ad054ea48ade3a1d8021c153` (merged tree == approved Head
    tree).
-3. NEXT engineering work: **M5 Phase 7 — allocation/memory implementation**
-   (AUTHORIZED / NOT STARTED).
+3. Phase-7 implementation: **IN PROGRESS** — PR-A (work package WP1) delivers
+   the executable-local allocation instrumentation substrate (fixed-capacity
+   non-allocating provenance, complete 20-form replaceable global new/delete
+   surface with checked aligned backing arithmetic, MeasurementScope A/P/B
+   semantics, fail-closed overflow/failure behavior, test-only seams) and the
+   adversarial instrumentation validation executable; it is pending
+   independent exact-head review. The formal measurement inventory, evidence
+   schemas/validator, formal Release runner, and formal evidence are NOT
+   implemented yet.
 
-Phase 7 implementation is the NEXT AUTHORIZED ENGINEERING STEP. It has NOT
-started and is not in progress or implemented. Phase 8 (container spike) is
-NOT STARTED and must not begin before Phase-7 evidence/handoff satisfies the
-accepted sequencing contract (OD-M5-P7-021).
+Phase 7 implementation is the active engineering step. Phase 8 (container
+spike) is NOT STARTED and must not begin before Phase-7 evidence/handoff
+satisfies the accepted sequencing contract (OD-M5-P7-021).
 
 ## AI / Reviewer Reading Order
 

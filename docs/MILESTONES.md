@@ -357,7 +357,7 @@ package's conaninfo.txt rather than the cache-directory locator). Production `sr
 `include/**` were unchanged by Phase 6. See
 `docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`.
 
-Phase 7 (allocation/memory characterization) is **AUTHORIZED / NOT STARTED**.
+Phase 7 (allocation/memory characterization) implementation is **IN PROGRESS**.
 Its pre-implementation decision record is **APPROVED / MERGED** via PR #25:
 `docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md` records decisions OD-M5-P7-001
 through OD-M5-P7-023 (attribution model, instrumentation isolation with a two-lifetime
@@ -377,7 +377,16 @@ final independent methodology review was **APPROVED** (P0: 0, P1: 0, P2: 0); all
 M5-P7-MR-001..010 and M5-P7-RR-001 are **CLOSED**; approved Head
 `92288927165f2d7486491371a11a7a586c645565`; squash merge
 `c2ad198677130d05ad054ea48ade3a1d8021c153` (merged tree == approved Head tree).
-Phase-7 implementation has NOT started. Phase 8 (container spike) is NOT STARTED.
+Phase-7 implementation is **IN PROGRESS** with PR-A (work package WP1): the
+executable-local allocation instrumentation substrate (constant-initialized
+process-lifetime state, fixed-capacity non-allocating provenance table, complete
+20-form replaceable global new/delete surface with checked aligned backing
+arithmetic, MeasurementScope A/P/B semantics, fail-closed overflow/failure
+behavior, test-only seams) and its adversarial validation executable
+`bmd_projection_allocation_instrumentation_tests`. NOT implemented yet: the
+formal M2/M3/M4/replay measurement inventory, the evidence schemas/validator,
+the formal Release runner, and formal evidence. Phase 8 (container spike) is
+NOT STARTED.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 
