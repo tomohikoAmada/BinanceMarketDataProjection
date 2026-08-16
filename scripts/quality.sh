@@ -79,17 +79,21 @@ for hook in \
     fi
 done
 
+# Exact argv grammar: argc==0 for canonical HOST mode; argc==1 with exactly
+# --inside-canonical-container for the internal mode. Anything else (including
+# trailing arguments) exits 2 before any canonical work.
 mode="host"
-case "${1:-}" in
-    "") ;;
-    --inside-canonical-container) mode="inside-canonical-container" ;;
-    *)
-        echo "usage: $0 [--inside-canonical-container]" >&2
-        echo "  (no arguments: canonical HOST mode; --inside-canonical-container is an internal mode" >&2
-        echo "   entered only by the trusted host path inside the canonical image)" >&2
-        exit 2
-        ;;
-esac
+if [[ $# -eq 0 ]]; then
+    :
+elif [[ $# -eq 1 && "${1:-}" == "--inside-canonical-container" ]]; then
+    mode="inside-canonical-container"
+else
+    echo "usage: $0 [--inside-canonical-container]" >&2
+    echo "  no arguments: canonical HOST mode" >&2
+    echo "  --inside-canonical-container: internal mode, entered only by the trusted host path" >&2
+    echo "  inside the canonical image (no other arguments are accepted)" >&2
+    exit 2
+fi
 
 if [[ "$mode" == "inside-canonical-container" ]]; then
     # ------------------------------------------------------------------

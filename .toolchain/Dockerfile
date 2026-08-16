@@ -35,8 +35,19 @@ RUN test "$TARGETARCH" = "amd64" \
     || { echo "Canonical Quality requires amd64; got: ${TARGETARCH:-<unset>}" >&2; exit 1; }
 
 COPY .toolchain/quality.env /opt/toolchain/quality.env
+COPY scripts/quality-base-ref.sh /opt/toolchain/quality-base-ref.sh
 COPY .toolchain/bootstrap/ca-certificates.deb /opt/toolchain/bootstrap/ca-certificates.deb
 COPY scripts/quality-apt-sources.sh /opt/toolchain/quality-apt-sources.sh
+
+# ---- Base-binding assertion (INV-BASE-001) ---------------------------------
+# The actual FROM identity is the BMD_CANONICAL_BASE_IMAGE_REF build argument;
+# the contract baked into THIS build is /opt/toolchain/quality.env. The image
+# must fail closed unless the FROM argument equals base_ref(baked contract) —
+# a build whose context contract changed between host-side base-reference
+# capture and image build (FROM D0 + baked D1) must never reach TLS bootstrap,
+# apt, package resolution, or canonical acceptance. Uses the SAME production
+# base-reference semantics as scripts/quality.sh (no second parser).
+RUN bash /opt/toolchain/quality-base-ref.sh /opt/toolchain/quality.env "${BMD_CANONICAL_BASE_IMAGE_REF}"
 
 # ---- Immutable TLS bootstrap (NO live archive) ----------------------------
 # The pristine base image ships no CA store and the Ubuntu Snapshot Service

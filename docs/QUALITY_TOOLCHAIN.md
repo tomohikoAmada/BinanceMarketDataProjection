@@ -27,8 +27,18 @@ Canonical Quality runs inside a repository-owned container image:
   as the `BMD_CANONICAL_BASE_IMAGE_REF` build argument; `.toolchain/Dockerfile` uses it
   verbatim as `FROM ${BMD_CANONICAL_BASE_IMAGE_REF}`. The Dockerfile contains no independent
   digest literal and the build argument has no default: an empty or mutated reference fails the
-  build (`base name should not be blank`) or fails the pull. Drift between the contract and the
-  actual base image is therefore impossible.
+  build (`base name should not be blank`) or fails the pull.
+- **The actual FROM identity is bound to the baked contract inside the build.** After the
+  authoritative contract is copied from the build context, the Dockerfile runs the SAME
+  production base-reference helper (`scripts/quality-base-ref.sh`, copied into the image) in
+  assertion mode against `/opt/toolchain/quality.env` and compares it with the
+  `BMD_CANONICAL_BASE_IMAGE_REF` build argument. A mismatch (e.g. the working-tree contract
+  changed between host-side base-reference capture and image build, so `FROM` used digest D0
+  while the baked contract declares D1) **fails the build immediately**, before TLS bootstrap,
+  snapshot setup, apt, package resolution, or canonical acceptance. Drift between the contract
+  and the actual base image is therefore impossible for any image that reaches canonical
+  acceptance. This does not claim protection against a malicious Docker Engine or a malicious
+  privileged host that can rewrite arbitrary container-engine state.
 - **Ubuntu archive state** is pinned to one official Ubuntu Snapshot Service identity
   (`UBUNTU_SNAPSHOT_ID=20260814T120000Z`, format `YYYYMMDDTHHMMSSZ`). The ID must be a **real
   UTC calendar moment** (format alone is never sufficient: `20260230T120000Z`, month 13,
@@ -108,6 +118,12 @@ Local canonical Quality is **working-tree content acceptance**, not exact Git-co
 ```bash
 bash scripts/quality.sh
 ```
+
+The entrypoint has an **exact argv grammar**: argc must be 0 (canonical host mode) or exactly
+1 with `--inside-canonical-container` (internal mode, generated only by the trusted host
+path). Any other argument combination (e.g. `quality.sh garbage`,
+`quality.sh --inside-canonical-container garbage`) exits with a usage diagnostic before any
+canonical work.
 
 - Linux: uses Docker Engine; macOS: Docker Desktop (backed by Docker Engine; the amd64
   container runs through Rosetta 2). The backend identity is **enforced**, not assumed: a
@@ -218,14 +234,20 @@ The `quality-toolchain-tests` job runs the deterministic contract tests
 - Image not built from the current contract → abort.
 - Base-image reference missing/empty/mutated → build fails (no default fallback, no second digest
   source).
+- **FROM build argument != base reference derived from the exact baked contract → build
+  fails** before TLS bootstrap/snapshot/apt: the Dockerfile re-derives the reference from
+  `/opt/toolchain/quality.env` with the production helper and asserts equality with
+  `BMD_CANONICAL_BASE_IMAGE_REF`.
 - TLS bootstrap artifact bytes not matching `CA_CERTIFICATES_BOOTSTRAP_SHA256` → build fails.
 - No package-resolution operation ever touches a mutable live archive: the only apt sources are
   the historical snapshot URIs (both pockets), archive signatures verified via `Signed-By`.
 
-Deterministic offline tests: `scripts/test-quality-toolchain.sh` (89 cases, no network; fake
+Deterministic offline tests: `scripts/test-quality-toolchain.sh` (100 cases, no network; fake
 shims generated from the repository's own contract files) — including adversarial stale-object
 reuse against the production work-preparation mechanism, source deletion/rollback, base-ref
-mutation, snapshot temporal/calendar plumbing, duplicate-key fail-closed (including arbitrary
+mutation, base-binding assertion semantics (C0/C0 pass; C0 arg with C1/C2/C3 contract fails;
+duplicate/malformed fail), Dockerfile base-binding plumbing/order, exact argv-grammar
+rejection, snapshot temporal/calendar plumbing, duplicate-key fail-closed (including arbitrary
 keys and conflicting values), cache-namespace key changes, payload tamper, entrypoint-level
 test-hook isolation proofs, canonical-image-boundary proofs, Docker-Engine-backend identity
 proofs (Podman/libpod and unknown backends rejected via fake `docker` shims), and

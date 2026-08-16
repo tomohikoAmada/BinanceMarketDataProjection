@@ -8,11 +8,20 @@
 # literal; this script is the single plumbing point between the contract and
 # the actual image base.
 #
-# usage: quality-base-ref.sh [contract-file]
+# Assertion mode (second argument): .toolchain/Dockerfile copies this exact
+# script into the image and invokes it against the baked contract to prove
+# that the FROM build argument equals base_ref(baked contract) BEFORE any TLS
+# bootstrap, snapshot setup, apt, or package work. A mismatch fails the build.
+#
+# usage: quality-base-ref.sh [contract-file] [expected-base-ref]
+#   contract-file        default: <repo>/.toolchain/quality.env
+#   expected-base-ref    if given, print "verified" and exit 0 only when the
+#                        derived reference equals it; otherwise exit 1
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 contract_file="${1:-$repo_root/.toolchain/quality.env}"
+expected_ref="${2:-}"
 
 if [[ ! -r "$contract_file" ]]; then
     echo "quality-base-ref: contract file missing or unreadable: $contract_file" >&2
@@ -40,4 +49,17 @@ if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
     exit 1
 fi
 
-printf '%s@%s\n' "$image" "$digest"
+ref="$image@$digest"
+
+if [[ -n "$expected_ref" ]]; then
+    if [[ "$ref" != "$expected_ref" ]]; then
+        echo "quality-base-ref: ASSERTION FAILED: provided base reference '${expected_ref}'" >&2
+        echo "quality-base-ref: != base reference derived from '${contract_file}' ('${ref}')" >&2
+        echo "quality-base-ref: the build context contract changed between base-reference capture and image build" >&2
+        exit 1
+    fi
+    echo "quality-base-ref: base reference verified: ${ref}"
+    exit 0
+fi
+
+printf '%s\n' "$ref"

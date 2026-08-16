@@ -670,6 +670,69 @@ run_cmd_case "base-ref missing digest -> FAIL" no \
     bash "$repo_root/scripts/quality-base-ref.sh" "$nodigest/quality.env"
 
 # ============================================================================
+# Unit: base-binding assertion (INV-BASE-001, production quality-base-ref.sh
+# assertion mode — the exact helper the Dockerfile runs in-image)
+# ============================================================================
+contract_real="$repo_root/.toolchain/quality.env"
+c0_ref="$(bash "$repo_root/scripts/quality-base-ref.sh" "$contract_real")"
+
+# C1: same image, different valid digest
+c1_digest="$work_root/contract-c1-digest/quality.env"
+mkdir -p "$(dirname "$c1_digest")"
+sed 's/^CANONICAL_QUALITY_BASE_IMAGE_DIGEST=.*/CANONICAL_QUALITY_BASE_IMAGE_DIGEST=sha256:1111111111111111111111111111111111111111111111111111111111111111/' \
+    "$contract_real" > "$c1_digest"
+
+# C2: same image, another different valid digest
+c2_digest="$work_root/contract-c2-digest/quality.env"
+mkdir -p "$(dirname "$c2_digest")"
+sed 's/^CANONICAL_QUALITY_BASE_IMAGE_DIGEST=.*/CANONICAL_QUALITY_BASE_IMAGE_DIGEST=sha256:2222222222222222222222222222222222222222222222222222222222222222/' \
+    "$contract_real" > "$c2_digest"
+
+# C3: different image identity (same valid digest)
+c3_image="$work_root/contract-c3-image/quality.env"
+mkdir -p "$(dirname "$c3_image")"
+sed 's/^CANONICAL_QUALITY_BASE_IMAGE=.*/CANONICAL_QUALITY_BASE_IMAGE=ubuntu:22.04/' \
+    "$contract_real" > "$c3_image"
+
+# A. contract C0 + provided base_ref(C0) -> PASS
+run_cmd_case "base-binding: C0 build arg vs C0 contract -> PASS" yes \
+    bash "$repo_root/scripts/quality-base-ref.sh" "$contract_real" "$c0_ref"
+
+# B. contract C1 (different valid digest) + provided base_ref(C0) -> FAIL
+run_cmd_case "base-binding: C0 arg vs C1 different valid digest -> FAIL" no \
+    bash "$repo_root/scripts/quality-base-ref.sh" "$c1_digest" "$c0_ref"
+
+# C. same image but another different valid digest -> FAIL
+run_cmd_case "base-binding: C0 arg vs C2 (same image, other valid digest) -> FAIL" no \
+    bash "$repo_root/scripts/quality-base-ref.sh" "$c2_digest" "$c0_ref"
+
+# D. different image identity -> FAIL
+run_cmd_case "base-binding: C0 arg vs C3 different image identity -> FAIL" no \
+    bash "$repo_root/scripts/quality-base-ref.sh" "$c3_image" "$c0_ref"
+
+# E. malformed / duplicate contract still fails closed via assert mode
+run_cmd_case "base-binding: duplicate-key contract via assert mode -> FAIL" no \
+    bash "$repo_root/scripts/quality-base-ref.sh" "$(tree dup-digest)/quality.env" "$c0_ref"
+
+run_cmd_case "base-binding: missing-digest contract via assert mode -> FAIL" no \
+    bash "$repo_root/scripts/quality-base-ref.sh" "$nodigest/quality.env" "$c0_ref"
+
+# Dockerfile plumbing: the production assertion runs AFTER the authoritative
+# contract COPY and BEFORE TLS bootstrap/apt, and references the FROM arg
+run_cmd_case "Dockerfile asserts FROM arg == baked-contract base ref after COPY, before TLS bootstrap -> PASS" yes \
+    bash -c "
+        df='$repo_root/.toolchain/Dockerfile'
+        copy_contract=\$(grep -n 'COPY .toolchain/quality.env /opt/toolchain/quality.env' \"\$df\" | head -n1 | cut -d: -f1)
+        copy_ref=\$(grep -n 'COPY scripts/quality-base-ref.sh /opt/toolchain/quality-base-ref.sh' \"\$df\" | head -n1 | cut -d: -f1)
+        assert=\$(grep -n 'quality-base-ref.sh /opt/toolchain/quality.env' \"\$df\" | head -n1 | cut -d: -f1)
+        tls=\$(grep -n 'Immutable TLS bootstrap' \"\$df\" | head -n1 | cut -d: -f1)
+        [[ -n \"\$copy_contract\" && -n \"\$copy_ref\" && -n \"\$assert\" && -n \"\$tls\" ]] || { echo 'marker line missing'; exit 1; }
+        [[ \"\$copy_contract\" -lt \"\$copy_ref\" && \"\$copy_ref\" -lt \"\$assert\" && \"\$assert\" -lt \"\$tls\" ]] \
+            || { echo \"order wrong: copy_contract=\$copy_contract copy_ref=\$copy_ref assert=\$assert tls=\$tls\"; exit 1; }
+        grep -q 'BMD_CANONICAL_BASE_IMAGE_REF' \"\$df\" || { echo 'assertion does not reference the FROM build arg'; exit 1; }
+    "
+
+# ============================================================================
 # Unit: snapshot apt-sources generation (production scripts/quality-apt-sources.sh)
 # ============================================================================
 snapshot_id="$(sed -n 's/^UBUNTU_SNAPSHOT_ID=//p' "$repo_root/.toolchain/quality.env")"
@@ -1081,6 +1144,25 @@ printf '  [%s] %s\n' "$forged_verdict" \
 run_entrypoint_case "internal mode invoked outside canonical image (missing baked contract) -> FAIL before source copy" \
     "outside the canonical image" \
     -- "$repo_root/scripts/quality.sh" --inside-canonical-container
+
+# FINALREREVIEW3-002: exact argv grammar — argc==0 (host) or argc==1 with
+# exactly --inside-canonical-container; everything else exits 2 before any
+# canonical work
+run_entrypoint_case "quality.sh garbage -> FAIL usage before canonical work" \
+    "usage" \
+    -- "$repo_root/scripts/quality.sh" garbage
+
+run_entrypoint_case "quality.sh --inside-canonical-container garbage -> FAIL usage" \
+    "usage" \
+    -- "$repo_root/scripts/quality.sh" --inside-canonical-container garbage
+
+run_entrypoint_case "quality.sh --inside-canonical-container --another-flag -> FAIL usage" \
+    "usage" \
+    -- "$repo_root/scripts/quality.sh" --inside-canonical-container --another-flag
+
+run_entrypoint_case "quality.sh foo bar -> FAIL usage" \
+    "usage" \
+    -- "$repo_root/scripts/quality.sh" foo bar
 
 # K. BMD_QUALITY_WORK_KEEP is also rejected at the canonical entrypoint
 run_entrypoint_case "canonical quality.sh rejects BMD_QUALITY_WORK_KEEP -> FAIL before image build" \
