@@ -20,13 +20,24 @@
 **Independent methodology review record:**
 
 - Fresh independent methodology review of the initial record: **CHANGES REQUESTED**
-- P0: **1**
-- P1: **8**
-- P2: **1**
+- P0: **1**; P1: **8**; P2: **1**
 - Findings: M5-P7-MR-001 .. M5-P7-MR-010
-- Corrections: **IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW** (this revision)
+- Corrections (initial round): **IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW**
+
+- Latest focused independent methodology re-review of the corrected record:
+  **CHANGES REQUESTED**
+- Latest: P0: **0**; P1: **2**; P2: **0**
+- Independent dispositions: M5-P7-MR-001 CLOSED; M5-P7-MR-002 CLOSED;
+  M5-P7-MR-003 CLOSED; M5-P7-MR-004 CLOSED; M5-P7-MR-005 CLOSED;
+  M5-P7-MR-006 CLOSED; M5-P7-MR-007 CLOSED; M5-P7-MR-008 CLOSED;
+  **M5-P7-MR-009 OPEN**; M5-P7-MR-010 CLOSED
+- New finding: **M5-P7-RR-001 — P1** (standard-conforming unknown-provenance
+  adversarial delete construction)
+- Corrections (this revision, MR-009 and RR-001): **IMPLEMENTED FOR FOCUSED
+  INDEPENDENT RE-REVIEW**
 - Closure status: **PENDING** — the next fresh reviewer decides closure; this
-  record does NOT claim independent closure, acceptance, or authorization.
+  record does NOT claim independent closure of M5-P7-MR-009 or M5-P7-RR-001,
+  acceptance, or authorization.
 
 **Incorrect wording that this record does NOT use:** "methodology accepted",
 "Phase 7 implementation authorized", "Phase 7 started", "findings independently
@@ -257,6 +268,37 @@ Fresh independent methodology review of the initial Phase-7 decision record:
 | M5-P7-MR-009 | P1 | Formal canonical Release execution mechanism locked (new OD-M5-P7-023): one repository-owned host entrypoint (`bash scripts/benchmark-allocation-formal.sh`, conceptual), INFRA-TC-001-style fail-closed host/internal trust boundary, read-only mounted `/src` retaining `.git`, fresh `/work`, compiled-source content binding, fixed internal entrypoint, no "CANONICAL QUALITY: PASS" emission, quality.sh semantics unchanged | 017, 018, 023 (new) |
 | M5-P7-MR-010 | P2 | Modeled memory corrected: node structural model is NON-ADDITIVE (the allocation request already includes node object structure); allocator backing model is ESTIMATED, environment/toolchain/allocator/size-class-specific, non-formal (no universal 16-byte header assumption); RSS remains NOT MEASURED; schema guards against measured+node totals | 006, 016, 021 |
 
+**Latest focused independent methodology re-review** (of the corrected
+record): **CHANGES REQUESTED** (P0: 0, P1: 2, P2: 0).
+
+Independent dispositions:
+
+- M5-P7-MR-001 CLOSED
+- M5-P7-MR-002 CLOSED
+- M5-P7-MR-003 CLOSED
+- M5-P7-MR-004 CLOSED
+- M5-P7-MR-005 CLOSED
+- M5-P7-MR-006 CLOSED
+- M5-P7-MR-007 CLOSED
+- M5-P7-MR-008 CLOSED
+- M5-P7-MR-009 **OPEN** — the underdefined optional "copy repository source
+  into `/work` + source-content manifest/hash binding" formal source path
+  must be eliminated; exactly ONE formal source model is required
+- M5-P7-MR-010 CLOSED
+- M5-P7-RR-001 **NEW (P1)** — adversarial case 25 must exercise the real
+  unknown-provenance branch of the replacement delete instrumentation with a
+  standard-conforming C++ allocation/deallocation pairing; the invalid
+  "direct `malloc` → `operator delete`" construction must not appear
+
+Corrections for M5-P7-MR-009 and M5-P7-RR-001 in this revision are
+**IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW**; independent closure of
+either finding remains **PENDING** the next fresh reviewer.
+
+| Finding | Severity | Correction | Affected ODs |
+|---|---|---|---|
+| M5-P7-MR-009 (final round) | P1 | Formal source model locked to EXACTLY ONE option: `/src` is the sole source root (read-only mounted checkout, `.git` retained, CMake source root, the source compiled from) and `/work` is the sole fresh ephemeral build/output root; the optional "materialize a source copy into `/work` + content-manifest/hash binding" path is REJECTED and removed; NO source-content manifest is required; exact host entrypoint locked as `bash scripts/benchmark-allocation-formal.sh` with no alternative-name escape hatch; formal eligibility re-proved from the SAME `/src`; negative tests reformulated for the single-source model (dirty `/src`, unexpected HEAD, alternative source/work root impossible/rejected, CMake source root other than `/src` impossible, contract/image mismatch, non-Release, sanitizers, binary-SHA mismatch) | 017, 023 |
+| M5-P7-RR-001 | P1 | Adversarial case 25 corrected to a standard-conforming unknown-provenance construction: legal `::operator new(K)` (fixed hand-known K > 0) records a normal provenance entry; the TEST-ONLY provenance-removal seam (`forget_provenance_for_test(p)`, isolated in `bmd_projection_allocation_instrumentation_tests`; conceptual spelling) removes the entry without freeing `p`; the legally matched `::operator delete(p)` then executes the replacement delete's real unknown-provenance branch; exact OD-M5-P7-019 fail-closed behavior asserted; storage freed exactly once; no UB; `malloc → operator delete` never appears as a valid construction; case 26 (direct `malloc`/`free` bypass) remains the separate measurement-scope proof | 019, 020 |
+
 ## Normative Decision Table
 
 All decisions below are:
@@ -287,7 +329,7 @@ All decisions below are:
 | OD-M5-P7-020 | Adversarial validation | PROPOSED (rewritten, 30 cases) |
 | OD-M5-P7-021 | Phase-8 handoff | PROPOSED (corrected metrics) |
 | OD-M5-P7-022 | Phase boundary / CI ownership | PROPOSED (accepted, preserved) |
-| OD-M5-P7-023 | Formal canonical Release execution mechanism | PROPOSED (new; M5-P7-MR-009) |
+| OD-M5-P7-023 | Formal canonical Release execution mechanism | PROPOSED (corrected: exact host command, single formal source model; M5-P7-MR-009 final round) |
 
 ---
 
@@ -1541,9 +1583,10 @@ is it a baseline OF?
 - **All conditions required:**
   1. evidence produced by the Phase-7 canonical Release runner
      (OD-M5-P7-023): `/src` HEAD == recorded source SHA; `/src` worktree
-     clean under the repository's defined source set; actual compiled
-     source cryptographically/content-bound to that source; exact
-     canonical image/toolchain contract;
+     clean under the repository's defined source set; repository source
+     compiled DIRECTLY from `/src` (single formal source model — no
+     copied source tree, no source-content manifest); exact canonical
+     image/toolchain contract;
   2. Release; sanitizers off; LTO state explicit and recorded;
   3. exact binary SHA-256 recorded and rehashable (mirroring OD-M5-P6-022);
   4. exact source SHA recorded;
@@ -1766,14 +1809,44 @@ single-threaded test executable
     table capacity → live metric class INELIGIBLE while count/bytes
     remain valid; subsequent production traffic still returns valid
     pointers.
-25. **Unknown pointer handling:** free a pointer never recorded (e.g.,
-    obtained via direct `malloc` inside the test) → deletion not counted;
-    live metric class INELIGIBLE (fail closed); count/bytes unaffected.
+25. **Unknown-provenance delete (standard-conforming; M5-P7-RR-001):** a
+    TEST-ONLY provenance-removal seam in
+    `bmd_projection_allocation_instrumentation_tests` (conceptual name
+    `forget_provenance_for_test(void*)`; the exact C++ spelling may vary,
+    the following semantics are NORMATIVE) deterministically constructs the
+    REAL unknown-provenance branch of the replacement delete
+    instrumentation using a LEGALLY MATCHED C++ allocation/deallocation
+    pairing:
+    (a) measurement counters inactive, tracking/provenance active;
+    (b) `void* p = ::operator new(K)` for a fixed hand-known K > 0;
+    (c) verify `p` has a normal provenance entry;
+    (d) `forget_provenance_for_test(p)` intentionally removes that
+        provenance entry WITHOUT freeing `p`, updating instrumentation
+        bookkeeping consistently so the synthetic test setup itself leaves
+        no false stale live record;
+    (e) open the measurement bracket;
+    (f) `::operator delete(p)` — the replacement delete executes against a
+        pointer legitimately returned by the corresponding replacement
+        allocation function, but provenance is intentionally absent;
+    (g) assert the exact fail-closed unknown-provenance behavior required
+        by OD-M5-P7-019: the deletion is not counted, the
+        live/deallocated-byte metric class is INELIGIBLE/INVALID for the
+        bracket, while `allocation_count` / `total_allocated_bytes`
+        semantics remain unaffected by this synthetic missing-provenance
+        event;
+    (h) underlying storage is actually freed exactly once.
+    This test invokes NO undefined behavior: the pairing is legal C++
+    (matching replaceable allocation/deallocation functions) and no
+    cross-boundary `malloc` → `operator delete` construction appears
+    anywhere.
 26. **Direct malloc/free bypass proof:** a measured helper performs direct
     `malloc`/`free` inside an otherwise measured path → the
     `cxx_replaceable_global_new` metric does NOT see those bytes; the
     validator/report still describes the metric truthfully as scoped; any
-    hypothetical `heap_complete = true` claim is rejected.
+    hypothetical `heap_complete = true` claim is rejected. This proves
+    measurement SCOPE — traffic outside
+    `allocation_boundary = cxx_replaceable_global_new`; it does NOT test
+    unknown-pointer delete handling (that is case 25).
 27. **Replay rational case:** aggregate 3 over 2 events is represented as
     the exact rational {3, 2}; validators must not reject and must not
     truncate to 1.
@@ -1915,16 +1988,19 @@ Quality trust boundary?
 modified in this docs-only PR):**
 
 The future Phase-7 implementation MUST provide ONE repository-owned host
-entrypoint, conceptually:
+entrypoint, EXACTLY:
 
 ```text
 bash scripts/benchmark-allocation-formal.sh
 ```
 
-The name may differ only if repository convention strongly favors another
-name, but the contract designates exactly one host entrypoint. It must NOT
-change the meaning of `bash scripts/quality.sh` and must NOT add
-arbitrary-command execution to `scripts/quality.sh`.
+This is the SOLE public host command that may produce formal Phase-7
+allocation/memory evidence. There is NO alternative-name escape hatch ("name
+may differ if repository convention favors another name" is REJECTED); no
+second alias is formal authority. The script is NOT created in this docs-only
+PR, but its future semantics are fixed by this decision record. The host
+entrypoint must NOT change the meaning of `bash scripts/quality.sh` and must
+NOT add arbitrary-command execution to `scripts/quality.sh`.
 
 ### Host mode (trust boundary)
 
@@ -1963,32 +2039,73 @@ host path.
 
 ### Source provenance and compiled-source binding
 
-Formal Phase-7 evidence needs git SHA, clean/dirty state, and actual built
-source binding without relying on `.git` being present in a copied
-`/work`:
+There is EXACTLY ONE formal source model. `/src` is the sole source root and
+`/work` is the sole build/output root:
 
-- `/src` retains the mounted Git checkout and `.git`;
-- source Git SHA and clean state are determined from `/src`;
-- `/src` is read-only during the formal run;
-- the Release build output lives under `/work`;
-- preferred: configure the Phase-7 formal Release build with source rooted
-  at read-only `/src` and binary/build output under `/work`, where
-  technically compatible;
-- if implementation instead materializes a source copy into `/work`, the
-  contract must require an exact content-manifest/hash binding between the
-  clean `/src` source set and the source bytes actually compiled in
-  `/work`.
+```text
+SOURCE ROOT:  /src   (repository checkout, mounted read-only, .git retained,
+                      CMake source root, the source repository files are
+                      compiled from)
+BUILD ROOT:   /work  (fresh/ephemeral build and output state only)
+```
+
+The future formal runner MUST configure/build DIRECTLY from the read-only
+mounted Git checkout:
+
+```text
+cmake -S /src -B /work/<fixed-build-dir> ...
+```
+
+Exact lower-level CMake arguments may be defined during implementation where
+already constrained by this contract, but the source-root semantics are NOT
+optional. Formal Phase-7 execution MUST NOT:
+
+- copy repository source into `/work`;
+- rsync repository source into `/work`;
+- tar/extract repository source into `/work`;
+- configure CMake from a copied source tree;
+- claim Git identity from `/src` while compiling repository source from
+  another tree.
+
+`/work` may contain: CMake build trees; generated build files; generated
+configure headers; Conan-generated build/dependency state; binaries;
+Phase-7 evidence payloads; temporary build artifacts. It MUST NOT become a
+second repository source root.
+
+**NO SOURCE-CONTENT MANIFEST IS REQUIRED.** The previous optional
+"materialize a source copy into `/work` and bind it to `/src` via a
+content-manifest/hash" path is UNDERDEFINED and is now REJECTED and removed
+completely; the ambiguity is eliminated rather than solved with a second
+manifest protocol. Because repository source is compiled DIRECTLY from
+`/src`, the formal source binding is:
+
+```text
+Git provenance source == CMake source root == repository source bytes
+consumed by the build, namely /src
+```
+
+No `/src → /work` repository-source copy exists, so a source-content-mismatch
+negative test is NOT implemented as "compare two source copies"; it is
+implemented as the single-source negative proofs in the negative-test
+section below.
+
+Git provenance is obtained from that SAME `/src`. The runner must not
+manufacture a SHA from another checkout.
 
 It is forbidden to combine: git identity from `/src` + unbound different
 source bytes in `/work`.
 
 ### Formal eligibility additions
 
-Formal eligibility (OD-M5-P7-017) therefore additionally requires:
+Formal eligibility (OD-M5-P7-017) therefore additionally requires, checked
+BEFORE configure:
 
-- `/src` HEAD == recorded source SHA;
-- `/src` worktree clean under the repository's defined source set;
-- actual compiled source cryptographically/content-bound to that source;
+- `/src` HEAD == recorded source SHA (HEAD(`/src`) == recorded
+  `source.git_sha`);
+- `/src` worktree clean — tracked/index/worktree/untracked state inspected
+  per the existing accepted repository provenance discipline; the existing
+  Phase-6 clean-source contract is NOT weakened;
+- CMake source root == `/src`; build/output root under `/work`;
 - exact canonical image/toolchain contract;
 - Release; sanitizers off; explicit LTO state; exact binary SHA.
 
@@ -2004,28 +2121,46 @@ sharing helper logic would otherwise require copying parsing semantics,
 reuse existing production helper scripts rather than create a divergent
 second parser.
 
+### Threat-boundary clarity
+
+The formal runner binds normal repository/formal evidence identity under the
+accepted repository/INFRA-TC-001 threat model. Phase 7 is NOT broadened into
+protection against a malicious privileged host capable of mutating
+bind-mounted files during execution — that is outside the already accepted
+INFRA-TC threat model. All existing fail-closed checks are retained
+unchanged; nothing above weakens them.
+
 ### Required future negative tests (implementation contract)
 
 The future implementation must have tests proving:
 
 ```text
-dirty /src                      → formal evidence rejected
-wrong/mutated toolchain contract → rejected
-wrong image/baked contract      → rejected
+dirty /src                       → formal rejected BEFORE configure
+unexpected HEAD(/src)            → formal rejected BEFORE configure
+caller attempts alternative source root → impossible / rejected
+caller attempts alternative work root   → impossible / rejected
+CMake source root other than /src → formal runner rejects / cannot
+                                    construct a formal invocation
+canonical contract/image mismatch → rejected
 direct internal-mode host invocation → rejected
 ambient internal/source/work variables → rejected
-source identity/content mismatch → rejected
 non-Release                     → formal rejected
 sanitizer-enabled formal run    → rejected
-incorrect binary SHA binding    → rejected
+incorrect binary SHA binding    → evidence rejected
 arbitrary caller command        → impossible / rejected
 ```
 
+A source-content-mismatch negative proof is required and is implemented in
+the single-source model as the first four rows above (dirty `/src`,
+unexpected HEAD, no alternative source root, no alternative work root) — NOT
+as a comparison of two source copies. No redundant file-manifest protocol is
+invented.
+
 The corrected contract answers, BEFORE implementation: which exact host
 command produces formal evidence; which source tree is compiled; where
-HEAD/dirty facts are obtained; how they are bound to the bytes compiled;
-which exact pinned environment is used; and why the mechanism does not
-weaken `scripts/quality.sh`.
+HEAD/dirty facts are obtained; how source identity and the bytes compiled
+are bound (single source root `/src`); which exact pinned environment is
+used; and why the mechanism does not weaken `scripts/quality.sh`.
 
 **Rationale:** A formal baseline whose provenance is weaker than the
 canonical Quality trust boundary could not be cited in the Phase-8/9
@@ -2188,17 +2323,34 @@ K. replay aggregate=3 / events=2
    (OD-M5-P7-013/016; adversarial case 27).
 
 L. formal Release run requires git SHA but /work has no .git
-   → git identity from read-only /src; compiled bytes content-bound to
-   /src source (OD-M5-P7-023).
+   → git identity from read-only /src; /src IS the compiled source root
+   (single formal source model; no copy exists) (OD-M5-P7-023).
 
 M. caller tries to enter Phase-7 internal container mode directly
    → rejected: no ambient internal selection; only the host mode's
    trusted positional flag enters the fixed internal entrypoint
    (OD-M5-P7-023).
 
-N. source identity says SHA X but compiled bytes differ
-   → content binding required; mismatch → formal evidence rejected
+N. engineer copies /src into /work
+   → forbidden for formal evidence: formal execution never compiles from a
+   copied source tree; /work is build/output state only
    (OD-M5-P7-023).
+
+O. caller supplies another source root or another work root
+   → impossible/rejected: fixed `/src`, fixed `/work` (OD-M5-P7-023).
+
+P. `/src` dirty, or HEAD(/src) differs from the recorded source SHA
+   → formal rejected BEFORE configure (OD-M5-P7-023).
+
+Q. unknown-provenance delete: `::operator new(64)` records provenance;
+   test-only seam removes it; `::operator delete(p)` runs
+   → legal C++ pairing; replacement delete executes its real
+   unknown-provenance branch; exact fail-closed INELIGIBLE/INVALID
+   behavior; freed exactly once; no UB (OD-M5-P7-019/020; case 25).
+
+R. `p = malloc(64); free(p)`
+   → global-new metric does not see the traffic; no claim that the
+   unknown-delete path was tested (OD-M5-P7-004/020; case 26).
 ```
 
 ## Non-goals
