@@ -1,7 +1,7 @@
 #include "m4_workload_specs.hpp"
 
-#include "adapter_wire_support.hpp"
 #include "canonical_text.hpp"
+#include "m4_cell_identity.hpp"
 #include "workload_spec.hpp"
 
 #include <array>
@@ -31,14 +31,14 @@ constexpr std::array<std::size_t, 3> kM4DepthSet{8, 100, 1'000};
 } // namespace
 
 void register_m4_workload_specs() {
-    const std::string_view families[] = {"AdaptExchangeDepthSnapshot/Spot",
-                                         "AdaptDepthUpdate/Spot",
-                                         "CheckedInstall",
-                                         "CheckedApply",
-                                         "MakeLocalOrderBookSnapshot/Unlimited",
-                                         "MakeLocalOrderBookSnapshot/Limited",
-                                         "SerializeSnapshot/FreshBuffer",
-                                         "SerializeSnapshot/ReusedBuffer"};
+    constexpr std::array<std::string_view, 8> families{"AdaptExchangeDepthSnapshot/Spot",
+                                                       "AdaptDepthUpdate/Spot",
+                                                       "CheckedInstall",
+                                                       "CheckedApply",
+                                                       "MakeLocalOrderBookSnapshot/Unlimited",
+                                                       "MakeLocalOrderBookSnapshot/Limited",
+                                                       "SerializeSnapshot/FreshBuffer",
+                                                       "SerializeSnapshot/ReusedBuffer"};
     for (const auto family : families) {
         for (const auto depth : kM4DepthSet) {
             const auto name = "M4/" + std::string{family} + "/" + std::to_string(depth);
@@ -53,7 +53,7 @@ void register_m4_workload_specs() {
             builder.set("primary_denominator", "cpu_time");
             if (std::string{family} == "SerializeSnapshot/ReusedBuffer") {
                 builder.set("serialization_buffer_mode", "reused");
-                builder.set("diagnostic", true);
+                builder.set("diagnostic", std::uint64_t{1});
             } else if (std::string{family} == "SerializeSnapshot/FreshBuffer") {
                 builder.set("serialization_buffer_mode", "fresh");
             }
