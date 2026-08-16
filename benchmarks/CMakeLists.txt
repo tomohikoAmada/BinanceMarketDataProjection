@@ -12,6 +12,7 @@ add_executable(
     m2_benchmarks.cpp
     m3_benchmarks.cpp
     replay_benchmarks.cpp
+    benchmark_support/replay_workload_specs.cpp
 )
 target_link_libraries(
     bmd_projection_benchmarks
@@ -39,6 +40,7 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
             m4_adapter_benchmarks.cpp
             benchmark_support/adapter_wire_support.cpp
             benchmark_support/adapter_replay_executor.cpp
+            benchmark_support/m4_workload_specs.cpp
             "${PROJECT_SOURCE_DIR}/tests/m5/oracle/adapter_production_side.cpp"
     )
     target_compile_definitions(

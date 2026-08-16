@@ -1,5 +1,6 @@
 #include "benchmark_support/benchmark_registration.hpp"
 #include "benchmark_support/m2_cells.hpp"
+#include "benchmark_support/m2_workload_specs.hpp"
 #include "benchmark_support/workload_spec.hpp"
 
 #include <binance_market_data/projection/v1/order_book/book_side.hpp>
@@ -38,123 +39,15 @@ constexpr std::size_t kTopNSet[] = {1, 5, 50};
 }
 
 // ---------------------------------------------------------------------------
-// Static workload-spec registration for all M2 cells.
+// Static workload-spec registration for all M2 cells. The canonical specs are
+// produced by the shared M2 identity source (m2_workload_specs) so Phase-6
+// timing and Phase-7 allocation measurement carry bit-identical workload
+// identities (OD-M5-P7-008). Phase 6 includes the update_mix scaling family.
 // ---------------------------------------------------------------------------
 namespace {
 
-struct Specs {
-    static void register_all() {
-        for (const auto depth : kRoutineDepths) {
-            register_apply_level("insert", depth, "Inserted");
-            register_apply_level("update", depth, "Updated");
-            register_apply_level("delete", depth, "Removed");
-            register_apply_level("missing_delete", depth, "Unchanged");
-            register_query("best_bid", depth, 0);
-            register_query("best_ask", depth, 0);
-            register_query("quantity_at/hit", depth, 0);
-            register_query("quantity_at/miss", depth, 0);
-            register_query("all_levels", depth, 0);
-            for (const auto batch : kBatchSet) {
-                register_apply_updates(depth, batch, "replace");
-            }
-        }
-        for (const auto depth : kFullDepthSet) {
-            register_apply_updates_mix(depth);
-            register_replace_all(depth);
-            register_query("all_levels", depth, 0);
-        }
-        for (const auto limit : kTopNSet) {
-            for (const auto depth : kRoutineDepths) {
-                register_query("top_levels/" + std::to_string(limit), depth, limit);
-            }
-        }
-    }
-
-    static void register_apply_level(std::string_view family, std::size_t depth,
-                                     std::string_view expected) {
-        const auto name = "M2/apply_level/" + std::string{family} + "/" + depth_name(depth);
-        auto& builder = bm::register_workload(name);
-        builder.set("benchmark_name", name);
-        builder.set("operation", "apply_level");
-        builder.set("operation_kind", family);
-        builder.set("depth_per_side", depth);
-        builder.set("expected_disposition", expected);
-        builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
-        const auto kind = family == "insert"   ? bm::M2ApplyLevelKind::Insert
-                          : family == "update" ? bm::M2ApplyLevelKind::Update
-                          : family == "delete" ? bm::M2ApplyLevelKind::Delete
-                                               : bm::M2ApplyLevelKind::MissingDelete;
-        builder.set("generated_workload_sha256", bm::m2_apply_level_generated_sha256(kind, depth));
-        builder.set("primary_timer", "cpu");
-        builder.set("primary_denominator", "cpu_time");
-    }
-
-    static void register_apply_updates(std::size_t depth, std::size_t batch, std::string_view mix) {
-        const auto name = "M2/apply_updates/" + std::to_string(batch) + "/" + depth_name(depth);
-        auto& builder = bm::register_workload(name);
-        builder.set("benchmark_name", name);
-        builder.set("operation", "apply_updates");
-        builder.set("depth_per_side", depth);
-        builder.set("batch", batch);
-        builder.set("operation_mix", mix);
-        builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
-        builder.set("generated_workload_sha256",
-                    bm::m2_apply_updates_generated_sha256(
-                        {depth, batch, bm::M2ApplyUpdatesMix::ReplacementHeavy}));
-        builder.set("primary_timer", "cpu");
-        builder.set("primary_denominator", "cpu_time");
-    }
-
-    static void register_apply_updates_mix(std::size_t depth) {
-        const auto name = "M2/apply_updates/update_mix/" + depth_name(depth);
-        auto& builder = bm::register_workload(name);
-        builder.set("benchmark_name", name);
-        builder.set("operation", "apply_updates");
-        builder.set("depth_per_side", depth);
-        builder.set("batch", 100);
-        builder.set("operation_mix", depth == 0 ? "insert_empty_book_edge" : "replacement_heavy");
-        builder.set("primary_scaling_workload", "true");
-        builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
-        builder.set("generated_workload_sha256",
-                    bm::m2_apply_updates_generated_sha256(
-                        {depth, 100,
-                         depth == 0 ? bm::M2ApplyUpdatesMix::Insertion
-                                    : bm::M2ApplyUpdatesMix::ReplacementHeavy}));
-        builder.set("primary_timer", "cpu");
-        builder.set("primary_denominator", "cpu_time");
-    }
-
-    static void register_replace_all(std::size_t depth) {
-        const auto name = "M2/replace_all/" + depth_name(depth);
-        auto& builder = bm::register_workload(name);
-        builder.set("benchmark_name", name);
-        builder.set("operation", "replace_all");
-        builder.set("depth_per_side", depth);
-        builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
-        builder.set("generated_workload_sha256", bm::m2_replace_all_generated_sha256(depth));
-        builder.set("primary_timer", "cpu");
-        builder.set("primary_denominator", "cpu_time");
-    }
-
-    static void register_query(std::string_view family, std::size_t depth, std::size_t limit) {
-        const auto name = "M2/" + std::string{family} + "/" + depth_name(depth);
-        auto& builder = bm::register_workload(name);
-        builder.set("benchmark_name", name);
-        builder.set("operation", family);
-        builder.set("depth_per_side", depth);
-        if (limit > 0) {
-            builder.set("query_limit", limit);
-        }
-        builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
-        builder.set("generated_workload_sha256",
-                    bm::m2_query_generated_sha256(family, {depth, limit}));
-        builder.set("primary_timer", "cpu");
-        builder.set("primary_denominator", "cpu_time");
-    }
-};
-
 const auto kM2SpecRegistration = [] {
-    Specs::register_all();
+    bm::register_m2_workload_specs(true);
     return 0;
 }();
 

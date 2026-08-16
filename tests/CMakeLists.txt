@@ -427,6 +427,7 @@ add_executable(
     bmd_projection_m5_benchmark_support_tests
     m5/benchmark/benchmark_support_test.cpp
     m5/benchmark/phase7_record_test.cpp
+    "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/replay_workload_specs.cpp"
 )
 target_link_libraries(
     bmd_projection_m5_benchmark_support_tests
@@ -442,6 +443,10 @@ set_target_properties(
         CXX_STANDARD_REQUIRED YES
         CXX_EXTENSIONS NO
 )
+target_compile_definitions(
+    bmd_projection_m5_benchmark_support_tests
+    PRIVATE BMD_PROJECTION_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+)
 bmd_projection_apply_project_options(bmd_projection_m5_benchmark_support_tests)
 if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
     target_sources(
@@ -451,6 +456,7 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
             m5/benchmark/adapter_benchmark_test_support.cpp
             "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/adapter_wire_support.cpp"
             "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/adapter_replay_executor.cpp"
+            "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/m4_workload_specs.cpp"
     )
     target_compile_definitions(
         bmd_projection_m5_benchmark_support_tests
@@ -507,6 +513,18 @@ set_tests_properties(
     PROPERTIES
         ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}"
 )
+# Bit-for-bit Phase-6 workload identity regression against the committed
+# golden identity set (runs the benchmark binary with a zero-match filter;
+# canonical spec texts/SHAs must match the accepted identities exactly).
+if(TARGET bmd_projection_benchmarks)
+    add_test(
+        NAME m5_phase6_workload_identity_regression
+        COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/m5/benchmark/check_phase6_workload_identity.py
+                $<TARGET_FILE:bmd_projection_benchmarks>
+                ${CMAKE_CURRENT_BINARY_DIR}/phase6-identity-check
+    )
+endif()
 add_test(
     NAME m5_materializer_tests
     COMMAND ${Python3_EXECUTABLE} -m unittest discover
