@@ -76,7 +76,10 @@ bmd_projection_apply_project_options(bmd_projection_replay_latency)
 # ---------------------------------------------------------------------------
 # M5 Phase-7 allocation measurement executables (OD-M5-P7-002/008/009/010).
 # Each executable owns the replacement global new/delete surface by compiling
-# allocation_global_new.cpp directly (never via a library). The provenance
+# allocation_global_new.cpp and the measurement harness directly (never via a
+# library), so the replacement definitions and their users (the harness)
+# cannot leak into Core, ProtoAdapter, the Phase-6 benchmark executable, or
+# normal consumers — including in shared-library builds. The provenance
 # capacity is sized per executable from the actual prepared-state live sets:
 # the M2/M3 pools hold up to ~2.05M live map nodes (insert/delete pools at
 # depth 1000: 1024 books x 2000 nodes), so 1<<22 slots with ~2x headroom.
@@ -88,6 +91,7 @@ function(bmd_projection_add_allocation_executable target)
         PRIVATE
             "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/allocation_instrumentation.cpp"
             "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/allocation_global_new.cpp"
+            "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/phase7_harness.cpp"
     )
     target_include_directories(
         ${target}

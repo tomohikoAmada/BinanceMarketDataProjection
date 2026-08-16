@@ -4,6 +4,7 @@
 #include "canonical_text.hpp"
 #include "workload_spec.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdlib>
 #include <string>
@@ -16,7 +17,7 @@ namespace {
 namespace replay = bmd_projection::m5::replay;
 namespace wire_support = bmd_projection::m5::benchmark::adapter_support;
 
-constexpr std::size_t kM4DepthSet[] = {8, 100, 1'000};
+constexpr std::array<std::size_t, 3> kM4DepthSet{8, 100, 1'000};
 
 [[nodiscard]] std::string m4_generated_sha256(std::string_view family, std::size_t depth) {
     const auto hash =

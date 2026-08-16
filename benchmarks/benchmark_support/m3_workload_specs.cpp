@@ -5,6 +5,7 @@
 
 #include <binance_market_data/projection/v1/projection_state/book_projection.hpp>
 
+#include <array>
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -14,9 +15,9 @@ namespace {
 
 namespace core = binance_market_data::projection::v1;
 
-constexpr std::size_t kDepthSet[] = {0, 8, 100, 1'000, 5'000, 10'000};
-constexpr std::size_t kBatchSet[] = {0, 1, 10, 100};
-constexpr std::size_t kComponentDepthSet[] = {8, 100, 1'000};
+constexpr std::array<std::size_t, 6> kDepthSet{0, 8, 100, 1'000, 5'000, 10'000};
+constexpr std::array<std::size_t, 4> kBatchSet{0, 1, 10, 100};
+constexpr std::array<std::size_t, 3> kComponentDepthSet{8, 100, 1'000};
 
 [[nodiscard]] std::string_view policy_label(core::SequencePolicyKind policy) noexcept {
     return policy == core::SequencePolicyKind::Spot ? "Spot" : "UsdMPerpetual";

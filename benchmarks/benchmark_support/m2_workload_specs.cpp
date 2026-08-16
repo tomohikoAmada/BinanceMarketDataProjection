@@ -3,6 +3,7 @@
 #include "m2_cells.hpp"
 #include "workload_spec.hpp"
 
+#include <array>
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -10,10 +11,10 @@
 namespace bmd_projection::m5::benchmark {
 namespace {
 
-constexpr std::size_t kRoutineDepths[] = {8, 100, 1'000};
-constexpr std::size_t kFullDepthSet[] = {0, 8, 100, 1'000, 5'000, 10'000};
-constexpr std::size_t kBatchSet[] = {1, 10, 100};
-constexpr std::size_t kTopNSet[] = {1, 5, 50};
+constexpr std::array<std::size_t, 3> kRoutineDepths{8, 100, 1'000};
+constexpr std::array<std::size_t, 6> kFullDepthSet{0, 8, 100, 1'000, 5'000, 10'000};
+constexpr std::array<std::size_t, 3> kBatchSet{1, 10, 100};
+constexpr std::array<std::size_t, 3> kTopNSet{1, 5, 50};
 
 [[nodiscard]] std::string depth_name(std::size_t depth) { return std::to_string(depth); }
 
@@ -28,10 +29,14 @@ void register_apply_level(std::string_view family, std::size_t depth, std::strin
     builder.set("depth_per_side", depth);
     builder.set("expected_disposition", expected);
     builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
-    const auto kind = family == "insert"   ? M2ApplyLevelKind::Insert
-                      : family == "update" ? M2ApplyLevelKind::Update
-                      : family == "delete" ? M2ApplyLevelKind::Delete
-                                           : M2ApplyLevelKind::MissingDelete;
+    auto kind = M2ApplyLevelKind::MissingDelete;
+    if (family == "insert") {
+        kind = M2ApplyLevelKind::Insert;
+    } else if (family == "update") {
+        kind = M2ApplyLevelKind::Update;
+    } else if (family == "delete") {
+        kind = M2ApplyLevelKind::Delete;
+    }
     builder.set("generated_workload_sha256", m2_apply_level_generated_sha256(kind, depth));
     builder.set("primary_timer", "cpu");
     builder.set("primary_denominator", "cpu_time");
