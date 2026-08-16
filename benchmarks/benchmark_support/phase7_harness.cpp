@@ -68,12 +68,16 @@ normalized_metrics_of(const m5::allocation::MeasurementResult& result) noexcept 
 Phase7Harness::Phase7Harness(Phase7RunOptions options) : options_{std::move(options)} {}
 
 Phase7CellOutcome Phase7Harness::measure_cell(const std::function<void()>& operation,
-                                              const std::function<void()>& destroy_owner) {
+                                              const std::function<void()>& destroy_owner,
+                                              const std::function<void()>& prepare) {
     Phase7CellOutcome outcome;
     outcome.determinism_confirmed = true;
     bool first_rep = true;
     for (std::size_t rep = 0; rep < options_.repetitions; ++rep) {
         m5::allocation::MeasurementResult rep_result;
+        if (prepare) {
+            prepare();
+        }
         {
             m5::allocation::MeasurementScope scope;
             operation();

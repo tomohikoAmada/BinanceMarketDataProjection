@@ -158,17 +158,17 @@ TEST(Phase7RecordReplayRational, ThreeOverTwoEventsStaysExact) {
               "\"peak_above_entry\":0,\"peak_live_bytes_absolute\":4000,"
               "\"persistent_live_delta\":{\"magnitude\":0,\"sign\":\"zero\"},"
               "\"post_destroy_lifecycle_status\":\"destroyed\","
-              "\"post_destroy_live_bytes\":3000,"
+              "\"post_destroy_live_bytes\":3000,\"repetitions\":1,"
               "\"replay_aggregate\":{\"aggregate_allocated_bytes\":96,"
               "\"aggregate_allocation_count\":3,\"aggregate_deallocated_bytes\":96,"
               "\"aggregate_deallocation_count\":3,"
               "\"derived_per_event_allocations\":{\"denominator\":2,\"numerator\":3},"
               "\"derived_per_event_bytes\":{\"denominator\":2,\"numerator\":96},"
-              "\"event_count\":2},\"repetitions\":1,\"total_allocated_bytes\":96,"
+              "\"event_count\":2},\"total_allocated_bytes\":96,"
               "\"total_allocated_bytes_valid\":true,"
               "\"transient_excess_over_persistent\":0}");
     EXPECT_EQ(bm::json_text_sha256(text),
-              "876c2f9674e42f0416c381b0429c9a2c834b5cfa83de175b67509f167c14572a");
+              "2eb7565f4614363b1667bead5122ed6529290340336d3f7f036b47efeb84ddc2");
 }
 
 // ---------------------------------------------------------------------------

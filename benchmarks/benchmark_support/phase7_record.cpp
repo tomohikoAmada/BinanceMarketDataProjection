@@ -235,6 +235,8 @@ void write_canonical_result_fields(json::Writer& writer, const AllocationRecordI
     } else {
         writer.value_null();
     }
+    writer.key("repetitions");
+    writer.value(input.repetitions);
     if (input.replay_aggregate.has_value()) {
         writer.key("replay_aggregate");
         writer.begin_object();
@@ -264,8 +266,6 @@ void write_canonical_result_fields(json::Writer& writer, const AllocationRecordI
         writer.value(input.replay_aggregate->event_count);
         writer.end_object();
     }
-    writer.key("repetitions");
-    writer.value(input.repetitions);
     writer.key("total_allocated_bytes");
     writer.value(m.total_allocated_bytes);
     writer.key("total_allocated_bytes_valid");

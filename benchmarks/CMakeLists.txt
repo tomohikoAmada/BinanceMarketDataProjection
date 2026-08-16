@@ -126,3 +126,56 @@ target_compile_definitions(
     bmd_projection_allocation_footprint
     PRIVATE BMD_P7_PROVENANCE_CAPACITY=1048576
 )
+
+bmd_projection_add_allocation_executable(
+    bmd_projection_allocation_replay
+    allocation_replay_main.cpp
+    benchmark_support/replay_workload_specs.cpp
+)
+target_compile_definitions(
+    bmd_projection_allocation_replay
+    PRIVATE BMD_P7_PROVENANCE_CAPACITY=1048576
+)
+target_link_libraries(
+    bmd_projection_allocation_replay
+    PRIVATE
+        bmd_projection_m5_phase3_support
+        bmd_projection_m5_oracle_support
+        bmd_projection_m5_reference_support
+)
+if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
+    target_sources(
+        bmd_projection_allocation_replay
+        PRIVATE
+            benchmark_support/adapter_wire_support.cpp
+            benchmark_support/adapter_replay_executor.cpp
+            "${PROJECT_SOURCE_DIR}/tests/m5/oracle/adapter_production_side.cpp"
+    )
+    target_compile_definitions(
+        bmd_projection_allocation_replay
+        PRIVATE BMD_PROJECTION_PHASE6_ADAPTER_ENABLED=1
+    )
+    target_link_libraries(
+        bmd_projection_allocation_replay
+        PRIVATE BinanceMarketDataProjection::ProtoAdapter
+    )
+endif()
+
+if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
+    bmd_projection_add_allocation_executable(
+        bmd_projection_allocation_m4
+        allocation_m4_main.cpp
+        benchmark_support/adapter_wire_support.cpp
+        benchmark_support/m4_workload_specs.cpp
+    )
+    target_compile_definitions(
+        bmd_projection_allocation_m4
+        PRIVATE
+            BMD_P7_PROVENANCE_CAPACITY=4194304
+            BMD_PROJECTION_PHASE6_ADAPTER_ENABLED=1
+    )
+    target_link_libraries(
+        bmd_projection_allocation_m4
+        PRIVATE BinanceMarketDataProjection::ProtoAdapter
+    )
+endif()

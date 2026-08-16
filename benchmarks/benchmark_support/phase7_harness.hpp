@@ -80,13 +80,16 @@ class Phase7Harness final {
     explicit Phase7Harness(Phase7RunOptions options);
 
     // Runs `operation` inside a fresh measurement bracket once per repetition.
-    // `destroy_owner`, when non-empty, destroys the owning result AFTER each
-    // bracket closes (B was taken with the owner alive); the post-destroy
-    // snapshot D is recorded and the lifecycle status is derived (destroyed
-    // when D == A, destroyed_mismatch otherwise — OD-M5-P7-005).
+    // `prepare`, when non-empty, runs BEFORE each bracket (state setup that
+    // must stay outside the measured region). `destroy_owner`, when non-empty,
+    // destroys the owning result AFTER each bracket closes (B was taken with
+    // the owner alive); the post-destroy snapshot D is recorded and the
+    // lifecycle status is derived (destroyed when D == A,
+    // destroyed_mismatch otherwise — OD-M5-P7-005).
     [[nodiscard]] Phase7CellOutcome
     measure_cell(const std::function<void()>& operation,
-                 const std::function<void()>& destroy_owner = {});
+                 const std::function<void()>& destroy_owner = {},
+                 const std::function<void()>& prepare = {});
 
     // One empty-bracket calibration measurement (reported separately, never
     // subtracted; OD-M5-P7-006/007).
