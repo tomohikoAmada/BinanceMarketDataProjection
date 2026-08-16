@@ -19,6 +19,7 @@ if(NOT TARGET bmd_projection_m5_benchmark_support)
       "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/m2_cells.cpp"
       "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/m3_cells.cpp"
       "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/phase6_json.cpp"
+      "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/phase7_record.cpp"
       "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/replay_checksum.cpp"
       "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/workload_spec.cpp"
       "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/wrapper.cpp"

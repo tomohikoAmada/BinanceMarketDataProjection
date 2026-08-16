@@ -151,6 +151,11 @@ void Writer::value_null() {
     out_ += "null";
 }
 
+void Writer::value_raw(std::string_view value) {
+    advance_for_value();
+    out_ += value;
+}
+
 void Writer::begin_array() {
     if (!stack_.empty()) {
         advance_for_value();

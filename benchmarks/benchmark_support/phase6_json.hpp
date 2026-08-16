@@ -23,6 +23,10 @@ class Writer final {
     void value(double value);
     void value(bool value);
     void value_null();
+    // Raw JSON fragment value: the fragment must be a complete, valid JSON
+    // value (used by the Phase-7 record producers to splice pre-serialized
+    // objects such as the provenance block and whole records).
+    void value_raw(std::string_view value);
     void begin_array();
     void end_array();
 

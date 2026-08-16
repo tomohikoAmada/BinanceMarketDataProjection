@@ -426,6 +426,7 @@ bmd_projection_apply_project_options(bmd_projection_allocation_instrumentation_t
 add_executable(
     bmd_projection_m5_benchmark_support_tests
     m5/benchmark/benchmark_support_test.cpp
+    m5/benchmark/phase7_record_test.cpp
 )
 target_link_libraries(
     bmd_projection_m5_benchmark_support_tests
@@ -492,6 +493,17 @@ add_test(
 )
 set_tests_properties(
     m5_benchmark_validator_tests
+    PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}"
+)
+add_test(
+    NAME m5_phase7_validator_tests
+    COMMAND ${Python3_EXECUTABLE} -m unittest discover
+            -s ${CMAKE_CURRENT_SOURCE_DIR}/m5/benchmark
+            -p test_phase7_validators.py
+)
+set_tests_properties(
+    m5_phase7_validator_tests
     PROPERTIES
         ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}"
 )
