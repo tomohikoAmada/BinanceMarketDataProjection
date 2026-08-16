@@ -3,6 +3,9 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <exception>
 #include <limits>
 #include <new>
 
@@ -292,5 +295,122 @@ void record_backing_failure() noexcept {
 }
 
 std::uint64_t live_bytes_snapshot() noexcept { return detail::state().live_bytes; }
+
+namespace {
+
+[[nodiscard]] std::uint64_t frozen_counter_value(bool overflowed) noexcept {
+    return overflowed ? std::numeric_limits<std::uint64_t>::max() : 0;
+}
+
+} // namespace
+
+MeasurementScope::MeasurementScope() {
+    auto& state = detail::state();
+    if (state.measurement_active) {
+        // Nested measurement brackets are REJECTED with a stable diagnostic
+        // (OD-M5-P7-019). std::fputs/std::abort are allocation-free and
+        // iostream-free.
+        std::fputs("M5 Phase-7 allocation instrumentation: nested measurement scope rejected\n",
+                   stderr);
+        assert(false && "M5 Phase-7 allocation instrumentation: nested measurement scope rejected");
+        std::abort();
+    }
+    // Reset bracket traffic counters. A counter whose class overflowed at run
+    // level stays frozen at UINT64_MAX; the class remains INVALID for the run.
+    state.bracket_allocation_count = frozen_counter_value(state.allocation_count_overflowed);
+    state.bracket_total_allocated_bytes =
+        frozen_counter_value(state.total_allocated_bytes_overflowed);
+    state.bracket_deallocation_count =
+        frozen_counter_value(state.deallocation_count_overflowed);
+    state.bracket_deallocated_bytes =
+        frozen_counter_value(state.deallocated_bytes_overflowed);
+    state.bracket_backing_request_bytes =
+        frozen_counter_value(state.backing_diagnostic_overflowed);
+    state.bracket_unknown_pointer_delete = false;
+    state.bracket_allocation_failure = false;
+    // A = current live bytes; P starts at A (the peak covers the open point).
+    state.bracket_peak = state.live_bytes;
+    state.measurement_active = true;
+    result_ = MeasurementResult{};
+    result_.live_bytes_before = state.live_bytes;
+    uncaught_exceptions_at_entry_ = std::uncaught_exceptions();
+}
+
+MeasurementScope::~MeasurementScope() { finish(); }
+
+void MeasurementScope::finish() noexcept {
+    if (closed_) {
+        return;
+    }
+    closed_ = true;
+    auto& state = detail::state();
+    state.measurement_active = false;
+    result_.operation_aborted = std::uncaught_exceptions() != uncaught_exceptions_at_entry_;
+    result_.allocation_failure_observed = state.bracket_allocation_failure;
+
+    const auto a = result_.live_bytes_before;
+    const auto b = state.live_bytes;
+    result_.live_bytes_after = b;
+    // P = max over the closed bracket, including the open point (P >= A) and
+    // the close point (P >= B): no sampling, no interpolation (OD-M5-P7-005).
+    result_.peak_live_bytes_absolute = (state.bracket_peak > b) ? state.bracket_peak : b;
+    result_.allocation_count = state.bracket_allocation_count;
+    result_.total_allocated_bytes = state.bracket_total_allocated_bytes;
+    result_.deallocation_count = state.bracket_deallocation_count;
+    result_.deallocated_bytes = state.bracket_deallocated_bytes;
+    result_.instrument_backing_request_bytes = state.bracket_backing_request_bytes;
+
+    // Persistent live change: exact {sign, magnitude}, never unsigned B - A.
+    if (b > a) {
+        result_.persistent_live_delta = {PersistentLiveDeltaSign::positive, b - a};
+    } else if (b == a) {
+        result_.persistent_live_delta = {PersistentLiveDeltaSign::zero, 0};
+    } else {
+        result_.persistent_live_delta = {PersistentLiveDeltaSign::negative, a - b};
+    }
+
+    // Normalized transient metrics (OD-M5-P7-005). The subtractions are valid
+    // by construction: P >= A and P >= max(A, B); the asserts document the
+    // invariant and never depend on unsigned wraparound.
+    const auto peak = result_.peak_live_bytes_absolute;
+    assert(peak >= a);
+    result_.peak_above_entry = peak - a;
+    const auto ceiling = (a > b) ? a : b;
+    assert(peak >= ceiling);
+    result_.transient_excess_over_persistent = peak - ceiling;
+
+    // Eligibility (fail-closed, deterministic precedence order).
+    result_.live_metrics_eligible = true;
+    result_.deallocated_bytes_valid = true;
+    result_.ineligibility_reason = LiveIneligibilityReason::none;
+    if (state.recursion_observed) {
+        result_.ineligibility_reason = LiveIneligibilityReason::instrumentation_error;
+    } else if (state.provenance_table_overflowed) {
+        result_.ineligibility_reason = LiveIneligibilityReason::provenance_table_overflow;
+    } else if (state.stale_entry_collision) {
+        result_.ineligibility_reason = LiveIneligibilityReason::stale_entry_collision;
+    } else if (state.sized_delete_mismatch) {
+        result_.ineligibility_reason = LiveIneligibilityReason::sized_delete_mismatch;
+    } else if (state.live_bytes_wrapped) {
+        result_.ineligibility_reason = LiveIneligibilityReason::live_bytes_arithmetic_wrap;
+    } else if (state.bracket_unknown_pointer_delete) {
+        result_.ineligibility_reason = LiveIneligibilityReason::unknown_pointer_delete;
+    }
+    if (result_.ineligibility_reason != LiveIneligibilityReason::none) {
+        result_.live_metrics_eligible = false;
+        result_.deallocated_bytes_valid = false;
+    }
+    if (state.deallocated_bytes_overflowed) {
+        result_.deallocated_bytes_valid = false;
+    }
+    result_.allocation_count_valid = !state.allocation_count_overflowed;
+    result_.total_allocated_bytes_valid = !state.total_allocated_bytes_overflowed;
+    result_.deallocation_count_valid = !state.deallocation_count_overflowed;
+    result_.backing_diagnostic_valid = !state.backing_diagnostic_overflowed;
+}
+
+const MeasurementResult& MeasurementScope::result() const noexcept { return result_; }
+
+bool MeasurementScope::measurement_active() noexcept { return detail::state().measurement_active; }
 
 } // namespace bmd_projection::m5::allocation

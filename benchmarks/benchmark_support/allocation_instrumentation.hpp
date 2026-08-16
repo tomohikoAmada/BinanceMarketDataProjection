@@ -75,6 +75,101 @@ void record_backing_failure() noexcept;
 // Non-allocating process-lifetime read of the tracked live-bytes counter.
 [[nodiscard]] std::uint64_t live_bytes_snapshot() noexcept;
 
+// Signed persistent live change between bracket open and close
+// (OD-M5-P7-005): the difference is NEVER forced through signed subtraction;
+// the magnitude is an exact uint64 and the sign is explicit.
+enum class PersistentLiveDeltaSign : std::uint8_t {
+    negative,
+    zero,
+    positive,
+};
+
+struct PersistentLiveDelta final {
+    PersistentLiveDeltaSign sign{};
+    std::uint64_t magnitude{};
+
+    friend constexpr bool operator==(const PersistentLiveDelta&,
+                                     const PersistentLiveDelta&) = default;
+};
+
+// Machine-readable reason for live/deallocated-byte metric ineligibility
+// (OD-M5-P7-005 / OD-M5-P7-019). The first violated condition in the defined
+// precedence order is reported.
+enum class LiveIneligibilityReason : std::uint8_t {
+    none,
+    provenance_table_overflow,
+    unknown_pointer_delete,
+    stale_entry_collision,
+    sized_delete_mismatch,
+    live_bytes_arithmetic_wrap,
+    instrumentation_error,
+};
+
+// Frozen, non-allocating bracket result (OD-M5-P7-005). Raw A/P/B values are
+// recorded for auditing; the normalized quantities
+// (persistent_live_delta, peak_above_entry, transient_excess_over_persistent)
+// are the primary per-operation evidence and are valid whenever the live
+// metric class is eligible. Count classes are invalidated independently, only
+// by their own counter overflow (OD-M5-P7-019).
+struct MeasurementResult final {
+    std::uint64_t live_bytes_before{};
+    std::uint64_t peak_live_bytes_absolute{};
+    std::uint64_t live_bytes_after{};
+    std::uint64_t allocation_count{};
+    std::uint64_t total_allocated_bytes{};
+    std::uint64_t deallocation_count{};
+    std::uint64_t deallocated_bytes{};
+    std::uint64_t instrument_backing_request_bytes{};
+    PersistentLiveDelta persistent_live_delta{};
+    std::uint64_t peak_above_entry{};
+    std::uint64_t transient_excess_over_persistent{};
+    bool allocation_count_valid{};
+    bool total_allocated_bytes_valid{};
+    bool deallocation_count_valid{};
+    bool deallocated_bytes_valid{};
+    bool backing_diagnostic_valid{};
+    bool live_metrics_eligible{};
+    LiveIneligibilityReason ineligibility_reason{};
+    bool operation_aborted{};
+    bool allocation_failure_observed{};
+};
+
+// RAII measurement bracket (OD-M5-P7-005 / OD-M5-P7-019).
+//
+//   open:  requires no active scope (nested opening is a defined fail-closed
+//          abort with a stable diagnostic); resets the bracket traffic
+//          counters; A = current live bytes; P = A; activates measurement.
+//   close: B = current live bytes; P = max(P, B); deactivates traffic
+//          counting; freezes the result; derives the normalized metrics.
+//
+// The constructor and finalization never allocate. If the measured operation
+// throws, the destructor still closes the bracket and the result is marked
+// operation_aborted; measurement is never left permanently active. Opening a
+// bracket never clears provenance (OD-M5-P7-002).
+class MeasurementScope final {
+  public:
+    MeasurementScope();
+    ~MeasurementScope();
+
+    MeasurementScope(const MeasurementScope&) = delete;
+    MeasurementScope& operator=(const MeasurementScope&) = delete;
+    MeasurementScope(MeasurementScope&&) = delete;
+    MeasurementScope& operator=(MeasurementScope&&) = delete;
+
+    // Closes the bracket and freezes the result (idempotent; the destructor
+    // calls it automatically for exception-safe RAII closure).
+    void finish() noexcept;
+
+    [[nodiscard]] const MeasurementResult& result() const noexcept;
+
+    [[nodiscard]] static bool measurement_active() noexcept;
+
+  private:
+    MeasurementResult result_{};
+    int uncaught_exceptions_at_entry_{};
+    bool closed_{};
+};
+
 namespace detail {
 
 // Slot state encoding relies on constant (zero) initialization: 0 == empty.
