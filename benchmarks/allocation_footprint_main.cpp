@@ -106,9 +106,8 @@ int run_phase7_footprint(int argc, char** argv) {
     bm::CalibrationRecordInput calibration;
     calibration.calibration_id = std::string{kCalibrationId};
     calibration.evidence_class = options.evidence_class;
-    calibration.description =
-        "empty measurement bracket (instrumentation bookkeeping baseline; "
-        "reported separately and never subtracted)";
+    calibration.description = "empty measurement bracket (instrumentation bookkeeping baseline; "
+                              "reported separately and never subtracted)";
     calibration.measurement = harness.measure_calibration();
     harness.add_calibration_record(bm::build_calibration_record_json(calibration));
 
@@ -138,8 +137,7 @@ int run_phase7_footprint(int argc, char** argv) {
             "environment/toolchain/allocator-specific estimate of backing "
             "overhead outside the raw request size; no universal fixed header "
             "size is assumed";
-        input.allocator_backing_model_scope =
-            "environment/toolchain/allocator/size-class-specific";
+        input.allocator_backing_model_scope = "environment/toolchain/allocator/size-class-specific";
         const auto snapshots = measure_depth(0);
         input.pre_experiment_baseline_live_bytes = snapshots.base;
         input.empty_book_live_bytes = snapshots.empty;
@@ -182,8 +180,7 @@ int run_phase7_footprint(int argc, char** argv) {
             "environment/toolchain/allocator-specific estimate of backing "
             "overhead outside the raw request size; no universal fixed header "
             "size is assumed";
-        input.allocator_backing_model_scope =
-            "environment/toolchain/allocator/size-class-specific";
+        input.allocator_backing_model_scope = "environment/toolchain/allocator/size-class-specific";
         // All record input preparation happens BEFORE any snapshot
         // (OD-M5-P7-007): the snapshots below are the first measurements.
         const auto snapshots = measure_depth(depth);
@@ -205,8 +202,7 @@ int run_phase7_footprint(int argc, char** argv) {
                 std::fprintf(stderr,
                              "depth %zu repeat %zu mismatch: base %llu/%llu empty %llu/%llu "
                              "bids %llu/%llu both %llu/%llu post %llu/%llu\n",
-                             depth, rep,
-                             static_cast<unsigned long long>(repeat.base),
+                             depth, rep, static_cast<unsigned long long>(repeat.base),
                              static_cast<unsigned long long>(snapshots.base),
                              static_cast<unsigned long long>(repeat.empty),
                              static_cast<unsigned long long>(snapshots.empty),

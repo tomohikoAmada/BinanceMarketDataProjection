@@ -19,8 +19,7 @@ constexpr std::size_t kTopNSet[] = {1, 5, 50};
 
 // The helpers below preserve the exact Phase-6 canonical field content and
 // registration order (previously benchmarks/m2_benchmarks.cpp Specs).
-void register_apply_level(std::string_view family, std::size_t depth,
-                          std::string_view expected) {
+void register_apply_level(std::string_view family, std::size_t depth, std::string_view expected) {
     const auto name = "M2/apply_level/" + std::string{family} + "/" + depth_name(depth);
     auto& builder = register_workload(name);
     builder.set("benchmark_name", name);
@@ -47,9 +46,9 @@ void register_apply_updates(std::size_t depth, std::size_t batch, std::string_vi
     builder.set("batch", batch);
     builder.set("operation_mix", mix);
     builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
-    builder.set("generated_workload_sha256",
-                m2_apply_updates_generated_sha256(
-                    {depth, batch, M2ApplyUpdatesMix::ReplacementHeavy}));
+    builder.set(
+        "generated_workload_sha256",
+        m2_apply_updates_generated_sha256({depth, batch, M2ApplyUpdatesMix::ReplacementHeavy}));
     builder.set("primary_timer", "cpu");
     builder.set("primary_denominator", "cpu_time");
 }
@@ -64,11 +63,11 @@ void register_apply_updates_mix(std::size_t depth) {
     builder.set("operation_mix", depth == 0 ? "insert_empty_book_edge" : "replacement_heavy");
     builder.set("primary_scaling_workload", "true");
     builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
-    builder.set("generated_workload_sha256",
-                m2_apply_updates_generated_sha256(
-                    {depth, 100,
-                     depth == 0 ? M2ApplyUpdatesMix::Insertion
-                                : M2ApplyUpdatesMix::ReplacementHeavy}));
+    builder.set(
+        "generated_workload_sha256",
+        m2_apply_updates_generated_sha256(
+            {depth, 100,
+             depth == 0 ? M2ApplyUpdatesMix::Insertion : M2ApplyUpdatesMix::ReplacementHeavy}));
     builder.set("primary_timer", "cpu");
     builder.set("primary_denominator", "cpu_time");
 }
@@ -95,8 +94,7 @@ void register_query(std::string_view family, std::size_t depth, std::size_t limi
         builder.set("query_limit", limit);
     }
     builder.set("generator_schema", "M5_PHASE6_M2_CELLS_V1");
-    builder.set("generated_workload_sha256",
-                m2_query_generated_sha256(family, {depth, limit}));
+    builder.set("generated_workload_sha256", m2_query_generated_sha256(family, {depth, limit}));
     builder.set("primary_timer", "cpu");
     builder.set("primary_denominator", "cpu_time");
 }

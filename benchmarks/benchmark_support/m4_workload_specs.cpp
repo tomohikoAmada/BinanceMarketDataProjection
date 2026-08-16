@@ -19,8 +19,8 @@ namespace wire_support = bmd_projection::m5::benchmark::adapter_support;
 constexpr std::size_t kM4DepthSet[] = {8, 100, 1'000};
 
 [[nodiscard]] std::string m4_generated_sha256(std::string_view family, std::size_t depth) {
-    const auto hash = replay::sha256_hex(
-        wire_support::m4_generated_workload_description(family, depth));
+    const auto hash =
+        replay::sha256_hex(wire_support::m4_generated_workload_description(family, depth));
     if (!std::holds_alternative<std::string>(hash)) {
         std::abort();
     }

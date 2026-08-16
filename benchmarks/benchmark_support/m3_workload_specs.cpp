@@ -68,10 +68,9 @@ void register_m3_workload_specs() {
                 builder.set("primary_denominator", "cpu_time");
             }
         }
-        for (const auto kind :
-             {M3ClassificationKind::Stale, M3ClassificationKind::Duplicate,
-              M3ClassificationKind::Gap, M3ClassificationKind::Reset,
-              M3ClassificationKind::BaselineInstall}) {
+        for (const auto kind : {M3ClassificationKind::Stale, M3ClassificationKind::Duplicate,
+                                M3ClassificationKind::Gap, M3ClassificationKind::Reset,
+                                M3ClassificationKind::BaselineInstall}) {
             const auto name = "M3/Classification/" + std::string{kind_label(kind)} + "/" +
                               std::string{policy_label(policy)};
             auto& builder = register_workload(name);
@@ -81,9 +80,8 @@ void register_m3_workload_specs() {
             builder.set("classification", kind_label(kind));
             builder.set("depth_per_side", kM3ClassificationDepth);
             builder.set("generator_schema", "M5_PHASE6_M3_CELLS_V1");
-            builder.set(
-                "generated_workload_sha256",
-                m3_classification_generated_sha256({kind, policy, kM3ClassificationDepth}));
+            builder.set("generated_workload_sha256",
+                        m3_classification_generated_sha256({kind, policy, kM3ClassificationDepth}));
             builder.set("primary_timer", "cpu");
             builder.set("primary_denominator", "cpu_time");
         }
@@ -100,8 +98,7 @@ void register_m3_workload_specs() {
             builder.set("policy", "Spot");
             builder.set("proxy_component_measurement", "true");
             builder.set("generator_schema", "M5_PHASE6_M3_CELLS_V1");
-            builder.set("generated_workload_sha256",
-                        m3_proxy_generated_sha256(operation, depth));
+            builder.set("generated_workload_sha256", m3_proxy_generated_sha256(operation, depth));
             builder.set("primary_timer", "cpu");
             builder.set("primary_denominator", "cpu_time");
         };

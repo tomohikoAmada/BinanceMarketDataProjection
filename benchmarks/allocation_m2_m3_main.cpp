@@ -97,7 +97,8 @@ const auto kWorkloadSpecRegistration = [] {
     }
     for (const auto policy :
          {core::SequencePolicyKind::Spot, core::SequencePolicyKind::UsdMPerpetual}) {
-        const auto policy_name = policy == core::SequencePolicyKind::Spot ? "Spot" : "UsdMPerpetual";
+        const auto policy_name =
+            policy == core::SequencePolicyKind::Spot ? "Spot" : "UsdMPerpetual";
         for (const auto depth : {0, 8, 100, 1'000, 5'000, 10'000}) {
             for (const auto batch : {0, 1, 10, 100}) {
                 names.push_back("M3/LiveApply/Accepted/" + std::string{policy_name} + "/D" +
@@ -193,9 +194,8 @@ void warmup_step(const std::string& name) {
         return;
     }
     if (name.starts_with("M2/replace_all/")) {
-        const auto depth = static_cast<std::size_t>(
-            std::strtoull(name.substr(std::string_view{"M2/replace_all/"}.size()).c_str(),
-                          nullptr, 10));
+        const auto depth = static_cast<std::size_t>(std::strtoull(
+            name.substr(std::string_view{"M2/replace_all/"}.size()).c_str(), nullptr, 10));
         bm::M2ReplaceAllCell cell{depth};
         cell.prepare();
         cell.execute_step();
@@ -242,8 +242,8 @@ void warmup_step(const std::string& name) {
         const auto bpos = parts.find("/B");
         const auto depth = static_cast<std::size_t>(
             std::strtoull(parts.substr(dpos + 2, bpos - dpos - 2).c_str(), nullptr, 10));
-        const auto batch = static_cast<std::size_t>(
-            std::strtoull(parts.substr(bpos + 2).c_str(), nullptr, 10));
+        const auto batch =
+            static_cast<std::size_t>(std::strtoull(parts.substr(bpos + 2).c_str(), nullptr, 10));
         bm::M3AcceptedCell cell{{policy, depth, batch}};
         cell.prepare();
         const auto result = cell.execute_step(0);
@@ -259,42 +259,38 @@ void warmup_step(const std::string& name) {
         const auto kind_name = parts.substr(0, parts.find('/'));
         const auto policy = parts.ends_with("Spot") ? core::SequencePolicyKind::Spot
                                                     : core::SequencePolicyKind::UsdMPerpetual;
-        const auto kind = kind_name == "Stale"          ? bm::M3ClassificationKind::Stale
-                          : kind_name == "Duplicate"    ? bm::M3ClassificationKind::Duplicate
-                          : kind_name == "Gap"          ? bm::M3ClassificationKind::Gap
-                          : kind_name == "Reset"        ? bm::M3ClassificationKind::Reset
-                                                        : bm::M3ClassificationKind::BaselineInstall;
+        const auto kind = kind_name == "Stale"       ? bm::M3ClassificationKind::Stale
+                          : kind_name == "Duplicate" ? bm::M3ClassificationKind::Duplicate
+                          : kind_name == "Gap"       ? bm::M3ClassificationKind::Gap
+                          : kind_name == "Reset"     ? bm::M3ClassificationKind::Reset
+                                                     : bm::M3ClassificationKind::BaselineInstall;
         bm::M3ClassificationCell cell{{kind, policy, bm::kM3ClassificationDepth}};
         cell.prepare();
         static_cast<void>(cell.execute_step(0));
         return;
     }
     if (name.starts_with("M3/Component/AllLevelsBothSides/")) {
-        const auto depth = static_cast<std::size_t>(
-            std::strtoull(name.substr(std::string_view{"M3/Component/AllLevelsBothSides/"}.size())
-                              .c_str(),
-                          nullptr, 10));
+        const auto depth = static_cast<std::size_t>(std::strtoull(
+            name.substr(std::string_view{"M3/Component/AllLevelsBothSides/"}.size()).c_str(),
+            nullptr, 10));
         bm::M3ProxyCells cells{depth};
         cells.prepare();
         static_cast<void>(cells.all_levels_both_sides());
         return;
     }
     if (name.starts_with("M3/Proxy/CandidateRebuildFromVectors/")) {
-        const auto depth = static_cast<std::size_t>(
-            std::strtoull(
-                name.substr(std::string_view{"M3/Proxy/CandidateRebuildFromVectors/"}.size())
-                    .c_str(),
-                nullptr, 10));
+        const auto depth = static_cast<std::size_t>(std::strtoull(
+            name.substr(std::string_view{"M3/Proxy/CandidateRebuildFromVectors/"}.size()).c_str(),
+            nullptr, 10));
         bm::M3ProxyCells cells{depth};
         cells.prepare();
         static_cast<void>(cells.candidate_rebuild_from_vectors());
         return;
     }
     if (name.starts_with("M3/Proxy/CandidateApplyUpdates/")) {
-        const auto depth = static_cast<std::size_t>(
-            std::strtoull(
-                name.substr(std::string_view{"M3/Proxy/CandidateApplyUpdates/"}.size()).c_str(),
-                nullptr, 10));
+        const auto depth = static_cast<std::size_t>(std::strtoull(
+            name.substr(std::string_view{"M3/Proxy/CandidateApplyUpdates/"}.size()).c_str(),
+            nullptr, 10));
         bm::M3ProxyCells cells{depth};
         cells.prepare();
         auto candidate = cells.candidate_rebuild_from_vectors();
@@ -302,10 +298,9 @@ void warmup_step(const std::string& name) {
         return;
     }
     if (name.starts_with("M3/Proxy/OrderBookMoveCommit/")) {
-        const auto depth = static_cast<std::size_t>(
-            std::strtoull(
-                name.substr(std::string_view{"M3/Proxy/OrderBookMoveCommit/"}.size()).c_str(),
-                nullptr, 10));
+        const auto depth = static_cast<std::size_t>(std::strtoull(
+            name.substr(std::string_view{"M3/Proxy/OrderBookMoveCommit/"}.size()).c_str(), nullptr,
+            10));
         auto destination = bm::build_order_book(depth);
         auto source = bm::build_order_book(depth);
         bm::M3ProxyCells::move_commit(destination, std::move(source));
@@ -319,16 +314,16 @@ void warmup_step(const std::string& name) {
 // Measured cells.
 // ---------------------------------------------------------------------------
 [[nodiscard]] std::string measure_m2_apply_level(bm::Phase7Harness& harness,
-                                                 const std::string& name,
-                                                 const std::string& family, std::size_t depth) {
+                                                 const std::string& name, const std::string& family,
+                                                 std::size_t depth) {
     const auto kind = family == "insert"   ? bm::M2ApplyLevelKind::Insert
                       : family == "update" ? bm::M2ApplyLevelKind::Update
                       : family == "delete" ? bm::M2ApplyLevelKind::Delete
                                            : bm::M2ApplyLevelKind::MissingDelete;
-    const auto expected = kind == bm::M2ApplyLevelKind::Insert     ? core::LevelChange::Inserted
-                          : kind == bm::M2ApplyLevelKind::Update   ? core::LevelChange::Updated
-                          : kind == bm::M2ApplyLevelKind::Delete   ? core::LevelChange::Removed
-                                                                   : core::LevelChange::Unchanged;
+    const auto expected = kind == bm::M2ApplyLevelKind::Insert   ? core::LevelChange::Inserted
+                          : kind == bm::M2ApplyLevelKind::Update ? core::LevelChange::Updated
+                          : kind == bm::M2ApplyLevelKind::Delete ? core::LevelChange::Removed
+                                                                 : core::LevelChange::Unchanged;
     bm::M2ApplyLevelCell cell{kind, depth};
     cell.prepare();
     core::LevelChange change{core::LevelChange::Unchanged};
@@ -408,19 +403,18 @@ void warmup_step(const std::string& name) {
             std::optional<core::BookLevel> best;
             std::optional<core::QuantityUnits> quantity;
             if (operation == "best_bid" || operation == "best_ask") {
-                best = cell.best(operation == "best_bid" ? core::BookSide::Bid
-                                                         : core::BookSide::Ask);
-                accumulator += best.has_value()
-                                   ? static_cast<std::uint64_t>(best->price.value())
-                                   : 0xDEADULL;
+                best =
+                    cell.best(operation == "best_bid" ? core::BookSide::Bid : core::BookSide::Ask);
+                accumulator +=
+                    best.has_value() ? static_cast<std::uint64_t>(best->price.value()) : 0xDEADULL;
             } else if (operation == "quantity_at/hit") {
                 quantity = cell.quantity_at_hit();
-                accumulator +=
-                    quantity.has_value() ? static_cast<std::uint64_t>(quantity->value()) : 0xDEADULL;
+                accumulator += quantity.has_value() ? static_cast<std::uint64_t>(quantity->value())
+                                                    : 0xDEADULL;
             } else {
                 quantity = cell.quantity_at_miss();
-                accumulator +=
-                    quantity.has_value() ? static_cast<std::uint64_t>(quantity->value()) : 0xDEADULL;
+                accumulator += quantity.has_value() ? static_cast<std::uint64_t>(quantity->value())
+                                                    : 0xDEADULL;
             }
         });
         auto input = make_record_input(harness, name, std::string{operation}, outcome);
@@ -490,7 +484,8 @@ void warmup_step(const std::string& name) {
     if (disposition != core::ApplyDisposition::Applied ||
         status != core::ProjectionStatus::Synchronized || !outcome.operation_ok) {
         input.determinism_confirmed = false;
-        std::fprintf(stderr, "%s\n", disposition_failure(name, "expected Applied/Synchronized").c_str());
+        std::fprintf(stderr, "%s\n",
+                     disposition_failure(name, "expected Applied/Synchronized").c_str());
     }
     std::printf("[phase7] %s allocs=%llu bytes=%llu deallocs=%llu accum=%llu\n", name.c_str(),
                 static_cast<unsigned long long>(outcome.measurement.allocation_count),
@@ -541,8 +536,7 @@ void warmup_step(const std::string& name) {
     }
     auto input = make_record_input(harness, name, denominator, outcome);
     input.determinism_confirmed = input.determinism_confirmed && valid && outcome.operation_ok;
-    if (kind == bm::M3ClassificationKind::Stale ||
-        kind == bm::M3ClassificationKind::Duplicate ||
+    if (kind == bm::M3ClassificationKind::Stale || kind == bm::M3ClassificationKind::Duplicate ||
         kind == bm::M3ClassificationKind::Gap) {
         if (outcome.measurement.allocation_count != 0 ||
             outcome.measurement.total_allocated_bytes != 0) {
@@ -556,7 +550,8 @@ void warmup_step(const std::string& name) {
         }
     }
     if (!valid) {
-        std::fprintf(stderr, "%s\n", disposition_failure(name, "classification disposition").c_str());
+        std::fprintf(stderr, "%s\n",
+                     disposition_failure(name, "classification disposition").c_str());
     }
     std::printf("[phase7] %s allocs=%llu bytes=%llu deallocs=%llu accum=%llu\n", name.c_str(),
                 static_cast<unsigned long long>(outcome.measurement.allocation_count),
@@ -578,9 +573,7 @@ void warmup_step(const std::string& name) {
             owned = cells.all_levels_both_sides();
             accumulator += owned.size();
         },
-        [&] {
-            std::vector<core::BookLevel>{}.swap(owned);
-        });
+        [&] { std::vector<core::BookLevel>{}.swap(owned); });
     auto input = make_record_input(harness, name, "all_levels_both_sides", outcome);
     input.determinism_confirmed = input.determinism_confirmed && outcome.operation_ok;
     std::printf("[phase7] %s allocs=%llu bytes=%llu accum=%llu\n", name.c_str(),
@@ -637,8 +630,7 @@ void warmup_step(const std::string& name) {
 }
 
 [[nodiscard]] std::string measure_m3_proxy_move_commit(bm::Phase7Harness& harness,
-                                                       const std::string& name,
-                                                       std::size_t depth) {
+                                                       const std::string& name, std::size_t depth) {
     const auto pool_size = bm::pool_iteration_count(depth);
     bm::StatePool<core::OrderBook> destination_pool;
     bm::StatePool<core::OrderBook> source_pool;
@@ -663,8 +655,7 @@ void warmup_step(const std::string& name) {
     std::uint64_t accumulator = 0;
     std::size_t rep = 0;
     const auto outcome = harness.measure_cell([&] {
-        bm::M3ProxyCells::move_commit(destination_pool.at(rep),
-                                      std::move(source_pool.at(rep)));
+        bm::M3ProxyCells::move_commit(destination_pool.at(rep), std::move(source_pool.at(rep)));
         accumulator += destination_pool.at(rep).level_count(core::BookSide::Bid);
         ++rep;
     });
@@ -709,9 +700,8 @@ int run_phase7_m2_m3(int argc, char** argv) {
     bm::CalibrationRecordInput calibration;
     calibration.calibration_id = std::string{kCalibrationId};
     calibration.evidence_class = options.evidence_class;
-    calibration.description =
-        "empty measurement bracket (instrumentation bookkeeping baseline; "
-        "reported separately and never subtracted)";
+    calibration.description = "empty measurement bracket (instrumentation bookkeeping baseline; "
+                              "reported separately and never subtracted)";
     calibration.measurement = harness.measure_calibration();
     harness.add_calibration_record(bm::build_calibration_record_json(calibration));
 
@@ -737,14 +727,12 @@ int run_phase7_m2_m3(int argc, char** argv) {
                 std::strtoull(parts.substr(parts.find('/') + 1).c_str(), nullptr, 10));
             record = measure_m2_apply_updates(harness, name, depth, batch);
         } else if (name.starts_with("M2/replace_all/")) {
-            const auto depth = static_cast<std::size_t>(
-                std::strtoull(name.substr(std::string_view{"M2/replace_all/"}.size()).c_str(),
-                              nullptr, 10));
+            const auto depth = static_cast<std::size_t>(std::strtoull(
+                name.substr(std::string_view{"M2/replace_all/"}.size()).c_str(), nullptr, 10));
             record = measure_m2_replace_all(harness, name, depth);
         } else if (name.starts_with("M2/all_levels/")) {
-            const auto depth = static_cast<std::size_t>(
-                std::strtoull(name.substr(std::string_view{"M2/all_levels/"}.size()).c_str(),
-                              nullptr, 10));
+            const auto depth = static_cast<std::size_t>(std::strtoull(
+                name.substr(std::string_view{"M2/all_levels/"}.size()).c_str(), nullptr, 10));
             record = measure_m2_query(harness, name, "all_levels", depth, 0);
         } else if (name.starts_with("M2/top_levels/")) {
             const auto parts = name.substr(std::string_view{"M2/top_levels/"}.size());
@@ -760,8 +748,7 @@ int run_phase7_m2_m3(int argc, char** argv) {
             const auto depth = static_cast<std::size_t>(
                 std::strtoull(name.substr(slash + 1).c_str(), nullptr, 10));
             const auto op_slash = name.find('/');
-            const auto operation =
-                name.substr(op_slash + 1, slash - op_slash - 1);
+            const auto operation = name.substr(op_slash + 1, slash - op_slash - 1);
             record = measure_m2_query(harness, name, operation, depth, 0);
         } else if (name.starts_with("M3/LiveApply/Accepted/")) {
             const auto parts = name.substr(std::string_view{"M3/LiveApply/Accepted/"}.size());
@@ -779,40 +766,32 @@ int run_phase7_m2_m3(int argc, char** argv) {
             const auto kind_name = parts.substr(0, parts.find('/'));
             const auto policy = parts.ends_with("Spot") ? core::SequencePolicyKind::Spot
                                                         : core::SequencePolicyKind::UsdMPerpetual;
-            const auto kind = kind_name == "Stale" ? bm::M3ClassificationKind::Stale
-                              : kind_name == "Duplicate"
-                                  ? bm::M3ClassificationKind::Duplicate
-                              : kind_name == "Gap"
-                                  ? bm::M3ClassificationKind::Gap
-                              : kind_name == "Reset" ? bm::M3ClassificationKind::Reset
+            const auto kind = kind_name == "Stale"       ? bm::M3ClassificationKind::Stale
+                              : kind_name == "Duplicate" ? bm::M3ClassificationKind::Duplicate
+                              : kind_name == "Gap"       ? bm::M3ClassificationKind::Gap
+                              : kind_name == "Reset"     ? bm::M3ClassificationKind::Reset
                                                      : bm::M3ClassificationKind::BaselineInstall;
             record = measure_m3_classification(harness, name, kind, policy);
         } else if (name.starts_with("M3/Component/AllLevelsBothSides/")) {
-            const auto depth = static_cast<std::size_t>(
-                std::strtoull(
-                    name.substr(std::string_view{"M3/Component/AllLevelsBothSides/"}.size())
-                        .c_str(),
-                    nullptr, 10));
+            const auto depth = static_cast<std::size_t>(std::strtoull(
+                name.substr(std::string_view{"M3/Component/AllLevelsBothSides/"}.size()).c_str(),
+                nullptr, 10));
             record = measure_m3_component_all_levels(harness, name, depth);
         } else if (name.starts_with("M3/Proxy/CandidateRebuildFromVectors/")) {
-            const auto depth = static_cast<std::size_t>(
-                std::strtoull(
-                    name.substr(std::string_view{"M3/Proxy/CandidateRebuildFromVectors/"}.size())
-                        .c_str(),
-                    nullptr, 10));
+            const auto depth = static_cast<std::size_t>(std::strtoull(
+                name.substr(std::string_view{"M3/Proxy/CandidateRebuildFromVectors/"}.size())
+                    .c_str(),
+                nullptr, 10));
             record = measure_m3_proxy_rebuild(harness, name, depth);
         } else if (name.starts_with("M3/Proxy/CandidateApplyUpdates/")) {
-            const auto depth = static_cast<std::size_t>(
-                std::strtoull(
-                    name.substr(std::string_view{"M3/Proxy/CandidateApplyUpdates/"}.size())
-                        .c_str(),
-                    nullptr, 10));
+            const auto depth = static_cast<std::size_t>(std::strtoull(
+                name.substr(std::string_view{"M3/Proxy/CandidateApplyUpdates/"}.size()).c_str(),
+                nullptr, 10));
             record = measure_m3_proxy_apply_updates(harness, name, depth);
         } else if (name.starts_with("M3/Proxy/OrderBookMoveCommit/")) {
-            const auto depth = static_cast<std::size_t>(
-                std::strtoull(
-                    name.substr(std::string_view{"M3/Proxy/OrderBookMoveCommit/"}.size()).c_str(),
-                    nullptr, 10));
+            const auto depth = static_cast<std::size_t>(std::strtoull(
+                name.substr(std::string_view{"M3/Proxy/OrderBookMoveCommit/"}.size()).c_str(),
+                nullptr, 10));
             record = measure_m3_proxy_move_commit(harness, name, depth);
         } else {
             std::fprintf(stderr, "unknown Phase-7 M2/M3 cell: %s\n", name.c_str());

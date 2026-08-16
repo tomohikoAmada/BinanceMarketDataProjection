@@ -17,13 +17,11 @@ using alloc::MeasurementResult;
 using alloc::PersistentLiveDelta;
 using alloc::PersistentLiveDeltaSign;
 
-[[nodiscard]] MeasurementResult eligible_measurement(std::uint64_t before, std::uint64_t peak,
-                                                      std::uint64_t after, std::uint64_t allocs,
-                                                      std::uint64_t bytes, std::uint64_t frees,
-                                                      std::uint64_t freed_bytes,
-                                                      PersistentLiveDelta delta,
-                                                      std::uint64_t peak_above,
-                                                      std::uint64_t transient) {
+[[nodiscard]] MeasurementResult
+eligible_measurement(std::uint64_t before, std::uint64_t peak, std::uint64_t after,
+                     std::uint64_t allocs, std::uint64_t bytes, std::uint64_t frees,
+                     std::uint64_t freed_bytes, PersistentLiveDelta delta, std::uint64_t peak_above,
+                     std::uint64_t transient) {
     MeasurementResult result{};
     result.live_bytes_before = before;
     result.peak_live_bytes_absolute = peak;
@@ -75,19 +73,18 @@ TEST(Phase7RecordCanonicalResult, EligibleProfileGoldenTextAndSha) {
         eligible_measurement(1'000, 1'200, 1'100, 3, 64, 1, 32,
                              PersistentLiveDelta{PersistentLiveDeltaSign::positive, 100}, 200, 100);
     const auto text = bm::build_canonical_result_text(input);
-    EXPECT_EQ(text,
-              "{\"allocation_count\":3,\"allocation_count_valid\":true,"
-              "\"allocation_failure_observed\":false,\"deallocated_bytes\":32,"
-              "\"deallocated_bytes_valid\":true,\"deallocation_count\":1,"
-              "\"deallocation_count_valid\":true,\"determinism_confirmed\":true,"
-              "\"live_bytes_after\":1100,\"live_bytes_before\":1000,"
-              "\"live_metric_eligibility\":\"eligible\",\"operation_aborted\":false,"
-              "\"peak_above_entry\":200,\"peak_live_bytes_absolute\":1200,"
-              "\"persistent_live_delta\":{\"magnitude\":100,\"sign\":\"positive\"},"
-              "\"post_destroy_lifecycle_status\":\"not_applicable\","
-              "\"post_destroy_live_bytes\":null,\"repetitions\":3,"
-              "\"total_allocated_bytes\":64,\"total_allocated_bytes_valid\":true,"
-              "\"transient_excess_over_persistent\":100}");
+    EXPECT_EQ(text, "{\"allocation_count\":3,\"allocation_count_valid\":true,"
+                    "\"allocation_failure_observed\":false,\"deallocated_bytes\":32,"
+                    "\"deallocated_bytes_valid\":true,\"deallocation_count\":1,"
+                    "\"deallocation_count_valid\":true,\"determinism_confirmed\":true,"
+                    "\"live_bytes_after\":1100,\"live_bytes_before\":1000,"
+                    "\"live_metric_eligibility\":\"eligible\",\"operation_aborted\":false,"
+                    "\"peak_above_entry\":200,\"peak_live_bytes_absolute\":1200,"
+                    "\"persistent_live_delta\":{\"magnitude\":100,\"sign\":\"positive\"},"
+                    "\"post_destroy_lifecycle_status\":\"not_applicable\","
+                    "\"post_destroy_live_bytes\":null,\"repetitions\":3,"
+                    "\"total_allocated_bytes\":64,\"total_allocated_bytes_valid\":true,"
+                    "\"transient_excess_over_persistent\":100}");
     EXPECT_EQ(bm::json_text_sha256(text),
               "fcbbc656c73734374de3f338661be1222b4ef5fd0f1959527bcc67ba304cc49d");
 }
@@ -106,20 +103,19 @@ TEST(Phase7RecordCanonicalResult, IneligibleProfileReportsNullsNotEstimates) {
     input.measurement.live_metrics_eligible = false;
     input.measurement.ineligibility_reason = LiveIneligibilityReason::unknown_pointer_delete;
     const auto text = bm::build_canonical_result_text(input);
-    EXPECT_EQ(text,
-              "{\"allocation_count\":5,\"allocation_count_valid\":true,"
-              "\"allocation_failure_observed\":false,\"deallocated_bytes\":null,"
-              "\"deallocated_bytes_valid\":false,\"deallocation_count\":5,"
-              "\"deallocation_count_valid\":true,\"determinism_confirmed\":true,"
-              "\"live_bytes_after\":null,\"live_bytes_before\":null,"
-              "\"live_metric_eligibility\":{\"reason_code\":\"unknown_pointer_delete\","
-              "\"status\":\"ineligible\"},\"operation_aborted\":false,"
-              "\"peak_above_entry\":null,\"peak_live_bytes_absolute\":null,"
-              "\"persistent_live_delta\":null,"
-              "\"post_destroy_lifecycle_status\":\"not_applicable\","
-              "\"post_destroy_live_bytes\":null,\"repetitions\":1,"
-              "\"total_allocated_bytes\":512,\"total_allocated_bytes_valid\":true,"
-              "\"transient_excess_over_persistent\":null}");
+    EXPECT_EQ(text, "{\"allocation_count\":5,\"allocation_count_valid\":true,"
+                    "\"allocation_failure_observed\":false,\"deallocated_bytes\":null,"
+                    "\"deallocated_bytes_valid\":false,\"deallocation_count\":5,"
+                    "\"deallocation_count_valid\":true,\"determinism_confirmed\":true,"
+                    "\"live_bytes_after\":null,\"live_bytes_before\":null,"
+                    "\"live_metric_eligibility\":{\"reason_code\":\"unknown_pointer_delete\","
+                    "\"status\":\"ineligible\"},\"operation_aborted\":false,"
+                    "\"peak_above_entry\":null,\"peak_live_bytes_absolute\":null,"
+                    "\"persistent_live_delta\":null,"
+                    "\"post_destroy_lifecycle_status\":\"not_applicable\","
+                    "\"post_destroy_live_bytes\":null,\"repetitions\":1,"
+                    "\"total_allocated_bytes\":512,\"total_allocated_bytes_valid\":true,"
+                    "\"transient_excess_over_persistent\":null}");
     EXPECT_EQ(bm::json_text_sha256(text),
               "15479dc35c2012ce3e7daa25cb3219ce415cff144361a86405a991d68bc17ae5");
 }
@@ -148,25 +144,24 @@ TEST(Phase7RecordReplayRational, ThreeOverTwoEventsStaysExact) {
     input.replay_aggregate->derived_per_event_allocations = {3, 2};
     input.replay_aggregate->derived_per_event_bytes = {96, 2};
     const auto text = bm::build_canonical_result_text(input);
-    EXPECT_EQ(text,
-              "{\"allocation_count\":3,\"allocation_count_valid\":true,"
-              "\"allocation_failure_observed\":false,\"deallocated_bytes\":96,"
-              "\"deallocated_bytes_valid\":true,\"deallocation_count\":3,"
-              "\"deallocation_count_valid\":true,\"determinism_confirmed\":true,"
-              "\"live_bytes_after\":4000,\"live_bytes_before\":4000,"
-              "\"live_metric_eligibility\":\"eligible\",\"operation_aborted\":false,"
-              "\"peak_above_entry\":0,\"peak_live_bytes_absolute\":4000,"
-              "\"persistent_live_delta\":{\"magnitude\":0,\"sign\":\"zero\"},"
-              "\"post_destroy_lifecycle_status\":\"destroyed\","
-              "\"post_destroy_live_bytes\":3000,\"repetitions\":1,"
-              "\"replay_aggregate\":{\"aggregate_allocated_bytes\":96,"
-              "\"aggregate_allocation_count\":3,\"aggregate_deallocated_bytes\":96,"
-              "\"aggregate_deallocation_count\":3,"
-              "\"derived_per_event_allocations\":{\"denominator\":2,\"numerator\":3},"
-              "\"derived_per_event_bytes\":{\"denominator\":2,\"numerator\":96},"
-              "\"event_count\":2},\"total_allocated_bytes\":96,"
-              "\"total_allocated_bytes_valid\":true,"
-              "\"transient_excess_over_persistent\":0}");
+    EXPECT_EQ(text, "{\"allocation_count\":3,\"allocation_count_valid\":true,"
+                    "\"allocation_failure_observed\":false,\"deallocated_bytes\":96,"
+                    "\"deallocated_bytes_valid\":true,\"deallocation_count\":3,"
+                    "\"deallocation_count_valid\":true,\"determinism_confirmed\":true,"
+                    "\"live_bytes_after\":4000,\"live_bytes_before\":4000,"
+                    "\"live_metric_eligibility\":\"eligible\",\"operation_aborted\":false,"
+                    "\"peak_above_entry\":0,\"peak_live_bytes_absolute\":4000,"
+                    "\"persistent_live_delta\":{\"magnitude\":0,\"sign\":\"zero\"},"
+                    "\"post_destroy_lifecycle_status\":\"destroyed\","
+                    "\"post_destroy_live_bytes\":3000,\"repetitions\":1,"
+                    "\"replay_aggregate\":{\"aggregate_allocated_bytes\":96,"
+                    "\"aggregate_allocation_count\":3,\"aggregate_deallocated_bytes\":96,"
+                    "\"aggregate_deallocation_count\":3,"
+                    "\"derived_per_event_allocations\":{\"denominator\":2,\"numerator\":3},"
+                    "\"derived_per_event_bytes\":{\"denominator\":2,\"numerator\":96},"
+                    "\"event_count\":2},\"total_allocated_bytes\":96,"
+                    "\"total_allocated_bytes_valid\":true,"
+                    "\"transient_excess_over_persistent\":0}");
     EXPECT_EQ(bm::json_text_sha256(text),
               "2eb7565f4614363b1667bead5122ed6529290340336d3f7f036b47efeb84ddc2");
 }

@@ -667,7 +667,11 @@ TEST(Phase7WorkloadIdentity, ReplayRegistrationBindsCanonicalLogIdentity) {
     bm::clear_registered_workloads_for_testing();
     bm::register_replay_workload_specs();
     const auto& specs = bm::registered_workloads();
+#if defined(BMD_PROJECTION_PHASE6_ADAPTER_ENABLED)
+    ASSERT_EQ(specs.size(), 4U);
+#else
     ASSERT_EQ(specs.size(), 2U);
+#endif
     for (const auto& [name, text] : specs) {
         EXPECT_NE(text.find("canonical_log_sha256="), std::string::npos);
         EXPECT_NE(text.find("event_count=2048"), std::string::npos);
@@ -676,6 +680,10 @@ TEST(Phase7WorkloadIdentity, ReplayRegistrationBindsCanonicalLogIdentity) {
     }
     EXPECT_EQ(specs[0].first, "CoreNormalizedReplay/Spot");
     EXPECT_EQ(specs[1].first, "CoreNormalizedReplay/UsdMPerpetual");
+#if defined(BMD_PROJECTION_PHASE6_ADAPTER_ENABLED)
+    EXPECT_EQ(specs[2].first, "AdapterWireReplay/Spot");
+    EXPECT_EQ(specs[3].first, "AdapterWireReplay/UsdMPerpetual");
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -717,7 +725,7 @@ TEST(Phase7WorkloadIdentity, GoldenIdentityRegressionBitForBit) {
     bm::register_replay_workload_specs();
     std::vector<std::pair<std::string, std::string>> expected =
         load_golden_identity_file(source_dir + "/m5/benchmark/"
-                                                "phase6_workload_identity_golden_core.txt");
+                                               "phase6_workload_identity_golden_core.txt");
     ASSERT_FALSE(expected.empty());
 #if defined(BMD_PROJECTION_PHASE6_ADAPTER_ENABLED)
     bm::register_m4_workload_specs();

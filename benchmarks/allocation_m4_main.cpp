@@ -150,11 +150,12 @@ const auto kM4SpecRegistration = [] {
         [&] {
             owned = adapter::adapt_exchange_depth_snapshot(wire, identity.numeric_spec,
                                                            identity.expected);
-            produced_ok = owned.has_value() &&
-                          std::holds_alternative<adapter::AdaptedBookBaseline>(*owned);
+            produced_ok =
+                owned.has_value() && std::holds_alternative<adapter::AdaptedBookBaseline>(*owned);
             if (produced_ok) {
-                accumulator +=
-                    std::get<adapter::AdaptedBookBaseline>(*owned).metadata().observed_quality.size();
+                accumulator += std::get<adapter::AdaptedBookBaseline>(*owned)
+                                   .metadata()
+                                   .observed_quality.size();
             }
         },
         [&] { owned.reset(); });
@@ -180,8 +181,8 @@ const auto kM4SpecRegistration = [] {
     const auto outcome = harness.measure_cell(
         [&] {
             owned = adapter::adapt_depth_update(wire, identity.numeric_spec, identity.expected);
-            produced_ok = owned.has_value() &&
-                          std::holds_alternative<adapter::AdaptedDepthBatch>(*owned);
+            produced_ok =
+                owned.has_value() && std::holds_alternative<adapter::AdaptedDepthBatch>(*owned);
             if (produced_ok) {
                 accumulator +=
                     std::get<adapter::AdaptedDepthBatch>(*owned).metadata().observed_quality.size();
@@ -225,7 +226,8 @@ const auto kM4SpecRegistration = [] {
         if (std::holds_alternative<core::InstallResult>(installed)) {
             const auto& result = std::get<core::InstallResult>(installed);
             disposition = result.disposition;
-            accumulator += static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.status_after));
+            accumulator +=
+                static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.status_after));
         } else {
             disposition = core::InstallDisposition::RejectedWrongState;
         }
@@ -243,8 +245,8 @@ const auto kM4SpecRegistration = [] {
     return bm::build_allocation_record_json(input);
 }
 
-[[nodiscard]] std::string measure_checked_apply(bm::Phase7Harness& harness,
-                                                const std::string& name, std::size_t depth) {
+[[nodiscard]] std::string measure_checked_apply(bm::Phase7Harness& harness, const std::string& name,
+                                                std::size_t depth) {
     const auto identity = wire_support::benchmark_wire_identity();
     const auto wire = wire_support::make_update_wire(wire_support::kM4CheckedApplyCell);
     const auto adapted =
@@ -268,7 +270,8 @@ const auto kM4SpecRegistration = [] {
         if (std::holds_alternative<core::ApplyResult>(applied)) {
             const auto& result = std::get<core::ApplyResult>(applied);
             disposition = result.disposition;
-            accumulator += static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.status_after));
+            accumulator +=
+                static_cast<std::uint64_t>(static_cast<std::uint8_t>(result.status_after));
         } else {
             disposition = core::ApplyDisposition::RejectedWrongState;
         }
@@ -296,9 +299,8 @@ const auto kM4SpecRegistration = [] {
             std::nullopt};
 }
 
-[[nodiscard]] std::string measure_make_snapshot(bm::Phase7Harness& harness,
-                                                const std::string& name, std::size_t depth,
-                                                bool limited) {
+[[nodiscard]] std::string measure_make_snapshot(bm::Phase7Harness& harness, const std::string& name,
+                                                std::size_t depth, bool limited) {
     const auto projection =
         bm::build_synchronized_projection(core::SequencePolicyKind::Spot, depth);
     const auto context = make_snapshot_context();
@@ -317,8 +319,8 @@ const auto kM4SpecRegistration = [] {
     const auto outcome = harness.measure_cell(
         [&] {
             owned = adapter::make_local_order_book_snapshot(projection, context, options);
-            produced_ok = owned.has_value() &&
-                          std::holds_alternative<core::LocalOrderBookSnapshot>(*owned);
+            produced_ok =
+                owned.has_value() && std::holds_alternative<core::LocalOrderBookSnapshot>(*owned);
             if (produced_ok) {
                 accumulator += static_cast<std::uint64_t>(
                     std::get<core::LocalOrderBookSnapshot>(*owned).bids_size() +
@@ -408,8 +410,7 @@ void warmup_pass() {
         auto adapted =
             adapter::adapt_exchange_depth_snapshot(wire, identity.numeric_spec, identity.expected);
         static_cast<void>(adapted);
-        auto projection =
-            bm::build_synchronized_projection(core::SequencePolicyKind::Spot, 1'000);
+        auto projection = bm::build_synchronized_projection(core::SequencePolicyKind::Spot, 1'000);
         const auto produced = adapter::make_local_order_book_snapshot(
             projection, make_snapshot_context(), adapter::SnapshotOptions{});
         if (std::holds_alternative<core::LocalOrderBookSnapshot>(produced)) {
@@ -445,9 +446,8 @@ int run_phase7_m4(int argc, char** argv) {
     bm::CalibrationRecordInput calibration;
     calibration.calibration_id = std::string{kCalibrationId};
     calibration.evidence_class = options.evidence_class;
-    calibration.description =
-        "empty measurement bracket (instrumentation bookkeeping baseline; "
-        "reported separately and never subtracted)";
+    calibration.description = "empty measurement bracket (instrumentation bookkeeping baseline; "
+                              "reported separately and never subtracted)";
     calibration.measurement = harness.measure_calibration();
     harness.add_calibration_record(bm::build_calibration_record_json(calibration));
 

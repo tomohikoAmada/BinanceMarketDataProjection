@@ -86,18 +86,17 @@ class Phase7Harness final {
     // the owner alive); the post-destroy snapshot D is recorded and the
     // lifecycle status is derived (destroyed when D == A,
     // destroyed_mismatch otherwise — OD-M5-P7-005).
-    [[nodiscard]] Phase7CellOutcome
-    measure_cell(const std::function<void()>& operation,
-                 const std::function<void()>& destroy_owner = {},
-                 const std::function<void()>& prepare = {});
+    [[nodiscard]] Phase7CellOutcome measure_cell(const std::function<void()>& operation,
+                                                 const std::function<void()>& destroy_owner = {},
+                                                 const std::function<void()>& prepare = {});
 
     // One empty-bracket calibration measurement (reported separately, never
     // subtracted; OD-M5-P7-006/007).
     [[nodiscard]] m5::allocation::MeasurementResult measure_calibration();
 
     // Workload identity lookup over the static registry.
-    [[nodiscard]] const std::pair<std::string, std::string>* find_workload(
-        std::string_view name) const;
+    [[nodiscard]] const std::pair<std::string, std::string>*
+    find_workload(std::string_view name) const;
 
     void add_record(std::string record_json) { records_.push_back(std::move(record_json)); }
 

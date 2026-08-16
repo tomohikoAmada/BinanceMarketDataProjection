@@ -107,35 +107,34 @@ Phase7CellOutcome Phase7Harness::measure_cell(const std::function<void()>& opera
         if (first_rep) {
             outcome.measurement = rep_result;
             first_rep = false;
-        } else if (normalized_metrics_of(rep_result) != normalized_metrics_of(outcome.measurement)) {
+        } else if (normalized_metrics_of(rep_result) !=
+                   normalized_metrics_of(outcome.measurement)) {
             outcome.determinism_confirmed = false;
-            std::fprintf(stderr,
-                         "determinism mismatch rep %zu: allocs %llu/%llu bytes %llu/%llu "
-                         "deallocs %llu/%llu freed %llu/%llu delta %u:%llu/%u:%llu peak_above "
-                         "%llu/%llu transient %llu/%llu A %llu/%llu\n",
-                         rep,
-                         static_cast<unsigned long long>(rep_result.allocation_count),
-                         static_cast<unsigned long long>(outcome.measurement.allocation_count),
-                         static_cast<unsigned long long>(rep_result.total_allocated_bytes),
-                         static_cast<unsigned long long>(
-                             outcome.measurement.total_allocated_bytes),
-                         static_cast<unsigned long long>(rep_result.deallocation_count),
-                         static_cast<unsigned long long>(outcome.measurement.deallocation_count),
-                         static_cast<unsigned long long>(rep_result.deallocated_bytes),
-                         static_cast<unsigned long long>(outcome.measurement.deallocated_bytes),
-                         static_cast<unsigned int>(rep_result.persistent_live_delta.sign),
-                         static_cast<unsigned long long>(rep_result.persistent_live_delta.magnitude),
-                         static_cast<unsigned int>(outcome.measurement.persistent_live_delta.sign),
-                         static_cast<unsigned long long>(
-                             outcome.measurement.persistent_live_delta.magnitude),
-                         static_cast<unsigned long long>(rep_result.peak_above_entry),
-                         static_cast<unsigned long long>(outcome.measurement.peak_above_entry),
-                         static_cast<unsigned long long>(
-                             rep_result.transient_excess_over_persistent),
-                         static_cast<unsigned long long>(
-                             outcome.measurement.transient_excess_over_persistent),
-                         static_cast<unsigned long long>(rep_result.live_bytes_before),
-                         static_cast<unsigned long long>(outcome.measurement.live_bytes_before));
+            std::fprintf(
+                stderr,
+                "determinism mismatch rep %zu: allocs %llu/%llu bytes %llu/%llu "
+                "deallocs %llu/%llu freed %llu/%llu delta %u:%llu/%u:%llu peak_above "
+                "%llu/%llu transient %llu/%llu A %llu/%llu\n",
+                rep, static_cast<unsigned long long>(rep_result.allocation_count),
+                static_cast<unsigned long long>(outcome.measurement.allocation_count),
+                static_cast<unsigned long long>(rep_result.total_allocated_bytes),
+                static_cast<unsigned long long>(outcome.measurement.total_allocated_bytes),
+                static_cast<unsigned long long>(rep_result.deallocation_count),
+                static_cast<unsigned long long>(outcome.measurement.deallocation_count),
+                static_cast<unsigned long long>(rep_result.deallocated_bytes),
+                static_cast<unsigned long long>(outcome.measurement.deallocated_bytes),
+                static_cast<unsigned int>(rep_result.persistent_live_delta.sign),
+                static_cast<unsigned long long>(rep_result.persistent_live_delta.magnitude),
+                static_cast<unsigned int>(outcome.measurement.persistent_live_delta.sign),
+                static_cast<unsigned long long>(
+                    outcome.measurement.persistent_live_delta.magnitude),
+                static_cast<unsigned long long>(rep_result.peak_above_entry),
+                static_cast<unsigned long long>(outcome.measurement.peak_above_entry),
+                static_cast<unsigned long long>(rep_result.transient_excess_over_persistent),
+                static_cast<unsigned long long>(
+                    outcome.measurement.transient_excess_over_persistent),
+                static_cast<unsigned long long>(rep_result.live_bytes_before),
+                static_cast<unsigned long long>(outcome.measurement.live_bytes_before));
         }
     }
     return outcome;
@@ -151,8 +150,8 @@ m5::allocation::MeasurementResult Phase7Harness::measure_calibration() {
     return result;
 }
 
-const std::pair<std::string, std::string>* Phase7Harness::find_workload(
-    std::string_view name) const {
+const std::pair<std::string, std::string>*
+Phase7Harness::find_workload(std::string_view name) const {
     const auto& workloads = registered_workloads();
     for (const auto& entry : workloads) {
         if (entry.first == name) {
@@ -185,11 +184,10 @@ bool Phase7Harness::emit() {
     wrapper_input.repetitions = options_.repetitions;
     for (const auto& [name, canonical_text] : registered_workloads()) {
         const auto hash = bmd_projection::m5::replay::sha256_hex(canonical_text);
-        wrapper_input.workloads.push_back(
-            WorkloadRecord{name, canonical_text,
-                           std::holds_alternative<std::string>(hash)
-                               ? std::get<std::string>(hash)
-                               : std::string{}});
+        wrapper_input.workloads.push_back(WorkloadRecord{name, canonical_text,
+                                                         std::holds_alternative<std::string>(hash)
+                                                             ? std::get<std::string>(hash)
+                                                             : std::string{}});
     }
     const auto wrapper_json = build_allocation_wrapper_json(wrapper_input);
     if (wrapper_json.empty()) {

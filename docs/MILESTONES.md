@@ -377,16 +377,25 @@ final independent methodology review was **APPROVED** (P0: 0, P1: 0, P2: 0); all
 M5-P7-MR-001..010 and M5-P7-RR-001 are **CLOSED**; approved Head
 `92288927165f2d7486491371a11a7a586c645565`; squash merge
 `c2ad198677130d05ad054ea48ade3a1d8021c153` (merged tree == approved Head tree).
-Phase-7 implementation is **IN PROGRESS** with PR-A (work package WP1): the
-executable-local allocation instrumentation substrate (constant-initialized
-process-lifetime state, fixed-capacity non-allocating provenance table, complete
-20-form replaceable global new/delete surface with checked aligned backing
-arithmetic, MeasurementScope A/P/B semantics, fail-closed overflow/failure
-behavior, test-only seams) and its adversarial validation executable
-`bmd_projection_allocation_instrumentation_tests`. NOT implemented yet: the
-formal M2/M3/M4/replay measurement inventory, the evidence schemas/validator,
-the formal Release runner, and formal evidence. Phase 8 (container spike) is
-NOT STARTED.
+Phase-7 implementation is **IN PROGRESS**:
+- PR-A (work package WP1): the executable-local allocation instrumentation
+  substrate (constant-initialized process-lifetime state, fixed-capacity
+  non-allocating provenance table, complete 20-form replaceable global
+  new/delete surface with checked aligned backing arithmetic,
+  MeasurementScope A/P/B semantics, fail-closed overflow/failure
+  behavior, test-only seams) and its adversarial validation executable
+  `bmd_projection_allocation_instrumentation_tests`.
+- PR-B (work packages WP2–WP4): the measurement/evidence machinery — the
+  Phase-7 evidence schemas (`M5_ALLOCATION_WRAPPER_V1`,
+  `M5_PHASE7_MEASUREMENT_CONTRACT_V1`, `M5_PHASE7_ALLOCATION_RECORD_V1`,
+  `M5_PHASE7_FOOTPRINT_RECORD_V1`), the independent fail-closed Python
+  validator, shared Phase-6 workload identities with bit-for-bit golden
+  regression, the M2/M3/M4/replay allocation characterization
+  executables, the persistent footprint experiment, and the EXPLORATORY
+  local driver `scripts/benchmark-allocation.sh`.
+- NOT implemented yet: the formal Release runner
+  (`scripts/benchmark-allocation-formal.sh`), formal evidence, and
+  Phase-7 final acceptance. Phase 8 (container spike) is NOT STARTED.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 

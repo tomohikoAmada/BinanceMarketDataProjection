@@ -78,13 +78,13 @@ struct ReplayIdentity final {
     std::vector<ReplayIdentity> identities;
     identities.push_back({"CoreNormalizedReplay/Spot", phase3::make_spot_small_workload(),
                           oracle::ReplayMode::CoreOnly});
-    identities.push_back({"CoreNormalizedReplay/UsdMPerpetual",
-                          phase3::make_usdm_small_workload(), oracle::ReplayMode::CoreOnly});
+    identities.push_back({"CoreNormalizedReplay/UsdMPerpetual", phase3::make_usdm_small_workload(),
+                          oracle::ReplayMode::CoreOnly});
 #if defined(BMD_PROJECTION_PHASE6_ADAPTER_ENABLED)
     identities.push_back({"AdapterWireReplay/Spot", phase3::make_spot_small_workload(),
                           oracle::ReplayMode::AdapterEnabled});
-    identities.push_back({"AdapterWireReplay/UsdMPerpetual",
-                          phase3::make_usdm_small_workload(), oracle::ReplayMode::AdapterEnabled});
+    identities.push_back({"AdapterWireReplay/UsdMPerpetual", phase3::make_usdm_small_workload(),
+                          oracle::ReplayMode::AdapterEnabled});
 #endif
     return identities;
 }
@@ -139,8 +139,7 @@ void verify_fixture_differentially(const replay::ReplayFixture& fixture, oracle:
     input.generated_workload_sha256 =
         bm::workload_spec_field(workload->second, "generated_workload_sha256");
     input.seed = bm::workload_spec_field(workload->second, "seed");
-    input.canonical_log_sha256 =
-        bm::workload_spec_field(workload->second, "canonical_log_sha256");
+    input.canonical_log_sha256 = bm::workload_spec_field(workload->second, "canonical_log_sha256");
     input.event_count = event_count;
     input.evidence_class = harness.options().evidence_class;
     input.measurement = outcome.measurement;
@@ -197,9 +196,8 @@ int run_phase7_replay(int argc, char** argv) {
     bm::CalibrationRecordInput calibration;
     calibration.calibration_id = std::string{kCalibrationId};
     calibration.evidence_class = options.evidence_class;
-    calibration.description =
-        "empty measurement bracket (instrumentation bookkeeping baseline; "
-        "reported separately and never subtracted)";
+    calibration.description = "empty measurement bracket (instrumentation bookkeeping baseline; "
+                              "reported separately and never subtracted)";
     calibration.measurement = harness.measure_calibration();
     harness.add_calibration_record(bm::build_calibration_record_json(calibration));
 
@@ -207,8 +205,7 @@ int run_phase7_replay(int argc, char** argv) {
     bool run_failed = false;
     std::size_t measured = 0;
     for (const auto& identity : inventory) {
-        if (!options.filter.empty() &&
-            identity.name.find(options.filter) == std::string::npos) {
+        if (!options.filter.empty() && identity.name.find(options.filter) == std::string::npos) {
             continue;
         }
         const auto& fixture = identity.fixture;
@@ -239,8 +236,7 @@ int run_phase7_replay(int argc, char** argv) {
             core::BookProjection measured_projection{executor.numeric_spec(), executor.policy()};
             std::uint64_t checksum_after_pass = 0;
             const auto outcome = harness.measure_cell(
-                [&] { checksum_after_pass = executor.run(measured_projection); },
-                {},
+                [&] { checksum_after_pass = executor.run(measured_projection); }, {},
                 [&] {
                     measured_projection =
                         core::BookProjection{executor.numeric_spec(), executor.policy()};
@@ -262,8 +258,8 @@ int run_phase7_replay(int argc, char** argv) {
             continue;
         }
 #if defined(BMD_PROJECTION_PHASE6_ADAPTER_ENABLED)
-        bm::AdapterReplayExecutor executor{
-            fixture, bm::adapter_support::preconstruct_adapter_wire(fixture)};
+        bm::AdapterReplayExecutor executor{fixture,
+                                           bm::adapter_support::preconstruct_adapter_wire(fixture)};
         {
             core::BookProjection projection{executor.numeric_spec(), executor.policy()};
             expected_pass_checksum = executor.run(projection);
@@ -278,8 +274,7 @@ int run_phase7_replay(int argc, char** argv) {
         core::BookProjection measured_projection{executor.numeric_spec(), executor.policy()};
         std::uint64_t checksum_after_pass = 0;
         const auto outcome = harness.measure_cell(
-            [&] { checksum_after_pass = executor.run(measured_projection); },
-            {},
+            [&] { checksum_after_pass = executor.run(measured_projection); }, {},
             [&] {
                 measured_projection =
                     core::BookProjection{executor.numeric_spec(), executor.policy()};
@@ -312,8 +307,7 @@ int run_phase7_replay(int argc, char** argv) {
     if (!harness.emit()) {
         return 1;
     }
-    std::printf("[phase7] replay allocation characterization complete: %zu identities\n",
-                measured);
+    std::printf("[phase7] replay allocation characterization complete: %zu identities\n", measured);
     return run_failed ? 1 : 0;
 }
 
