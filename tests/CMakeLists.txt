@@ -388,6 +388,40 @@ set_target_properties(
 )
 bmd_projection_apply_project_options(bmd_projection_m3_allocation_failure_tests)
 
+# M5 Phase-7 (PR-A / WP1): adversarial validation of the allocation
+# instrumentation substrate. This dedicated single-threaded executable owns the
+# replacement global new/delete surface (compiled directly from
+# benchmarks/benchmark_support/allocation_global_new.cpp, never via a library)
+# and the test-only instrumentation seams (OD-M5-P7-002 / OD-M5-P7-020).
+add_executable(
+    bmd_projection_allocation_instrumentation_tests
+    m5/allocation/allocation_instrumentation_test.cpp
+    m5/allocation/instrumentation_test_main.cpp
+    m5/allocation/instrumentation_test_seams.cpp
+    "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/allocation_instrumentation.cpp"
+    "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/allocation_global_new.cpp"
+)
+target_include_directories(
+    bmd_projection_allocation_instrumentation_tests
+    PRIVATE
+        "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support"
+        "${CMAKE_CURRENT_SOURCE_DIR}/m5/allocation"
+)
+target_link_libraries(
+    bmd_projection_allocation_instrumentation_tests
+    PRIVATE
+        BinanceMarketDataProjection::Core
+        GTest::gtest
+)
+set_target_properties(
+    bmd_projection_allocation_instrumentation_tests
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_allocation_instrumentation_tests)
+
 # M5 Phase-6: deterministic tests for the benchmark support components.
 add_executable(
     bmd_projection_m5_benchmark_support_tests
@@ -439,6 +473,7 @@ include(GoogleTest)
 set(CMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE PRE_TEST)
 gtest_discover_tests(bmd_projection_tests)
 gtest_discover_tests(bmd_projection_m3_allocation_failure_tests)
+gtest_discover_tests(bmd_projection_allocation_instrumentation_tests)
 gtest_discover_tests(bmd_projection_m5_replay_tests)
 gtest_discover_tests(bmd_projection_m5_differential_tests)
 gtest_discover_tests(bmd_projection_m5_semantic_tests)
