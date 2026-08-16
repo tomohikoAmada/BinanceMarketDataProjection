@@ -357,6 +357,21 @@ package's conaninfo.txt rather than the cache-directory locator). Production `sr
 `include/**` were unchanged by Phase 6. See
 `docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`.
 
+Phase 7 (allocation/memory characterization) is **AUTHORIZED / NOT STARTED**. Its
+pre-implementation decision record is PROPOSED as a docs-only PR on the immutable base
+`eed3de99efaba8eaa96083a5348d538ed44f6bfe`:
+`docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md` records decisions OD-M5-P7-001 through
+OD-M5-P7-022 (attribution model, instrumentation isolation, complete operator surface,
+mandatory metrics, live/peak eligibility, footprint semantics, baseline subtraction, M2/M3/M4/
+replay inventories, warmup, determinism, machine-readable evidence schema
+`M5_ALLOCATION_WRAPPER_V1` / `M5_PHASE7_ALLOCATION_RECORD_V1` /
+`M5_PHASE7_FOOTPRINT_RECORD_V1` with contract `M5_PHASE7_MEASUREMENT_CONTRACT_V1`, formal
+evidence eligibility, toolchain interpretation, overflow/failure behavior, adversarial
+validation, Phase-8 handoff, and Phase-10 CI boundary). It is PENDING INDEPENDENT METHODOLOGY
+REVIEW; Phase-7 implementation authorization is NO until the record is independently reviewed
+and merged without material unreviewed decision changes. Phase 8 (container spike) is NOT
+STARTED.
+
 ### M3 Spot successor-coverage correction (2026-08-10)
 
 The M3 Spot bootstrap successor-coverage correction (PR #14, ADR-0008) is **MERGED**.

@@ -152,7 +152,9 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Not Implemented
 
-- Phase 7 (allocation/memory) is NOT STARTED.
+- Phase 7 (allocation/memory) is NOT STARTED. Its pre-implementation decision record
+  (`docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md`) is PROPOSED / PENDING INDEPENDENT
+  METHODOLOGY REVIEW; no Phase-7 instrumentation or implementation exists.
 - Phase 8 (container spike) is NOT STARTED.
 - M6 Gateway integration is NOT STARTED.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
@@ -291,9 +293,15 @@ satisfied. Immediate sequencing:
 
 1. INFRA-TC-001: COMPLETE / ACCEPTED / MERGED — no blocker remains.
 2. Next separately authorized engineering phase: M5 Phase 7 — allocation/memory work.
+   The Phase-7 pre-implementation decision record
+   (`docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md`, decisions OD-M5-P7-001 through
+   OD-M5-P7-022) is PROPOSED and PENDING INDEPENDENT METHODOLOGY REVIEW as a docs-only
+   PR; Phase-7 implementation authorization is NO until that record is independently
+   reviewed and merged without material unreviewed decision changes.
 
 Phase 7 is the NEXT AUTHORIZED STEP. It has NOT started and is not in progress or
-implemented.
+implemented. The Phase-7 decision record says PRE-IMPLEMENTATION DECISIONS PROPOSED;
+it does not claim Phase 7 implementation started, implemented, or complete.
 
 ## AI / Reviewer Reading Order
 
