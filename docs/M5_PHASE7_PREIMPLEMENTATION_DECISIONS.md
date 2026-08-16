@@ -120,8 +120,13 @@ no production container, no production semantics, and no production public API.
    `eed3de99efaba8eaa96083a5348d538ed44f6bfe`.
 6. Independent methodology review findings M5-P7-MR-001 .. M5-P7-MR-010
    (recorded in this document).
-7. Current PR #25 proposed text (this document; lower authority than the
-   standard and the review where they disagree).
+7. Approved / merged Phase-7 decision authority
+   (`docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md`, this document;
+   independently approved at Head
+   `92288927165f2d7486491371a11a7a586c645565` and squash merged via
+   PR #25 at `c2ad198677130d05ad054ea48ade3a1d8021c153`; lower authority
+   than the authoritative C++ standard and independent methodology review
+   findings where they conflict).
 8. Status/orientation documents; PR descriptions / old handoff reports.
 
 When fixing a C++ language fact, the authoritative standard source is binding;
