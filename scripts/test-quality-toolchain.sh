@@ -9,10 +9,13 @@
 #     provenance, UBUNTU_SNAPSHOT_ID validation, base-reference plumbing,
 #     snapshot apt-sources generation, Dockerfile base binding.
 #   entrypoint adversarial (offline): the PRODUCTION canonical entrypoint
-#     (scripts/quality.sh) must reject test-only BMD_QUALITY_* hooks and
-#     calendar/temporal-invalid authoritative contracts BEFORE any
-#     image-build command (proved with a fake docker shim recording
-#     invocations).
+#     (scripts/quality.sh) must reject test-only BMD_QUALITY_* hooks, stale
+#     internal BMD_CANONICAL_QUALITY_* orchestration variables (container
+#     mode is not ambient-selectable; /src and /work are not
+#     ambient-substitutable), calendar/temporal-invalid authoritative
+#     contracts, and direct internal-mode invocation outside the canonical
+#     image, BEFORE any image-build command (proved with a fake docker shim
+#     recording invocations).
 #   adversarial (offline, requires cmake + ninja): stale-object build reuse
 #     against the production work-preparation mechanism, source deletion and
 #     rollback between runs.
@@ -71,6 +74,8 @@ if command -v sha256sum >/dev/null 2>&1; then
 else
     sha256_cmd="shasum -a 256"
 fi
+
+bash_bin="$(command -v bash)"
 
 make_shim() {
     local dir="$1" name="$2" version_line="$3"
@@ -243,6 +248,19 @@ dup_contract() {
     } > "$dir/quality.env"
 }
 
+dup_contract_value() {
+    # dup_contract_value <case-dir> <key> <value> — the real contract plus one
+    # prepended assignment of <key> with a DIFFERENT value; a conflicting
+    # duplicate must FAIL CLOSED (no first-wins/last-wins interpretation).
+    local dir="$1" key="$2" value="$3"
+    rm -rf "$dir"
+    mkdir -p "$dir"
+    {
+        printf '%s=%s\n' "$key" "$value"
+        cat "$repo_root/.toolchain/quality.env"
+    } > "$dir/quality.env"
+}
+
 run_entrypoint_case() {
     # run_entrypoint_case <name> <required-diagnostic-regex> <env...> -- <args...>
     # Runs the PRODUCTION canonical entrypoint (scripts/quality.sh) with a
@@ -262,7 +280,9 @@ run_entrypoint_case() {
     args+=("$@")
     local out rc
     rm -f "$fake_docker_marker"
-    out="$(PATH="$fake_docker_dir:$PATH" env "${envs[@]+"${envs[@]}"}" bash "${args[@]}" 2>&1)" && rc=0 || rc=$?
+    out="$(PATH="$fake_docker_dir:$PATH" env \
+        BMD_FAKE_DOCKER_MARKER="$fake_docker_marker" \
+        "${envs[@]+"${envs[@]}"}" bash "${args[@]}" 2>&1)" && rc=0 || rc=$?
     if [[ "$rc" -ne 0 && "$out" =~ $diag_re && ! -f "$fake_docker_marker" ]]; then
         verdict="PASS"
         pass_count=$((pass_count + 1))
@@ -274,6 +294,29 @@ run_entrypoint_case() {
         printf '%s\n' "$out"
     fi
     printf '  [%s] %s\n' "$verdict" "$name"
+}
+
+make_fake_docker() {
+    # make_fake_docker <dir> <version-server-json-or-empty> <version-rc>
+    # A fake `docker` command: prints the given server JSON for
+    # `docker version --format '{{json .Server}}'`, exits with the given rc
+    # for it, and records any other invocation (info/build/run) in the
+    # BMD_FAKE_DOCKER_MARKER file. The JSON payload is stored in a sidecar
+    # file (embedding it inside the shim's double-quoted string would mangle
+    # its quotes).
+    local dir="$1" vout="$2" vrc="$3"
+    mkdir -p "$dir"
+    printf '%s\n' "$vout" > "$dir/version-server.json"
+    cat > "$dir/docker" <<EOF
+#!/usr/bin/env bash
+if [[ "\${1:-}" == "version" ]]; then
+    cat "$dir/version-server.json"
+    exit $vrc
+fi
+echo "FAKE DOCKER INVOKED: \$*" >> "\${BMD_FAKE_DOCKER_MARKER}"
+exit 0
+EOF
+    chmod +x "$dir/docker"
 }
 
 rm -rf "$work_root"
@@ -525,6 +568,20 @@ run_case "duplicate base-image digest -> FAIL" no \
 dup_contract "$(tree dup-artifact)" CA_CERTIFICATES_BOOTSTRAP_SHA256
 run_case "duplicate bootstrap artifact hash -> FAIL" no \
     BMD_QUALITY_CONTRACT_FILE="$(tree dup-artifact)/quality.env" \
+    -- --contract-only
+
+# D2. duplicate arbitrary syntactically valid key (not acceptance-critical)
+# -> FAIL: the duplicate rule applies to ALL non-comment KEY=VALUE lines
+dup_contract "$(tree dup-suite)" UBUNTU_SUITE
+run_case "duplicate arbitrary valid key (UBUNTU_SUITE) -> FAIL" no \
+    BMD_QUALITY_CONTRACT_FILE="$(tree dup-suite)/quality.env" \
+    -- --contract-only
+
+# D3. duplicate key with a DIFFERENT value -> FAIL (conflicting assignment;
+# neither first-wins nor last-wins is an accepted interpretation)
+dup_contract_value "$(tree dup-diffval)" LLVM_MAJOR 19
+run_case "conflicting duplicate LLVM_MAJOR (18 then 19) -> FAIL" no \
+    BMD_QUALITY_CONTRACT_FILE="$(tree dup-diffval)/quality.env" \
     -- --contract-only
 
 # ============================================================================
@@ -879,12 +936,26 @@ chmod +x "$fake_docker_dir/docker"
 temp_repo="$work_root/temp-repo"
 rm -rf "$temp_repo"
 mkdir -p "$temp_repo/scripts" "$temp_repo/.toolchain"
-for script_name in quality.sh quality-toolchain-check.sh quality-base-ref.sh quality-cache-key.sh; do
+for script_name in quality.sh quality-toolchain-check.sh quality-base-ref.sh quality-cache-key.sh quality-runtime-check.sh quality-image-boundary.sh; do
     cp "$repo_root/scripts/$script_name" "$temp_repo/scripts/$script_name"
 done
 cp "$repo_root/requirements-tools.txt" "$temp_repo/requirements-tools.txt"
 sed 's/^UBUNTU_SNAPSHOT_ID=.*/UBUNTU_SNAPSHOT_ID=20990101T000000Z/' \
     "$repo_root/.toolchain/quality.env" > "$temp_repo/.toolchain/quality.env"
+
+# a second temporary authoritative root whose contract is duplicate-keyed:
+# canonical quality.sh must reject it before any image-build command
+temp_repo_dup="$work_root/temp-repo-dup"
+rm -rf "$temp_repo_dup"
+mkdir -p "$temp_repo_dup/scripts" "$temp_repo_dup/.toolchain"
+for script_name in quality.sh quality-toolchain-check.sh quality-base-ref.sh quality-cache-key.sh quality-runtime-check.sh quality-image-boundary.sh; do
+    cp "$repo_root/scripts/$script_name" "$temp_repo_dup/scripts/$script_name"
+done
+cp "$repo_root/requirements-tools.txt" "$temp_repo_dup/requirements-tools.txt"
+{
+    grep '^UBUNTU_SNAPSHOT_ID=' "$repo_root/.toolchain/quality.env"
+    cat "$repo_root/.toolchain/quality.env"
+} > "$temp_repo_dup/.toolchain/quality.env"
 
 # a benign alternate contract (a plain copy of the real one) that must NOT be
 # promoted to canonical authority
@@ -927,6 +998,164 @@ run_entrypoint_case "forged BMD_QUALITY_REFERENCE_TIME cannot accept a future au
 run_entrypoint_case "future authoritative repository snapshot rejected by canonical quality.sh -> FAIL before image build" \
     "in the future" \
     -- "$temp_repo/scripts/quality.sh"
+
+# N. a duplicate-key authoritative repository contract is rejected before any
+# image-build command
+run_entrypoint_case "duplicate-key authoritative contract rejected by canonical quality.sh -> FAIL before image build" \
+    "duplicate key" \
+    -- "$temp_repo_dup/scripts/quality.sh"
+
+# ============================================================================
+# Entrypoint adversarial: internal orchestration variables (FINALREREVIEW2-001)
+# ============================================================================
+# The container execution mode is NOT ambient-selectable; the source/work
+# roots are NOT ambient-substitutable. The guard fails closed on every
+# BMD_CANONICAL_QUALITY_* variable, so the previous forged-source bypass is
+# structurally impossible.
+
+# A. BMD_CANONICAL_QUALITY_CONTAINER=1 on an ordinary host
+run_entrypoint_case "BMD_CANONICAL_QUALITY_CONTAINER=1 cannot enter internal mode -> FAIL before image build" \
+    "BMD_CANONICAL_QUALITY_CONTAINER" \
+    BMD_CANONICAL_QUALITY_CONTAINER=1 \
+    -- "$repo_root/scripts/quality.sh"
+
+# B. BMD_CANONICAL_QUALITY_SRC cannot substitute the canonical source root
+run_entrypoint_case "BMD_CANONICAL_QUALITY_SRC cannot substitute canonical source -> FAIL before image build" \
+    "BMD_CANONICAL_QUALITY_SRC" \
+    BMD_CANONICAL_QUALITY_SRC="$work_root/alternate-src" \
+    -- "$repo_root/scripts/quality.sh"
+
+# C. BMD_CANONICAL_QUALITY_WORK cannot substitute the canonical work root
+run_entrypoint_case "BMD_CANONICAL_QUALITY_WORK cannot substitute canonical work root -> FAIL before image build" \
+    "BMD_CANONICAL_QUALITY_WORK" \
+    BMD_CANONICAL_QUALITY_WORK="$work_root/alternate-work" \
+    -- "$repo_root/scripts/quality.sh"
+
+# D. all three variables together reproduce the previously exploitable shape
+run_entrypoint_case "all BMD_CANONICAL_QUALITY_* together cannot reproduce the bypass -> FAIL before image build" \
+    "BMD_CANONICAL_QUALITY" \
+    BMD_CANONICAL_QUALITY_CONTAINER=1 \
+    BMD_CANONICAL_QUALITY_SRC="$work_root/alternate-src" \
+    BMD_CANONICAL_QUALITY_WORK="$work_root/alternate-work" \
+    -- "$repo_root/scripts/quality.sh"
+
+# E/F. an alternate source tree containing a forged quality.sh must NEVER
+# execute and must NEVER emit a forged PASS
+forged_src="$work_root/forged-src"
+forged_exec_marker="$work_root/forged-executed.marker"
+rm -rf "$forged_src"
+rm -f "$forged_exec_marker"
+mkdir -p "$forged_src/scripts"
+cat > "$forged_src/scripts/quality.sh" <<EOF
+#!/usr/bin/env bash
+echo "FORGED SCRIPT EXECUTED" >> "$forged_exec_marker"
+echo "CANONICAL QUALITY: PASS (forged)"
+exit 0
+EOF
+chmod +x "$forged_src/scripts/quality.sh"
+rm -f "$fake_docker_marker"
+forged_out="$(PATH="$fake_docker_dir:$PATH" env \
+    BMD_FAKE_DOCKER_MARKER="$fake_docker_marker" \
+    BMD_CANONICAL_QUALITY_CONTAINER=1 \
+    BMD_CANONICAL_QUALITY_SRC="$forged_src" \
+    BMD_CANONICAL_QUALITY_WORK="$work_root/forged-work" \
+    bash "$repo_root/scripts/quality.sh" 2>&1)" && forged_rc=0 || forged_rc=$?
+forged_verdict="PASS"
+[[ "$forged_rc" -ne 0 ]] || forged_verdict="FAIL(rc=0)"
+[[ "$forged_out" == *"BMD_CANONICAL_QUALITY_CONTAINER"* ]] || forged_verdict="FAIL(no guard diagnostic)"
+[[ ! -f "$forged_exec_marker" ]] || forged_verdict="FAIL(forged script executed)"
+[[ "$forged_out" != *"CANONICAL QUALITY: PASS (forged)"* ]] || forged_verdict="FAIL(forged PASS emitted)"
+[[ ! -f "$fake_docker_marker" ]] || forged_verdict="FAIL(image-build command reached)"
+if [[ "$forged_verdict" == "PASS" ]]; then
+    pass_count=$((pass_count + 1))
+else
+    fail_count=$((fail_count + 1))
+    printf '%s\n' "$forged_out"
+fi
+printf '  [%s] %s\n' "$forged_verdict" \
+    "forged alternate source never executes / never emits PASS (E, F, G)"
+
+# H/I. manual direct invocation of the internal-only mode outside the
+# canonical image (missing baked /opt/toolchain/quality.env) fails closed
+# BEFORE any source copy or recursive execution
+run_entrypoint_case "internal mode invoked outside canonical image (missing baked contract) -> FAIL before source copy" \
+    "outside the canonical image" \
+    -- "$repo_root/scripts/quality.sh" --inside-canonical-container
+
+# K. BMD_QUALITY_WORK_KEEP is also rejected at the canonical entrypoint
+run_entrypoint_case "canonical quality.sh rejects BMD_QUALITY_WORK_KEEP -> FAIL before image build" \
+    "BMD_QUALITY_WORK_KEEP" \
+    BMD_QUALITY_WORK_KEEP=".cache" \
+    -- "$repo_root/scripts/quality.sh"
+
+# ============================================================================
+# Unit: canonical image boundary proof (scripts/quality-image-boundary.sh)
+# ============================================================================
+boundary_script="$repo_root/scripts/quality-image-boundary.sh"
+boundary_baked="$work_root/boundary/baked/quality.env"
+boundary_src_ok="$work_root/boundary/src-ok"
+boundary_src_none="$work_root/boundary/src-none"
+boundary_src_bad="$work_root/boundary/src-bad"
+rm -rf "$work_root/boundary"
+mkdir -p "$(dirname "$boundary_baked")" "$boundary_src_ok/.toolchain" "$boundary_src_none" "$boundary_src_bad/.toolchain"
+cp "$repo_root/.toolchain/quality.env" "$boundary_baked"
+cp "$repo_root/.toolchain/quality.env" "$boundary_src_ok/.toolchain/quality.env"
+sed 's/^UBUNTU_SNAPSHOT_ID=.*/UBUNTU_SNAPSHOT_ID=20260813T120000Z/' \
+    "$repo_root/.toolchain/quality.env" > "$boundary_src_bad/.toolchain/quality.env"
+
+run_cmd_case "image boundary: matching baked and source contracts -> PASS" yes \
+    bash "$boundary_script" "$boundary_baked" "$boundary_src_ok"
+
+# I. missing baked contract -> FAIL closed before any source copy
+run_cmd_case "image boundary: missing baked contract -> FAIL" no \
+    bash "$boundary_script" "$work_root/boundary/missing/quality.env" "$boundary_src_ok"
+
+run_cmd_case "image boundary: missing source contract -> FAIL" no \
+    bash "$boundary_script" "$boundary_baked" "$boundary_src_none"
+
+# J. baked/source contract mismatch -> FAIL closed
+run_cmd_case "image boundary: baked/source contract mismatch -> FAIL" no \
+    bash "$boundary_script" "$boundary_baked" "$boundary_src_bad"
+
+run_cmd_case "image boundary: missing arguments -> FAIL" no \
+    bash "$boundary_script"
+
+# ============================================================================
+# Unit: canonical runtime identity (scripts/quality-runtime-check.sh)
+# ============================================================================
+runtime_script="$repo_root/scripts/quality-runtime-check.sh"
+empty_bin="$work_root/empty-bin"
+mkdir -p "$empty_bin"
+
+# a real Docker Engine server identity (Components array incl. Engine)
+real_engine_json='{"Platform":{"Name":"Docker Engine - Community"},"Version":"27.5.1","ApiVersion":"1.47","MinAPIVersion":"1.24","Components":[{"Name":"Engine","Version":"27.5.1","Details":{"ApiVersion":"1.47","Os":"linux","Arch":"amd64"}},{"Name":"containerd","Version":"2.0.2","Details":{}},{"Name":"runc","Version":"1.2.5","Details":{}},{"Name":"docker-init","Version":"0.19.0","Details":{}}],"Os":"linux","Arch":"amd64"}'
+make_fake_docker "$work_root/runtime-real" "$real_engine_json" 0
+
+# a Podman/libpod-shaped server identity exposed through `docker` (no
+# Components array, no Engine component)
+podman_server_json='{"Client":{"Version":"5.3.2","ApiVersion":"5.3.2","GoVersion":"go1.23.0"},"Server":{"Version":"5.3.2","ApiVersion":"5.3.2","GoVersion":"go1.23.0","GitCommit":"9c7f8d1","Built":1735000000,"OsArch":"linux/amd64","Os":"linux","Arch":"amd64","BuildTime":"2025-01-01T00:00:00Z"}}'
+make_fake_docker "$work_root/runtime-podman" "$podman_server_json" 0
+
+# an unparseable/unknown backend
+make_fake_docker "$work_root/runtime-garbage" "docker version: garbage from an unknown backend" 0
+
+# a daemon that is unreachable (docker version fails)
+make_fake_docker "$work_root/runtime-dead" "" 1
+
+run_cmd_case "runtime: real Docker Engine server identity accepted -> PASS" yes \
+    bash -c "PATH='$work_root/runtime-real:$PATH' bash '$runtime_script'"
+
+run_cmd_case "runtime: Podman/libpod backend exposed as docker rejected -> FAIL" no \
+    bash -c "PATH='$work_root/runtime-podman:$PATH' bash '$runtime_script'"
+
+run_cmd_case "runtime: unknown/unparseable backend rejected -> FAIL" no \
+    bash -c "PATH='$work_root/runtime-garbage:$PATH' bash '$runtime_script'"
+
+run_cmd_case "runtime: docker daemon unavailable rejected -> FAIL" no \
+    bash -c "PATH='$work_root/runtime-dead:$PATH' bash '$runtime_script'"
+
+run_cmd_case "runtime: no docker on PATH rejected -> FAIL" no \
+    bash -c "PATH='$empty_bin' '$bash_bin' '$runtime_script'"
 
 echo
 if [[ "$fail_count" -eq 0 ]]; then

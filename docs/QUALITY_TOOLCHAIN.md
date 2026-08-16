@@ -109,36 +109,57 @@ Local canonical Quality is **working-tree content acceptance**, not exact Git-co
 bash scripts/quality.sh
 ```
 
-- Linux: uses Docker; macOS: Docker Desktop (the amd64 container runs through Rosetta 2).
-  **Podman is NOT a validated canonical acceptance runtime** (SELinux/rootless/runtime
-  integration evidence would be required by a separate task); if Docker is absent or its
-  daemon is not running, `quality.sh` fails with explicit instructions. Native AppleClang is
-  **never** canonical Quality.
+- Linux: uses Docker Engine; macOS: Docker Desktop (backed by Docker Engine; the amd64
+  container runs through Rosetta 2). The backend identity is **enforced**, not assumed: a
+  `docker` executable alone is insufficient — `quality.sh` verifies the SERVER identity
+  (`docker version --format '{{json .Server}}'`) and requires a real Docker Engine backend
+  (Components array including the Engine component). **Podman and docker-compatible Podman
+  wrappers (podman-docker / libpod backends) are NOT accepted canonical runtimes**, and an
+  unknown/unparseable/unreachable backend fails closed. If Docker is absent or its daemon is
+  not running, `quality.sh` fails with explicit instructions. Native AppleClang is **never**
+  canonical Quality.
 - Test-only validation hooks (`BMD_QUALITY_CONTRACT_FILE`, `BMD_QUALITY_REFERENCE_TIME`,
-  `BMD_QUALITY_TOOLCHAIN_DIR`, `BMD_QUALITY_DPKG_INFO_DIR`, `BMD_QUALITY_WORK_KEEP`) are
-  **rejected by the canonical entrypoint**: if any is present in the environment, `quality.sh`
-  aborts before container image construction. They exist only for the deterministic tests,
+  `BMD_QUALITY_TOOLCHAIN_DIR`, `BMD_QUALITY_DPKG_INFO_DIR`, `BMD_QUALITY_WORK_KEEP`) and
+  stale internal orchestration variables (`BMD_CANONICAL_QUALITY_CONTAINER`,
+  `BMD_CANONICAL_QUALITY_SRC`, `BMD_CANONICAL_QUALITY_WORK`) are **rejected by the
+  canonical entrypoint**: if any is present in the environment, `quality.sh` aborts before
+  container image construction. The container execution mode is **not** ambient-selectable,
+  and the canonical source/work roots are **fixed** (`/src`, `/work`) — they cannot be
+  substituted by the environment. The test hooks exist only for the deterministic tests,
   which invoke the checker directly.
 - The working tree is mounted read-only; Quality runs from the fresh scratch copy inside the
   container, so the host tree is never polluted.
 - The image is rebuilt whenever the contract fingerprint changes; a cache hit is never trusted
   without identity validation (baked-contract diff + runtime tool checks).
+- The internal container mode (`--inside-canonical-container`, generated only by the trusted
+  host path) proves the canonical image boundary **before** any source copy or recursive
+  execution: the image-baked contract (`/opt/toolchain/quality.env`) must exist and equal the
+  mounted `/src` contract; the same proof is re-run against the `/work` scratch tree. A direct
+  invocation of the internal mode outside the canonical image fails closed. Threat-model
+  scope: this proves the image/runtime boundary as built by the canonical host path; it does
+  not claim protection against a malicious privileged host that can rewrite arbitrary
+  root-filesystem or container-engine state.
 
 The entrypoint performs, in order:
 
-1. rejection of test-only `BMD_QUALITY_*` hooks (canonical runs cannot be influenced by
-   test-only contract/time/tool-tree/dpkg overrides);
+1. rejection of test-only `BMD_QUALITY_*` hooks and stale `BMD_CANONICAL_QUALITY_*`
+   orchestration variables (canonical runs cannot be influenced by test-only overrides, and
+   ambient environment can never select the container mode or substitute source/work roots);
 2. contract validation (fail closed if malformed, duplicate-keyed, calendar-invalid, or
    future-dated);
-3. base-reference computation from the contract and image build with
+3. Docker Engine backend identity validation (fail closed on Podman/libpod/unknown backend);
+4. base-reference computation from the contract and image build with
    `--build-arg BMD_CANONICAL_BASE_IMAGE_REF=<authoritative ref>` and the pinned snapshot;
-4. image-vs-worktree contract identity check (fail closed on stale images);
-5. exact toolchain identity + dpkg provenance check (fail closed);
-6. formatting check with canonical clang-format 18.1.3;
-7. repository-local Conan bootstrap; 8. pinned Contracts bootstrap;
-9. Debug configure with ProtoAdapter ON, clang-tidy ON, Werror ON;
-10. build, tests, staged-install consumer;
-11. final `CANONICAL QUALITY: PASS` line carrying the exact tool and snapshot identity.
+5. container run: internal mode proves the canonical image boundary (baked contract ==
+   mounted `/src` contract) before source transfer;
+6. image-vs-worktree contract identity re-check on the `/work` scratch tree (fail closed on
+   stale images);
+7. exact toolchain identity + dpkg provenance check (fail closed);
+8. formatting check with canonical clang-format 18.1.3;
+9. repository-local Conan bootstrap; 10. pinned Contracts bootstrap;
+11. Debug configure with ProtoAdapter ON, clang-tidy ON, Werror ON;
+12. build, tests, staged-install consumer;
+13. final `CANONICAL QUALITY: PASS` line carrying the exact tool and snapshot identity.
 
 ## Canonical acceptance vs. supplemental local checks
 
@@ -178,11 +199,18 @@ The `quality-toolchain-tests` job runs the deterministic contract tests
   (`quality-toolchain-check.sh`, `quality-base-ref.sh`, `quality-cache-key.sh`) reject the
   file before consuming any value, so the repository parser and the shell sourcing used by
   the Dockerfile can never interpret one file differently.
-- **Test-only `BMD_QUALITY_*` hooks in the canonical entrypoint environment → abort** before
-  image construction: the authoritative contract path is always
-  `<repo>/.toolchain/quality.env` and the reference UTC time is always the real current
-  clock; an ambient environment can never redefine contract, reference time, tool tree, or
-  dpkg metadata for canonical acceptance.
+- **Test-only `BMD_QUALITY_*` hooks or stale `BMD_CANONICAL_QUALITY_*` orchestration
+  variables in the canonical entrypoint environment → abort** before image construction: the
+  authoritative contract path is always `<repo>/.toolchain/quality.env`, the reference UTC
+  time is always the real current clock, the container mode is never ambient-selectable, and
+  the source/work roots are always the fixed `/src` and `/work`.
+- **Container runtime backend is not a real Docker Engine server → abort**: Podman/libpod
+  backends exposed through a `docker` command, unknown/unparseable identities, and
+  unreachable daemons fail closed before image construction.
+- **Internal container mode outside the canonical image → abort** before any source copy or
+  recursive execution: the baked `/opt/toolchain/quality.env` must exist and equal the
+  mounted `/src` contract; a direct manual invocation of
+  `--inside-canonical-container` on a host fails closed.
 - Snapshot ID malformed, calendar-invalid, or **in the future relative to the current UTC
   time** → abort before any image construction (future IDs can never be an acceptance
   snapshot).
@@ -194,13 +222,16 @@ The `quality-toolchain-tests` job runs the deterministic contract tests
 - No package-resolution operation ever touches a mutable live archive: the only apt sources are
   the historical snapshot URIs (both pockets), archive signatures verified via `Signed-By`.
 
-Deterministic offline tests: `scripts/test-quality-toolchain.sh` (69 cases, no network; fake
+Deterministic offline tests: `scripts/test-quality-toolchain.sh` (89 cases, no network; fake
 shims generated from the repository's own contract files) — including adversarial stale-object
 reuse against the production work-preparation mechanism, source deletion/rollback, base-ref
-mutation, snapshot temporal/calendar plumbing, duplicate-key fail-closed, cache-namespace key
-changes, payload tamper, entrypoint-level test-hook isolation proofs (fake docker shim, no
-image-build command reached), and provenance negatives. Live integration proof comes from the
-canonical image build itself (CI quality job) and the documented local failure proofs.
+mutation, snapshot temporal/calendar plumbing, duplicate-key fail-closed (including arbitrary
+keys and conflicting values), cache-namespace key changes, payload tamper, entrypoint-level
+test-hook isolation proofs, canonical-image-boundary proofs, Docker-Engine-backend identity
+proofs (Podman/libpod and unknown backends rejected via fake `docker` shims), and
+internal-orchestration-variable adversarial proofs (fake docker shim, no image-build command
+reached). Live integration proof comes from the canonical image build itself (CI quality job)
+and the documented local failure proofs.
 
 ## Intentional upgrade procedure
 
@@ -249,6 +280,10 @@ decision would be a separate task.
 - `.toolchain/Dockerfile` — canonical image definition (FROM bound to the contract-provided
   build argument; artifact-verified TLS bootstrap; snapshot-pinned apt sources).
 - `scripts/quality-base-ref.sh` — authoritative `<image>@<digest>` computation.
+- `scripts/quality-runtime-check.sh` — Docker Engine backend identity enforcement
+  (Podman/libpod and unknown backends rejected).
+- `scripts/quality-image-boundary.sh` — canonical image boundary proof for the internal
+  container mode (baked contract vs mounted source).
 - `scripts/quality-apt-sources.sh` — snapshot-only apt sources generation.
 - `scripts/quality-cache-key.sh` — canonical cache namespace identity.
 - `scripts/quality-work-prep.sh` — canonical scratch preparation (fresh source, ephemeral
