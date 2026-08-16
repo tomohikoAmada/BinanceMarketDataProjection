@@ -25,8 +25,10 @@ orientation only.
 
 ## Current Main
 
-- Current main tip: `22f4a92b1417fe1c844f9da588e5f3014833ca77` — the PR #22 governance/status
-  synchronization commit (M5 Phase-6 record). This is the live `main` HEAD.
+- Current main tip: `24fb72232e928290add45ed8634cd0bf9a8d3442` — the PR #23 INFRA-TC-001
+  squash merge (reproducible Quality toolchain). This is the live `main` HEAD.
+- The prior main tip `22f4a92b1417fe1c844f9da588e5f3014833ca77` was the PR #22
+  governance/status synchronization commit (M5 Phase-6 record).
 - M5 Phase-6 implementation squash merge: `227524e6d17cce77813c6f26cd65bb8d996f5677` (PR #21).
   This is the Phase-6 implementation baseline, NOT the current main tip; main advanced to
   `22f4a92b…` through PR #22 after it.
@@ -43,6 +45,17 @@ orientation only.
 
 ## Recent Pull Requests / Active Candidate
 
+- INFRA-TC-001 record: PR #23, `Make the Quality toolchain reproducible`, is MERGED (final
+  independently accepted implementation Head `6071a9f18bb4f0ebc9f1bed2938477419f7ab2ac`;
+  accepted exact-head CI `31928210161` — 19/19 PASS; final independent review APPROVED,
+  P0: 0, P1: 0, P2: 0; INFRA-TC-001 technical acceptance ACCEPTED; squash merge
+  `24fb72232e928290add45ed8634cd0bf9a8d3442`; post-merge main CI `31931002850` — 19/19 PASS).
+  The accepted Head and the squash merge commit share the same repository tree
+  (`278853c1942dc72a5a1fedda31f1bba08e01aa50`). All known INFRA-TC findings are CLOSED;
+  the earlier review rounds that requested changes (INFRA-TC-FINAL-, INFRA-TC-REREVIEW-, and
+  INFRA-TC-FINALREREVIEW-series findings, including the trust-boundary and in-build base-binding
+  findings) are historical review record — their corrections are part of the merged
+  implementation. No active INFRA-TC-001 candidate remains.
 - Phase-6 record: PR #21, `Implement M5 Phase 6 representative benchmarks`, is
   MERGED (final independently accepted implementation Head
   `9776ba6b93990c44e550f289b69127ca721b0d00`; accepted exact-head CI `31803322848` — 18/18
@@ -153,19 +166,21 @@ artifact is a separate identity and remains outside Projection ownership.
   `31803322848` — 18/18 PASS, formal evidence ACCEPTED, independent review APPROVED,
   PR #21 MERGED, squash merge `227524e6d17cce77813c6f26cd65bb8d996f5677`, and post-merge
   main CI `31809917018` — 18/18 PASS.
-- INFRA-TC-001 (reproducible Quality toolchain): IMPLEMENTED / PENDING FINAL INDEPENDENT
-  RE-REVIEW. Active candidate: PR #23, branch `chore/reproducible-quality-toolchain`. The
-  exact current PR Head and exact-head CI are GitHub/PR evidence and are intentionally not
-  duplicated in this orientation document because they change when this document itself is
-  committed. Five review rounds requested changes; all corrections are implemented and the
-  candidate is awaiting the final focused independent re-review. CI success is NOT independent
-  acceptance. Implementation facts: exact clang/clang++/clang-tidy/clang-format identity in
-  `.toolchain/quality.env` (single source of truth), one repo-owned canonical Quality
-  entrypoint `scripts/quality.sh` used by CI and local developers, base-image digest bound
-  through a build argument (no independent Dockerfile literal) AND verified in-build: the
-  Dockerfile re-derives the base reference from the exact baked contract with the production
-  helper and fails the build if it differs from the FROM argument (before TLS bootstrap/apt),
-  Ubuntu archive state pinned
+- INFRA-TC-001 (reproducible Quality toolchain): COMPLETE / ACCEPTED / MERGED. Final
+  independent review APPROVED (P0: 0, P1: 0, P2: 0); all known INFRA-TC findings are CLOSED;
+  no blocker remains. PR #23 is MERGED: accepted implementation Head
+  `6071a9f18bb4f0ebc9f1bed2938477419f7ab2ac`, exact-head acceptance CI `31928210161` —
+  19/19 PASS, squash merge `24fb72232e928290add45ed8634cd0bf9a8d3442`, post-merge main CI
+  `31931002850` — 19/19 PASS (attempt 2; attempt 1's only failure was a transient external
+  `snapshot.ubuntu.com` HTTP 503 while apt downloaded the pinned historical snapshot package
+  `binutils_2.42-4ubuntu2.10_amd64.deb`; the failed job was rerun and passed with no
+  repository change). Implementation facts: exact clang/clang++/clang-tidy/clang-format
+  identity in `.toolchain/quality.env` (single source of truth), one repo-owned canonical
+  Quality entrypoint `scripts/quality.sh` used by CI and local developers, base-image digest
+  bound through a build argument (no independent Dockerfile literal) AND verified in-build:
+  the Dockerfile re-derives the base reference from the exact baked contract with the
+  production helper and fails the build if it differs from the FROM argument (before TLS
+  bootstrap/apt), Ubuntu archive state pinned
   to the HISTORICAL snapshot `UBUNTU_SNAPSHOT_ID=20260814T120000Z` (format + real UTC
   calendar + temporal validation; future IDs fail closed), duplicate contract key assignments
   invalid and fail closed in every consumer (no first-wins/last-wins), test-only
@@ -178,9 +193,10 @@ artifact is a separate identity and remains outside Projection ownership.
   podman-docker/libpod backends are not validated and are rejected), immutable SHA-256-pinned
   TLS bootstrap artifact (no mutable live archive), cache namespaces keyed by the canonical
   contract, ephemeral /work with never-persisted build trees, dpkg provenance plus installed
-  payload md5 verification, and 100 deterministic/adversarial contract tests. See
-  `docs/QUALITY_TOOLCHAIN.md` and the PR body for the implementation/evidence report. Do NOT
-  treat INFRA-TC-001 as accepted until the final independent re-review passes.
+  payload md5 verification, and 100 deterministic/adversarial contract tests (100/100 PASS;
+  canonical Quality at the accepted Head PASS; Projection tests under canonical Quality
+  413/413 PASS; staged-install consumer PASS). See `docs/QUALITY_TOOLCHAIN.md` and the PR #23
+  record for the implementation/evidence report.
 - Later M5 phases remain separately authorized work.
 
 ## Accepted Semantic Authorities
@@ -241,12 +257,19 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
   `227524e6d17cce77813c6f26cd65bb8d996f5677` completed `success` — 18/18 jobs PASS (quality, ASan,
   UBSan, benchmark smoke, fuzz smoke, Release GCC/Clang/AppleClang, all M4 static/shared gates,
   `m5-replay`, `m5-semantic-compare`).
-- INFRA-TC-001 candidate PR #23 has completed exact-head CI runs with all job classes passing
-  (quality, quality-toolchain-tests, and all compatibility classes). The current run ID, job
-  count, and Head are GitHub/PR evidence and are intentionally not maintained as a ledger in
-  this orientation document (they change when this document itself is committed); see the PR
-  body for the exact current candidate evidence. Candidate CI evidence is NOT independent
-  acceptance of INFRA-TC-001, which remains IMPLEMENTED / PENDING FINAL INDEPENDENT RE-REVIEW.
+- INFRA-TC-001 accepted exact-head CI run `31928210161` for the final independently accepted
+  implementation head `6071a9f18bb4f0ebc9f1bed2938477419f7ab2ac` completed `success` — 19/19
+  jobs PASS. This is the acceptance evidence for the merged INFRA-TC-001 implementation
+  (deterministic Quality toolchain suite 100/100 PASS; canonical Quality at the accepted
+  Head PASS; Projection tests under canonical Quality 413/413 PASS; staged-install consumer
+  PASS).
+- Post-merge main push run `31931002850` at the INFRA-TC-001 squash merge
+  `24fb72232e928290add45ed8634cd0bf9a8d3442` completed `success` — 19/19 jobs PASS
+  (attempt 2; attempt 1's only failure was the `quality (canonical pinned toolchain)` job
+  hitting a transient external `snapshot.ubuntu.com` HTTP 503 while apt downloaded the
+  pinned historical snapshot package `binutils_2.42-4ubuntu2.10_amd64.deb`; the failed job
+  was rerun with `gh run rerun 31931002850 --failed` and passed without any repository
+  change).
 - PR #16 rejected reviewed Head `bf2239206ff74e11e3ce73de73f28465b033f808` had successful run
   `31559019189`, but independent semantic review found seven P1 defects. That historical green run
   is rejection/correction history and is not acceptance evidence for the merged implementation.
@@ -257,21 +280,19 @@ M5 Phase 6 is complete and merged (PR #21, squash merge
 `227524e6d17cce77813c6f26cd65bb8d996f5677`; accepted implementation Head
 `9776ba6b93990c44e550f289b69127ca721b0d00`; exact-head CI `31803322848` — 18/18 PASS;
 post-merge main CI `31809917018` — 18/18 PASS). P6-AUDIT-003 is CLOSED by the PR #22
-governance/status synchronization. Immediate sequencing:
+governance/status synchronization. INFRA-TC-001 (reproducible Quality toolchain) is
+COMPLETE / ACCEPTED / MERGED (PR #23; accepted implementation Head
+`6071a9f18bb4f0ebc9f1bed2938477419f7ab2ac`; exact-head acceptance CI `31928210161` —
+19/19 PASS; final independent review APPROVED, P0: 0, P1: 0, P2: 0; squash merge
+`24fb72232e928290add45ed8634cd0bf9a8d3442`; post-merge main CI `31931002850` — 19/19 PASS;
+all known INFRA-TC findings CLOSED). The INFRA-TC-001 prerequisite for later M5 work is
+satisfied. Immediate sequencing:
 
-1. INFRA-TC-001 (reproducible Quality toolchain): IMPLEMENTED / PENDING FINAL INDEPENDENT
-   RE-REVIEW (PR #23, branch `chore/reproducible-quality-toolchain`; corrections for all
-   findings — INFRA-TC-FINAL-003/004/005/006, INFRA-TC-REREVIEW-001/002/003, the
-   INFRA-TC-REREVIEW-001/FINALREREVIEW-001 re-review findings on test-hook isolation and
-   duplicate-key fail-closed, the INFRA-TC-FINALREREVIEW2-001 trust-boundary finding on
-   ambient container-mode/source/work selection, and the INFRA-TC-FINALREREVIEW3-001/002
-   findings on in-build FROM-arg base binding and exact argv grammar — are implemented;
-   INFRA-TC-FINAL-001/002 were closed by the prior independent re-review; the exact current
-   PR Head and exact-head CI are GitHub/PR evidence, see the PR body). It is not merged yet.
-2. After INFRA-TC-001 is separately completed/accepted, proceed to separately authorized
-   Phase-7 work.
+1. INFRA-TC-001: COMPLETE / ACCEPTED / MERGED — no blocker remains.
+2. Next separately authorized engineering phase: M5 Phase 7 — allocation/memory work.
 
-Phase 7 has NOT started.
+Phase 7 is the NEXT AUTHORIZED STEP. It has NOT started and is not in progress or
+implemented.
 
 ## AI / Reviewer Reading Order
 
