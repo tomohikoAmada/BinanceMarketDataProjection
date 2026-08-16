@@ -8,25 +8,36 @@ All notable changes will be recorded here.
 
 - M5 Phase-7 pre-implementation decision record (docs-only, NOT implementation):
   `docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md` records decisions OD-M5-P7-001 through
-  OD-M5-P7-022 on the immutable base `eed3de99efaba8eaa96083a5348d538ed44f6bfe`:
+  OD-M5-P7-023 on the immutable base `eed3de99efaba8eaa96083a5348d538ed44f6bfe`:
   attribution model (persistent storage vs per-operation vs M3 transaction vs M4 output vs
-  replay vs harness overhead), dedicated single-threaded instrumentation executables reusing
-  the allocation-failure isolation pattern, the complete allocation operator surface
-  (plain/array/nothrow/sized/aligned new and delete), exact `allocation_count` /
-  `total_allocated_bytes` / deallocation / live-bytes / peak-live semantics with fail-closed
-  eligibility (never estimated), footprint experiment at 100/1,000/5,000/10,000 levels per
-  side with MEASURED vs MODELED vs RSS separation, exact baseline-subtraction formula, M2/M3
-  (full 48-cell accepted-apply matrix)/M4/replay allocation inventories reusing Phase-6
-  workload identities, Component/Proxy diagnostics preserved as approximate (never an exact
-  BookProjection decomposition), warmup/determinism rules, machine-readable schemas
-  `M5_ALLOCATION_WRAPPER_V1` / `M5_PHASE7_ALLOCATION_RECORD_V1` /
-  `M5_PHASE7_FOOTPRINT_RECORD_V1` (contract `M5_PHASE7_MEASUREMENT_CONTRACT_V1`, existing
-  Phase-6 schemas unchanged), formal evidence eligibility anchored to the INFRA-TC-001
-  canonical environment, overflow/failure fail-closed behavior, adversarial
-  instrumentation-validation requirements, explicit Phase-8 handoff, and the Phase-10 CI
-  boundary. Status: PROPOSED / PENDING INDEPENDENT METHODOLOGY REVIEW; Phase-7 implementation
-  authorization is NO until the record is independently reviewed and merged without material
-  unreviewed decision changes. No production/test/benchmark/script/CMake/workflow changes.
+  replay vs harness overhead), dedicated single-threaded instrumentation executables with a
+  two-lifetime model (provenance tracking always active; measurement counters bracket-only),
+  the complete C++ replaceable allocation operator surface (correct standard sized-aligned
+  delete signatures `(void*, std::size_t, std::align_val_t)`), checked backing-size arithmetic
+  for aligned allocation (overflow → bad_alloc/nullptr, no record, no UB), exact
+  `allocation_count` / raw requested `total_allocated_bytes` semantics (received size 0
+  contributes 0 bytes; boundary `cxx_replaceable_global_new`, no complete-heap claim),
+  the A/P/B live model with `persistent_live_delta` {sign, magnitude uint64},
+  `peak_above_entry`, and `transient_excess_over_persistent` normalized metrics plus
+  owning-output post-destroy lifecycle snapshots, footprint experiment at 100/1,000/5,000/
+  10,000 levels per side with MEASURED vs NON-ADDITIVE node model vs ESTIMATED allocator
+  model vs not-measured RSS separation, exact baseline-snapshot discipline, M2/M3 (full
+  48-cell accepted-apply matrix)/M4/replay inventories reusing Phase-6 workload identities
+  (replay per-event values as exact rationals), Component/Proxy diagnostics preserved as
+  approximate (never an exact BookProjection decomposition), warmup/determinism rules on
+  normalized metrics, machine-readable schemas `M5_ALLOCATION_WRAPPER_V1` /
+  `M5_PHASE7_ALLOCATION_RECORD_V1` / `M5_PHASE7_FOOTPRINT_RECORD_V1` (contract
+  `M5_PHASE7_MEASUREMENT_CONTRACT_V1`, existing Phase-6 schemas unchanged), formal evidence
+  eligibility anchored to the INFRA-TC-001 canonical environment with a fixed-purpose
+  Phase-7 canonical Release runner (`scripts/benchmark-allocation-formal.sh`, conceptual;
+  host/internal trust boundary, read-only `/src`, content-bound compiled source, quality.sh
+  semantics unchanged), overflow/failure fail-closed behavior, a 30-case adversarial
+  instrumentation-validation suite, explicit Phase-8 handoff, and the Phase-10 CI boundary.
+  Fresh independent methodology review of the initial record: CHANGES REQUESTED (P0: 1,
+  P1: 8, P2: 1; findings M5-P7-MR-001 .. M5-P7-MR-010). Corrections implemented for focused
+  independent re-review; closure PENDING. Phase-7 implementation authorization is NO until
+  the corrected record is independently re-reviewed and merged without material unreviewed
+  decision changes. No production/test/benchmark/script/CMake/workflow changes.
 
 - M5 Phase-6 representative benchmark infrastructure (**COMPLETE / MERGED** via PR #21):
   M1 normative parse/format cases, M2 apply_level/apply_updates/replace_all/query families,

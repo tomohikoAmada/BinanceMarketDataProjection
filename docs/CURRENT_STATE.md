@@ -153,8 +153,10 @@ artifact is a separate identity and remains outside Projection ownership.
 ## Not Implemented
 
 - Phase 7 (allocation/memory) is NOT STARTED. Its pre-implementation decision record
-  (`docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md`) is PROPOSED / PENDING INDEPENDENT
-  METHODOLOGY REVIEW; no Phase-7 instrumentation or implementation exists.
+  (`docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md`) is PROPOSED with corrections
+  IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW (fresh review: CHANGES REQUESTED,
+  P0: 1, P1: 8, P2: 1; findings M5-P7-MR-001 .. M5-P7-MR-010); no Phase-7
+  instrumentation or implementation exists.
 - Phase 8 (container spike) is NOT STARTED.
 - M6 Gateway integration is NOT STARTED.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
@@ -295,13 +297,19 @@ satisfied. Immediate sequencing:
 2. Next separately authorized engineering phase: M5 Phase 7 — allocation/memory work.
    The Phase-7 pre-implementation decision record
    (`docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md`, decisions OD-M5-P7-001 through
-   OD-M5-P7-022) is PROPOSED and PENDING INDEPENDENT METHODOLOGY REVIEW as a docs-only
-   PR; Phase-7 implementation authorization is NO until that record is independently
-   reviewed and merged without material unreviewed decision changes.
+   OD-M5-P7-023) is proposed as a docs-only PR (#25) on the immutable base
+   `eed3de99efaba8eaa96083a5348d538ed44f6bfe`. A fresh independent methodology review
+   returned CHANGES REQUESTED (P0: 1, P1: 8, P2: 1; findings M5-P7-MR-001 ..
+   M5-P7-MR-010); corrections are IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW and
+   independent closure is PENDING. Phase-7 implementation authorization is NO until the
+   corrected record is independently re-reviewed and merged without material unreviewed
+   decision changes.
 
 Phase 7 is the NEXT AUTHORIZED STEP. It has NOT started and is not in progress or
-implemented. The Phase-7 decision record says PRE-IMPLEMENTATION DECISIONS PROPOSED;
-it does not claim Phase 7 implementation started, implemented, or complete.
+implemented. The Phase-7 decision record says PRE-IMPLEMENTATION DECISIONS PROPOSED /
+CORRECTIONS IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW; it does not claim Phase 7
+implementation started, implemented, or complete, and it does not claim methodology
+accepted or findings independently closed.
 
 ## AI / Reviewer Reading Order
 

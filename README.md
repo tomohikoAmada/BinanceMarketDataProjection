@@ -318,9 +318,11 @@ independent review APPROVED, formal exact-head evidence ACCEPTED, squash merge
 Phase 7 (allocation/memory characterization) is AUTHORIZED / NOT STARTED; its
 pre-implementation decision record
 [docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md](docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md)
-(decisions OD-M5-P7-001 through OD-M5-P7-022) is PROPOSED / PENDING INDEPENDENT METHODOLOGY
-REVIEW on the immutable base `eed3de99efaba8eaa96083a5348d538ed44f6bfe`; implementation
-authorization is NO until the record is independently reviewed and merged without material
+(decisions OD-M5-P7-001 through OD-M5-P7-023) is proposed on the immutable base
+`eed3de99efaba8eaa96083a5348d538ed44f6bfe`. A fresh independent methodology review returned
+CHANGES REQUESTED (P0: 1, P1: 8, P2: 1; findings M5-P7-MR-001 .. M5-P7-MR-010); the
+corrections are implemented for focused independent re-review. Implementation authorization is
+NO until the corrected record is independently re-reviewed and merged without material
 unreviewed decision changes.
 Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
