@@ -25,6 +25,14 @@
   independent review APPROVED, formal exact-head evidence ACCEPTED, squash merge
   `227524e6d17cce77813c6f26cd65bb8d996f5677`, post-merge main CI `31809917018` — PASS 18/18) —
   see `docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`
+- Phase 7 status: **AUTHORIZED / NOT STARTED** — pre-implementation decision record
+  proposed on the immutable base `eed3de99efaba8eaa96083a5348d538ed44f6bfe`; fresh
+  independent methodology review: CHANGES REQUESTED (P0: 1, P1: 8, P2: 1; findings
+  M5-P7-MR-001 .. M5-P7-MR-010); corrections IMPLEMENTED FOR FOCUSED INDEPENDENT
+  RE-REVIEW, independent closure PENDING; see
+  `docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md` (decisions OD-M5-P7-001 through
+  OD-M5-P7-023). Implementation authorization is NO until the corrected record is
+  independently re-reviewed and merged without material unreviewed decision changes.
 - ADR status: **ACCEPTED** (ADR-0007)
 - Design date: 2026-08-08
 - Initial independent architecture review: **CHANGES REQUESTED** (P0: 0, P1 design: 1, P1 implementation: 2, P2: 7)

@@ -315,6 +315,15 @@ PASS). See [M5 Phase 5](docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md). Phase 6 is COMP
 independent review APPROVED, formal exact-head evidence ACCEPTED, squash merge
 `227524e6d17cce77813c6f26cd65bb8d996f5677`, post-merge main CI `31809917018` — 18/18 PASS; see
 [M5 Phase 6](docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md)); later phases remain not started.
+Phase 7 (allocation/memory characterization) is AUTHORIZED / NOT STARTED; its
+pre-implementation decision record
+[docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md](docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md)
+(decisions OD-M5-P7-001 through OD-M5-P7-023) is proposed on the immutable base
+`eed3de99efaba8eaa96083a5348d538ed44f6bfe`. A fresh independent methodology review returned
+CHANGES REQUESTED (P0: 1, P1: 8, P2: 1; findings M5-P7-MR-001 .. M5-P7-MR-010); the
+corrections are implemented for focused independent re-review. Implementation authorization is
+NO until the corrected record is independently re-reviewed and merged without material
+unreviewed decision changes.
 Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
 cross-compiler semantic manifests with artifact fan-in transport, replay/differential fuzzing,
