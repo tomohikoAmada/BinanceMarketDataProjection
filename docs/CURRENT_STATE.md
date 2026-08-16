@@ -23,15 +23,16 @@ For implemented facts, use checked-out code, tests, build configuration, Git his
 GitHub state. Accepted ADRs and accepted semantic designs govern deliberate semantics. This file is
 orientation only.
 
-## Current Main
+## Current Main / Recent Main Baseline
 
-- Current main tip: `24fb72232e928290add45ed8634cd0bf9a8d3442` — the PR #23 INFRA-TC-001
-  squash merge (reproducible Quality toolchain). This is the live `main` HEAD.
-- The prior main tip `22f4a92b1417fe1c844f9da588e5f3014833ca77` was the PR #22
-  governance/status synchronization commit (M5 Phase-6 record).
+- INFRA-TC-001 / PR #23 squash merge: `24fb72232e928290add45ed8634cd0bf9a8d3442` (reproducible
+  Quality toolchain). This is the accepted infrastructure merge baseline immediately preceding
+  this docs-only governance synchronization; Git history is authoritative for any later tip.
+- PR #22 governance/status synchronization: `22f4a92b1417fe1c844f9da588e5f3014833ca77`
+  (M5 Phase-6 record).
 - M5 Phase-6 implementation squash merge: `227524e6d17cce77813c6f26cd65bb8d996f5677` (PR #21).
-  This is the Phase-6 implementation baseline, NOT the current main tip; main advanced to
-  `22f4a92b…` through PR #22 after it.
+  This is the Phase-6 implementation baseline, not the main tip; main advanced through PR #22
+  and PR #23 after it.
 - M5 Phase-6 accepted implementation Head: `9776ba6b93990c44e550f289b69127ca721b0d00`
   (accepted exact-head CI `31803322848` — 18/18 PASS; the accepted Head and the squash merge
   share the same repository tree `79aa0151d65d42a1c63e6649bf24bf9053105667`).
@@ -43,7 +44,7 @@ orientation only.
   ADR-0008 supersedes only the Spot-bootstrap contains-`L` portion of ADR-0005; USD-M semantics
   are unchanged.
 
-## Recent Pull Requests / Active Candidate
+## Recent Pull Requests / Acceptance Records
 
 - INFRA-TC-001 record: PR #23, `Make the Quality toolchain reproducible`, is MERGED (final
   independently accepted implementation Head `6071a9f18bb4f0ebc9f1bed2938477419f7ab2ac`;
