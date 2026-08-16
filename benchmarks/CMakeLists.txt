@@ -72,3 +72,57 @@ set_target_properties(
         CXX_EXTENSIONS NO
 )
 bmd_projection_apply_project_options(bmd_projection_replay_latency)
+
+# ---------------------------------------------------------------------------
+# M5 Phase-7 allocation measurement executables (OD-M5-P7-002/008/009/010).
+# Each executable owns the replacement global new/delete surface by compiling
+# allocation_global_new.cpp directly (never via a library). The provenance
+# capacity is sized per executable from the actual prepared-state live sets:
+# the M2/M3 pools hold up to ~2.05M live map nodes (insert/delete pools at
+# depth 1000: 1024 books x 2000 nodes), so 1<<22 slots with ~2x headroom.
+# ---------------------------------------------------------------------------
+function(bmd_projection_add_allocation_executable target)
+    add_executable(${target} ${ARGN})
+    target_sources(
+        ${target}
+        PRIVATE
+            "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/allocation_instrumentation.cpp"
+            "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support/allocation_global_new.cpp"
+    )
+    target_include_directories(
+        ${target}
+        PRIVATE "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support"
+    )
+    target_link_libraries(
+        ${target}
+        PRIVATE
+            BinanceMarketDataProjection::Core
+            bmd_projection_m5_benchmark_support
+    )
+    set_target_properties(
+        ${target}
+        PROPERTIES
+            CXX_STANDARD 20
+            CXX_STANDARD_REQUIRED YES
+            CXX_EXTENSIONS NO
+    )
+    bmd_projection_apply_project_options(${target})
+endfunction()
+
+bmd_projection_add_allocation_executable(
+    bmd_projection_allocation_m2_m3
+    allocation_m2_m3_main.cpp
+)
+target_compile_definitions(
+    bmd_projection_allocation_m2_m3
+    PRIVATE BMD_P7_PROVENANCE_CAPACITY=4194304
+)
+
+bmd_projection_add_allocation_executable(
+    bmd_projection_allocation_footprint
+    allocation_footprint_main.cpp
+)
+target_compile_definitions(
+    bmd_projection_allocation_footprint
+    PRIVATE BMD_P7_PROVENANCE_CAPACITY=1048576
+)

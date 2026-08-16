@@ -410,37 +410,42 @@ std::string workload_spec_field(std::string_view canonical_text, std::string_vie
 }
 
 Phase7Provenance Phase7ProvenanceCollect::collect() {
-    const auto source_state = compute_source_provenance_state();
-    Phase7Provenance provenance;
-    provenance.source_git_sha = BMD_P6_GIT_SHA;
-    provenance.source_status = source_state.known ? "known" : "unavailable";
-    provenance.source_dirty_at_configure = source_state.dirty;
-    provenance.binary_path = current_executable_path();
-    provenance.binary_sha256 = sha256_file_hex(provenance.binary_path);
-    provenance.compiler_id = BMD_P6_COMPILER_ID;
-    provenance.compiler_version = BMD_P6_COMPILER_VERSION;
-    provenance.cxx_standard = BMD_P6_CXX_STANDARD;
-    provenance.build_type = BMD_P6_BUILD_TYPE;
-    provenance.sanitizer_state = BMD_P6_SANITIZER_STATE;
-    provenance.lto_state = BMD_P6_LTO_STATE;
-    provenance.standard_library_name = standard_library_name();
-    provenance.standard_library_version = standard_library_version();
-    provenance.standard_library_detection_status = standard_library_detection_status();
-    provenance.conan_lock_sha256 = BMD_P6_CONAN_LOCK_SHA256;
-    const auto environment = collect_environment_identity();
-    provenance.os_name = environment.os_name;
-    provenance.os_version = environment.os_version;
-    provenance.architecture = environment.architecture;
-    provenance.cpu_model = environment.cpu_model;
-    provenance.logical_core_count = environment.logical_core_count;
-    provenance.m4_dependency_status = BMD_P6_ADAPTER_ENABLED;
-    provenance.contracts_source_revision = BMD_P6_CONTRACTS_SOURCE_REVISION;
-    provenance.contracts_conan_reference = BMD_P6_CONTRACTS_CONAN_REFERENCE;
-    provenance.contracts_recipe_revision = BMD_P6_CONTRACTS_RECIPE_REVISION;
-    provenance.contracts_package_id = BMD_P6_CONTRACTS_PACKAGE_ID;
-    provenance.protobuf_runtime_version = BMD_P6_PROTOBUF_RUNTIME_VERSION;
-    provenance.protobuf_runtime_rrev = BMD_P6_PROTOBUF_RUNTIME_RREV;
-    return provenance;
+    // The provenance block is process-constant; compute once (the binary
+    // SHA-256 read is not repeated for every record).
+    static const Phase7Provenance cached = [] {
+        const auto source_state = compute_source_provenance_state();
+        Phase7Provenance provenance;
+        provenance.source_git_sha = BMD_P6_GIT_SHA;
+        provenance.source_status = source_state.known ? "known" : "unavailable";
+        provenance.source_dirty_at_configure = source_state.dirty;
+        provenance.binary_path = current_executable_path();
+        provenance.binary_sha256 = sha256_file_hex(provenance.binary_path);
+        provenance.compiler_id = BMD_P6_COMPILER_ID;
+        provenance.compiler_version = BMD_P6_COMPILER_VERSION;
+        provenance.cxx_standard = BMD_P6_CXX_STANDARD;
+        provenance.build_type = BMD_P6_BUILD_TYPE;
+        provenance.sanitizer_state = BMD_P6_SANITIZER_STATE;
+        provenance.lto_state = BMD_P6_LTO_STATE;
+        provenance.standard_library_name = standard_library_name();
+        provenance.standard_library_version = standard_library_version();
+        provenance.standard_library_detection_status = standard_library_detection_status();
+        provenance.conan_lock_sha256 = BMD_P6_CONAN_LOCK_SHA256;
+        const auto environment = collect_environment_identity();
+        provenance.os_name = environment.os_name;
+        provenance.os_version = environment.os_version;
+        provenance.architecture = environment.architecture;
+        provenance.cpu_model = environment.cpu_model;
+        provenance.logical_core_count = environment.logical_core_count;
+        provenance.m4_dependency_status = BMD_P6_ADAPTER_ENABLED;
+        provenance.contracts_source_revision = BMD_P6_CONTRACTS_SOURCE_REVISION;
+        provenance.contracts_conan_reference = BMD_P6_CONTRACTS_CONAN_REFERENCE;
+        provenance.contracts_recipe_revision = BMD_P6_CONTRACTS_RECIPE_REVISION;
+        provenance.contracts_package_id = BMD_P6_CONTRACTS_PACKAGE_ID;
+        provenance.protobuf_runtime_version = BMD_P6_PROTOBUF_RUNTIME_VERSION;
+        provenance.protobuf_runtime_rrev = BMD_P6_PROTOBUF_RUNTIME_RREV;
+        return provenance;
+    }();
+    return cached;
 }
 
 std::string build_canonical_result_text(const AllocationRecordInput& input) {
