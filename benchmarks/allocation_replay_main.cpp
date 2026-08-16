@@ -242,7 +242,7 @@ int run_phase7_replay(int argc, char** argv) {
                         core::BookProjection{executor.numeric_spec(), executor.policy()};
                 });
             auto input = make_record_input(harness, identity.name, outcome, event_count);
-            if (checksum_after_pass != expected_pass_checksum) {
+            if (checksum_after_pass != expected_pass_checksum || !outcome.operation_ok) {
                 input.determinism_confirmed = false;
                 std::fprintf(stderr, "%s post-pass checksum mismatch\n", identity.name.c_str());
             }
@@ -280,7 +280,7 @@ int run_phase7_replay(int argc, char** argv) {
                     core::BookProjection{executor.numeric_spec(), executor.policy()};
             });
         auto input = make_record_input(harness, identity.name, outcome, event_count);
-        if (checksum_after_pass != expected_pass_checksum) {
+        if (checksum_after_pass != expected_pass_checksum || !outcome.operation_ok) {
             input.determinism_confirmed = false;
             std::fprintf(stderr, "%s post-pass checksum mismatch\n", identity.name.c_str());
         }
