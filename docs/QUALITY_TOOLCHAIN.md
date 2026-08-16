@@ -2,10 +2,15 @@
 
 ## Status
 
-INFRA-TC-001 is **IMPLEMENTED / PENDING FINAL INDEPENDENT RE-REVIEW** (PR #23). A green
-exact-head CI run is candidate evidence only and is **not** independent acceptance of this
-contract. This document describes the candidate as implemented; it does not declare the
-contract accepted.
+INFRA-TC-001 is **ACCEPTED / MERGED / COMPLETE**. Final independent acceptance:
+**APPROVED** (P0: 0, P1: 0, P2: 0). PR #23 is **MERGED** with accepted implementation Head
+`6071a9f18bb4f0ebc9f1bed2938477419f7ab2ac`; exact-head acceptance CI `31928210161` —
+19/19 PASS; squash merge `24fb72232e928290add45ed8634cd0bf9a8d3442`; post-merge main CI
+`31931002850` — 19/19 PASS (attempt 2; attempt 1's only failure was a transient external
+`snapshot.ubuntu.com` HTTP 503 during apt download of a pinned historical snapshot package,
+resolved by a failed-job rerun with no repository change). All known INFRA-TC findings are
+CLOSED. The technical mechanism described by the rest of this document is unchanged by
+acceptance.
 
 This document is the reference for the canonical Quality acceptance environment. It records the
 exact toolchain identity, the single repository-owned entrypoint, how CI and local developers
