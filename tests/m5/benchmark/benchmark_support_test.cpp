@@ -634,6 +634,7 @@ TEST(Phase7WorkloadIdentity, Phase6FullM2RegistrationKeepsUpdateMix) {
               specs.end());
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST(Phase7WorkloadIdentity, M3RegistrationCoversTheComplete48CellMatrix) {
     bm::clear_registered_workloads_for_testing();
     bm::register_m3_workload_specs();
@@ -663,6 +664,7 @@ TEST(Phase7WorkloadIdentity, M3RegistrationCoversTheComplete48CellMatrix) {
               expected.end());
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST(Phase7WorkloadIdentity, ReplayRegistrationBindsCanonicalLogIdentity) {
     bm::clear_registered_workloads_for_testing();
     bm::register_replay_workload_specs();
@@ -714,6 +716,7 @@ load_golden_identity_file(const std::string& path) {
 
 } // namespace
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST(Phase7WorkloadIdentity, GoldenIdentityRegressionBitForBit) {
 #ifndef BMD_PROJECTION_TEST_SOURCE_DIR
     GTEST_SKIP() << "golden identity directory not configured";

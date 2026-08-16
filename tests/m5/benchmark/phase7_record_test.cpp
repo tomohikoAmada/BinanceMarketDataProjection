@@ -17,7 +17,7 @@ using alloc::MeasurementResult;
 using alloc::PersistentLiveDelta;
 using alloc::PersistentLiveDeltaSign;
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 [[nodiscard]] MeasurementResult
 eligible_measurement(std::uint64_t before, std::uint64_t peak, std::uint64_t after,
                      std::uint64_t allocs, std::uint64_t bytes, std::uint64_t frees,
@@ -44,6 +44,7 @@ eligible_measurement(std::uint64_t before, std::uint64_t peak, std::uint64_t aft
     result.allocation_failure_observed = false;
     return result;
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 [[nodiscard]] bm::AllocationRecordInput base_input() {
     bm::AllocationRecordInput input;
@@ -170,6 +171,7 @@ TEST(Phase7RecordReplayRational, ThreeOverTwoEventsStaysExact) {
 // ---------------------------------------------------------------------------
 // Full record assembly.
 // ---------------------------------------------------------------------------
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST(Phase7RecordRecordJson, CarriesBoundaryIdentityAndBindingSha) {
     auto input = base_input();
     input.measurement =
@@ -207,6 +209,7 @@ TEST(Phase7RecordRecordJson, NegativeDeltaIsRepresentedExactly) {
 // ---------------------------------------------------------------------------
 // Footprint record (OD-M5-P7-006).
 // ---------------------------------------------------------------------------
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST(Phase7RecordFootprint, SeparatesMeasuredModelAndRss) {
     bm::FootprintRecordInput input;
     input.depth_per_side = 1'000;
