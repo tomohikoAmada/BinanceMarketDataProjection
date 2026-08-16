@@ -53,8 +53,15 @@ namespace {
 // test backing failure, and malloc failure all complete BEFORE provenance
 // insertion, live accounting, and successful-allocation counting; the throwing
 // forms throw std::bad_alloc, the nothrow forms return nullptr.
-[[nodiscard]] void* allocate(std::size_t raw, std::size_t alignment, bool nothrow) {
+struct AllocationRequest final {
+    std::size_t raw_size{};
+    std::size_t alignment{};
+    bool nothrow{};
+};
+
+[[nodiscard]] void* allocate(AllocationRequest request) {
     auto& state = detail::state();
+    const bool nothrow = request.nothrow;
 
     // Test-only deterministic pointer-reuse backing support: when the reuse
     // seam captured a previously released backing block, this request reuses
@@ -74,10 +81,11 @@ namespace {
     // arithmetic (M5-P7-MR-002). The header slot requires natural void*
     // alignment, so the effective alignment is at least alignof(void*); a
     // stronger alignment than requested always satisfies the request.
+    auto alignment = request.alignment;
     if (alignment < alignof(void*)) {
         alignment = alignof(void*);
     }
-    const std::size_t effective = (raw == 0) ? std::size_t{1} : raw;
+    const std::size_t effective = (request.raw_size == 0) ? std::size_t{1} : request.raw_size;
     std::size_t padded = 0;
     std::size_t backing = 0;
     const bool padded_ok = checked_size_add(effective, alignment - 1U, padded);
@@ -109,8 +117,13 @@ namespace {
             throw std::bad_alloc{};
         }
     } else {
-        assert(backing <= captured_backing);
-        captured_backing = 0;
+        // Test-only reuse seam contract: the reused request must fit the
+        // captured block. This branch can only be reached when the test seam
+        // captured a block; a violation aborts instead of overflowing the
+        // block (the fields are zero in measurement executables).
+        if (backing > captured_backing) {
+            std::abort();
+        }
     }
 
     // Aligned payload placement inside the proven range
@@ -118,17 +131,19 @@ namespace {
     // most block + backing - 1 because backing = effective + (alignment - 1)
     // + sizeof(void*) and effective >= 1, so all pointer arithmetic below
     // stays within the allocated block (no wrap, no out-of-range access).
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    // The int<->pointer casts are the unavoidable essence of aligned backing
+    // placement; all offsets are computed within the proven range first.
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* payload = reinterpret_cast<std::uint8_t*>(block) + sizeof(void*) + (alignment - 1U);
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     const auto payload_value = reinterpret_cast<std::uintptr_t>(payload);
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    payload = reinterpret_cast<std::uint8_t*>(
-        payload_value & ~static_cast<std::uintptr_t>(alignment - 1U));
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast,performance-no-int-to-ptr)
+    payload = reinterpret_cast<std::uint8_t*>(payload_value &
+                                              ~static_cast<std::uintptr_t>(alignment - 1U));
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
     *reinterpret_cast<void**>(payload - sizeof(void*)) = block;
 
-    record_successful_allocation(payload, {raw, backing});
+    record_successful_allocation(payload, {request.raw_size, backing});
     return payload;
 }
 
@@ -147,13 +162,14 @@ void deallocate(void* ptr, bool has_supplied_size, std::size_t supplied_size) no
     if (capture) {
         const auto index = detail::find_slot(state, ptr);
         if (index != detail::no_slot()) {
-            captured_backing = state.slots[index].backing_request_size;
+            captured_backing = state.slots.at(index).backing_request_size;
         }
     }
     record_deallocation(ptr, {has_supplied_size, supplied_size});
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast,cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    auto* const header_slot = reinterpret_cast<std::uint8_t*>(ptr) - sizeof(void*);
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    const auto block = *reinterpret_cast<void**>(
-        reinterpret_cast<std::uint8_t*>(ptr) - sizeof(void*));
+    auto* const block = *reinterpret_cast<void**>(header_slot);
     if (capture) {
         state.reuse_capture_pending = false;
         state.reuse_captured = block;
@@ -174,12 +190,12 @@ void deallocate(void* ptr, bool has_supplied_size, std::size_t supplied_size) no
 // ---------------------------------------------------------------------------
 
 void* operator new(std::size_t size) {
-    return bmd_projection::m5::allocation::allocate(size, alignof(std::max_align_t), false);
+    return bmd_projection::m5::allocation::allocate({size, alignof(std::max_align_t), false});
 }
 
 void* operator new(std::size_t size, std::align_val_t alignment) {
-    return bmd_projection::m5::allocation::allocate(size, static_cast<std::size_t>(alignment),
-                                                    false);
+    return bmd_projection::m5::allocation::allocate(
+        {size, static_cast<std::size_t>(alignment), false});
 }
 
 // ---------------------------------------------------------------------------
@@ -187,12 +203,12 @@ void* operator new(std::size_t size, std::align_val_t alignment) {
 // ---------------------------------------------------------------------------
 
 void* operator new[](std::size_t size) {
-    return bmd_projection::m5::allocation::allocate(size, alignof(std::max_align_t), false);
+    return bmd_projection::m5::allocation::allocate({size, alignof(std::max_align_t), false});
 }
 
 void* operator new[](std::size_t size, std::align_val_t alignment) {
-    return bmd_projection::m5::allocation::allocate(size, static_cast<std::size_t>(alignment),
-                                                    false);
+    return bmd_projection::m5::allocation::allocate(
+        {size, static_cast<std::size_t>(alignment), false});
 }
 
 // ---------------------------------------------------------------------------
@@ -201,14 +217,14 @@ void* operator new[](std::size_t size, std::align_val_t alignment) {
 
 void* operator new(std::size_t size, const std::nothrow_t& nothrow_tag) noexcept {
     static_cast<void>(nothrow_tag);
-    return bmd_projection::m5::allocation::allocate(size, alignof(std::max_align_t), true);
+    return bmd_projection::m5::allocation::allocate({size, alignof(std::max_align_t), true});
 }
 
 void* operator new(std::size_t size, std::align_val_t alignment,
                    const std::nothrow_t& nothrow_tag) noexcept {
     static_cast<void>(nothrow_tag);
-    return bmd_projection::m5::allocation::allocate(size, static_cast<std::size_t>(alignment),
-                                                    true);
+    return bmd_projection::m5::allocation::allocate(
+        {size, static_cast<std::size_t>(alignment), true});
 }
 
 // ---------------------------------------------------------------------------
@@ -217,14 +233,14 @@ void* operator new(std::size_t size, std::align_val_t alignment,
 
 void* operator new[](std::size_t size, const std::nothrow_t& nothrow_tag) noexcept {
     static_cast<void>(nothrow_tag);
-    return bmd_projection::m5::allocation::allocate(size, alignof(std::max_align_t), true);
+    return bmd_projection::m5::allocation::allocate({size, alignof(std::max_align_t), true});
 }
 
 void* operator new[](std::size_t size, std::align_val_t alignment,
                      const std::nothrow_t& nothrow_tag) noexcept {
     static_cast<void>(nothrow_tag);
-    return bmd_projection::m5::allocation::allocate(size, static_cast<std::size_t>(alignment),
-                                                    true);
+    return bmd_projection::m5::allocation::allocate(
+        {size, static_cast<std::size_t>(alignment), true});
 }
 
 // ---------------------------------------------------------------------------

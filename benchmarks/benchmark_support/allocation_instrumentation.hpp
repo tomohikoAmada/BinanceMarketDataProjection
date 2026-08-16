@@ -21,6 +21,7 @@
 // initialization/destruction-order dependency (OD-M5-P7-002). The provenance
 // table is fixed-capacity storage that never grows (OD-M5-P7-019).
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
@@ -192,7 +193,7 @@ struct ProvenanceSlot final {
 // The trailing fields are test-only seam state: they are zero unless enabled
 // by the test-seam translation unit and never affect measurement executables.
 struct InstrumentationState final {
-    ProvenanceSlot slots[kProvenanceCapacity];
+    std::array<ProvenanceSlot, kProvenanceCapacity> slots;
     std::uint64_t live_bytes;
     bool provenance_table_overflowed;
     bool stale_entry_collision;
@@ -228,8 +229,7 @@ struct InstrumentationState final {
 [[nodiscard]] std::size_t no_slot() noexcept;
 
 // Bounded linear-probe lookup over the effective capacity. Never allocates.
-[[nodiscard]] std::size_t find_slot(const InstrumentationState& state,
-                                    void* ptr) noexcept;
+[[nodiscard]] std::size_t find_slot(const InstrumentationState& state, void* ptr) noexcept;
 
 } // namespace detail
 
