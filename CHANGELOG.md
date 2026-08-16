@@ -39,6 +39,16 @@ All notable changes will be recorded here.
   the corrected record is independently re-reviewed and merged without material unreviewed
   decision changes. No production/test/benchmark/script/CMake/workflow changes.
 
+- Phase-7 preimplementation allocation/memory methodology independently APPROVED and
+  squash merged via PR #25 (`Lock M5 Phase 7 allocation/memory measurement contract`):
+  final independent methodology review APPROVED (P0: 0, P1: 0, P2: 0); all findings
+  M5-P7-MR-001..010 and M5-P7-RR-001 CLOSED; approved Head
+  `92288927165f2d7486491371a11a7a586c645565`; squash merge
+  `c2ad198677130d05ad054ea48ade3a1d8021c153` (merged tree == approved Head tree).
+  Phase-7 implementation is now authorized but remains NOT STARTED; Phase 8 remains
+  NOT STARTED. Docs-only governance/status synchronization; no repository content
+  beyond documentation changed.
+
 - M5 Phase-6 representative benchmark infrastructure (**COMPLETE / MERGED** via PR #21):
   M1 normative parse/format cases, M2 apply_level/apply_updates/replace_all/query families,
   the full 48-cell M3 accepted live-apply matrix plus classification and component/proxy cells,

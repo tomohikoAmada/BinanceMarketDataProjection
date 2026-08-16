@@ -152,11 +152,16 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ## Not Implemented
 
-- Phase 7 (allocation/memory) is NOT STARTED. Its pre-implementation decision record
-  (`docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md`) is PROPOSED with corrections
-  IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW (fresh review: CHANGES REQUESTED,
-  P0: 1, P1: 8, P2: 1; findings M5-P7-MR-001 .. M5-P7-MR-010); no Phase-7
-  instrumentation or implementation exists.
+- Phase 7 (allocation/memory) implementation is NOT STARTED. Its
+  pre-implementation methodology
+  (`docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md`, decisions OD-M5-P7-001 through
+  OD-M5-P7-023) is **APPROVED / MERGED** via PR #25: final independent
+  methodology review APPROVED (P0: 0, P1: 0, P2: 0); all findings
+  M5-P7-MR-001..010 and M5-P7-RR-001 CLOSED; approved Head
+  `92288927165f2d7486491371a11a7a586c645565`; squash merge
+  `c2ad198677130d05ad054ea48ade3a1d8021c153` (merged tree == approved Head
+  tree). Implementation is AUTHORIZED / NOT STARTED; no Phase-7 instrumentation
+  or implementation exists.
 - Phase 8 (container spike) is NOT STARTED.
 - M6 Gateway integration is NOT STARTED.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
@@ -202,6 +207,12 @@ artifact is a separate identity and remains outside Projection ownership.
   canonical Quality at the accepted Head PASS; Projection tests under canonical Quality
   413/413 PASS; staged-install consumer PASS). See `docs/QUALITY_TOOLCHAIN.md` and the PR #23
   record for the implementation/evidence report.
+- No Phase-7 methodology blocker remains: the pre-implementation methodology is
+  APPROVED / MERGED and all findings (M5-P7-MR-001..010, M5-P7-RR-001) are
+  CLOSED. Phase-7 implementation has not yet started — a sequencing fact, not a
+  technical blocker.
+- Phase 8 remains blocked by sequencing until Phase-7 evidence/handoff is
+  complete as defined by the accepted design (OD-M5-P7-021).
 - Later M5 phases remain separately authorized work.
 
 ## Accepted Semantic Authorities
@@ -294,22 +305,20 @@ all known INFRA-TC findings CLOSED). The INFRA-TC-001 prerequisite for later M5 
 satisfied. Immediate sequencing:
 
 1. INFRA-TC-001: COMPLETE / ACCEPTED / MERGED — no blocker remains.
-2. Next separately authorized engineering phase: M5 Phase 7 — allocation/memory work.
-   The Phase-7 pre-implementation decision record
-   (`docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md`, decisions OD-M5-P7-001 through
-   OD-M5-P7-023) is proposed as a docs-only PR (#25) on the immutable base
-   `eed3de99efaba8eaa96083a5348d538ed44f6bfe`. A fresh independent methodology review
-   returned CHANGES REQUESTED (P0: 1, P1: 8, P2: 1; findings M5-P7-MR-001 ..
-   M5-P7-MR-010); corrections are IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW and
-   independent closure is PENDING. Phase-7 implementation authorization is NO until the
-   corrected record is independently re-reviewed and merged without material unreviewed
-   decision changes.
+2. Phase-7 preimplementation methodology: **APPROVED / MERGED** — PR #25
+   (`Lock M5 Phase 7 allocation/memory measurement contract`); final
+   independent methodology review APPROVED (P0: 0, P1: 0, P2: 0); all findings
+   (M5-P7-MR-001..010, M5-P7-RR-001) CLOSED; approved Head
+   `92288927165f2d7486491371a11a7a586c645565`; squash merge
+   `c2ad198677130d05ad054ea48ade3a1d8021c153` (merged tree == approved Head
+   tree).
+3. NEXT engineering work: **M5 Phase 7 — allocation/memory implementation**
+   (AUTHORIZED / NOT STARTED).
 
-Phase 7 is the NEXT AUTHORIZED STEP. It has NOT started and is not in progress or
-implemented. The Phase-7 decision record says PRE-IMPLEMENTATION DECISIONS PROPOSED /
-CORRECTIONS IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW; it does not claim Phase 7
-implementation started, implemented, or complete, and it does not claim methodology
-accepted or findings independently closed.
+Phase 7 implementation is the NEXT AUTHORIZED ENGINEERING STEP. It has NOT
+started and is not in progress or implemented. Phase 8 (container spike) is
+NOT STARTED and must not begin before Phase-7 evidence/handoff satisfies the
+accepted sequencing contract (OD-M5-P7-021).
 
 ## AI / Reviewer Reading Order
 

@@ -357,11 +357,10 @@ package's conaninfo.txt rather than the cache-directory locator). Production `sr
 `include/**` were unchanged by Phase 6. See
 `docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`.
 
-Phase 7 (allocation/memory characterization) is **AUTHORIZED / NOT STARTED**. Its
-pre-implementation decision record is proposed as a docs-only PR (#25) on the immutable base
-`eed3de99efaba8eaa96083a5348d538ed44f6bfe`:
-`docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md` records decisions OD-M5-P7-001 through
-OD-M5-P7-023 (attribution model, instrumentation isolation with a two-lifetime
+Phase 7 (allocation/memory characterization) is **AUTHORIZED / NOT STARTED**.
+Its pre-implementation decision record is **APPROVED / MERGED** via PR #25:
+`docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md` records decisions OD-M5-P7-001
+through OD-M5-P7-023 (attribution model, instrumentation isolation with a two-lifetime
 tracking/measurement model, the complete corrected C++ replaceable operator surface with
 checked aligned backing-size arithmetic, raw requested allocation metrics over the
 `cxx_replaceable_global_new` boundary, the A/P/B live model with
@@ -373,12 +372,12 @@ metrics, machine-readable evidence schemas `M5_ALLOCATION_WRAPPER_V1` /
 `M5_PHASE7_ALLOCATION_RECORD_V1` / `M5_PHASE7_FOOTPRINT_RECORD_V1` with contract
 `M5_PHASE7_MEASUREMENT_CONTRACT_V1`, formal evidence eligibility with the fixed-purpose
 Phase-7 canonical Release runner, toolchain interpretation, overflow/failure behavior, a
-30-case adversarial validation suite, Phase-8 handoff, and the Phase-10 CI boundary). A
-fresh independent methodology review returned CHANGES REQUESTED (P0: 1, P1: 8, P2: 1;
-findings M5-P7-MR-001 .. M5-P7-MR-010); corrections are IMPLEMENTED FOR FOCUSED
-INDEPENDENT RE-REVIEW and independent closure is PENDING. Phase-7 implementation
-authorization is NO until the corrected record is independently re-reviewed and merged
-without material unreviewed decision changes. Phase 8 (container spike) is NOT STARTED.
+30-case adversarial validation suite, Phase-8 handoff, and the Phase-10 CI boundary). The
+final independent methodology review was **APPROVED** (P0: 0, P1: 0, P2: 0); all findings
+M5-P7-MR-001..010 and M5-P7-RR-001 are **CLOSED**; approved Head
+`92288927165f2d7486491371a11a7a586c645565`; squash merge
+`c2ad198677130d05ad054ea48ade3a1d8021c153` (merged tree == approved Head tree).
+Phase-7 implementation has NOT started. Phase 8 (container spike) is NOT STARTED.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 

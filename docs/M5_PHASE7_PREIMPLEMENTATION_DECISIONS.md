@@ -2,62 +2,75 @@
 
 ## Status
 
-- Status: **PRE-IMPLEMENTATION DECISIONS PROPOSED — CORRECTIONS IMPLEMENTED FOR
-  FOCUSED INDEPENDENT RE-REVIEW**
+- Status: **PRE-IMPLEMENTATION DECISIONS APPROVED / MERGED**
 - Decision-review baseline (immutable): `eed3de99efaba8eaa96083a5348d538ed44f6bfe`
-  (live `main`; the squash merge of PR #24,
+  (live `main` at review time; the squash merge of PR #24,
   `docs: record INFRA-TC-001 acceptance and merge`)
+- Final independently approved Head: `92288927165f2d7486491371a11a7a586c645565`
+- PR: **#25** (`Lock M5 Phase 7 allocation/memory measurement contract`),
+  **MERGED / CLOSED** (merged 2026-08-16T09:36:27Z)
+- Squash merge: `c2ad198677130d05ad054ea48ade3a1d8021c153`
+- Merged tree == approved Head tree: `0a9a12ead44effdf4f5b471785fa543d419eae29`
+  (equal)
+- Final independent methodology review: **APPROVED** (P0: **0**; P1: **0**;
+  P2: **0**)
+- Findings: M5-P7-MR-001 .. M5-P7-MR-010 **CLOSED**; M5-P7-RR-001 **CLOSED**
 - Phase 6: **COMPLETE / MERGED** (PR #21, squash merge
   `227524e6d17cce77813c6f26cd65bb8d996f5677`)
 - INFRA-TC-001: **COMPLETE / ACCEPTED / MERGED** (PR #23, squash merge
   `24fb72232e928290add45ed8634cd0bf9a8d3442`)
-- M5 Phase 7 (allocation/memory): **AUTHORIZED / NOT STARTED**
+- M5 Phase 7 methodology: **APPROVED / MERGED**
+- M5 Phase 7 implementation: **AUTHORIZED / NOT STARTED**
 - M5 Phase 8 (container spike): **NOT STARTED**
-- Implementation authorization: **NO** (until this exact decision record is
-  independently re-reviewed and merged without material unreviewed decision
-  changes)
+- Implementation authorization: **YES** — became YES only after the final
+  independent APPROVAL and the squash merge of PR #25 with the merged tree equal
+  to the approved Head tree. AUTHORIZED != STARTED, != IMPLEMENTED, != COMPLETE:
+  Phase-7 implementation remains NOT STARTED.
 
-**Independent methodology review record:**
+**Independent methodology review record (chronological):**
 
 - Fresh independent methodology review of the initial record: **CHANGES REQUESTED**
-- P0: **1**; P1: **8**; P2: **1**
-- Findings: M5-P7-MR-001 .. M5-P7-MR-010
-- Corrections (initial round): **IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW**
-
-- Latest focused independent methodology re-review of the corrected record:
+  - P0: **1**; P1: **8**; P2: **1**
+  - Findings: M5-P7-MR-001 .. M5-P7-MR-010
+  - Corrections (initial round): **IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW**
+- First focused independent methodology re-review of the corrected record:
   **CHANGES REQUESTED**
-- Latest: P0: **0**; P1: **2**; P2: **0**
-- Independent dispositions: M5-P7-MR-001 CLOSED; M5-P7-MR-002 CLOSED;
-  M5-P7-MR-003 CLOSED; M5-P7-MR-004 CLOSED; M5-P7-MR-005 CLOSED;
-  M5-P7-MR-006 CLOSED; M5-P7-MR-007 CLOSED; M5-P7-MR-008 CLOSED;
-  **M5-P7-MR-009 OPEN**; M5-P7-MR-010 CLOSED
-- New finding: **M5-P7-RR-001 — P1** (standard-conforming unknown-provenance
-  adversarial delete construction)
-- Corrections (this revision, MR-009 and RR-001): **IMPLEMENTED FOR FOCUSED
-  INDEPENDENT RE-REVIEW**
-- Closure status: **PENDING** — the next fresh reviewer decides closure; this
-  record does NOT claim independent closure of M5-P7-MR-009 or M5-P7-RR-001,
-  acceptance, or authorization.
+  - P0: **0**; P1: **2**; P2: **0**
+  - Dispositions at that time: M5-P7-MR-001 .. M5-P7-MR-008 CLOSED;
+    **M5-P7-MR-009 OPEN**; M5-P7-MR-010 CLOSED
+  - New finding at that time: **M5-P7-RR-001 — P1** (standard-conforming
+    unknown-provenance adversarial delete construction)
+  - Corrections (second round, MR-009 and RR-001): **IMPLEMENTED FOR FOCUSED
+    INDEPENDENT RE-REVIEW**
+- Final independent methodology re-review of the exact approved Head
+  `92288927165f2d7486491371a11a7a586c645565`: **APPROVED**
+  - P0: **0**; P1: **0**; P2: **0**
+  - M5-P7-MR-001 .. M5-P7-MR-010: **CLOSED**
+  - M5-P7-RR-001: **CLOSED**
+- Closure status: **CLOSED** — all findings closed; methodology APPROVED and
+  squash merged via PR #25 (see Status above).
 
-**Incorrect wording that this record does NOT use:** "methodology accepted",
-"Phase 7 implementation authorized", "Phase 7 started", "findings independently
-closed".
+**Historical review wording:** earlier review rounds recorded below (CHANGES
+REQUESTED, PENDING, authorization NO) are preserved as history and describe
+what was true before final independent approval; they are not current status.
 
 This document is the normative pre-implementation measurement contract for M5
 Phase 7 (allocation and memory characterization). It is NOT implementation
 evidence: no allocation instrumentation code exists or is claimed here.
 
-**This document does NOT implement Phase 7.** Phase 7 remains NOT STARTED in
-this PR.
+**This document does NOT implement Phase 7.** The merged PR #25 was
+methodology/documentation only. Phase-7 implementation remains NOT STARTED.
 
 ## Authorization wording
 
-- While this docs-only PR is open: Phase-7 implementation authorization is **NO**.
-- After this exact (corrected) decision record is independently re-reviewed and
-  merged without material unreviewed decision changes: Phase-7 implementation
-  authorization becomes **YES**.
-- Implementation authorization becomes YES only after all blocking methodology
-  findings raised in review are CLOSED by an independent reviewer.
+- Before independent acceptance and merge, implementation authorization was
+  **NO**.
+- After final independent APPROVAL (P0: 0; P1: 0; P2: 0), all blocking
+  findings CLOSED, and the squash merge of PR #25 with the merged tree equal
+  to the approved Head tree, implementation authorization is **YES**.
+- **AUTHORIZED != STARTED; AUTHORIZED != IMPLEMENTED; AUTHORIZED != COMPLETE.**
+  Phase-7 implementation remains **NOT STARTED**; Phase 8 remains
+  **NOT STARTED**.
 
 ## Purpose
 
@@ -250,10 +263,12 @@ established production accepted-apply path:
 
 ## Independent Review Correction Record
 
-Fresh independent methodology review of the initial Phase-7 decision record:
-**CHANGES REQUESTED** (P0: 1, P1: 8, P2: 1). Corrections below are
-**IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW**; independent closure is
-**PENDING** the next fresh reviewer.
+Chronological review history. Fresh independent methodology review of the
+initial Phase-7 decision record: **CHANGES REQUESTED** (P0: 1, P1: 8, P2: 1).
+Corrections were **IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW**; at that
+time independent closure was **PENDING** the next fresh reviewer. The final
+independent review of the approved Head later returned **APPROVED** (see
+below).
 
 | Finding | Severity | Correction | Affected ODs |
 |---|---|---|---|
@@ -269,9 +284,9 @@ Fresh independent methodology review of the initial Phase-7 decision record:
 | M5-P7-MR-010 | P2 | Modeled memory corrected: node structural model is NON-ADDITIVE (the allocation request already includes node object structure); allocator backing model is ESTIMATED, environment/toolchain/allocator/size-class-specific, non-formal (no universal 16-byte header assumption); RSS remains NOT MEASURED; schema guards against measured+node totals | 006, 016, 021 |
 
 **Latest focused independent methodology re-review** (of the corrected
-record): **CHANGES REQUESTED** (P0: 0, P1: 2, P2: 0).
+record, second round): **CHANGES REQUESTED** (P0: 0, P1: 2, P2: 0).
 
-Independent dispositions:
+Independent dispositions at that time:
 
 - M5-P7-MR-001 CLOSED
 - M5-P7-MR-002 CLOSED
@@ -290,9 +305,20 @@ Independent dispositions:
   standard-conforming C++ allocation/deallocation pairing; the invalid
   "direct `malloc` → `operator delete`" construction must not appear
 
-Corrections for M5-P7-MR-009 and M5-P7-RR-001 in this revision are
-**IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW**; independent closure of
-either finding remains **PENDING** the next fresh reviewer.
+Corrections for M5-P7-MR-009 and M5-P7-RR-001 in that revision were
+**IMPLEMENTED FOR FOCUSED INDEPENDENT RE-REVIEW**; at that time independent
+closure of either finding remained **PENDING** the next fresh reviewer.
+
+**Final independent methodology re-review** (of the exact approved Head
+`92288927165f2d7486491371a11a7a586c645565`): **APPROVED** (P0: 0, P1: 0,
+P2: 0).
+
+- M5-P7-MR-001 .. M5-P7-MR-010: **CLOSED**
+- M5-P7-RR-001: **CLOSED**
+
+The approved Head was squash merged via PR #25 at
+`c2ad198677130d05ad054ea48ade3a1d8021c153`; the merged tree equals the
+approved Head tree (`0a9a12ead44effdf4f5b471785fa543d419eae29`).
 
 | Finding | Severity | Correction | Affected ODs |
 |---|---|---|---|
@@ -303,33 +329,35 @@ either finding remains **PENDING** the next fresh reviewer.
 
 All decisions below are:
 
-- Status: **PROPOSED — PENDING INDEPENDENT METHODOLOGY RE-REVIEW**
+- Status: **APPROVED / MERGED** — final independent methodology review
+  APPROVED (P0: 0, P1: 0, P2: 0); all findings CLOSED; squash merged via
+  PR #25.
 
 | ID | Decision | Status |
 |---|---|---|
-| OD-M5-P7-001 | Measurement purpose / attribution model | PROPOSED (accepted direction, preserved) |
-| OD-M5-P7-002 | Instrumentation isolation and two-lifetime model | PROPOSED (corrected) |
-| OD-M5-P7-003 | Complete allocation operator surface and backing arithmetic | PROPOSED (corrected) |
-| OD-M5-P7-004 | Mandatory allocation metrics (raw requested semantics) | PROPOSED (corrected) |
-| OD-M5-P7-005 | Live bytes / peak live bytes semantics (A/P/B model) | PROPOSED (corrected) |
-| OD-M5-P7-006 | Persistent footprint semantics (non-additive models) | PROPOSED (corrected) |
-| OD-M5-P7-007 | Baseline subtraction / snapshot discipline | PROPOSED (corrected) |
-| OD-M5-P7-008 | M2 workload coverage | PROPOSED (accepted, preserved) |
-| OD-M5-P7-009 | M3 accepted-apply matrix | PROPOSED (accepted, preserved) |
-| OD-M5-P7-010 | M3 attribution / decomposition | PROPOSED (accepted, preserved) |
-| OD-M5-P7-011 | Baseline install allocation | PROPOSED (accepted, preserved) |
-| OD-M5-P7-012 | M4 allocation coverage (scoped boundary) | PROPOSED (corrected scope wording) |
-| OD-M5-P7-013 | Replay allocation workload (exact rationals) | PROPOSED (corrected) |
-| OD-M5-P7-014 | Warmup and one-time runtime effects | PROPOSED (accepted, preserved) |
-| OD-M5-P7-015 | Repetition / determinism (normalized metrics) | PROPOSED (corrected) |
-| OD-M5-P7-016 | Machine-readable evidence schema | PROPOSED (corrected fields) |
-| OD-M5-P7-017 | Formal evidence eligibility | PROPOSED (corrected identity/runner) |
-| OD-M5-P7-018 | Toolchain/environment interpretation | PROPOSED (accepted, preserved) |
-| OD-M5-P7-019 | Instrumentation overflow / failure behavior | PROPOSED (corrected) |
-| OD-M5-P7-020 | Adversarial validation | PROPOSED (rewritten, 30 cases) |
-| OD-M5-P7-021 | Phase-8 handoff | PROPOSED (corrected metrics) |
-| OD-M5-P7-022 | Phase boundary / CI ownership | PROPOSED (accepted, preserved) |
-| OD-M5-P7-023 | Formal canonical Release execution mechanism | PROPOSED (corrected: exact host command, single formal source model; M5-P7-MR-009 final round) |
+| OD-M5-P7-001 | Measurement purpose / attribution model | APPROVED (accepted direction, preserved) |
+| OD-M5-P7-002 | Instrumentation isolation and two-lifetime model | APPROVED (corrected) |
+| OD-M5-P7-003 | Complete allocation operator surface and backing arithmetic | APPROVED (corrected) |
+| OD-M5-P7-004 | Mandatory allocation metrics (raw requested semantics) | APPROVED (corrected) |
+| OD-M5-P7-005 | Live bytes / peak live bytes semantics (A/P/B model) | APPROVED (corrected) |
+| OD-M5-P7-006 | Persistent footprint semantics (non-additive models) | APPROVED (corrected) |
+| OD-M5-P7-007 | Baseline subtraction / snapshot discipline | APPROVED (corrected) |
+| OD-M5-P7-008 | M2 workload coverage | APPROVED (accepted, preserved) |
+| OD-M5-P7-009 | M3 accepted-apply matrix | APPROVED (accepted, preserved) |
+| OD-M5-P7-010 | M3 attribution / decomposition | APPROVED (accepted, preserved) |
+| OD-M5-P7-011 | Baseline install allocation | APPROVED (accepted, preserved) |
+| OD-M5-P7-012 | M4 allocation coverage (scoped boundary) | APPROVED (corrected scope wording) |
+| OD-M5-P7-013 | Replay allocation workload (exact rationals) | APPROVED (corrected) |
+| OD-M5-P7-014 | Warmup and one-time runtime effects | APPROVED (accepted, preserved) |
+| OD-M5-P7-015 | Repetition / determinism (normalized metrics) | APPROVED (corrected) |
+| OD-M5-P7-016 | Machine-readable evidence schema | APPROVED (corrected fields) |
+| OD-M5-P7-017 | Formal evidence eligibility | APPROVED (corrected identity/runner) |
+| OD-M5-P7-018 | Toolchain/environment interpretation | APPROVED (accepted, preserved) |
+| OD-M5-P7-019 | Instrumentation overflow / failure behavior | APPROVED (corrected) |
+| OD-M5-P7-020 | Adversarial validation | APPROVED (rewritten, 30 cases) |
+| OD-M5-P7-021 | Phase-8 handoff | APPROVED (corrected metrics) |
+| OD-M5-P7-022 | Phase boundary / CI ownership | APPROVED (accepted, preserved) |
+| OD-M5-P7-023 | Formal canonical Release execution mechanism | APPROVED (corrected: exact host command, single formal source model; M5-P7-MR-009 final round) |
 
 ---
 
@@ -413,7 +441,8 @@ measurement separated?
   and never visible to production consumers.
 - No production public API is added merely for measurement. No benchmark-only
   hook enters Core. PIMPL is not weakened.
-- Planned measurement executables (design only; not created by this PR):
+- Planned measurement executables (design only; not created by the merged
+  methodology PR, and not yet implemented):
   - `bmd_projection_allocation_m2_m3` — M2 and M3 allocation cells;
   - `bmd_projection_allocation_m4` — M4 allocation cells (built only with
     `BMD_PROJECTION_BUILD_PROTO_ADAPTER=ON`, mirroring the Phase-6 M4
