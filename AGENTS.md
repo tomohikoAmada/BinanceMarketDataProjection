@@ -38,6 +38,11 @@ code changes rely on them.
 - Do not copy Contracts protobuf definitions into this repository.
 - Do not add a Protobuf adapter before M4.
 - Run `scripts/verify.sh` for every PR; do not disable checks to make CI green.
+- Canonical Quality acceptance semantics live in `scripts/quality.sh` and its contract
+  `.toolchain/quality.env` (exact pinned clang/clang-tidy/clang-format; see
+  `docs/QUALITY_TOOLCHAIN.md`). CI's quality job only invokes that entrypoint; never redefine
+  Quality semantics in the workflow, and never treat an arbitrary local clang-tidy pass as
+  canonical acceptance. Deterministic contract tests: `scripts/test-quality-toolchain.sh`.
 - Do not modify the Contracts or Recorder repositories from this workspace.
 - Do not use system-global package installation. Keep virtual environments, caches, and builds in
   this repository.

@@ -25,11 +25,15 @@ orientation only.
 
 ## Current Main
 
-- M5 Phase-6 merge baseline: `227524e6d17cce77813c6f26cd65bb8d996f5677` (PR #21
-  squash merge, on top of the Phase-5 merge `53268d5cd2090f4779ffdc14c070184f470cc899`
-  and the post-merge Phase-4 documentation synchronization PR #17 at
-  `d287c08ed362c5202f25eb77b411bd24bb82cef0`). Main advances as documentation-state PRs
-  merge; see Git history for the current tip.
+- Current main tip: `22f4a92b1417fe1c844f9da588e5f3014833ca77` — the PR #22 governance/status
+  synchronization commit (M5 Phase-6 record). This is the live `main` HEAD.
+- M5 Phase-6 implementation squash merge: `227524e6d17cce77813c6f26cd65bb8d996f5677` (PR #21).
+  This is the Phase-6 implementation baseline, NOT the current main tip; main advanced to
+  `22f4a92b…` through PR #22 after it.
+- M5 Phase-6 accepted implementation Head: `9776ba6b93990c44e550f289b69127ca721b0d00`
+  (accepted exact-head CI `31803322848` — 18/18 PASS; the accepted Head and the squash merge
+  share the same repository tree `79aa0151d65d42a1c63e6649bf24bf9053105667`).
+- Main advances as documentation-state PRs merge; Git history is authoritative for the tip.
 - M0-M4 are complete on main.
 - M5 Phase 1 through Phase 6 are complete/merged on main.
 - ADR-0008 is ACCEPTED: Spot bootstrap uses successor coverage (`U <= L + 1 <= u`,
@@ -143,13 +147,40 @@ artifact is a separate identity and remains outside Projection ownership.
 ## Current Blockers
 
 - No Phase-6 technical blockers remain.
-- P6-AUDIT-003 is CLOSED by the post-merge governance/status synchronization (this PR #22):
+- P6-AUDIT-003 is CLOSED by the post-merge governance/status synchronization (PR #22):
   Phase-6 repository status/orientation documents are synchronized with the accepted
   implementation Head `9776ba6b93990c44e550f289b69127ca721b0d00`, exact-head CI
   `31803322848` — 18/18 PASS, formal evidence ACCEPTED, independent review APPROVED,
   PR #21 MERGED, squash merge `227524e6d17cce77813c6f26cd65bb8d996f5677`, and post-merge
   main CI `31809917018` — 18/18 PASS.
-- Toolchain reproducibility hardening remains a separate future infrastructure task.
+- INFRA-TC-001 (reproducible Quality toolchain): IMPLEMENTED / PENDING FINAL INDEPENDENT
+  RE-REVIEW. Active candidate: PR #23, branch `chore/reproducible-quality-toolchain`. The
+  exact current PR Head and exact-head CI are GitHub/PR evidence and are intentionally not
+  duplicated in this orientation document because they change when this document itself is
+  committed. Five review rounds requested changes; all corrections are implemented and the
+  candidate is awaiting the final focused independent re-review. CI success is NOT independent
+  acceptance. Implementation facts: exact clang/clang++/clang-tidy/clang-format identity in
+  `.toolchain/quality.env` (single source of truth), one repo-owned canonical Quality
+  entrypoint `scripts/quality.sh` used by CI and local developers, base-image digest bound
+  through a build argument (no independent Dockerfile literal) AND verified in-build: the
+  Dockerfile re-derives the base reference from the exact baked contract with the production
+  helper and fails the build if it differs from the FROM argument (before TLS bootstrap/apt),
+  Ubuntu archive state pinned
+  to the HISTORICAL snapshot `UBUNTU_SNAPSHOT_ID=20260814T120000Z` (format + real UTC
+  calendar + temporal validation; future IDs fail closed), duplicate contract key assignments
+  invalid and fail closed in every consumer (no first-wins/last-wins), test-only
+  `BMD_QUALITY_*` hooks and stale internal `BMD_CANONICAL_QUALITY_*` orchestration variables
+  rejected by the canonical entrypoint before image construction (container mode is not
+  ambient-selectable; canonical source/work roots are fixed `/src` and `/work`; the internal
+  container mode proves the canonical image boundary — baked contract equals mounted source
+  contract — before any source copy or recursive execution), canonical runtime requires a
+  real Docker Engine backend (Docker Engine on Linux, Docker Desktop on macOS; Podman and
+  podman-docker/libpod backends are not validated and are rejected), immutable SHA-256-pinned
+  TLS bootstrap artifact (no mutable live archive), cache namespaces keyed by the canonical
+  contract, ephemeral /work with never-persisted build trees, dpkg provenance plus installed
+  payload md5 verification, and 100 deterministic/adversarial contract tests. See
+  `docs/QUALITY_TOOLCHAIN.md` and the PR body for the implementation/evidence report. Do NOT
+  treat INFRA-TC-001 as accepted until the final independent re-review passes.
 - Later M5 phases remain separately authorized work.
 
 ## Accepted Semantic Authorities
@@ -210,6 +241,12 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
   `227524e6d17cce77813c6f26cd65bb8d996f5677` completed `success` — 18/18 jobs PASS (quality, ASan,
   UBSan, benchmark smoke, fuzz smoke, Release GCC/Clang/AppleClang, all M4 static/shared gates,
   `m5-replay`, `m5-semantic-compare`).
+- INFRA-TC-001 candidate PR #23 has completed exact-head CI runs with all job classes passing
+  (quality, quality-toolchain-tests, and all compatibility classes). The current run ID, job
+  count, and Head are GitHub/PR evidence and are intentionally not maintained as a ledger in
+  this orientation document (they change when this document itself is committed); see the PR
+  body for the exact current candidate evidence. Candidate CI evidence is NOT independent
+  acceptance of INFRA-TC-001, which remains IMPLEMENTED / PENDING FINAL INDEPENDENT RE-REVIEW.
 - PR #16 rejected reviewed Head `bf2239206ff74e11e3ce73de73f28465b033f808` had successful run
   `31559019189`, but independent semantic review found seven P1 defects. That historical green run
   is rejection/correction history and is not acceptance evidence for the merged implementation.
@@ -219,11 +256,19 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 M5 Phase 6 is complete and merged (PR #21, squash merge
 `227524e6d17cce77813c6f26cd65bb8d996f5677`; accepted implementation Head
 `9776ba6b93990c44e550f289b69127ca721b0d00`; exact-head CI `31803322848` — 18/18 PASS;
-post-merge main CI `31809917018` — 18/18 PASS). P6-AUDIT-003 is CLOSED by this
+post-merge main CI `31809917018` — 18/18 PASS). P6-AUDIT-003 is CLOSED by the PR #22
 governance/status synchronization. Immediate sequencing:
 
-1. standalone Toolchain Reproducibility / Quality Toolchain Hardening task;
-2. after that task is separately completed/accepted, proceed to separately authorized
+1. INFRA-TC-001 (reproducible Quality toolchain): IMPLEMENTED / PENDING FINAL INDEPENDENT
+   RE-REVIEW (PR #23, branch `chore/reproducible-quality-toolchain`; corrections for all
+   findings — INFRA-TC-FINAL-003/004/005/006, INFRA-TC-REREVIEW-001/002/003, the
+   INFRA-TC-REREVIEW-001/FINALREREVIEW-001 re-review findings on test-hook isolation and
+   duplicate-key fail-closed, the INFRA-TC-FINALREREVIEW2-001 trust-boundary finding on
+   ambient container-mode/source/work selection, and the INFRA-TC-FINALREREVIEW3-001/002
+   findings on in-build FROM-arg base binding and exact argv grammar — are implemented;
+   INFRA-TC-FINAL-001/002 were closed by the prior independent re-review; the exact current
+   PR Head and exact-head CI are GitHub/PR evidence, see the PR body). It is not merged yet.
+2. After INFRA-TC-001 is separately completed/accepted, proceed to separately authorized
    Phase-7 work.
 
 Phase 7 has NOT started.

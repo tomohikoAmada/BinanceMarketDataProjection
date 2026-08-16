@@ -1,0 +1,5 @@
+# Build context for the canonical Quality image only needs .toolchain/quality.env.
+.git
+build
+.cache
+.venv-tools
