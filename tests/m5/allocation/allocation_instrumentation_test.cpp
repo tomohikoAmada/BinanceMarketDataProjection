@@ -275,13 +275,23 @@ TEST(AllocationInstrumentationAdversarial, SizedAlignedArrayDeleteExactSignature
     EXPECT_FALSE(seams::sized_delete_mismatch_for_test());
 }
 
+// Loads the near-SIZE_MAX adversarial request through a volatile access so
+// GCC cannot constant-fold the value and emit -Walloc-size-larger-than for
+// this deliberate fail-closed-overflow construction.
+[[nodiscard]] std::size_t huge_request() {
+    constexpr std::size_t huge = std::numeric_limits<std::size_t>::max() - 10U;
+    const volatile std::size_t loaded = huge;
+    return loaded;
+}
+
 // Case 11: aligned near-SIZE_MAX throwing overflow (OD-M5-P7-020 case 11,
 // M5-P7-MR-002).
 TEST(AllocationInstrumentationAdversarial, AlignedNearSizeMaxThrowingOverflowBadAlloc) {
-    constexpr std::size_t huge = std::numeric_limits<std::size_t>::max() - 10U;
     const auto live_before = allocation::live_bytes_snapshot();
-    EXPECT_THROW(static_cast<void>(::operator new(huge, std::align_val_t{64})), std::bad_alloc);
-    EXPECT_THROW(static_cast<void>(::operator new[](huge, std::align_val_t{64})), std::bad_alloc);
+    EXPECT_THROW(static_cast<void>(::operator new(huge_request(), std::align_val_t{64})),
+                 std::bad_alloc);
+    EXPECT_THROW(static_cast<void>(::operator new[](huge_request(), std::align_val_t{64})),
+                 std::bad_alloc);
     EXPECT_EQ(allocation::live_bytes_snapshot(), live_before);
     EXPECT_FALSE(seams::provenance_table_overflowed_for_test());
     EXPECT_FALSE(seams::stale_entry_collision_for_test());
@@ -290,13 +300,12 @@ TEST(AllocationInstrumentationAdversarial, AlignedNearSizeMaxThrowingOverflowBad
 // Case 12: aligned near-SIZE_MAX nothrow overflow (OD-M5-P7-020 case 12,
 // M5-P7-MR-002).
 TEST(AllocationInstrumentationAdversarial, AlignedNearSizeMaxNothrowOverflowNull) {
-    constexpr std::size_t huge = std::numeric_limits<std::size_t>::max() - 10U;
-    EXPECT_EQ(::operator new(huge, std::align_val_t{64}, std::nothrow), nullptr);
-    EXPECT_EQ(::operator new[](huge, std::align_val_t{64}, std::nothrow), nullptr);
+    EXPECT_EQ(::operator new(huge_request(), std::align_val_t{64}, std::nothrow), nullptr);
+    EXPECT_EQ(::operator new[](huge_request(), std::align_val_t{64}, std::nothrow), nullptr);
 
     MeasurementScope scope;
-    void* p = ::operator new(huge, std::align_val_t{64}, std::nothrow);
-    void* q = ::operator new[](huge, std::align_val_t{64}, std::nothrow);
+    void* p = ::operator new(huge_request(), std::align_val_t{64}, std::nothrow);
+    void* q = ::operator new[](huge_request(), std::align_val_t{64}, std::nothrow);
     scope.finish();
     const MeasurementResult& r = scope.result();
     EXPECT_EQ(p, nullptr);
