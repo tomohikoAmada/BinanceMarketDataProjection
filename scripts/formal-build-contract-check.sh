@@ -39,6 +39,15 @@ require_line() {
     fi
 }
 
+# The explicit -D LTO setting lands in the cache with the UNINITIALIZED type
+# (command-line cache entries); the value is what establishes the explicit
+# recorded state. Require the entry to exist with exactly OFF.
+require_lto_off() {
+    if ! grep -qE '^CMAKE_INTERPROCEDURAL_OPTIMIZATION:(UNINITIALIZED|BOOL)=OFF$' "$cache"; then
+        fail "formal build contract violation: LTO state must be explicitly recorded (OFF)"
+    fi
+}
+
 require_line 'CMAKE_HOME_DIRECTORY:INTERNAL=/src' \
     "CMake source root must be exactly /src"
 require_line 'CMAKE_BUILD_TYPE:STRING=Release' \
@@ -51,11 +60,12 @@ require_line 'BMD_PROJECTION_ENABLE_TSAN:BOOL=OFF' \
     "TSan must be explicitly OFF"
 require_line 'BMD_PROJECTION_ENABLE_COVERAGE:BOOL=OFF' \
     "coverage must be explicitly OFF"
-require_line 'CMAKE_INTERPROCEDURAL_OPTIMIZATION:BOOL=OFF' \
-    "LTO state must be explicitly recorded (OFF)"
+require_lto_off
 require_line 'BMD_PROJECTION_BUILD_BENCHMARKS:BOOL=ON' \
     "benchmarks must be ON (measurement executables must exist)"
-require_line 'BMD_PROJECTION_BUILD_PROTO_ADAPTER:BOOL=ON' \
+# The accepted repository benchmark build records the adapter option as a
+# STRING cache entry; the formal build mirrors that exact shape.
+require_line 'BMD_PROJECTION_BUILD_PROTO_ADAPTER:STRING=ON' \
     "ProtoAdapter must be ON (the M4 inventory is required formal evidence)"
 require_line 'BMD_PROJECTION_BUILD_TESTS:BOOL=OFF' \
     "tests must be OFF for the formal measurement build"
