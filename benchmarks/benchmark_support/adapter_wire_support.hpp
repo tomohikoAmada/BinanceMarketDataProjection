@@ -36,6 +36,13 @@ struct WireIdentity final {
 // Spot BTCUSDT identity with the benchmark numeric spec.
 [[nodiscard]] WireIdentity benchmark_wire_identity();
 
+// The exact SnapshotContext fixture of the accepted Phase-6 M4
+// snapshot/serialization families (producer "phase6-benchmark"). Shared by
+// the Phase-6 timing benchmark and the Phase-7 M4 allocation executable so
+// the declared workload identity and the runtime fixture cannot silently
+// drift (OD-M5-P7-012; M5-P7-PRB-002).
+[[nodiscard]] adapter::SnapshotContext benchmark_snapshot_context();
+
 // ExchangeDepthSnapshot with `depth` bids and `depth` asks at the benchmark
 // prices/quantities.
 [[nodiscard]] market_wire::ExchangeDepthSnapshot make_snapshot_wire(std::size_t depth);

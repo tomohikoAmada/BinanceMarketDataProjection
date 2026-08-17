@@ -289,14 +289,12 @@ const auto kM4SpecRegistration = [] {
     return bm::build_allocation_record_json(input);
 }
 
+// The runtime SnapshotContext is the single shared benchmark-support fixture
+// of the accepted Phase-6 M4 snapshot/serialization families, so the declared
+// workload identity and the executed fixture cannot silently drift
+// (OD-M5-P7-012; M5-P7-PRB-002).
 [[nodiscard]] adapter::SnapshotContext make_snapshot_context() {
-    return {{"BTCUSDT", core::SequencePolicyKind::Spot},
-            "phase7-allocation",
-            "1",
-            adapter::SnapshotOrigin::GatewayLive,
-            1'234'567,
-            std::uint64_t{654'321},
-            std::nullopt};
+    return wire_support::benchmark_snapshot_context();
 }
 
 [[nodiscard]] std::string measure_make_snapshot(bm::Phase7Harness& harness, const std::string& name,

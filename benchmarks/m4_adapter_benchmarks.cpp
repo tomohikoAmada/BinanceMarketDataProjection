@@ -200,14 +200,11 @@ static void BM_M4CheckedApply(benchmark::State& state) {
     return bm::build_synchronized_projection(core::SequencePolicyKind::Spot, depth);
 }
 
+// The runtime SnapshotContext fixture is the single shared benchmark-support
+// value also used by the Phase-7 M4 allocation executable; the accepted
+// Phase-6 workload identities describe exactly this fixture (M5-P7-PRB-002).
 [[nodiscard]] adapter::SnapshotContext make_snapshot_context() {
-    return {{"BTCUSDT", core::SequencePolicyKind::Spot},
-            "phase6-benchmark",
-            "1",
-            adapter::SnapshotOrigin::GatewayLive,
-            1'234'567,
-            std::uint64_t{654'321},
-            std::nullopt};
+    return wire_support::benchmark_snapshot_context();
 }
 
 static void BM_M4MakeLocalOrderBookSnapshotUnlimited(benchmark::State& state) {

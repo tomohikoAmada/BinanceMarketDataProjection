@@ -326,6 +326,16 @@ WireIdentity benchmark_wire_identity() {
     return {benchmark_numeric_spec(), {"BTCUSDT", core::SequencePolicyKind::Spot}};
 }
 
+adapter::SnapshotContext benchmark_snapshot_context() {
+    return {{"BTCUSDT", core::SequencePolicyKind::Spot},
+            std::string{kBenchmarkProducer},
+            std::string{kBenchmarkProducerVersion},
+            adapter::SnapshotOrigin::GatewayLive,
+            1'234'567,
+            std::uint64_t{654'321},
+            std::nullopt};
+}
+
 market_wire::ExchangeDepthSnapshot make_snapshot_wire(std::size_t depth) {
     const BookParams params{};
     market_wire::ExchangeDepthSnapshot wire;
