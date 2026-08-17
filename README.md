@@ -2,8 +2,8 @@
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. M1 through M4 are complete on `main`; M5 (Differential Validation and
-Performance) implementation is in progress (Phases 1 through 6 complete/merged; later phases not
-started).
+Performance) implementation is in progress (Phases 1 through 6 complete/merged; Phase 7 in
+progress; Phase 8 not started).
 
 ## For AI agents and independent reviewers
 
@@ -315,7 +315,7 @@ PASS). See [M5 Phase 5](docs/M5_PHASE5_DIFFERENTIAL_FUZZING.md). Phase 6 is COMP
 independent review APPROVED, formal exact-head evidence ACCEPTED, squash merge
 `227524e6d17cce77813c6f26cd65bb8d996f5677`, post-merge main CI `31809917018` — 18/18 PASS; see
 [M5 Phase 6](docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md)); later phases remain not started.
-Phase 7 (allocation/memory characterization) is AUTHORIZED / NOT STARTED. Its
+Phase 7 (allocation/memory characterization) is AUTHORIZED / IN PROGRESS. Its
 preimplementation methodology
 [docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md](docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md)
 (decisions OD-M5-P7-001 through OD-M5-P7-023) was independently APPROVED
@@ -323,8 +323,11 @@ preimplementation methodology
 and squash merged via PR #25 at
 `c2ad198677130d05ad054ea48ade3a1d8021c153` (approved Head
 `92288927165f2d7486491371a11a7a586c645565`; merged tree == approved Head
-tree). Phase-7 implementation is authorized but remains NOT STARTED; Phase 8
-is NOT STARTED.
+tree). Phase-7 implementation is IN PROGRESS: PR-A merged the allocation
+instrumentation substrate; the measurement/evidence machinery (schemas,
+validator, M2/M3/M4/replay/footprint characterization, exploratory driver)
+is implemented on the Phase-7 measurement PR-B branch. The formal Release
+runner and formal evidence are NOT implemented. Phase 8 is NOT STARTED.
 Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
 cross-compiler semantic manifests with artifact fan-in transport, replay/differential fuzzing,

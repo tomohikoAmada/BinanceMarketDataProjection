@@ -5,6 +5,7 @@
 // before any measured region; adaptation timing excludes wire construction.
 
 #include "book_state.hpp"
+#include "m4_cell_identity.hpp"
 #include "replay_types.hpp"
 
 #include <binance_market_data/market/v1/market_events.pb.h>
@@ -24,8 +25,6 @@ namespace adapter = binance_market_data::projection_adapter::v1;
 namespace core = binance_market_data::projection::v1;
 namespace market_wire = binance_market_data::market::v1;
 
-inline constexpr std::size_t kM4UpdateLevelCount = 10;
-
 struct WireIdentity final {
     WireIdentity(core::NumericSpec spec, adapter::ExpectedIdentity identity)
         : numeric_spec{spec}, expected{std::move(identity)} {}
@@ -36,6 +35,13 @@ struct WireIdentity final {
 
 // Spot BTCUSDT identity with the benchmark numeric spec.
 [[nodiscard]] WireIdentity benchmark_wire_identity();
+
+// The exact SnapshotContext fixture of the accepted Phase-6 M4
+// snapshot/serialization families (producer "phase6-benchmark"). Shared by
+// the Phase-6 timing benchmark and the Phase-7 M4 allocation executable so
+// the declared workload identity and the runtime fixture cannot silently
+// drift (OD-M5-P7-012; M5-P7-PRB-002).
+[[nodiscard]] adapter::SnapshotContext benchmark_snapshot_context();
 
 // ExchangeDepthSnapshot with `depth` bids and `depth` asks at the benchmark
 // prices/quantities.
@@ -48,41 +54,7 @@ struct WireIdentity final {
 make_update_wire(std::uint64_t first_update_id, std::uint64_t final_update_id,
                  std::optional<std::uint64_t> previous_final_update_id);
 
-// One authoritative Spot DepthUpdate successor-range description shared by the
-// M4 update-boundary families. The actual timed wire and the canonical
-// generated-workload identity both derive from the same cell description so
-// the two cannot silently drift (OD-M5-P6-021/023).
-struct M4SpotDepthUpdateCell final {
-    std::uint64_t first_update_id{};
-    std::uint64_t final_update_id{};
-    std::optional<std::uint64_t> previous_final_update_id{std::nullopt};
-};
-
-// AdaptDepthUpdate/Spot adapts the range shape at 1'000'001 (no Core apply).
-inline constexpr M4SpotDepthUpdateCell kM4AdaptDepthUpdateCell{1'000'001, 1'000'001, std::nullopt};
-
-// CheckedApply executes the true successor [1'000'002, 1'000'002] against a
-// prepared projection synchronized at 1'000'001.
-inline constexpr M4SpotDepthUpdateCell kM4CheckedApplyCell{1'000'002, 1'000'002, std::nullopt};
-
-// The prepared synchronized state against which CheckedApply executes
-// (build_synchronized_projection leaves the projection at base + 1).
-inline constexpr std::uint64_t kM4CheckedApplyPreparedUpdateId = 1'000'001;
-
-// Formal canonical sequence parameters of the locked CheckedApply successor
-// cell. Derived from the same authoritative cell used to build the timed wire,
-// so the registered canonical workload spec cannot silently drift from
-// execution (OD-M5-P6-021/023/028; P6-FINAL-001).
-[[nodiscard]] std::vector<std::pair<std::string, std::string>>
-checked_apply_canonical_sequence_fields();
-
 [[nodiscard]] market_wire::DepthUpdate make_update_wire(const M4SpotDepthUpdateCell& cell);
-
-// Canonical M4 generated-workload description (m4_cell_v1) from which the
-// generated-workload SHA-256 is derived. The update-boundary families build
-// their update wire from the authoritative cell descriptions above.
-[[nodiscard]] std::string m4_generated_workload_description(std::string_view family,
-                                                            std::size_t depth);
 
 enum class PreconstructedKind : std::uint8_t {
     Baseline,

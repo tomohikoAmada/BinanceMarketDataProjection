@@ -16,36 +16,6 @@
 namespace bmd_projection::m5::benchmark {
 namespace {
 
-[[nodiscard]] std::string standard_library_name() noexcept {
-#if defined(__GLIBCXX__)
-    return "libstdc++";
-#elif defined(_LIBCPP_VERSION)
-    return "libc++";
-#else
-    return "unavailable";
-#endif
-}
-
-[[nodiscard]] std::string standard_library_version() noexcept {
-#if defined(__GLIBCXX__)
-    return std::to_string(__GLIBCXX__);
-#elif defined(_LIBCPP_VERSION)
-    return std::to_string(_LIBCPP_VERSION);
-#else
-    return "unavailable";
-#endif
-}
-
-[[nodiscard]] std::string standard_library_detection_status() noexcept {
-#if defined(__GLIBCXX__)
-    return "detected_via___GLIBCXX__";
-#elif defined(_LIBCPP_VERSION)
-    return "detected_via__LIBCPP_VERSION";
-#else
-    return "preprocessor_undetected";
-#endif
-}
-
 [[nodiscard]] std::vector<std::string> split_conan_references() {
     std::vector<std::string> references;
     std::istringstream stream{std::string{BMD_P6_CONAN_REFERENCES}};
@@ -58,26 +28,56 @@ namespace {
     return references;
 }
 
-[[nodiscard]] std::string workload_field(const WorkloadRecord& workload, std::string_view key) {
-    const auto prefix = std::string{key} + "=";
-    std::istringstream stream{workload.canonical_text};
-    std::string line;
-    while (std::getline(stream, line)) {
-        if (line.starts_with(prefix)) {
-            return line.substr(prefix.size());
-        }
-    }
-    return {};
+} // namespace
+
+std::string standard_library_name() noexcept {
+#if defined(__GLIBCXX__)
+    return "libstdc++";
+#elif defined(_LIBCPP_VERSION)
+    return "libc++";
+#else
+    return "unavailable";
+#endif
 }
 
-[[nodiscard]] bool valid_git_sha(std::string_view value) {
+std::string standard_library_version() noexcept {
+#if defined(__GLIBCXX__)
+    return std::to_string(__GLIBCXX__);
+#elif defined(_LIBCPP_VERSION)
+    return std::to_string(_LIBCPP_VERSION);
+#else
+    return "unavailable";
+#endif
+}
+
+std::string standard_library_detection_status() noexcept {
+#if defined(__GLIBCXX__)
+    return "detected_via___GLIBCXX__";
+#elif defined(_LIBCPP_VERSION)
+    return "detected_via__LIBCPP_VERSION";
+#else
+    return "preprocessor_undetected";
+#endif
+}
+
+bool valid_git_sha(std::string_view value) {
     return (value.size() == 40 || value.size() == 64) &&
            std::all_of(value.begin(), value.end(), [](char character) {
                return std::isxdigit(static_cast<unsigned char>(character)) != 0;
            });
 }
 
-void write_build_identity(json::Writer& writer) {
+SourceProvenanceState compute_source_provenance_state() {
+    SourceProvenanceState state;
+    state.known = std::string_view{BMD_P6_GIT_PROVENANCE_STATUS} == "known" &&
+                  valid_git_sha(BMD_P6_GIT_SHA) &&
+                  (std::string_view{BMD_P6_GIT_DIRTY_AT_CONFIGURE} == "true" ||
+                   std::string_view{BMD_P6_GIT_DIRTY_AT_CONFIGURE} == "false");
+    state.dirty = !state.known || std::string_view{BMD_P6_GIT_DIRTY_AT_CONFIGURE} == "true";
+    return state;
+}
+
+void write_build_identity_section(json::Writer& writer) {
     writer.key("compiler");
     writer.begin_object();
     writer.key("id");
@@ -114,7 +114,7 @@ void write_build_identity(json::Writer& writer) {
     writer.value(BMD_P6_GOOGLE_BENCHMARK_VERSION);
 }
 
-void write_m4_dependency_identity(json::Writer& writer) {
+void write_m4_dependency_section(json::Writer& writer) {
     writer.key("m4_dependency_identity");
     writer.begin_object();
     writer.key("status");
@@ -139,71 +139,8 @@ void write_m4_dependency_identity(json::Writer& writer) {
     writer.end_object();
 }
 
-} // namespace
-
-std::string build_wrapper_json(const WrapperInput& input) {
-    const auto binary_sha = sha256_file_hex(input.binary_path);
-    const auto payload_sha = sha256_file_hex(input.payload_path);
-    if (binary_sha.empty() || payload_sha.empty()) {
-        return {};
-    }
-
-    auto effective_class = input.evidence_class;
-    std::string downgrade_reason;
-    const bool source_known =
-        BMD_P6_GIT_PROVENANCE_STATUS == "known" && valid_git_sha(BMD_P6_GIT_SHA) &&
-        (BMD_P6_GIT_DIRTY_AT_CONFIGURE == "true" || BMD_P6_GIT_DIRTY_AT_CONFIGURE == "false");
-    if (!source_known && input.evidence_class == "formal") {
-        return {};
-    }
-    const bool dirty_at_configure = !source_known || BMD_P6_GIT_DIRTY_AT_CONFIGURE == "true";
-    if (dirty_at_configure && effective_class == "formal") {
-        effective_class = "exploratory";
-        downgrade_reason = "dirty_at_configure";
-    }
-
+void write_environment_section(json::Writer& writer) {
     const auto environment = collect_environment_identity();
-
-    json::Writer writer;
-    writer.begin_object();
-    writer.key("schema");
-    writer.value(kWrapperSchema);
-    writer.key("measurement_contract_version");
-    writer.value(kMeasurementContract);
-    writer.key("evidence_class");
-    writer.value(effective_class);
-    writer.key("requested_evidence_class");
-    writer.value(input.evidence_class);
-    writer.key("evidence_class_downgrade_reason");
-    if (downgrade_reason.empty()) {
-        writer.value_null();
-    } else {
-        writer.value(downgrade_reason);
-    }
-
-    writer.key("source_provenance");
-    writer.begin_object();
-    writer.key("git_sha");
-    writer.value(BMD_P6_GIT_SHA);
-    writer.key("status");
-    writer.value(source_known ? "known" : "unavailable");
-    writer.key("dirty_at_configure");
-    writer.value(dirty_at_configure);
-    writer.end_object();
-
-    writer.key("binary_provenance");
-    writer.begin_object();
-    writer.key("path");
-    writer.value(input.binary_path);
-    writer.key("sha256");
-    writer.value(binary_sha);
-    writer.end_object();
-
-    writer.key("build_identity");
-    writer.begin_object();
-    write_build_identity(writer);
-    writer.end_object();
-
     writer.key("environment_identity");
     writer.begin_object();
     writer.key("os_name");
@@ -217,12 +154,37 @@ std::string build_wrapper_json(const WrapperInput& input) {
     writer.key("logical_core_count");
     writer.value(environment.logical_core_count);
     writer.end_object();
+}
 
-    write_m4_dependency_identity(writer);
+void write_source_provenance_section(json::Writer& writer, const SourceProvenanceState& state) {
+    writer.key("source_provenance");
+    writer.begin_object();
+    writer.key("git_sha");
+    writer.value(BMD_P6_GIT_SHA);
+    writer.key("status");
+    writer.value(state.known ? "known" : "unavailable");
+    writer.key("dirty_at_configure");
+    writer.value(state.dirty);
+    writer.end_object();
+}
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+void write_binary_provenance_section(json::Writer& writer, std::string_view path,
+                                     std::string_view sha256) {
+    writer.key("binary_provenance");
+    writer.begin_object();
+    writer.key("path");
+    writer.value(path);
+    writer.key("sha256");
+    writer.value(sha256);
+    writer.end_object();
+}
+
+void write_workload_identities_section(json::Writer& writer,
+                                       const std::vector<WorkloadRecord>& workloads) {
     writer.key("workload_identities");
     writer.begin_array();
-    for (const auto& workload : input.workloads) {
+    for (const auto& workload : workloads) {
         writer.begin_object();
         writer.key("benchmark_name");
         writer.value(workload.benchmark_name);
@@ -243,6 +205,66 @@ std::string build_wrapper_json(const WrapperInput& input) {
         writer.end_object();
     }
     writer.end_array();
+}
+
+std::string workload_field(const WorkloadRecord& workload, std::string_view key) {
+    const auto prefix = std::string{key} + "=";
+    std::istringstream stream{workload.canonical_text};
+    std::string line;
+    while (std::getline(stream, line)) {
+        if (line.starts_with(prefix)) {
+            return line.substr(prefix.size());
+        }
+    }
+    return {};
+}
+
+std::string build_wrapper_json(const WrapperInput& input) {
+    const auto binary_sha = sha256_file_hex(input.binary_path);
+    const auto payload_sha = sha256_file_hex(input.payload_path);
+    if (binary_sha.empty() || payload_sha.empty()) {
+        return {};
+    }
+
+    auto effective_class = input.evidence_class;
+    std::string downgrade_reason;
+    const auto source_state = compute_source_provenance_state();
+    if (!source_state.known && input.evidence_class == "formal") {
+        return {};
+    }
+    if (source_state.dirty && effective_class == "formal") {
+        effective_class = "exploratory";
+        downgrade_reason = "dirty_at_configure";
+    }
+
+    json::Writer writer;
+    writer.begin_object();
+    writer.key("schema");
+    writer.value(kWrapperSchema);
+    writer.key("measurement_contract_version");
+    writer.value(kMeasurementContract);
+    writer.key("evidence_class");
+    writer.value(effective_class);
+    writer.key("requested_evidence_class");
+    writer.value(input.evidence_class);
+    writer.key("evidence_class_downgrade_reason");
+    if (downgrade_reason.empty()) {
+        writer.value_null();
+    } else {
+        writer.value(downgrade_reason);
+    }
+
+    write_source_provenance_section(writer, source_state);
+    write_binary_provenance_section(writer, input.binary_path, binary_sha);
+
+    writer.key("build_identity");
+    writer.begin_object();
+    write_build_identity_section(writer);
+    writer.end_object();
+
+    write_environment_section(writer);
+    write_m4_dependency_section(writer);
+    write_workload_identities_section(writer, input.workloads);
 
     writer.key("measurement_identity");
     writer.begin_object();

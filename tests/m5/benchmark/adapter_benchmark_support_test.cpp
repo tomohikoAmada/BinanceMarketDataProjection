@@ -140,4 +140,22 @@ TEST(Phase6AdapterReplay, UsdMWorkloadProducesStableDistinctChecksum) {
     EXPECT_TRUE(observation.usdm_synchronized);
 }
 
+// M5-P7-PRB-002: the accepted Phase-6 M4 snapshot/serialization identities
+// describe the shared runtime SnapshotContext fixture; both the Phase-6
+// timing benchmark and the Phase-7 M4 allocation executable execute exactly
+// this value. Asserted against explicit literals (not another copy of the
+// workload-spec string) so any future fixture drift fails this test even if
+// the registered identity text stayed unchanged.
+TEST(Phase6M4SnapshotFixture, SharedContextIsTheAcceptedPhase6Fixture) {
+    const auto context = wire_support::benchmark_snapshot_context();
+    EXPECT_EQ(context.identity.symbol, "BTCUSDT");
+    EXPECT_EQ(context.identity.policy, core::SequencePolicyKind::Spot);
+    EXPECT_EQ(context.producer, "phase6-benchmark");
+    EXPECT_EQ(context.producer_version, "1");
+    EXPECT_EQ(context.source, adapter::SnapshotOrigin::GatewayLive);
+    EXPECT_EQ(context.generated_time_utc_ns, 1'234'567U);
+    EXPECT_EQ(context.generated_monotonic_ns, std::optional<std::uint64_t>{654'321});
+    EXPECT_FALSE(context.current_gap.has_value());
+}
+
 } // namespace

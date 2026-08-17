@@ -153,12 +153,34 @@ artifact is a separate identity and remains outside Projection ownership.
 ## Not Implemented
 
 - Phase 7 (allocation/memory) methodology is APPROVED / MERGED (PR #25). Phase-7
-  implementation is **IN PROGRESS**: PR-A (work package WP1) implements the
-  executable-local allocation instrumentation substrate and its adversarial
-  validation executable only. NOT implemented yet: the formal M2/M3/M4/replay
-  measurement inventory, the Phase-7 evidence schemas/validator, the formal
-  Release runner, and formal evidence (all later PRs of the approved Phase-7
-  implementation plan).
+  implementation is **IN PROGRESS**:
+  - PR-A (work package WP1) implements the executable-local allocation
+    instrumentation substrate (constant-initialized process-lifetime state,
+    fixed-capacity non-allocating provenance table, complete 20-form
+    replaceable global new/delete surface with checked aligned backing
+    arithmetic, MeasurementScope A/P/B semantics, fail-closed
+    overflow/failure behavior, test-only seams) and its adversarial
+    validation executable `bmd_projection_allocation_instrumentation_tests`.
+  - PR-B (work packages WP2–WP4) implements the measurement/evidence
+    machinery: the Phase-7 evidence schemas (`M5_ALLOCATION_WRAPPER_V1`,
+    `M5_PHASE7_MEASUREMENT_CONTRACT_V1`, `M5_PHASE7_ALLOCATION_RECORD_V1`,
+    `M5_PHASE7_FOOTPRINT_RECORD_V1`) with a canonical result-payload
+    binding; the independent fail-closed Python validator
+    (`scripts/benchmark_phase7.py`); shared Phase-6 workload identities
+    (one identity source for Phase-6 timing and Phase-7 allocation
+    measurement, bit-for-bit golden regression); the M2/M3 allocation
+    characterization (54 M2 cells, the complete 48-cell M3 accepted
+    matrix with B=0 preserved, classification cells, Component/Proxy
+    diagnostics), the persistent footprint experiment (depths
+    100/1000/5000/10000 with non-additive node model, estimated
+    allocator model, RSS not measured), the M4 allocation
+    characterization (24 accepted cells, owning-output B/D lifecycles),
+    the replay allocation characterization (4 identities, exact rational
+    per-event values, oracle outside the bracket), and the EXPLORATORY
+    local driver (`scripts/benchmark-allocation.sh`).
+  - NOT implemented yet (later Phase-7 PRs): the formal Release runner
+    (`scripts/benchmark-allocation-formal.sh`), formal evidence, and
+    Phase-7 final acceptance.
 - Phase 8 (container spike) is NOT STARTED.
 - M6 Gateway integration is NOT STARTED.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
@@ -314,10 +336,12 @@ satisfied. Immediate sequencing:
    non-allocating provenance, complete 20-form replaceable global new/delete
    surface with checked aligned backing arithmetic, MeasurementScope A/P/B
    semantics, fail-closed overflow/failure behavior, test-only seams) and the
-   adversarial instrumentation validation executable; it is pending
-   independent exact-head review. The formal measurement inventory, evidence
-   schemas/validator, formal Release runner, and formal evidence are NOT
-   implemented yet.
+   adversarial instrumentation validation executable. PR-B (work packages
+   WP2–WP4) delivers the measurement/evidence machinery (schemas, validator,
+   shared workload identities, M2/M3/M4/replay/footprint measurement
+   executables, exploratory driver); it is pending independent exact-head
+   review. The formal Release runner, formal evidence, and Phase-7 final
+   acceptance are NOT implemented yet.
 
 Phase 7 implementation is the active engineering step. Phase 8 (container
 spike) is NOT STARTED and must not begin before Phase-7 evidence/handoff

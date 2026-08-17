@@ -9,7 +9,13 @@
 #include "core_replay_executor.hpp"
 #include "latency_stats.hpp"
 #include "m2_cells.hpp"
+#include "m2_workload_specs.hpp"
 #include "m3_cells.hpp"
+#include "m3_workload_specs.hpp"
+#include "replay_workload_specs.hpp"
+#if defined(BMD_PROJECTION_PHASE6_ADAPTER_ENABLED)
+#include "m4_workload_specs.hpp"
+#endif
 #include "replay_checksum.hpp"
 #include "small_workload.hpp"
 #include "workload_spec.hpp"
@@ -24,6 +30,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <fstream>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -588,6 +595,161 @@ TEST(Phase6CoreReplay, LatencyPreparationRejectsInvalidDecimalInput) {
     install->bids.front().price = "not-a-decimal";
     bm::CoreReplayExecutor executor{fixture};
     EXPECT_FALSE(executor.prepared_inputs_valid());
+}
+
+// ---------------------------------------------------------------------------
+// Phase-7 shared workload identity (OD-M5-P7-008/009/010/012/013): Phase-6
+// timing and Phase-7 allocation measurement share ONE identity source. The
+// Phase-7 selection deliberately excludes the Phase-6 update_mix scaling
+// family; the 48-cell M3 matrix is complete and B=0 remains a cell.
+// ---------------------------------------------------------------------------
+TEST(Phase7WorkloadIdentity, Phase7M2SelectionExcludesUpdateMixScalingFamily) {
+    bm::clear_registered_workloads_for_testing();
+    bm::register_m2_workload_specs(false);
+    const auto& specs = bm::registered_workloads();
+    std::vector<std::string> names;
+    for (const auto& [name, text] : specs) {
+        names.push_back(name);
+        EXPECT_FALSE(name.starts_with("M2/apply_updates/update_mix/"));
+        EXPECT_EQ(text.find("primary_scaling_workload=true"), std::string::npos);
+        static_cast<void>(text);
+    }
+    EXPECT_EQ(names.size(), 54U);
+    for (const auto& expected :
+         {"M2/apply_level/insert/8", "M2/apply_updates/100/1000", "M2/replace_all/10000",
+          "M2/all_levels/0", "M2/top_levels/50/8", "M2/best_bid/8"}) {
+        EXPECT_NE(std::find(names.begin(), names.end(), expected), names.end());
+    }
+}
+
+TEST(Phase7WorkloadIdentity, Phase6FullM2RegistrationKeepsUpdateMix) {
+    bm::clear_registered_workloads_for_testing();
+    bm::register_m2_workload_specs(true);
+    const auto& specs = bm::registered_workloads();
+    EXPECT_EQ(specs.size(), 60U);
+    EXPECT_NE(std::find_if(specs.begin(), specs.end(),
+                           [](const auto& entry) {
+                               return entry.first == "M2/apply_updates/update_mix/10000";
+                           }),
+              specs.end());
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST(Phase7WorkloadIdentity, M3RegistrationCoversTheComplete48CellMatrix) {
+    bm::clear_registered_workloads_for_testing();
+    bm::register_m3_workload_specs();
+    const auto& specs = bm::registered_workloads();
+    const auto expected = bm::expected_m3_accepted_cell_names();
+    std::size_t accepted = 0;
+    std::size_t classifications = 0;
+    std::size_t proxies = 0;
+    for (const auto& [name, text] : specs) {
+        if (name.starts_with("M3/LiveApply/Accepted/")) {
+            ++accepted;
+            EXPECT_NE(std::find(expected.begin(), expected.end(), name), expected.end());
+        } else if (name.starts_with("M3/Classification/")) {
+            ++classifications;
+        } else if (name.starts_with("M3/Component/") || name.starts_with("M3/Proxy/")) {
+            ++proxies;
+            EXPECT_NE(text.find("proxy_component_measurement=true"), std::string::npos);
+        }
+    }
+    EXPECT_EQ(accepted, 48U);
+    EXPECT_EQ(classifications, 10U);
+    EXPECT_EQ(proxies, 12U);
+    EXPECT_EQ(specs.size(), 70U);
+    // B=0 remains a first-class cell in the matrix.
+    EXPECT_NE(std::find(expected.begin(), expected.end(),
+                        std::string{"M3/LiveApply/Accepted/Spot/D10000/B0"}),
+              expected.end());
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST(Phase7WorkloadIdentity, ReplayRegistrationBindsCanonicalLogIdentity) {
+    bm::clear_registered_workloads_for_testing();
+    bm::register_replay_workload_specs();
+    const auto& specs = bm::registered_workloads();
+#if defined(BMD_PROJECTION_PHASE6_ADAPTER_ENABLED)
+    ASSERT_EQ(specs.size(), 4U);
+#else
+    ASSERT_EQ(specs.size(), 2U);
+#endif
+    for (const auto& [name, text] : specs) {
+        EXPECT_NE(text.find("canonical_log_sha256="), std::string::npos);
+        EXPECT_NE(text.find("event_count=2048"), std::string::npos);
+        EXPECT_NE(text.find("generator_schema=M5_PHASE6_REPLAY_V1"), std::string::npos);
+        EXPECT_NE(text.find("seed=548746690337"), std::string::npos);
+    }
+    EXPECT_EQ(specs[0].first, "CoreNormalizedReplay/Spot");
+    EXPECT_EQ(specs[1].first, "CoreNormalizedReplay/UsdMPerpetual");
+#if defined(BMD_PROJECTION_PHASE6_ADAPTER_ENABLED)
+    EXPECT_EQ(specs[2].first, "AdapterWireReplay/Spot");
+    EXPECT_EQ(specs[3].first, "AdapterWireReplay/UsdMPerpetual");
+#endif
+}
+
+// ---------------------------------------------------------------------------
+// Bit-for-bit golden identity regression: the shared registration must produce
+// exactly the accepted Phase-6 canonical specs (name + spec SHA-256). The
+// golden files are committed Phase-6 identity evidence; they are never
+// "updated to make a test pass" (OD-M5-P7-008/009/010/012/013).
+// ---------------------------------------------------------------------------
+namespace {
+
+[[nodiscard]] std::vector<std::pair<std::string, std::string>>
+load_golden_identity_file(const std::string& path) {
+    std::ifstream stream{path};
+    if (!stream.is_open()) {
+        return {};
+    }
+    std::vector<std::pair<std::string, std::string>> entries;
+    std::string line;
+    while (std::getline(stream, line)) {
+        const auto separator = line.find(' ');
+        if (separator == std::string::npos) {
+            continue;
+        }
+        entries.emplace_back(line.substr(0, separator), line.substr(separator + 1));
+    }
+    return entries;
+}
+
+} // namespace
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST(Phase7WorkloadIdentity, GoldenIdentityRegressionBitForBit) {
+#ifndef BMD_PROJECTION_TEST_SOURCE_DIR
+    GTEST_SKIP() << "golden identity directory not configured";
+#else
+    const std::string source_dir = BMD_PROJECTION_TEST_SOURCE_DIR;
+    bm::clear_registered_workloads_for_testing();
+    bm::register_m2_workload_specs(true);
+    bm::register_m3_workload_specs();
+    bm::register_replay_workload_specs();
+    std::vector<std::pair<std::string, std::string>> expected =
+        load_golden_identity_file(source_dir + "/m5/benchmark/"
+                                               "phase6_workload_identity_golden_core.txt");
+    ASSERT_FALSE(expected.empty());
+#if defined(BMD_PROJECTION_PHASE6_ADAPTER_ENABLED)
+    bm::register_m4_workload_specs();
+    const auto adapter_expected = load_golden_identity_file(
+        source_dir + "/m5/benchmark/phase6_workload_identity_golden_adapter.txt");
+    ASSERT_FALSE(adapter_expected.empty());
+    expected.insert(expected.end(), adapter_expected.begin(), adapter_expected.end());
+#endif
+
+    const auto& specs = bm::registered_workloads();
+    ASSERT_EQ(specs.size(), expected.size());
+    for (std::size_t index = 0; index < specs.size(); ++index) {
+        const auto& [name, canonical_text] = specs.at(index);
+        const auto hash = bmd_projection::m5::replay::sha256_hex(canonical_text);
+        ASSERT_TRUE(std::holds_alternative<std::string>(hash));
+        EXPECT_EQ(name, expected.at(index).first);
+        EXPECT_EQ(std::get<std::string>(hash), expected.at(index).second)
+            << "workload identity drift: " << name
+            << " canonical spec must match the accepted Phase-6 golden identity";
+    }
+#endif
 }
 
 } // namespace

@@ -5,6 +5,7 @@
 // production throughput executor.
 
 #include "benchmark_support/core_replay_executor.hpp"
+#include "benchmark_support/replay_workload_specs.hpp"
 #include "benchmark_support/workload_spec.hpp"
 #include "core_production_side.hpp"
 #include "reference_side.hpp"
@@ -21,14 +22,12 @@
 
 #include <benchmark/benchmark.h>
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <functional>
 #include <memory>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -41,102 +40,17 @@ namespace phase3 = bmd_projection::m5::phase3;
 namespace replay = bmd_projection::m5::replay;
 
 // ---------------------------------------------------------------------------
-// Static workload-spec registration.
+// Static workload-spec registration. The canonical specs come from the shared
+// replay identity source (replay_workload_specs) so Phase-6 timing and
+// Phase-7 replay allocation measurement carry bit-identical workload
+// identities (OD-M5-P7-013).
 // ---------------------------------------------------------------------------
 namespace {
 
-[[nodiscard]] std::string replay_spec_suffix(const replay::ReplayFixture& fixture) {
-    auto identity = bm::replay_fixture_identity(fixture);
-    std::replace(identity.begin(), identity.end(), '\n', ';');
-    return identity;
-}
-
-void set_replay_generated_identity(bm::WorkloadSpecBuilder& builder,
-                                   const replay::ReplayFixture& fixture) {
-    const auto provenance_value = [&fixture](std::string_view key) {
-        const auto found =
-            std::find_if(fixture.manifest.provenance.begin(), fixture.manifest.provenance.end(),
-                         [key](const auto& entry) { return entry.first == key; });
-        return found == fixture.manifest.provenance.end() ? std::string{"not_applicable"}
-                                                          : found->second;
-    };
-    builder.set("canonical_log_sha256", fixture.canonical_log_sha256);
-    builder.set("generated_workload_sha256", fixture.canonical_log_sha256);
-    builder.set("generator_version", provenance_value("generator"));
-    builder.set("seed", provenance_value("seed"));
-}
-
-const auto kCoreReplaySpecs = [] {
-    {
-        const auto fixture = phase3::make_spot_small_workload();
-        auto& builder = bm::register_workload("CoreNormalizedReplay/Spot");
-        builder.set("benchmark_name", "CoreNormalizedReplay/Spot");
-        builder.set("replay_mode", "CoreOnly");
-        builder.set("workload_identity", replay_spec_suffix(fixture));
-        builder.set("timed_path",
-                    "preloaded normalized replay -> production M1 parse -> production M3 "
-                    "BookProjection -> FNV-1a checksum consumption");
-        builder.set("excluded",
-                    "canonical_text_parsing fixture_io hashing generation reference_model "
-                    "ReplayDriver OperationObservation checkpoint");
-        builder.set("throughput_denominator", "wall_time");
-        builder.set("primary_timer", "wall");
-        builder.set("checksum_methodology_version", bm::kReplayChecksumMethodology);
-        builder.set("generator_schema", "M5_PHASE6_REPLAY_V1");
-        builder.set("logical_items_per_iteration", fixture.replay.operations.size());
-        set_replay_generated_identity(builder, fixture);
-    }
-    {
-        const auto fixture = phase3::make_usdm_small_workload();
-        auto& builder = bm::register_workload("CoreNormalizedReplay/UsdMPerpetual");
-        builder.set("benchmark_name", "CoreNormalizedReplay/UsdMPerpetual");
-        builder.set("replay_mode", "CoreOnly");
-        builder.set("workload_identity", replay_spec_suffix(fixture));
-        builder.set("timed_path",
-                    "preloaded normalized replay -> production M1 parse -> production M3 "
-                    "BookProjection -> FNV-1a checksum consumption");
-        builder.set("excluded",
-                    "canonical_text_parsing fixture_io hashing generation reference_model "
-                    "ReplayDriver OperationObservation checkpoint");
-        builder.set("throughput_denominator", "wall_time");
-        builder.set("primary_timer", "wall");
-        builder.set("checksum_methodology_version", bm::kReplayChecksumMethodology);
-        builder.set("generator_schema", "M5_PHASE6_REPLAY_V1");
-        builder.set("logical_items_per_iteration", fixture.replay.operations.size());
-        set_replay_generated_identity(builder, fixture);
-    }
+const auto kReplaySpecRegistration = [] {
+    bm::register_replay_workload_specs();
     return 0;
 }();
-
-#if defined(BMD_PROJECTION_PHASE6_ADAPTER_ENABLED)
-const auto kAdapterReplaySpecs = [] {
-    for (const auto& [name, fixture] :
-         std::vector<std::pair<std::string, std::function<replay::ReplayFixture()>>>{
-             {"AdapterWireReplay/Spot", [] { return phase3::make_spot_small_workload(); }},
-             {"AdapterWireReplay/UsdMPerpetual",
-              [] { return phase3::make_usdm_small_workload(); }}}) {
-        const auto materialized = fixture();
-        auto& builder = bm::register_workload(name);
-        builder.set("benchmark_name", name);
-        builder.set("replay_mode", "AdapterEnabled");
-        builder.set("workload_identity", replay_spec_suffix(materialized));
-        builder.set("timed_path",
-                    "preconstructed wire -> production M4 adaptation -> checked production M3 "
-                    "invocation -> FNV-1a checksum consumption");
-        builder.set("excluded",
-                    "wire_construction fixture_parsing file_io hashing generation reference_model "
-                    "ReplayDriver OperationObservation checkpoint_comparison diagnostic_rendering");
-        builder.set("snapshot_serialization", "excluded");
-        builder.set("throughput_denominator", "wall_time");
-        builder.set("primary_timer", "wall");
-        builder.set("checksum_methodology_version", bm::kReplayChecksumMethodology);
-        builder.set("generator_schema", "M5_PHASE6_REPLAY_V1");
-        builder.set("logical_items_per_iteration", materialized.replay.operations.size());
-        set_replay_generated_identity(builder, materialized);
-    }
-    return 0;
-}();
-#endif
 
 } // namespace
 

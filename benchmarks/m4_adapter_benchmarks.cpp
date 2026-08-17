@@ -5,6 +5,7 @@
 #include "benchmark_support/adapter_wire_support.hpp"
 #include "benchmark_support/benchmark_registration.hpp"
 #include "benchmark_support/book_state.hpp"
+#include "benchmark_support/m4_workload_specs.hpp"
 #include "benchmark_support/workload_spec.hpp"
 #include "canonical_text.hpp"
 
@@ -33,64 +34,15 @@ namespace wire_support = bmd_projection::m5::benchmark::adapter_support;
 constexpr std::size_t kM4DepthSet[] = {8, 100, 1'000};
 
 // ---------------------------------------------------------------------------
-// Static workload-spec registration.
+// Static workload-spec registration. The canonical specs come from the shared
+// M4 identity source (m4_workload_specs) so Phase-6 timing and Phase-7 M4
+// allocation measurement carry bit-identical workload identities
+// (OD-M5-P7-012).
 // ---------------------------------------------------------------------------
 namespace {
 
-[[nodiscard]] std::string m4_generated_sha256(std::string_view family, std::size_t depth) {
-    const auto hash = bmd_projection::m5::replay::sha256_hex(
-        wire_support::m4_generated_workload_description(family, depth));
-    if (!std::holds_alternative<std::string>(hash)) {
-        std::abort();
-    }
-    return std::get<std::string>(hash);
-}
-
-struct M4Specs {
-    static void register_all() {
-        const std::string_view families[] = {"AdaptExchangeDepthSnapshot/Spot",
-                                             "AdaptDepthUpdate/Spot",
-                                             "CheckedInstall",
-                                             "CheckedApply",
-                                             "MakeLocalOrderBookSnapshot/Unlimited",
-                                             "MakeLocalOrderBookSnapshot/Limited",
-                                             "SerializeSnapshot/FreshBuffer",
-                                             "SerializeSnapshot/ReusedBuffer"};
-        for (const auto family : families) {
-            for (const auto depth : kM4DepthSet) {
-                const auto name = "M4/" + std::string{family} + "/" + std::to_string(depth);
-                auto& builder = bm::register_workload(name);
-                builder.set("benchmark_name", name);
-                builder.set("operation", family);
-                builder.set("depth_per_side", depth);
-                builder.set("market", "Spot");
-                builder.set("generator_schema", "M5_PHASE6_M4_CELLS_V1");
-                builder.set("generated_workload_sha256", m4_generated_sha256(family, depth));
-                builder.set("primary_timer", "cpu");
-                builder.set("primary_denominator", "cpu_time");
-                if (std::string{family} == "SerializeSnapshot/ReusedBuffer") {
-                    builder.set("serialization_buffer_mode", "reused");
-                    builder.set("diagnostic", true);
-                } else if (std::string{family} == "SerializeSnapshot/FreshBuffer") {
-                    builder.set("serialization_buffer_mode", "fresh");
-                }
-                if (std::string{family} == "AdaptDepthUpdate/Spot" ||
-                    std::string{family} == "CheckedApply") {
-                    builder.set("update_level_count", wire_support::kM4UpdateLevelCount);
-                }
-                if (std::string{family} == "CheckedApply") {
-                    for (const auto& [key, value] :
-                         wire_support::checked_apply_canonical_sequence_fields()) {
-                        builder.set(key, value);
-                    }
-                }
-            }
-        }
-    }
-};
-
 const auto kM4SpecRegistration = [] {
-    M4Specs::register_all();
+    bm::register_m4_workload_specs();
     return 0;
 }();
 
@@ -248,14 +200,11 @@ static void BM_M4CheckedApply(benchmark::State& state) {
     return bm::build_synchronized_projection(core::SequencePolicyKind::Spot, depth);
 }
 
+// The runtime SnapshotContext fixture is the single shared benchmark-support
+// value also used by the Phase-7 M4 allocation executable; the accepted
+// Phase-6 workload identities describe exactly this fixture (M5-P7-PRB-002).
 [[nodiscard]] adapter::SnapshotContext make_snapshot_context() {
-    return {{"BTCUSDT", core::SequencePolicyKind::Spot},
-            "phase6-benchmark",
-            "1",
-            adapter::SnapshotOrigin::GatewayLive,
-            1'234'567,
-            std::uint64_t{654'321},
-            std::nullopt};
+    return wire_support::benchmark_snapshot_context();
 }
 
 static void BM_M4MakeLocalOrderBookSnapshotUnlimited(benchmark::State& state) {
