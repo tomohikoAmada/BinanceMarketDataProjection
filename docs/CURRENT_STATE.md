@@ -46,6 +46,15 @@ orientation only.
 
 ## Recent Pull Requests / Acceptance Records
 
+- Phase-7 PR-B record: PR #28, `feat: add Phase 7 allocation measurement machinery`, is
+  MERGED (squash merge `c15bfa6410d68d5c7898e7639601c267b82bfeba`; post-merge main CI
+  `31987557259` — 19/19 PASS). Delivers the Phase-7 evidence schemas, the independent
+  fail-closed validator, the shared Phase-6 workload identities, the M2/M3/M4/replay/
+  footprint measurement executables, and the exploratory local driver.
+- Phase-7 PR-A record: PR #27, `feat: add Phase 7 allocation instrumentation substrate`, is
+  MERGED (squash merge `4d6d5b9b0100f91e6cd3cf1bf9388cb1095eba63`). Delivers the
+  executable-local allocation instrumentation substrate and its adversarial validation
+  executable.
 - INFRA-TC-001 record: PR #23, `Make the Quality toolchain reproducible`, is MERGED (final
   independently accepted implementation Head `6071a9f18bb4f0ebc9f1bed2938477419f7ab2ac`;
   accepted exact-head CI `31928210161` — 19/19 PASS; final independent review APPROVED,
@@ -154,14 +163,18 @@ artifact is a separate identity and remains outside Projection ownership.
 
 - Phase 7 (allocation/memory) methodology is APPROVED / MERGED (PR #25). Phase-7
   implementation is **IN PROGRESS**:
-  - PR-A (work package WP1) implements the executable-local allocation
-    instrumentation substrate (constant-initialized process-lifetime state,
-    fixed-capacity non-allocating provenance table, complete 20-form
+  - PR-A (work package WP1, PR #27, MERGED at squash merge
+    `4d6d5b9b0100f91e6cd3cf1bf9388cb1095eba63`) implements the
+    executable-local allocation instrumentation substrate
+    (constant-initialized process-lifetime state, fixed-capacity
+    non-allocating provenance table, complete 20-form
     replaceable global new/delete surface with checked aligned backing
     arithmetic, MeasurementScope A/P/B semantics, fail-closed
     overflow/failure behavior, test-only seams) and its adversarial
     validation executable `bmd_projection_allocation_instrumentation_tests`.
-  - PR-B (work packages WP2–WP4) implements the measurement/evidence
+  - PR-B (work packages WP2–WP4, PR #28, MERGED at squash merge
+    `c15bfa6410d68d5c7898e7639601c267b82bfeba`; post-merge main CI
+    `31987557259` — 19/19 PASS) implements the measurement/evidence
     machinery: the Phase-7 evidence schemas (`M5_ALLOCATION_WRAPPER_V1`,
     `M5_PHASE7_MEASUREMENT_CONTRACT_V1`, `M5_PHASE7_ALLOCATION_RECORD_V1`,
     `M5_PHASE7_FOOTPRINT_RECORD_V1`) with a canonical result-payload
@@ -178,9 +191,23 @@ artifact is a separate identity and remains outside Projection ownership.
     the replay allocation characterization (4 identities, exact rational
     per-event values, oracle outside the bracket), and the EXPLORATORY
     local driver (`scripts/benchmark-allocation.sh`).
-  - NOT implemented yet (later Phase-7 PRs): the formal Release runner
-    (`scripts/benchmark-allocation-formal.sh`), formal evidence, and
-    Phase-7 final acceptance.
+  - PR-C (work package WP5) implements the canonical formal Release
+    runner (`scripts/benchmark-allocation-formal.sh`): the SOLE public
+    host command for formal Phase-7 evidence, with the INFRA-TC-001-style
+    fail-closed host/internal trust boundary, the single formal source
+    model (`/src` read-only with `.git` retained as the CMake source
+    root, fresh ephemeral `/work` for build/output only — no copied
+    source), Release/sanitizers-off/explicit-LTO-off configuration
+    proved from the CMake cache, exact binary-SHA-256 binding, three
+    process invocations per measurement family with cross-invocation
+    normalized-metric determinism, `evidence_class=formal` producers
+    validated WITHOUT `--allow-exploratory`, and deterministic
+    trust-boundary negative tests
+    (`scripts/test-benchmark-allocation-formal.sh`). Formal evidence is
+    preserved to `build/benchmark/phase7-formal-results/` (not
+    committed). WP6 remains the final evidence-acceptance phase.
+  - NOT implemented yet (WP6): formal evidence acceptance and Phase-7
+    final acceptance.
 - Phase 8 (container spike) is NOT STARTED.
 - M6 Gateway integration is NOT STARTED.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
@@ -331,17 +358,13 @@ satisfied. Immediate sequencing:
    `92288927165f2d7486491371a11a7a586c645565`; squash merge
    `c2ad198677130d05ad054ea48ade3a1d8021c153` (merged tree == approved Head
    tree).
-3. Phase-7 implementation: **IN PROGRESS** — PR-A (work package WP1) delivers
-   the executable-local allocation instrumentation substrate (fixed-capacity
-   non-allocating provenance, complete 20-form replaceable global new/delete
-   surface with checked aligned backing arithmetic, MeasurementScope A/P/B
-   semantics, fail-closed overflow/failure behavior, test-only seams) and the
-   adversarial instrumentation validation executable. PR-B (work packages
-   WP2–WP4) delivers the measurement/evidence machinery (schemas, validator,
-   shared workload identities, M2/M3/M4/replay/footprint measurement
-   executables, exploratory driver); it is pending independent exact-head
-   review. The formal Release runner, formal evidence, and Phase-7 final
-   acceptance are NOT implemented yet.
+3. Phase-7 implementation: **IN PROGRESS** — PR-A (work package WP1, PR #27)
+   is MERGED; PR-B (work packages WP2–WP4, PR #28) is MERGED; PR-C (work
+   package WP5) delivers the canonical formal Release runner
+   (`scripts/benchmark-allocation-formal.sh`) and its deterministic
+   trust-boundary tests and is pending independent exact-head review.
+   Formal evidence acceptance and Phase-7 final acceptance belong to
+   WP6 and are NOT implemented yet.
 
 Phase 7 implementation is the active engineering step. Phase 8 (container
 spike) is NOT STARTED and must not begin before Phase-7 evidence/handoff
