@@ -4,13 +4,19 @@
 // global new/delete surface. For each accepted depth D in
 // {100, 1000, 5000, 10000} it records exact live-bytes snapshots:
 //
-//   S_base  pre-experiment baseline (no book)
+//   S_base  pre-experiment baseline (no book; BOTH preparation vectors
+//           already constructed and alive, so their backing storage appears
+//           in every snapshot and cancels from all OrderBook deltas)
 //   S_empty empty OrderBook constructed with the fixed NumericSpec
-//   S_bids  bids populated to D levels (replace_all from harness-owned
-//           vectors built outside any bracket; no intermediate mutation
-//           traffic pollutes the persistent delta)
+//   S_bids  bids populated to D levels (replace_all from the pre-built
+//           bids vector; no intermediate mutation traffic)
 //   S_both  asks populated to D levels
-//   D       post-destroy snapshot (must equal S_base; else INELIGIBLE)
+//   D       post-destroy snapshot taken while the preparation vectors are
+//           still alive (must equal S_base; else INELIGIBLE)
+//
+// The preparation vectors are destroyed only after D, on scope exit, so the
+// persistent-footprint deltas contain ONLY the OrderBook live-storage change
+// (OD-M5-P7-006/007; M5-P7-PRB-001).
 //
 // Reported per cell: measured total/per-side deltas, exact rational
 // bytes-per-level {numerator, D}, the fixed-object footprint and empty-book
@@ -63,16 +69,22 @@ struct FootprintSnapshots final {
 
 // Measures one depth cell: snapshots only (no measurement bracket; the
 // deltas are exact snapshot comparisons — OD-M5-P7-006/007).
+//
+// Both preparation vectors are constructed BEFORE S_base and stay alive
+// through the post-destroy snapshot D (they are destroyed only when this
+// function returns). Their backing storage is therefore present in every
+// snapshot and cancels from the OrderBook deltas; the reported persistent
+// footprint is the OrderBook live-storage change alone (M5-P7-PRB-001).
 [[nodiscard]] FootprintSnapshots measure_depth(std::size_t depth) {
+    const auto bids = bm::build_bid_levels(depth);
+    const auto asks = bm::build_ask_levels(depth);
     FootprintSnapshots snapshots;
     snapshots.base = alloc::live_bytes_snapshot();
     {
         core::OrderBook book{bm::benchmark_numeric_spec()};
         snapshots.empty = alloc::live_bytes_snapshot();
-        const auto bids = bm::build_bid_levels(depth);
         book.replace_all(bids, {});
         snapshots.bids = alloc::live_bytes_snapshot();
-        const auto asks = bm::build_ask_levels(depth);
         book.replace_all(bids, asks);
         snapshots.both = alloc::live_bytes_snapshot();
     }
