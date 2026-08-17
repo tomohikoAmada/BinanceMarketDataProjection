@@ -11,6 +11,11 @@ Fail-closed independent validators for the Phase-7 machine-readable outputs
   - exact rational replay per-event values (no integer division)
   - required inventory per measurement executable kind
   - process-level determinism comparison of two payload documents
+  - wrapper/record evidence-identity binding: every allocation and footprint
+    record (and every calibration record's evidence_class) must describe the
+    SAME evidence identity as the validated wrapper (M5-P7-PRB-003)
+  - --allow-exploratory policy: exploratory evidence fails closed unless the
+    flag is given; formal evidence never requires it
 
 The required inventory is defined independently here; it never reads a
 producer-generated "expected inventory". The validator fails closed on any
@@ -207,10 +212,70 @@ def required_inventory(kind: str) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Validated wrapper identity context (M5-P7-PRB-003).
+# ---------------------------------------------------------------------------
+# Payload hashes prove the bytes of a payload document are internally bound;
+# they cannot prove that a record mixed in from another source/binary/build/
+# environment actually belongs to the validated wrapper. Record validation
+# therefore carries this immutable context and requires every allocation and
+# footprint record to describe the SAME evidence identity as the wrapper.
+RECORD_BUILD_IDENTITY_KEYS = (
+    "compiler", "cxx_standard", "build_type", "sanitizer_state", "lto_state",
+    "standard_library", "conan_lock_sha256",
+)
+
+
+def _validation_context(wrapper: dict[str, Any],
+                        identities: dict[str, dict[str, str]]) -> dict[str, Any]:
+    return {
+        "evidence_class": wrapper["evidence_class"],
+        "source_provenance": wrapper["source_provenance"],
+        "binary_provenance": wrapper["binary_provenance"],
+        "build_identity": wrapper["build_identity"],
+        "environment_identity": wrapper["environment_identity"],
+        "m4_dependency_identity": wrapper["m4_dependency_identity"],
+        "workload_identities": identities,
+    }
+
+
+def _require_identity_binding(record: dict[str, Any], scope: str,
+                              context: dict[str, Any]) -> None:
+    """Require a record to describe the exact validated wrapper evidence
+    identity (evidence_class plus source/binary/build/environment provenance
+    and M4 dependency identity)."""
+
+    evidence_class = record.get("evidence_class")
+    _require(evidence_class == context["evidence_class"],
+             f"record {scope} evidence_class {evidence_class!r} differs from the wrapper "
+             f"evidence_class {context['evidence_class']!r}")
+    provenance = record.get("provenance")
+    _require(isinstance(provenance, dict), f"record {scope} missing provenance")
+    expected: dict[str, Any] = {
+        "source": context["source_provenance"],
+        "binary": context["binary_provenance"],
+        "build": {key: context["build_identity"][key] for key in RECORD_BUILD_IDENTITY_KEYS},
+        "environment": context["environment_identity"],
+        "m4_dependency_identity": context["m4_dependency_identity"],
+    }
+    for block, wrapper_block in (("source", "source_provenance"),
+                                 ("binary", "binary_provenance"),
+                                 ("build", "build_identity"),
+                                 ("environment", "environment_identity"),
+                                 ("m4_dependency_identity", "m4_dependency_identity")):
+        _require(isinstance(provenance.get(block), dict),
+                 f"record {scope} provenance missing {block}")
+        _require(provenance[block] == expected[block],
+                 f"record {scope} provenance.{block} does not describe the same evidence "
+                 f"identity as the wrapper {wrapper_block}")
+
+
+# ---------------------------------------------------------------------------
 # Wrapper validation.
 # ---------------------------------------------------------------------------
 def validate_wrapper(path: str, wrapper: dict[str, Any], allow_exploratory: bool,
-                     binary: Optional[str], payload_path: str) -> None:
+                     binary: Optional[str], payload_path: str) -> dict[str, Any]:
+    """Validate the wrapper and return the immutable validated identity
+    context that every record must bind to (M5-P7-PRB-003)."""
     _require(wrapper.get("schema") == WRAPPER_SCHEMA,
              f"unknown wrapper schema: {wrapper.get('schema')}")
     _require(wrapper.get("measurement_contract_version") == MEASUREMENT_CONTRACT,
@@ -229,6 +294,8 @@ def validate_wrapper(path: str, wrapper: dict[str, Any], allow_exploratory: bool
              "source_provenance missing dirty_at_configure")
     evidence_class = wrapper.get("evidence_class")
     _require(evidence_class in ("formal", "exploratory"), "invalid evidence_class")
+    if evidence_class == "exploratory" and not allow_exploratory:
+        _fail("exploratory evidence requires --allow-exploratory")
     if source.get("dirty_at_configure") and evidence_class == "formal":
         _fail("dirty source cannot produce formal evidence")
     if evidence_class == "formal":
@@ -325,7 +392,7 @@ def validate_wrapper(path: str, wrapper: dict[str, Any], allow_exploratory: bool
              f"result payload SHA mismatch: {actual} != {payload.get('sha256')}")
     _require(os.path.realpath(resolved) == os.path.realpath(payload_path),
              "wrapper result_payload path disagrees with the validated payload file")
-    return identities
+    return _validation_context(wrapper, identities)
 
 
 def _workload_names(wrapper: dict[str, Any]) -> dict[str, dict[str, str]]:
@@ -483,7 +550,7 @@ def validate_measurement_result(record: dict[str, Any], scope: str) -> None:
              f"record {scope} calibration must never be subtracted")
 
 
-def validate_record(record: dict[str, Any], identities: dict[str, dict[str, str]],
+def validate_record(record: dict[str, Any], context: dict[str, Any],
                     calibration_ids: set[str]) -> None:
     _require(record.get("schema") == RECORD_SCHEMA,
              f"unknown record schema: {record.get('schema')}")
@@ -498,6 +565,8 @@ def validate_record(record: dict[str, Any], identities: dict[str, dict[str, str]
     _require(isinstance(record.get("operation_denominator"), str)
              and record["operation_denominator"],
              f"record {scope} missing operation_denominator")
+
+    identities = context["workload_identities"]
 
     workload_id = record.get("workload_id")
     _require(isinstance(workload_id, str) and workload_id,
@@ -541,24 +610,7 @@ def validate_record(record: dict[str, Any], identities: dict[str, dict[str, str]
              f"record {scope} references unknown calibration record "
              f"{calibration['reference']!r}")
 
-    provenance = record.get("provenance")
-    _require(isinstance(provenance, dict), f"record {scope} missing provenance")
-    source = provenance.get("source")
-    _require(isinstance(source, dict) and isinstance(source.get("git_sha"), str)
-             and source["git_sha"], f"record {scope} provenance.source missing")
-    _require(isinstance(source.get("dirty_at_configure"), bool),
-             f"record {scope} provenance.source missing dirty_at_configure")
-    binary = provenance.get("binary")
-    _require(isinstance(binary, dict)
-             and isinstance(binary.get("sha256"), str)
-             and HEX64.fullmatch(binary["sha256"]) is not None,
-             f"record {scope} provenance.binary missing")
-    build = provenance.get("build")
-    _require(isinstance(build, dict) and isinstance(build.get("compiler"), dict),
-             f"record {scope} provenance.build missing")
-    _require(isinstance(provenance.get("environment"), dict)
-             and isinstance(provenance.get("m4_dependency_identity"), dict),
-             f"record {scope} provenance.environment/m4_dependency_identity missing")
+    _require_identity_binding(record, scope, context)
 
     _check_no_completeness_overclaim(record, scope)
 
@@ -648,13 +700,15 @@ def _check_no_completeness_overclaim(record: dict[str, Any], scope: str) -> None
             _require(value == "not_measured", f"record {scope} rss must be not_measured")
 
 
-def validate_footprint_record(record: dict[str, Any], calibration_ids: set[str]) -> None:
+def validate_footprint_record(record: dict[str, Any], calibration_ids: set[str],
+                              context: dict[str, Any]) -> None:
     _require(record.get("schema") == FOOTPRINT_SCHEMA,
              f"unknown footprint schema: {record.get('schema')}")
     _require(record.get("measurement_contract_version") == MEASUREMENT_CONTRACT,
              f"footprint record missing measurement_contract_version")
     scope = record.get("measurement_scope")
     _require(isinstance(scope, str) and scope, "footprint record missing measurement_scope")
+    _require_identity_binding(record, scope, context)
     _require(record.get("allocation_boundary") == ALLOCATION_BOUNDARY,
              f"footprint record {scope} allocation_boundary must be exactly "
              f"cxx_replaceable_global_new")
@@ -768,7 +822,7 @@ def validate_footprint_record(record: dict[str, Any], calibration_ids: set[str])
              f"footprint record {scope} result_payload_sha256 does not match its canonical result")
 
 
-def validate_payload_document(payload: dict[str, Any], identities: dict[str, dict[str, str]],
+def validate_payload_document(payload: dict[str, Any], context: dict[str, Any],
                               require_inventory: Optional[str]) -> list[str]:
     _require(payload.get("schema") == PAYLOAD_SCHEMA,
              f"unknown payload schema: {payload.get('schema')}")
@@ -795,16 +849,21 @@ def validate_payload_document(payload: dict[str, Any], identities: dict[str, dic
                  "calibration record allocation_boundary must be cxx_replaceable_global_new")
         _require(calibration.get("subtracted_from_measurements") is False,
                  "calibration record must never be subtracted")
+        _require(calibration.get("evidence_class") == context["evidence_class"],
+                 f"calibration record {calibration.get('calibration_id')} evidence_class "
+                 f"{calibration.get('evidence_class')!r} differs from the wrapper "
+                 f"evidence_class {context['evidence_class']!r}")
         calibration_ids.add(calibration["calibration_id"])
 
+    identities = context["workload_identities"]
     scopes: list[str] = []
     has_allocation_records = False
     for record in records:
         if record.get("schema") == FOOTPRINT_SCHEMA:
-            validate_footprint_record(record, calibration_ids)
+            validate_footprint_record(record, calibration_ids, context)
         else:
             has_allocation_records = True
-            validate_record(record, identities, calibration_ids)
+            validate_record(record, context, calibration_ids)
         scope = record.get("measurement_scope")
         _require(scope not in scopes, f"duplicate record scope {scope}")
         scopes.append(scope)
@@ -887,13 +946,14 @@ def check_determinism(payload_a: dict[str, Any], payload_b: dict[str, Any]) -> N
 # ---------------------------------------------------------------------------
 def main_run_for_test(payload_path: str, wrapper_path: str,
                       require_inventory: Optional[str] = None,
-                      binary: Optional[str] = None) -> None:
+                      binary: Optional[str] = None,
+                      allow_exploratory: bool = True) -> None:
     """Programmatic entrypoint used by the deterministic validator tests."""
     payload = _load_json(payload_path, "payload")
     wrapper = _load_json(wrapper_path, "wrapper")
-    identities = validate_wrapper(wrapper_path, wrapper, allow_exploratory=True,
-                                  binary=binary, payload_path=payload_path)
-    validate_payload_document(payload, identities, require_inventory)
+    context = validate_wrapper(wrapper_path, wrapper, allow_exploratory=allow_exploratory,
+                               binary=binary, payload_path=payload_path)
+    validate_payload_document(payload, context, require_inventory)
 
 
 def main() -> int:
@@ -917,9 +977,9 @@ def main() -> int:
         if args.mode == "validate-records":
             payload = _load_json(args.payload_json, "payload")
             wrapper = _load_json(args.wrapper_json, "wrapper")
-            identities = validate_wrapper(args.wrapper_json, wrapper, args.allow_exploratory,
-                                          args.binary, args.payload_json)
-            scopes = validate_payload_document(payload, identities, args.require_inventory)
+            context = validate_wrapper(args.wrapper_json, wrapper, args.allow_exploratory,
+                                       args.binary, args.payload_json)
+            scopes = validate_payload_document(payload, context, args.require_inventory)
             print(f"records PASS: {len(scopes)} records validated, wrapper/provenance/payload "
                   "binding, A/P/B invariants, exact rationals, calibration separation")
             if args.require_inventory:

@@ -104,20 +104,27 @@ validate_one() {
     local suffix="$1"
     local inventory="${2:-}"
 
+    # The driver produces exploratory evidence by design; the validator's
+    # --allow-exploratory policy is exercised explicitly on every artifact
+    # (exploratory evidence without the flag fails closed, M5-P7-PRB-003).
     python3 scripts/benchmark_phase7.py validate-records \
         "$results_dir/m2m3-$suffix.json" "$results_dir/m2m3-$suffix-wrapper.json" \
+        --allow-exploratory \
         ${inventory:+--require-inventory m2_m3}
     python3 scripts/benchmark_phase7.py validate-records \
         "$results_dir/footprint-$suffix.json" "$results_dir/footprint-$suffix-wrapper.json" \
+        --allow-exploratory \
         ${inventory:+--require-inventory footprint}
     if [[ -f "$results_dir/replay-$suffix.json" ]]; then
         python3 scripts/benchmark_phase7.py validate-records \
             "$results_dir/replay-$suffix.json" "$results_dir/replay-$suffix-wrapper.json" \
+            --allow-exploratory \
             ${inventory:+--require-inventory replay}
     fi
     if [[ -f "$results_dir/m4-$suffix.json" ]]; then
         python3 scripts/benchmark_phase7.py validate-records \
             "$results_dir/m4-$suffix.json" "$results_dir/m4-$suffix-wrapper.json" \
+            --allow-exploratory \
             ${inventory:+--require-inventory m4}
     fi
 }

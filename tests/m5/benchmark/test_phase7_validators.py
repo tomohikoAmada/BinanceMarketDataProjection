@@ -237,6 +237,75 @@ class ValidatorTestBase(unittest.TestCase):
             phase7.main_run_for_test(self.payload_path, self.wrapper_path)
         return str(context.exception)
 
+    def footprint_pair(self, depth: int, empty: int, bids: int, both: int) -> dict[str, Any]:
+        record = {
+            "schema": phase7.FOOTPRINT_SCHEMA,
+            "measurement_contract_version": phase7.MEASUREMENT_CONTRACT,
+            "evidence_class": "exploratory",
+            "measurement_scope": f"M5_Footprint/Depth/{depth}",
+            "allocation_boundary": phase7.ALLOCATION_BOUNDARY,
+            "depth_per_side": depth,
+            "generator_identity": {"schema": "M5_PHASE6_M2_CELLS_V1",
+                                   "seed": "not_applicable"},
+            "provenance": _provenance(),
+            "snapshots": {
+                "pre_experiment_baseline_live_bytes": 100,
+                "empty_book_live_bytes": empty,
+                "bids_only_live_bytes": bids,
+                "both_sides_live_bytes": both,
+                "post_destroy_live_bytes": 100,
+            },
+            "measured_requested_heap_bytes_total": both - empty,
+            "measured_requested_heap_bytes_per_side_bids": bids - empty,
+            "measured_requested_heap_bytes_per_side_asks": both - bids,
+            "measured_bytes_per_level_per_side_bids": {"numerator": bids - empty,
+                                                       "denominator": depth},
+            "measured_bytes_per_level_per_side_asks": {"numerator": both - bids,
+                                                       "denominator": depth},
+            "post_destroy_lifecycle_status": "consistent",
+            "node_structural_model": {
+                "non_additive": True,
+                "description": "std::map node allocation request includes node structure",
+                "toolchain": "Clang:libc++",
+            },
+            "allocator_backing_model": {
+                "evidence_class": "estimated",
+                "description": "environment-specific estimate",
+                "scope": "environment/toolchain/allocator/size-class",
+            },
+            "rss": "not_measured",
+            "eligibility": {"status": "eligible"},
+            "calibration_record": {"reference": "calibration/empty-bracket-v1",
+                                   "subtracted": False},
+            "repetitions": 3,
+            "determinism_confirmed": True,
+            "result_payload_sha256": None,
+        }
+        canonical = {
+            "bids_only_live_bytes": bids,
+            "both_sides_live_bytes": both,
+            "depth_per_side": depth,
+            "determinism_confirmed": True,
+            "eligible": True,
+            "empty_book_live_bytes": empty,
+            "post_destroy_lifecycle_status": "consistent",
+            "post_destroy_live_bytes": 100,
+            "pre_experiment_baseline_live_bytes": 100,
+            "repetitions": 3,
+        }
+        record["result_payload_sha256"] = hashlib.sha256(
+            json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        payload = {
+            "schema": phase7.PAYLOAD_SCHEMA,
+            "measurement_contract_version": phase7.MEASUREMENT_CONTRACT,
+            "record_count": 1, "calibration_record_count": 1,
+            "calibration_records": [_calibration()], "records": [record],
+        }
+        wrapper = _wrapper(self.payload_path, "")
+        self.write_pair(payload, wrapper)
+        return payload
+
 
 class WrapperValidationTests(ValidatorTestBase):
     def test_valid_pair_passes(self) -> None:
@@ -479,73 +548,7 @@ class RationalTests(ValidatorTestBase):
 
 class FootprintValidationTests(ValidatorTestBase):
     def _footprint_pair(self, depth: int, empty: int, bids: int, both: int) -> dict[str, Any]:
-        record = {
-            "schema": phase7.FOOTPRINT_SCHEMA,
-            "measurement_contract_version": phase7.MEASUREMENT_CONTRACT,
-            "evidence_class": "exploratory",
-            "measurement_scope": f"M5_Footprint/Depth/{depth}",
-            "allocation_boundary": phase7.ALLOCATION_BOUNDARY,
-            "depth_per_side": depth,
-            "generator_identity": {"schema": "M5_PHASE6_M2_CELLS_V1",
-                                   "seed": "not_applicable"},
-            "provenance": _provenance(),
-            "snapshots": {
-                "pre_experiment_baseline_live_bytes": 100,
-                "empty_book_live_bytes": empty,
-                "bids_only_live_bytes": bids,
-                "both_sides_live_bytes": both,
-                "post_destroy_live_bytes": 100,
-            },
-            "measured_requested_heap_bytes_total": both - empty,
-            "measured_requested_heap_bytes_per_side_bids": bids - empty,
-            "measured_requested_heap_bytes_per_side_asks": both - bids,
-            "measured_bytes_per_level_per_side_bids": {"numerator": bids - empty,
-                                                       "denominator": depth},
-            "measured_bytes_per_level_per_side_asks": {"numerator": both - bids,
-                                                       "denominator": depth},
-            "post_destroy_lifecycle_status": "consistent",
-            "node_structural_model": {
-                "non_additive": True,
-                "description": "std::map node allocation request includes node structure",
-                "toolchain": "Clang:libc++",
-            },
-            "allocator_backing_model": {
-                "evidence_class": "estimated",
-                "description": "environment-specific estimate",
-                "scope": "environment/toolchain/allocator/size-class",
-            },
-            "rss": "not_measured",
-            "eligibility": {"status": "eligible"},
-            "calibration_record": {"reference": "calibration/empty-bracket-v1",
-                                   "subtracted": False},
-            "repetitions": 3,
-            "determinism_confirmed": True,
-            "result_payload_sha256": None,
-        }
-        canonical = {
-            "bids_only_live_bytes": bids,
-            "both_sides_live_bytes": both,
-            "depth_per_side": depth,
-            "determinism_confirmed": True,
-            "eligible": True,
-            "empty_book_live_bytes": empty,
-            "post_destroy_lifecycle_status": "consistent",
-            "post_destroy_live_bytes": 100,
-            "pre_experiment_baseline_live_bytes": 100,
-            "repetitions": 3,
-        }
-        record["result_payload_sha256"] = hashlib.sha256(
-            json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest()
-        payload = {
-            "schema": phase7.PAYLOAD_SCHEMA,
-            "measurement_contract_version": phase7.MEASUREMENT_CONTRACT,
-            "record_count": 1, "calibration_record_count": 1,
-            "calibration_records": [_calibration()], "records": [record],
-        }
-        wrapper = _wrapper(self.payload_path, "")
-        self.write_pair(payload, wrapper)
-        return payload
+        return self.footprint_pair(depth, empty, bids, both)
 
     def test_footprint_passes(self) -> None:
         payload = self._footprint_pair(1000, 200, 20200, 40200)
@@ -660,6 +663,127 @@ class InventoryValidationTests(ValidatorTestBase):
             phase7.main_run_for_test(self.payload_path, self.wrapper_path,
                                      require_inventory="m2_m3")
         self.assertIn("inventory mismatch", str(context.exception))
+
+
+class IdentityBindingTests(ValidatorTestBase):
+    """M5-P7-PRB-003: every record must describe the SAME evidence identity
+    as the validated wrapper. The wrapper identity context is validated once
+    and carried into record validation; mixed-source/binary/build/environment
+    artifacts and formal/exploratory mixes must fail closed."""
+
+    def _formalize(self, payload: dict[str, Any], wrapper: dict[str, Any]) -> None:
+        wrapper["evidence_class"] = "formal"
+        wrapper["requested_evidence_class"] = "formal"
+        for record in payload["records"]:
+            record["evidence_class"] = "formal"
+            record["provenance"]["source"] = dict(wrapper["source_provenance"])
+        payload["calibration_records"][0]["evidence_class"] = "formal"
+
+    def _run(self, allow_exploratory: bool = True) -> None:
+        phase7.main_run_for_test(self.payload_path, self.wrapper_path,
+                                 allow_exploratory=allow_exploratory)
+
+    def test_formal_wrapper_exploratory_record_rejected(self) -> None:
+        payload, wrapper, _, _ = self.make_simple_pair()
+        wrapper["evidence_class"] = "formal"
+        wrapper["requested_evidence_class"] = "formal"
+        self.write_pair(payload, wrapper)
+        with self.assertRaises(phase7.ValidationError) as context:
+            self._run()
+        self.assertIn("evidence_class", str(context.exception))
+
+    def test_exploratory_wrapper_formal_record_rejected(self) -> None:
+        payload, wrapper, _, _ = self.make_simple_pair()
+        payload["records"][0]["evidence_class"] = "formal"
+        self.write_pair(payload, wrapper)
+        with self.assertRaises(phase7.ValidationError) as context:
+            self._run()
+        self.assertIn("evidence_class", str(context.exception))
+
+    def test_record_source_identity_mismatch_rejected(self) -> None:
+        payload, wrapper, _, _ = self.make_simple_pair()
+        payload["records"][0]["provenance"]["source"]["git_sha"] = "9" * 40
+        self.write_pair(payload, wrapper)
+        with self.assertRaises(phase7.ValidationError) as context:
+            self._run()
+        self.assertIn("provenance.source", str(context.exception))
+
+    def test_record_binary_identity_mismatch_rejected(self) -> None:
+        payload, wrapper, _, _ = self.make_simple_pair()
+        payload["records"][0]["provenance"]["binary"]["sha256"] = "9" * 64
+        self.write_pair(payload, wrapper)
+        with self.assertRaises(phase7.ValidationError) as context:
+            self._run()
+        self.assertIn("provenance.binary", str(context.exception))
+
+    def test_record_build_identity_mismatch_rejected(self) -> None:
+        payload, wrapper, _, _ = self.make_simple_pair()
+        payload["records"][0]["provenance"]["build"]["build_type"] = "Debug"
+        self.write_pair(payload, wrapper)
+        with self.assertRaises(phase7.ValidationError) as context:
+            self._run()
+        self.assertIn("provenance.build", str(context.exception))
+
+    def test_record_environment_identity_mismatch_rejected(self) -> None:
+        payload, wrapper, _, _ = self.make_simple_pair()
+        payload["records"][0]["provenance"]["environment"]["architecture"] = "x86_64"
+        self.write_pair(payload, wrapper)
+        with self.assertRaises(phase7.ValidationError) as context:
+            self._run()
+        self.assertIn("provenance.environment", str(context.exception))
+
+    def test_record_m4_dependency_identity_mismatch_rejected(self) -> None:
+        payload, wrapper, _, _ = self.make_simple_pair()
+        payload["records"][0]["provenance"]["m4_dependency_identity"] = \
+            {"status": "ON", "contracts_source_revision": "x"}
+        self.write_pair(payload, wrapper)
+        with self.assertRaises(phase7.ValidationError) as context:
+            self._run()
+        self.assertIn("provenance.m4_dependency_identity", str(context.exception))
+
+    def test_footprint_evidence_class_mismatch_rejected(self) -> None:
+        payload = self.footprint_pair(1000, 200, 20200, 40200)
+        payload["records"][0]["evidence_class"] = "formal"
+        wrapper = phase7._load_json(self.wrapper_path, "wrapper")
+        self.write_pair(payload, wrapper)
+        with self.assertRaises(phase7.ValidationError) as context:
+            self._run()
+        self.assertIn("evidence_class", str(context.exception))
+
+    def test_footprint_provenance_mismatch_rejected(self) -> None:
+        payload = self.footprint_pair(1000, 200, 20200, 40200)
+        payload["records"][0]["provenance"]["binary"]["sha256"] = "9" * 64
+        wrapper = phase7._load_json(self.wrapper_path, "wrapper")
+        self.write_pair(payload, wrapper)
+        with self.assertRaises(phase7.ValidationError) as context:
+            self._run()
+        self.assertIn("provenance.binary", str(context.exception))
+
+    def test_calibration_evidence_class_mismatch_rejected(self) -> None:
+        payload, wrapper, _, _ = self.make_simple_pair()
+        payload["calibration_records"][0]["evidence_class"] = "formal"
+        self.write_pair(payload, wrapper)
+        with self.assertRaises(phase7.ValidationError) as context:
+            self._run()
+        self.assertIn("calibration record", str(context.exception))
+
+    def test_exploratory_without_allow_flag_rejected(self) -> None:
+        payload, wrapper, _, _ = self.make_simple_pair()
+        self.write_pair(payload, wrapper)
+        with self.assertRaises(phase7.ValidationError) as context:
+            self._run(allow_exploratory=False)
+        self.assertIn("--allow-exploratory", str(context.exception))
+
+    def test_exploratory_with_allow_flag_passes(self) -> None:
+        payload, wrapper, _, _ = self.make_simple_pair()
+        self.write_pair(payload, wrapper)
+        self._run(allow_exploratory=True)
+
+    def test_formal_without_allow_flag_passes(self) -> None:
+        payload, wrapper, _, _ = self.make_simple_pair()
+        self._formalize(payload, wrapper)
+        self.write_pair(payload, wrapper)
+        self._run(allow_exploratory=False)
 
 
 class DeterminismTests(ValidatorTestBase):
