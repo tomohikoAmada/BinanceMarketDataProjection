@@ -51,7 +51,6 @@ TYPED_TEST_SUITE(Phase8ConformanceTest, Phase8ModelTypes);
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TYPED_TEST(Phase8ConformanceTest, EmptyAndIdentity) {
-    using model_type = typename TestFixture::model_type;
     TypeParam model = this->make_model();
 
     EXPECT_TRUE(model.empty()) << "fresh model must be empty";
@@ -66,12 +65,12 @@ TYPED_TEST(Phase8ConformanceTest, EmptyAndIdentity) {
 
     EXPECT_EQ(model.numeric_spec(), TestSpec()) << "NumericSpec identity must be retained";
 
-    ASSERT_TRUE(model_type::model_id() == bmd_projection::m5::phase8::kPhase8StdMapControlId ||
-                model_type::model_id() == bmd_projection::m5::phase8::kPhase8SortedVectorNaiveId ||
-                model_type::model_id() == bmd_projection::m5::phase8::kPhase8AbslBtreeMapId ||
-                model_type::model_id() ==
+    ASSERT_TRUE(TypeParam::model_id() == bmd_projection::m5::phase8::kPhase8StdMapControlId ||
+                TypeParam::model_id() == bmd_projection::m5::phase8::kPhase8SortedVectorNaiveId ||
+                TypeParam::model_id() == bmd_projection::m5::phase8::kPhase8AbslBtreeMapId ||
+                TypeParam::model_id() ==
                     bmd_projection::m5::phase8::kPhase8SortedVectorBatchLwwId);
-    EXPECT_FALSE(model_type::model_id().empty());
+    EXPECT_FALSE(TypeParam::model_id().empty());
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
