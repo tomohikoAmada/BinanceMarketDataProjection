@@ -208,7 +208,11 @@ artifact is a separate identity and remains outside Projection ownership.
     committed). WP6 remains the final evidence-acceptance phase.
   - NOT implemented yet (WP6): formal evidence acceptance and Phase-7
     final acceptance.
-- Phase 8 (container spike) is NOT STARTED.
+- Phase 8 (container spike) is IN PROGRESS: PR-A / WP1 (benchmark-only
+  same-interface container-model substrate, four candidate models, semantic
+  conformance gate) is implemented and pending fresh independent exact-head
+  review; no container decision exists and no production migration is
+  authorized.
 - M6 Gateway integration is NOT STARTED.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading remain outside the implemented Projection scope.
@@ -257,8 +261,13 @@ artifact is a separate identity and remains outside Projection ownership.
   APPROVED / MERGED and all findings (M5-P7-MR-001..010, M5-P7-RR-001) are
   CLOSED. Phase-7 implementation has not yet started — a sequencing fact, not a
   technical blocker.
-- Phase 8 remains blocked by sequencing until Phase-7 evidence/handoff is
-  complete as defined by the accepted design (OD-M5-P7-021).
+- Phase-7 evidence/handoff is COMPLETE / EVIDENCE ACCEPTED (WP6 formal
+  evidence generated fresh from merged main `bb1d62ff…` and independently
+  accepted); the Phase-8 sequencing blocker defined by the accepted design
+  (OD-M5-P7-021) is resolved.
+- Phase 8 (container spike) is IN PROGRESS — PR-A / WP1 semantic substrate
+  implemented, pending independent exact-head review. No numeric container
+  conclusions exist yet.
 - Later M5 phases remain separately authorized work.
 
 ## Accepted Semantic Authorities

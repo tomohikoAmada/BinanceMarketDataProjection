@@ -468,6 +468,43 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
     )
 endif()
 
+# M5 Phase-8 (PR-A / WP1): benchmark-only container-model semantic
+# conformance substrate. The four candidate models live under
+# benchmarks/phase8 (never installed/exported) and are driven through one
+# shared static-polymorphism protocol. Abseil (absl::btree) is linked only
+# here as an explicit TEST/BENCHMARK requirement; Core/ProtoAdapter/installed
+# consumers remain Abseil-free.
+find_package(absl CONFIG REQUIRED)
+
+add_executable(
+    bmd_projection_m5_phase8_container_conformance_tests
+    m5/phase8/phase8_conformance_test.cpp
+    m5/phase8/phase8_property_test.cpp
+    m5/phase8/phase8_exception_safety_test.cpp
+)
+target_include_directories(
+    bmd_projection_m5_phase8_container_conformance_tests
+    PRIVATE
+        "${PROJECT_SOURCE_DIR}/benchmarks/phase8"
+        "${PROJECT_SOURCE_DIR}/tests/order_book"
+)
+target_link_libraries(
+    bmd_projection_m5_phase8_container_conformance_tests
+    PRIVATE
+        BinanceMarketDataProjection::Core
+        bmd_projection_m5_reference_support
+        absl::btree
+        GTest::gtest_main
+)
+set_target_properties(
+    bmd_projection_m5_phase8_container_conformance_tests
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_phase8_container_conformance_tests)
+
 include(GoogleTest)
 # CMake 4.4.0 POST_BUILD discovery hashes an empty target name (upstream
 # #27319, fixed in 4.4.1), so every test executable in this directory writes
@@ -484,6 +521,7 @@ gtest_discover_tests(bmd_projection_allocation_instrumentation_tests)
 gtest_discover_tests(bmd_projection_m5_replay_tests)
 gtest_discover_tests(bmd_projection_m5_differential_tests)
 gtest_discover_tests(bmd_projection_m5_semantic_tests)
+gtest_discover_tests(bmd_projection_m5_phase8_container_conformance_tests)
 gtest_discover_tests(bmd_projection_m5_benchmark_support_tests)
 add_test(
     NAME m5_semantic_comparator_tests
