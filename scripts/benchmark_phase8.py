@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 import statistics
 import sys
 from pathlib import Path
@@ -23,6 +24,14 @@ CANDIDATES = {
     "phase8-sorted-vector-naive-v1",
     "phase8-absl-btree-map-v1",
     "phase8-sorted-vector-batch-lww-v1",
+}
+GIT_SHA = re.compile(r"^[0-9a-fA-F]{40}([0-9a-fA-F]{24})?$")
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
+METRIC_UNITS = {
+    "update_latency": "ns",
+    "full_replacement_latency": "ns",
+    "top_n_read_latency": "ns",
+    "replay_update_throughput": "updates_per_second",
 }
 
 
@@ -74,8 +83,25 @@ def canonical_sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def canonical_fields(text: str, field: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for line in text.splitlines():
+        require("=" in line, f"{field} contains malformed line")
+        key, value = line.split("=", 1)
+        require(key and key not in fields, f"{field} contains duplicate field {key}")
+        fields[key] = value
+    return fields
+
+
+def require_sha(value: Any, field: str, pattern: re.Pattern[str]) -> str:
+    require(isinstance(value, str) and pattern.fullmatch(value) is not None,
+            f"invalid {field}")
+    return value
+
+
 def validate_stats(values: list[Any], stats: dict[str, Any], field: str) -> None:
     require(values, f"{field}.raw is empty")
+    require(isinstance(stats, dict), f"{field}.summary is not an object")
     raw = [finite(value, f"{field}.raw") for value in values]
     for key in ("mean", "median", "minimum", "maximum", "standard_deviation", "coefficient_of_variation"):
         finite_nonnegative(stats.get(key), f"{field}.summary.{key}")
@@ -98,16 +124,16 @@ def validate_stats(values: list[Any], stats: dict[str, Any], field: str) -> None
                 f"{field}.summary.{key} does not reconstruct from raw values")
 
 
-def validate_wrapper(wrapper_path: Path, payload_path: Path) -> dict[str, Any]:
+def validate_wrapper(wrapper_path: Path, payload_path: Path) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
     wrapper = load(wrapper_path)
+    require(isinstance(wrapper, dict), "wrapper is not an object")
     require(wrapper.get("schema") == WRAPPER_SCHEMA, "wrong wrapper schema")
     require(wrapper.get("measurement_contract_version") == "M5_PHASE6_MEASUREMENT_CONTRACT_V1",
             "wrong wrapper measurement contract")
     source = wrapper.get("source_provenance")
     require(isinstance(source, dict) and source.get("status") in {"known", "unavailable"},
             "missing source provenance")
-    require(isinstance(source.get("git_sha"), str) and len(source["git_sha"]) in {40, 64},
-            "invalid source SHA")
+    require_sha(source.get("git_sha"), "source SHA", GIT_SHA)
     result = wrapper.get("result_payload")
     require(isinstance(result, dict), "missing result payload binding")
     require(result.get("path") == str(payload_path), "wrapper payload path mismatch")
@@ -115,25 +141,47 @@ def validate_wrapper(wrapper_path: Path, payload_path: Path) -> dict[str, Any]:
     require(result.get("sha256") == expected_sha, "wrapper payload SHA mismatch")
     require(result.get("schema") == PAYLOAD_SCHEMA, "wrapper payload schema mismatch")
     binary = wrapper.get("binary_provenance")
-    require(isinstance(binary, dict) and isinstance(binary.get("path"), str),
+    require(isinstance(binary, dict) and isinstance(binary.get("path"), str) and
+            binary.get("path"),
             "missing binary provenance")
+    require_sha(binary.get("sha256"), "binary SHA", HEX64)
     if Path(binary["path"]).is_file():
         require(hashlib.sha256(Path(binary["path"]).read_bytes()).hexdigest() == binary.get("sha256"),
                 "binary SHA mismatch")
     workloads = wrapper.get("workload_identities")
     require(isinstance(workloads, list) and workloads, "missing workload identities")
+    identities: dict[str, dict[str, Any]] = {}
     for workload in workloads:
+        require(isinstance(workload, dict), "invalid wrapper workload identity")
+        workload_id = workload.get("benchmark_name")
+        require(isinstance(workload_id, str) and workload_id, "invalid wrapper workload ID")
+        require(workload_id not in identities, f"duplicate wrapper workload ID: {workload_id}")
         require(workload.get("workload_spec_schema") == WORKLOAD_SCHEMA,
                 "wrong workload schema in wrapper")
         text = workload.get("canonical_spec_text")
-        require(isinstance(text, str) and canonical_sha(text) == workload.get("workload_spec_sha256"),
+        spec_sha = require_sha(workload.get("workload_spec_sha256"),
+                               f"{workload_id} workload spec SHA", HEX64)
+        require(isinstance(text, str) and canonical_sha(text) == spec_sha,
                 "workload spec SHA mismatch")
-    return wrapper
+        fields = canonical_fields(text, f"wrapper workload {workload_id}")
+        require(fields.get("benchmark_name") == workload_id,
+                f"wrapper workload {workload_id} benchmark_name mismatch")
+        generated_sha = require_sha(workload.get("generated_workload_sha256"),
+                                    f"{workload_id} generated workload SHA", HEX64)
+        require(fields.get("generated_workload_sha256") == generated_sha,
+                f"wrapper workload {workload_id} generated workload SHA mismatch")
+        identities[workload_id] = {
+            "spec_sha": spec_sha,
+            "generated_sha": generated_sha,
+            "fields": fields,
+        }
+    return wrapper, identities
 
 
 def validate(payload_path: Path, wrapper_path: Path) -> None:
-    wrapper = validate_wrapper(wrapper_path, payload_path)
+    wrapper, wrapper_workloads = validate_wrapper(wrapper_path, payload_path)
     payload = load(payload_path)
+    require(isinstance(payload, dict), "payload is not an object")
     require(payload.get("schema") == PAYLOAD_SCHEMA, "wrong Phase-8 payload schema")
     require(payload.get("measurement_contract_version") == CONTRACT, "wrong Phase-8 contract")
     candidates = payload.get("candidate_models")
@@ -141,43 +189,93 @@ def validate(payload_path: Path, wrapper_path: Path) -> None:
             "candidate set is not exactly the approved four models")
     repetitions = uint(payload.get("repetitions"), "payload repetitions")
     require(repetitions >= 5, "formal comparison requires at least five repetitions")
-    noise = payload.get("noise_floor")
-    require(isinstance(noise, dict) and noise.get("timer") == "steady_clock" and noise.get("unit") == "ns",
-            "missing noise-floor identity")
-    validate_stats(noise.get("raw", []), noise.get("summary", {}), "noise_floor")
+    calibration = payload.get("timer_overhead_calibration")
+    require(isinstance(calibration, dict) and calibration.get("timer") == "steady_clock" and
+            calibration.get("unit") == "ns", "missing timer calibration identity")
+    validate_stats(calibration.get("raw", []), calibration.get("summary", {}),
+                   "timer_overhead_calibration")
+    empirical = payload.get("empirical_noise_floor")
+    require(isinstance(empirical, dict) and
+            empirical.get("method") == "unchanged_control_repeated_measurements_v1" and
+            empirical.get("baseline_candidate_model_id") == "phase8-std-map-control-v1",
+            "missing empirical noise-floor identity")
+    empirical_samples = empirical.get("samples")
+    require(isinstance(empirical_samples, list), "invalid empirical noise-floor samples")
 
-    wrapper_ids = {item.get("benchmark_name") for item in wrapper["workload_identities"]}
+    wrapper_ids = set(wrapper_workloads)
     records = payload.get("records")
     require(isinstance(records, list) and records, "missing records")
     seen: set[tuple[str, str]] = set()
     digests: dict[str, str] = {}
+    record_workload_ids: set[str] = set()
     workload_specs: dict[str, tuple[str, str]] = {}
+    control_samples: dict[str, list[float]] = {}
     for index, record in enumerate(records):
         prefix = f"record[{index}]"
+        require(isinstance(record, dict), f"{prefix}: record is not an object")
         require(record.get("schema") == RECORD_SCHEMA, f"{prefix}: wrong record schema")
         candidate = record.get("candidate_model_id")
         workload_id = record.get("workload_id")
         require(candidate in CANDIDATES, f"{prefix}: unknown candidate")
-        require(isinstance(workload_id, str) and workload_id in wrapper_ids, f"{prefix}: unknown workload")
+        require(isinstance(workload_id, str) and workload_id in wrapper_ids,
+                f"{prefix}: unknown workload")
+        record_workload_ids.add(workload_id)
         key = (candidate, workload_id)
         require(key not in seen, f"{prefix}: duplicate candidate/workload cell")
         seen.add(key)
-        spec_sha = record.get("workload_spec_sha256")
-        generated_sha = record.get("generated_workload_sha256")
-        require(isinstance(spec_sha, str) and len(spec_sha) == 64, f"{prefix}: invalid spec SHA")
-        require(isinstance(generated_sha, str) and len(generated_sha) == 64,
-                f"{prefix}: invalid generated workload SHA")
-        prior = workload_specs.setdefault(workload_id, (spec_sha, generated_sha))
-        require(prior == (spec_sha, generated_sha), f"{prefix}: workload identity mismatch")
+        identity = wrapper_workloads[workload_id]
+        require(record.get("workload_spec_schema") == WORKLOAD_SCHEMA,
+                f"{prefix}: invalid workload spec schema")
+        spec_sha = require_sha(record.get("workload_spec_sha256"),
+                               f"{prefix} spec SHA", HEX64)
+        generated_sha = require_sha(record.get("generated_workload_sha256"),
+                                    f"{prefix} generated workload SHA", HEX64)
+        require((spec_sha, generated_sha) ==
+                (identity["spec_sha"], identity["generated_sha"]),
+                f"{prefix}: workload identity mismatch")
+        workload_specs[workload_id] = (spec_sha, generated_sha)
         require(uint(record.get("repetitions"), f"{prefix}.repetitions") == repetitions,
                 f"{prefix}: repetition mismatch")
         metric = record.get("metric")
-        require(metric in {"update_latency", "replay_update_throughput", "full_replacement_latency",
-                           "top_n_read_latency"}, f"{prefix}: unknown metric")
+        require(metric in METRIC_UNITS, f"{prefix}: unknown metric")
+        require(record.get("unit") == METRIC_UNITS[metric],
+                f"{prefix}: metric/unit mismatch")
+        fields = identity["fields"]
+        operation = record.get("operation")
+        expected_operation = fields.get("operation")
+        if operation == "top_levels":
+            require(expected_operation == f"top_levels/{record.get('query_limit')}",
+                    f"{prefix}: top-level operation identity mismatch")
+            require(metric == "top_n_read_latency", f"{prefix}: top-level metric mismatch")
+        else:
+            require(expected_operation == operation, f"{prefix}: operation identity mismatch")
+            expected_metric = {
+                "apply_level": "update_latency",
+                "apply_updates": "replay_update_throughput",
+                "replace_all": "full_replacement_latency",
+            }.get(operation)
+            require(metric == expected_metric, f"{prefix}: operation/metric mismatch")
+        require(uint(record.get("depth_per_side"), f"{prefix}.depth_per_side") ==
+                int(fields.get("depth_per_side", "-1")), f"{prefix}: depth identity mismatch")
+        batch = uint(record.get("batch"), f"{prefix}.batch")
+        if operation == "apply_updates":
+            require(batch == int(fields.get("batch", "-1")),
+                    f"{prefix}: batch identity mismatch")
+        else:
+            require(batch == 0, f"{prefix}: unexpected batch")
+        query_limit = uint(record.get("query_limit"), f"{prefix}.query_limit")
+        if operation == "top_levels":
+            require(query_limit == int(fields.get("query_limit", "-1")),
+                    f"{prefix}: query-limit identity mismatch")
+        else:
+            require(query_limit == 0, f"{prefix}: unexpected query limit")
         measurement = record.get("measurement")
         require(isinstance(measurement, dict), f"{prefix}: missing measurement")
         validate_stats(measurement.get("raw", []), measurement.get("summary", {}), f"{prefix}.measurement")
         require(len(measurement["raw"]) == repetitions, f"{prefix}: raw repetition mismatch")
+        if candidate == "phase8-std-map-control-v1":
+            control_samples[workload_id] = [finite(value, f"{prefix}.measurement.raw")
+                                             for value in measurement["raw"]]
         allocation = record.get("allocation_supporting_evidence")
         require(isinstance(allocation, dict) and allocation.get("boundary") == BOUNDARY,
                 f"{prefix}: invalid allocation boundary")
@@ -202,8 +300,29 @@ def validate(payload_path: Path, wrapper_path: Path) -> None:
             require(digests[workload_id] == digest, f"{prefix}: final-state digest mismatch")
         else:
             digests[workload_id] = digest
-    require(len(seen) == len(workload_specs) * len(CANDIDATES),
+    require(record_workload_ids == wrapper_ids, "payload workload set does not match wrapper")
+    require(len(seen) == len(wrapper_ids) * len(CANDIDATES),
             "not every candidate consumed every workload")
+    for workload_id in wrapper_ids:
+        cells = {candidate for candidate, item in seen if item == workload_id}
+        require(cells == CANDIDATES, f"missing or extra candidate cells for {workload_id}")
+    empirical_ids: set[str] = set()
+    for index, sample in enumerate(empirical_samples):
+        prefix = f"empirical_noise_floor.samples[{index}]"
+        require(isinstance(sample, dict), f"{prefix}: invalid sample")
+        workload_id = sample.get("workload_id")
+        require(isinstance(workload_id, str) and workload_id in wrapper_ids,
+                f"{prefix}: unknown workload")
+        require(workload_id not in empirical_ids, f"{prefix}: duplicate workload")
+        empirical_ids.add(workload_id)
+        require(sample.get("metric") in METRIC_UNITS and
+                sample.get("unit") == METRIC_UNITS[sample.get("metric")],
+                f"{prefix}: metric/unit mismatch")
+        validate_stats(sample.get("raw", []), sample.get("summary", {}), prefix)
+        require(len(sample["raw"]) == repetitions, f"{prefix}: repetition mismatch")
+        require(sample["raw"] == control_samples.get(workload_id),
+                f"{prefix}: does not bind to control measurements")
+    require(empirical_ids == wrapper_ids, "empirical noise floor workload set mismatch")
     print(f"Phase-8 evidence validation PASS: {len(workload_specs)} workloads, "
           f"{len(seen)} candidate cells, {repetitions} repetitions")
 

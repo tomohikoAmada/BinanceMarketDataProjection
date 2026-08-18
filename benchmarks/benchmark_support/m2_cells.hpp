@@ -38,6 +38,10 @@ class M2ApplyLevelCell final {
     // invocation (setup is outside the measured region).
     void prepare();
 
+    // Builds the canonical book and operation inputs without the bounded
+    // execution pool. Phase-8 identity construction uses this setup-only seam.
+    void prepare_canonical_inputs();
+
     [[nodiscard]] bool uses_pool() const noexcept;
     [[nodiscard]] std::size_t pool_size() const noexcept;
 
@@ -59,6 +63,9 @@ class M2ApplyLevelCell final {
             std::abort();
         }
         return *update_;
+    }
+    [[nodiscard]] const std::vector<core::LevelUpdate>& prepared_update_slots() const noexcept {
+        return update_slots_;
     }
     [[nodiscard]] const std::string& generated_workload_sha256() const noexcept {
         return generated_sha_;
@@ -190,6 +197,12 @@ class M2ReplaceAllCell final {
 
     [[nodiscard]] std::size_t depth() const noexcept { return depth_; }
     [[nodiscard]] const core::OrderBook& book() const noexcept { return book_; }
+    [[nodiscard]] const std::vector<core::BookLevel>& replacement_bids() const noexcept {
+        return bids_;
+    }
+    [[nodiscard]] const std::vector<core::BookLevel>& replacement_asks() const noexcept {
+        return asks_;
+    }
     [[nodiscard]] const std::string& generated_workload_sha256() const noexcept {
         return generated_sha_;
     }

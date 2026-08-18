@@ -35,6 +35,8 @@ struct Phase8Workload final {
     std::size_t depth{};
     std::size_t batch{};
     std::size_t query_limit{};
+    std::vector<core::BookLevel> initial_bids;
+    std::vector<core::BookLevel> initial_asks;
     std::vector<core::BookLevel> bids;
     std::vector<core::BookLevel> asks;
     std::vector<core::LevelUpdate> updates;

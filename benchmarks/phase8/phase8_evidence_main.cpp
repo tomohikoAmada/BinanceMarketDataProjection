@@ -46,7 +46,6 @@ inline constexpr std::string_view kEvidenceSchema = "M5_PHASE8_EVIDENCE_PAYLOAD_
 inline constexpr std::string_view kRecordSchema = "M5_PHASE8_MEASUREMENT_RECORD_V1";
 inline constexpr std::string_view kContract = "M5_PHASE8_MEASUREMENT_CONTRACT_V1";
 inline constexpr std::size_t kDefaultRepetitions = 5;
-inline constexpr std::size_t kStandardUpdatePasses = 16;
 
 volatile std::uint64_t g_sink = 0;
 
@@ -118,25 +117,23 @@ struct Record final {
 }
 
 template <typename Model> void populate(Model& model, const Phase8Workload& workload) {
-    model.replace_all(std::span{workload.bids}, std::span{workload.asks});
+    model.replace_all(std::span{workload.initial_bids}, std::span{workload.initial_asks});
 }
 
-template <typename Model> void consume_operation(Model& model, const Phase8Workload& workload) {
+template <typename Model>
+void consume_operation(Model& model, const Phase8Workload& workload, std::size_t operation_step) {
     switch (workload.operation) {
     case Phase8Operation::apply_level: {
-        const auto& update = workload.updates.front();
+        const auto& update = workload.updates.at(operation_step % workload.updates.size());
         g_sink ^= static_cast<std::uint64_t>(
             model.apply_level(update.side, update.price, update.quantity));
         break;
     }
     case Phase8Operation::apply_updates: {
-        const auto passes = workload.id.starts_with("M5_PHASE8/") ? 1U : kStandardUpdatePasses;
-        for (std::size_t pass = 0; pass < passes; ++pass) {
-            for (const auto& updates : workload.update_batches) {
-                model.apply_updates(std::span{updates});
-                g_sink ^= model.level_count(core::BookSide::Bid);
-                g_sink ^= model.level_count(core::BookSide::Ask);
-            }
+        for (const auto& updates : workload.update_batches) {
+            model.apply_updates(std::span{updates});
+            g_sink ^= model.level_count(core::BookSide::Bid);
+            g_sink ^= model.level_count(core::BookSide::Ask);
         }
         break;
     }
@@ -156,31 +153,34 @@ template <typename Model> void consume_operation(Model& model, const Phase8Workl
 }
 
 template <typename Model>
-[[nodiscard]] std::string digest_after_operation(const Phase8Workload& workload) {
+[[nodiscard]] std::string digest_after_operation(const Phase8Workload& workload,
+                                                 std::size_t operation_step) {
     Model model{bm::benchmark_numeric_spec()};
     populate(model, workload);
-    consume_operation(model, workload);
+    consume_operation(model, workload, operation_step);
     return phase8_digest(model);
 }
 
-template <typename Model> [[nodiscard]] double timed_operation(const Phase8Workload& workload) {
+template <typename Model>
+[[nodiscard]] double timed_operation(const Phase8Workload& workload, std::size_t operation_step) {
     Model model{bm::benchmark_numeric_spec()};
     populate(model, workload);
     const auto start = Clock::now();
-    consume_operation(model, workload);
+    consume_operation(model, workload, operation_step);
     const auto stop = Clock::now();
     const auto nanos = std::chrono::duration<double, std::nano>{stop - start}.count();
     return std::max(1.0, nanos);
 }
 
 template <typename Model>
-[[nodiscard]] alloc::MeasurementResult measured_allocation(const Phase8Workload& workload) {
+[[nodiscard]] alloc::MeasurementResult measured_allocation(const Phase8Workload& workload,
+                                                           std::size_t operation_step) {
     Model model{bm::benchmark_numeric_spec()};
     populate(model, workload);
     alloc::MeasurementResult result;
     {
         alloc::MeasurementScope scope;
-        consume_operation(model, workload);
+        consume_operation(model, workload, operation_step);
         scope.finish();
         result = scope.result();
     }
@@ -204,7 +204,7 @@ template <typename Model> void warmup(const std::vector<Phase8Workload>& workloa
     for (const auto& workload : workloads) {
         Model model{bm::benchmark_numeric_spec()};
         populate(model, workload);
-        consume_operation(model, workload);
+        consume_operation(model, workload, 0);
     }
 }
 
@@ -216,7 +216,10 @@ template <typename Model> void warmup(const std::vector<Phase8Workload>& workloa
     std::sort(values.begin(), values.end());
     result.minimum = values.front();
     result.maximum = values.back();
-    result.median = values[values.size() / 2U];
+    const auto middle = values.size() / 2U;
+    result.median = values.size() % 2U == 0U
+                        ? values[middle - 1U] + (values[middle] - values[middle - 1U]) / 2.0
+                        : values[middle];
     result.mean =
         std::accumulate(values.begin(), values.end(), 0.0) / static_cast<double>(values.size());
     double squared = 0.0;
@@ -266,8 +269,8 @@ void write_uint64_array(bm::json::Writer& writer, const std::vector<std::uint64_
 template <typename Model>
 void collect_model_records(const std::vector<Phase8Workload>& workloads, std::size_t repetitions,
                            std::vector<Record>& records,
-                           std::vector<std::string>& reference_digests, bool set_reference,
-                           bool& valid) {
+                           std::vector<std::vector<std::string>>& reference_digests,
+                           bool set_reference, bool& valid) {
     for (std::size_t workload_index = 0; workload_index < workloads.size(); ++workload_index) {
         const auto& workload = workloads[workload_index];
         Record record;
@@ -279,21 +282,23 @@ void collect_model_records(const std::vector<Phase8Workload>& workloads, std::si
             : workload.operation == Phase8Operation::replace_all ? "full_replacement_latency"
                                                                  : "update_latency";
         record.unit = record.metric == "replay_update_throughput" ? "updates_per_second" : "ns";
-        const auto baseline_digest = digest_after_operation<Model>(workload);
         if (set_reference) {
-            reference_digests[workload_index] = baseline_digest;
-        } else if (baseline_digest != reference_digests[workload_index]) {
-            valid = false;
+            reference_digests[workload_index].clear();
+            reference_digests[workload_index].reserve(repetitions);
         }
         for (std::size_t repetition = 0; repetition < repetitions; ++repetition) {
-            const auto elapsed = timed_operation<Model>(workload);
-            const auto allocation = measured_allocation<Model>(workload);
+            const auto operation_digest = digest_after_operation<Model>(workload, repetition);
+            if (set_reference) {
+                reference_digests[workload_index].push_back(operation_digest);
+            } else if (operation_digest != reference_digests[workload_index][repetition]) {
+                valid = false;
+            }
+            const auto elapsed = timed_operation<Model>(workload, repetition);
+            const auto allocation = measured_allocation<Model>(workload, repetition);
             const auto [persistent, post_destroy_ok] = persistent_footprint<Model>(workload);
             record.raw_values.push_back(
                 record.metric == "replay_update_throughput"
-                    ? static_cast<double>(
-                          (workload.id.starts_with("M5_PHASE8/") ? 1U : kStandardUpdatePasses) *
-                          workload.update_batches.size() * workload.batch) /
+                    ? static_cast<double>(workload.update_batches.size() * workload.batch) /
                           (elapsed / 1'000'000'000.0)
                     : elapsed);
             record.allocation_counts.push_back(allocation.allocation_count);
@@ -304,9 +309,7 @@ void collect_model_records(const std::vector<Phase8Workload>& workloads, std::si
                                              allocation.allocation_count_valid &&
                                              allocation.total_allocated_bytes_valid;
             if (repetition == 0) {
-                record.final_digest = baseline_digest;
-            } else if (record.final_digest != digest_after_operation<Model>(workload)) {
-                valid = false;
+                record.final_digest = operation_digest;
             }
         }
         records.push_back(std::move(record));
@@ -370,7 +373,7 @@ void write_record(bm::json::Writer& writer, const Record& record, std::size_t re
 }
 
 [[nodiscard]] std::string build_payload(const std::vector<Record>& records, std::size_t repetitions,
-                                        const std::vector<double>& noise_floor) {
+                                        const std::vector<double>& timer_calibration) {
     bm::json::Writer writer;
     writer.begin_object();
     writer.key("schema");
@@ -386,13 +389,37 @@ void write_record(bm::json::Writer& writer, const Record& record, std::size_t re
     writer.end_array();
     writer.key("repetitions");
     writer.value(static_cast<std::uint64_t>(repetitions));
-    writer.key("noise_floor");
+    writer.key("timer_overhead_calibration");
     writer.begin_object();
     writer.key("timer");
     writer.value("steady_clock");
     writer.key("unit");
     writer.value("ns");
-    write_stats(writer, noise_floor);
+    write_stats(writer, timer_calibration);
+    writer.end_object();
+    writer.key("empirical_noise_floor");
+    writer.begin_object();
+    writer.key("method");
+    writer.value("unchanged_control_repeated_measurements_v1");
+    writer.key("baseline_candidate_model_id");
+    writer.value(kPhase8StdMapControlId);
+    writer.key("samples");
+    writer.begin_array();
+    for (const auto& record : records) {
+        if (record.candidate != kPhase8StdMapControlId) {
+            continue;
+        }
+        writer.begin_object();
+        writer.key("workload_id");
+        writer.value(record.workload->id);
+        writer.key("metric");
+        writer.value(record.metric);
+        writer.key("unit");
+        writer.value(record.unit);
+        write_stats(writer, record.raw_values);
+        writer.end_object();
+    }
+    writer.end_array();
     writer.end_object();
     writer.key("records");
     writer.begin_array();
@@ -440,19 +467,19 @@ int run(int argc, char** argv) {
     warmup<Phase8AbslBtreeMap<>>(workloads);
     warmup<Phase8SortedVectorBatchLww<>>(workloads);
 
-    std::vector<double> noise_floor;
-    noise_floor.reserve(options.repetitions);
+    std::vector<double> timer_calibration;
+    timer_calibration.reserve(options.repetitions);
     for (std::size_t repetition = 0; repetition < options.repetitions; ++repetition) {
         const auto start = Clock::now();
         const auto stop = Clock::now();
-        noise_floor.push_back(
+        timer_calibration.push_back(
             std::max(1.0, std::chrono::duration<double, std::nano>{stop - start}.count()));
     }
 
     std::vector<Record> records;
     records.reserve(workloads.size() * 4U);
     bool valid = true;
-    std::vector<std::string> reference_digests(workloads.size());
+    std::vector<std::vector<std::string>> reference_digests(workloads.size());
     collect_model_records<Phase8StdMapControl<>>(workloads, options.repetitions, records,
                                                  reference_digests, true, valid);
     collect_model_records<Phase8SortedVectorNaive<>>(workloads, options.repetitions, records,
@@ -469,7 +496,7 @@ int run(int argc, char** argv) {
         return 1;
     }
 
-    const auto payload = build_payload(records, options.repetitions, noise_floor);
+    const auto payload = build_payload(records, options.repetitions, timer_calibration);
     std::ofstream payload_stream(options.output, std::ios::binary | std::ios::trunc);
     if (!payload_stream.is_open()) {
         return 1;

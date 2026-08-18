@@ -55,6 +55,17 @@ namespace bm = bmd_projection::m5::benchmark;
     return std::get<std::string>(hash);
 }
 
+void copy_initial_state(Phase8Workload& workload, const core::OrderBook& book) {
+    workload.initial_bids = book.all_levels(core::BookSide::Bid);
+    workload.initial_asks = book.all_levels(core::BookSide::Ask);
+}
+
+void require_generated_identity(const Phase8Workload& workload, std::string_view generated_sha) {
+    if (workload.generated_workload_sha256 != generated_sha) {
+        std::abort();
+    }
+}
+
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 [[nodiscard]] Phase8Workload standard_workload(std::string id, Phase8Operation operation,
                                                std::size_t depth, std::size_t batch = 0,
@@ -70,27 +81,34 @@ namespace bm = bmd_projection::m5::benchmark;
     workload.depth = depth;
     workload.batch = batch;
     workload.query_limit = limit;
-    workload.bids = bm::build_bid_levels(depth);
-    workload.asks = bm::build_ask_levels(depth);
     return workload;
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 void fill_operation_input(Phase8Workload& workload) {
-    const bm::BookParams params{};
     if (workload.operation == Phase8Operation::apply_level) {
+        auto kind = bm::M2ApplyLevelKind::MissingDelete;
         if (workload.id.find("/insert/") != std::string::npos) {
-            workload.updates.push_back(
-                {core::BookSide::Bid,
-                 bm::price_units(params.bid_start - static_cast<std::int64_t>(workload.depth) - 1),
-                 bm::quantity_units(params.quantity_base + 1)});
+            kind = bm::M2ApplyLevelKind::Insert;
+        } else if (workload.id.find("/update/") != std::string::npos) {
+            kind = bm::M2ApplyLevelKind::Update;
         } else if (workload.id.find("/delete/") != std::string::npos) {
-            workload.updates.push_back(
-                {core::BookSide::Bid, bm::price_units(params.bid_start), bm::quantity_units(0)});
-        } else {
-            workload.updates.push_back({core::BookSide::Bid, bm::price_units(params.bid_start),
-                                        bm::quantity_units(params.quantity_base + 1)});
+            kind = bm::M2ApplyLevelKind::Delete;
         }
+        bm::M2ApplyLevelCell cell{kind, workload.depth};
+        cell.prepare_canonical_inputs();
+        copy_initial_state(workload, cell.book());
+        if (kind == bm::M2ApplyLevelKind::Update) {
+            for (std::size_t index = 0; index < cell.prepared_update_slot_count(); ++index) {
+                workload.updates.push_back(cell.prepared_update_slots().at(index));
+            }
+        } else {
+            workload.updates.push_back(cell.prepared_update());
+        }
+        workload.generated_workload_sha256 = cell.generated_workload_sha256();
+        require_generated_identity(
+            workload, spec_field(workload.workload_spec_text, "generated_workload_sha256"));
+        return;
     }
     if (workload.operation == Phase8Operation::apply_updates &&
         workload.id.starts_with("M2/apply_updates/")) {
@@ -103,6 +121,32 @@ void fill_operation_input(Phase8Workload& workload) {
         if (!workload.update_batches.empty()) {
             workload.updates = workload.update_batches.front();
         }
+        copy_initial_state(workload, cell.book());
+        workload.generated_workload_sha256 = cell.generated_workload_sha256();
+        require_generated_identity(
+            workload, spec_field(workload.workload_spec_text, "generated_workload_sha256"));
+        return;
+    }
+    if (workload.operation == Phase8Operation::replace_all) {
+        bm::M2ReplaceAllCell cell{workload.depth};
+        cell.prepare();
+        copy_initial_state(workload, cell.book());
+        workload.bids = cell.replacement_bids();
+        workload.asks = cell.replacement_asks();
+        workload.generated_workload_sha256 = cell.generated_workload_sha256();
+        require_generated_identity(
+            workload, spec_field(workload.workload_spec_text, "generated_workload_sha256"));
+        return;
+    }
+    if (workload.operation == Phase8Operation::top_levels) {
+        bm::M2QueryCell cell{{workload.depth, workload.query_limit}};
+        cell.prepare();
+        copy_initial_state(workload, cell.book());
+        const auto operation = "top_levels/" + std::to_string(workload.query_limit);
+        workload.generated_workload_sha256 =
+            bm::m2_query_generated_sha256(operation, {workload.depth, workload.query_limit});
+        require_generated_identity(
+            workload, spec_field(workload.workload_spec_text, "generated_workload_sha256"));
     }
 }
 
@@ -115,8 +159,10 @@ void fill_operation_input(Phase8Workload& workload) {
     workload.depth = depth;
     workload.batch = 6;
     workload.generator_schema = "M5_PHASE8_CANDIDATE_WORKLOAD_V1";
-    workload.bids = bm::build_bid_levels(depth);
-    workload.asks = bm::build_ask_levels(depth);
+    workload.initial_bids = bm::build_bid_levels(depth);
+    workload.initial_asks = bm::build_ask_levels(depth);
+    workload.bids = workload.initial_bids;
+    workload.asks = workload.initial_asks;
     workload.updates = {
         {core::BookSide::Bid, bm::price_units(params.bid_start),
          bm::quantity_units(params.quantity_base + 1)},

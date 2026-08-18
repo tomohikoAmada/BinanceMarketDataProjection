@@ -167,6 +167,22 @@ M2ApplyLevelCell::M2ApplyLevelCell(M2ApplyLevelKind kind, std::size_t depth)
     : kind_{kind}, depth_{depth}, book_{benchmark_numeric_spec()} {}
 
 void M2ApplyLevelCell::prepare() {
+    prepare_canonical_inputs();
+    switch (kind_) {
+    case M2ApplyLevelKind::Insert:
+        pool_.fill(pool_iteration_count(depth_), [this] { return build_order_book(depth_); });
+        break;
+    case M2ApplyLevelKind::Update:
+        break;
+    case M2ApplyLevelKind::Delete:
+        pool_.fill(pool_iteration_count(depth_), [this] { return build_order_book(depth_); });
+        break;
+    case M2ApplyLevelKind::MissingDelete:
+        break;
+    }
+}
+
+void M2ApplyLevelCell::prepare_canonical_inputs() {
     update_slot_ = 0;
     update_.reset();
     update_slots_.clear();
@@ -176,28 +192,23 @@ void M2ApplyLevelCell::prepare() {
     case M2ApplyLevelKind::Insert:
         update_ = core::LevelUpdate{core::BookSide::Bid, absent_bid_price(depth_),
                                     quantity_units(params.quantity_base + 1)};
-        pool_.fill(pool_iteration_count(depth_), [this] { return build_order_book(depth_); });
-        { generated_sha_ = m2_apply_level_generated_sha256(kind_, depth_); }
         break;
     case M2ApplyLevelKind::Update:
         update_slots_.push_back({core::BookSide::Bid, price_units(params.bid_start),
                                  quantity_units(params.quantity_base + 1)});
         update_slots_.push_back({core::BookSide::Bid, price_units(params.bid_start),
                                  quantity_units(params.quantity_base + 2)});
-        generated_sha_ = m2_apply_level_generated_sha256(kind_, depth_);
         break;
     case M2ApplyLevelKind::Delete:
         update_ = core::LevelUpdate{core::BookSide::Bid, price_units(params.bid_start),
                                     quantity_units(0)};
-        pool_.fill(pool_iteration_count(depth_), [this] { return build_order_book(depth_); });
-        generated_sha_ = m2_apply_level_generated_sha256(kind_, depth_);
         break;
     case M2ApplyLevelKind::MissingDelete:
         update_ =
             core::LevelUpdate{core::BookSide::Bid, absent_bid_price(depth_), quantity_units(0)};
-        generated_sha_ = m2_apply_level_generated_sha256(kind_, depth_);
         break;
     }
+    generated_sha_ = m2_apply_level_generated_sha256(kind_, depth_);
 }
 
 bool M2ApplyLevelCell::uses_pool() const noexcept {
