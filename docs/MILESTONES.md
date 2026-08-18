@@ -408,8 +408,18 @@ Phase-7 implementation is **IN PROGRESS**:
   deterministic trust-boundary tests
   (`scripts/test-benchmark-allocation-formal.sh`). Pending independent
   exact-head review.
-- NOT implemented yet (WP6): formal evidence acceptance and Phase-7
-  final acceptance. Phase 8 (container spike) is NOT STARTED.
+- WP6 (formal evidence acceptance): formal Phase-7 evidence generated
+  fresh from merged main `bb1d62ff…` and independently accepted — Phase-7
+  is COMPLETE / EVIDENCE ACCEPTED.
+- Phase 8 (container spike) is IN PROGRESS — PR-A / WP1 implements the
+  benchmark-only same-interface container-model substrate
+  (Phase8StdMapControl, Phase8SortedVectorNaive, Phase8AbslBtreeMap,
+  Phase8SortedVectorBatchLww) behind one static-polymorphism model
+  protocol with a semantic conformance gate (ReferenceOrderBook and
+  production core::OrderBook differential checks, replace_all strong
+  exception guarantee, deterministic property sequences) and Abseil as an
+  explicit TEST/BENCHMARK-only requirement. No container decision and no
+  production migration are authorized; Phase 9 owns that verdict.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 

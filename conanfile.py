@@ -34,6 +34,13 @@ class BinanceMarketDataProjectionConan(ConanFile):
             )
         self.test_requires("gtest/1.17.0")
         self.test_requires("benchmark/1.9.5")
+        # M5 Phase-8 container-model substrate (PR-A / WP1): Abseil is an
+        # explicit TEST/BENCHMARK-only requirement. It must never become a Core
+        # require, an exported package require, a public header dependency, an
+        # installed consumer requirement, or a ProtoAdapter dependency. The
+        # exact version/RREV is already pinned by the existing dependency graph
+        # and must be preserved.
+        self.test_requires("abseil/20260107.1#883e95a7be2b767999f64669ac642e5d")
 
     def layout(self):
         cmake_layout(self, generator="Ninja")
