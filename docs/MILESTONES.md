@@ -411,15 +411,19 @@ Phase-7 implementation is **IN PROGRESS**:
 - WP6 (formal evidence acceptance): formal Phase-7 evidence generated
   fresh from merged main `bb1d62ff…` and independently accepted — Phase-7
   is COMPLETE / EVIDENCE ACCEPTED.
-- Phase 8 (container spike) is IN PROGRESS — PR-A / WP1 implements the
+- Phase 8 (container spike) is IN PROGRESS — PR-A / WP1 is accepted and
+  merged in PR #30; PR-B / WP2 implements the
   benchmark-only same-interface container-model substrate
   (Phase8StdMapControl, Phase8SortedVectorNaive, Phase8AbslBtreeMap,
   Phase8SortedVectorBatchLww) behind one static-polymorphism model
   protocol with a semantic conformance gate (ReferenceOrderBook and
   production core::OrderBook differential checks, replace_all strong
   exception guarantee, deterministic property sequences) and Abseil as an
-  explicit TEST/BENCHMARK-only requirement. No container decision and no
-  production migration are authorized; Phase 9 owns that verdict.
+  explicit TEST/BENCHMARK-only requirement. WP2 adds repeated timing,
+  allocation, persistent-footprint, noise-floor, provenance, and fail-closed
+  comparison evidence. No container decision and no production migration are
+  authorized; Phase 9 owns that verdict. See
+  `docs/M5_PHASE8_CONTAINER_BENCHMARK_EVIDENCE.md`.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 

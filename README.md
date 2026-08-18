@@ -3,7 +3,7 @@
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. M1 through M4 are complete on `main`; M5 (Differential Validation and
 Performance) implementation is in progress (Phases 1 through 6 complete/merged; Phase 7 in
-progress; Phase 8 not started).
+progress; Phase 8 container evidence in progress).
 
 ## For AI agents and independent reviewers
 
@@ -327,7 +327,10 @@ tree). Phase-7 implementation is IN PROGRESS: PR-A merged the allocation
 instrumentation substrate; the measurement/evidence machinery (schemas,
 validator, M2/M3/M4/replay/footprint characterization, exploratory driver)
 is implemented on the Phase-7 measurement PR-B branch. The formal Release
-runner and formal evidence are NOT implemented. Phase 8 is NOT STARTED.
+runner and formal evidence are NOT implemented. Phase 8 is IN PROGRESS:
+PR-A / WP1 is accepted/merged and PR-B / WP2 provides benchmark-only
+candidate evidence; Phase 9 is not started and no production container
+migration is authorized.
 Its design covers layered differential validation with operation-result
 observation, canonical replay fixtures with canonical text format rules, determinism and
 cross-compiler semantic manifests with artifact fan-in transport, replay/differential fuzzing,

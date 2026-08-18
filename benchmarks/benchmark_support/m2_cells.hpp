@@ -116,6 +116,9 @@ class M2ApplyUpdatesCell final {
     [[nodiscard]] std::size_t prepared_batch_count() const noexcept {
         return cycle_batches_.size();
     }
+    [[nodiscard]] const std::vector<core::LevelUpdate>& prepared_batch(std::size_t index) const {
+        return cycle_batches_.at(index);
+    }
     [[nodiscard]] const std::string& generated_workload_sha256() const noexcept {
         return generated_sha_;
     }

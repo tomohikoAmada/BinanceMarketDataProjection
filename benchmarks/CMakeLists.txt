@@ -1,4 +1,5 @@
 find_package(benchmark CONFIG REQUIRED)
+find_package(absl CONFIG REQUIRED)
 
 include("${PROJECT_SOURCE_DIR}/cmake/M5Support.cmake")
 include("${PROJECT_SOURCE_DIR}/cmake/M5BenchmarkSupport.cmake")
@@ -12,6 +13,8 @@ add_executable(
     m2_benchmarks.cpp
     m3_benchmarks.cpp
     replay_benchmarks.cpp
+    phase8/phase8_benchmarks.cpp
+    phase8/phase8_workload.cpp
     benchmark_support/replay_workload_specs.cpp
 )
 target_link_libraries(
@@ -23,6 +26,7 @@ target_link_libraries(
         bmd_projection_m5_oracle_support
         bmd_projection_m5_reference_support
         benchmark::benchmark
+        absl::btree
 )
 set_target_properties(
     bmd_projection_benchmarks
@@ -32,6 +36,39 @@ set_target_properties(
         CXX_EXTENSIONS NO
 )
 bmd_projection_apply_project_options(bmd_projection_benchmarks)
+
+# M5 Phase-8 PR-B evidence producer. It reuses the Phase-7 allocation
+# instrumentation only in this dedicated executable; the replacement global
+# new/delete surface is never linked into Core, the Phase-6 benchmark target,
+# ProtoAdapter, or installed consumers.
+add_executable(
+    bmd_projection_m5_phase8_container_evidence
+    phase8/phase8_evidence_main.cpp
+    phase8/phase8_workload.cpp
+    benchmark_support/allocation_instrumentation.cpp
+    benchmark_support/allocation_global_new.cpp
+)
+target_include_directories(
+    bmd_projection_m5_phase8_container_evidence
+    PRIVATE
+        "${PROJECT_SOURCE_DIR}/benchmarks/phase8"
+        "${PROJECT_SOURCE_DIR}/benchmarks/benchmark_support"
+)
+target_link_libraries(
+    bmd_projection_m5_phase8_container_evidence
+    PRIVATE
+        BinanceMarketDataProjection::Core
+        bmd_projection_m5_benchmark_support
+        absl::btree
+)
+set_target_properties(
+    bmd_projection_m5_phase8_container_evidence
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_phase8_container_evidence)
 
 if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
     target_sources(
