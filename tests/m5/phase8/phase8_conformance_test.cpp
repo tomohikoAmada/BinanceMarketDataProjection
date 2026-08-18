@@ -68,8 +68,7 @@ TYPED_TEST(Phase8ConformanceTest, EmptyAndIdentity) {
     ASSERT_TRUE(TypeParam::model_id() == bmd_projection::m5::phase8::kPhase8StdMapControlId ||
                 TypeParam::model_id() == bmd_projection::m5::phase8::kPhase8SortedVectorNaiveId ||
                 TypeParam::model_id() == bmd_projection::m5::phase8::kPhase8AbslBtreeMapId ||
-                TypeParam::model_id() ==
-                    bmd_projection::m5::phase8::kPhase8SortedVectorBatchLwwId);
+                TypeParam::model_id() == bmd_projection::m5::phase8::kPhase8SortedVectorBatchLwwId);
     EXPECT_FALSE(TypeParam::model_id().empty());
 }
 
