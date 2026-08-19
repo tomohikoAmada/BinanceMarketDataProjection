@@ -49,10 +49,11 @@ orientation only.
 - M5 Phase 7 is COMPLETE / EVIDENCE ACCEPTED, and M5 Phase 8 is COMPLETE / EVIDENCE ACCEPTED.
 - Phase 9 is COMPLETE / DECISION ACCEPTED. The decision is `KEEP_STD_MAP`; no candidate winner
   exists, the production container remains `std::map`, and production migration is NO.
-- Phase 10 is AUTHORIZED / NOT STARTED.
+- Phase 10 is IN PROGRESS: WP-A benchmark-smoke artifact reporting is implemented; WP-B remains
+  not implemented.
 - The exact main publication base is `041a9e8516409552ea9d6eeada5d58d378c40fc7` with tree
   `87d92b0f67bf526768737ba03db2667bfdd1f5fb`; there are no open PRs at publication time.
-- P10-PRE-P1-001 is ESTABLISHED: the two exact accepted materialized medium fixtures are publicly
+- P10-PRE-P1-001 is CLOSED: the two exact accepted materialized medium fixtures are publicly
   distributed by the versioned `m5-medium-corpus-v1` Release asset. The Raw source remains
   controlled/local.
 - ADR-0008 is ACCEPTED: Spot bootstrap uses successor coverage (`U <= L + 1 <= u`,
@@ -183,13 +184,17 @@ artifact is a separate identity and remains outside Projection ownership.
 - USD-M mandatory 100k evidence is validated lifecycle-valid: bridge Applied/Synchronized,
   100,001 Applied operations, zero gaps, final Synchronized.
 
-## Phase-10 durable pre-implementation state
+## Phase-10 current implementation state
 
 ```text
 PHASE9=COMPLETE / DECISION ACCEPTED
-PHASE10=AUTHORIZED / NOT STARTED
+PHASE10=IN PROGRESS
+PHASE10_WP_A=IMPLEMENTED
+PHASE10_WP_B=NOT IMPLEMENTED
+P10_PRE_P1_001=CLOSED
 MEDIUM_CORPUS_DISTRIBUTION=ESTABLISHED
 WEEKLY_M5_PERFORMANCE=NOT IMPLEMENTED / NOT RUNNING
+M5_PERFORMANCE_WORKFLOW_CREATED=NO
 ```
 
 The exact owner-authorized medium asset is `m5-medium-corpus-v1` /
@@ -199,6 +204,12 @@ distribution-manifest SHA-256
 `13e4c37119e26f32c60f64f73565363d51ef58f59245f4a6678f4bf016cdba65`. It is
 not a software migration release and does not change the production
 `std::map` decision.
+
+P10-PRE-P1-001 is CLOSED. Phase-10 WP-A is implemented on the benchmark-smoke
+job: it checks out the exact evidence SHA, binds both benchmark wrappers to that
+source revision, and publishes the four required smoke JSON outputs as a
+three-day SHA-named artifact. The benchmark remains exploratory structural/
+execution smoke and has no numeric performance gate.
 
 The authorized, not-yet-running future operation is:
 
@@ -251,7 +262,8 @@ That running state is not true in the current repository state.
 Governance boundary: `PHASE8=COMPLETE / EVIDENCE ACCEPTED`,
 `PHASE9=COMPLETE / DECISION ACCEPTED`, `CONTAINER_DECISION=KEEP_STD_MAP`,
 `CANDIDATE_WINNER=NONE`, `PRODUCTION_CONTAINER=std::map`, `PRODUCTION_MIGRATION=NO`,
-`MIGRATION_IMPLEMENTED=NO`, and `PHASE10=AUTHORIZED / NOT STARTED`. The explicit decision record
+`MIGRATION_IMPLEMENTED=NO`, and `PHASE10=IN PROGRESS / WP-A IMPLEMENTED / WP-B NOT IMPLEMENTED`.
+The explicit decision record
 is [`docs/M5_PHASE9_CONTAINER_DECISION.md`](M5_PHASE9_CONTAINER_DECISION.md).
 
 ## Deferred / Not Yet Started
@@ -360,8 +372,8 @@ is [`docs/M5_PHASE9_CONTAINER_DECISION.md`](M5_PHASE9_CONTAINER_DECISION.md).
   (OD-M5-P7-021) is resolved.
 - Phase 8 is COMPLETE / EVIDENCE ACCEPTED. The retained nonblocking P2 is recorded above; no
   numeric winner conclusion has been made.
-- Phase 9 is COMPLETE / DECISION ACCEPTED with `KEEP_STD_MAP`; Phase-10 remains
-  AUTHORIZED / NOT STARTED after the P10-PRE-P1-001 publication prerequisite.
+- Phase 9 is COMPLETE / DECISION ACCEPTED with `KEEP_STD_MAP`; Phase-10 is IN PROGRESS with WP-A
+  implemented and WP-B not implemented after the P10-PRE-P1-001 publication prerequisite.
 
 ## Accepted Semantic Authorities
 
@@ -442,9 +454,9 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 
 Phase 7 is COMPLETE / EVIDENCE ACCEPTED and Phase 8 is COMPLETE / EVIDENCE ACCEPTED. Phase 9 is
 COMPLETE / DECISION ACCEPTED with `KEEP_STD_MAP`, `CANDIDATE_WINNER=NONE`,
-`PRODUCTION_CONTAINER=std::map`, `PRODUCTION_MIGRATION=NO`, and
-`PHASE10=AUTHORIZED / NOT STARTED`. Medium corpus distribution is established by
-P10-PRE-P1-001, but no Phase-10 implementation or weekly performance workflow is included here.
+`PRODUCTION_CONTAINER=std::map`, and `PRODUCTION_MIGRATION=NO`. Phase 10 is IN PROGRESS:
+WP-A benchmark-smoke artifact reporting is implemented, WP-B and the weekly performance workflow
+remain not implemented, and P10-PRE-P1-001 is closed.
 
 ## AI / Reviewer Reading Order
 
