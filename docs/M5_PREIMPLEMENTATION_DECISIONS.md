@@ -236,3 +236,29 @@ corpora are validated PASS. Phase 4 is COMPLETE / MERGED (PR #16, final approved
 | OD-M5-005 | CAN BE RESOLVED DURING SPIKE |
 | OD-M5-006 | CAN BE RESOLVED DURING SPIKE |
 | OD-M5-007 | CAN BE RESOLVED DURING SPIKE |
+
+## Later Phase-10 addendum — P10-PRE-P1-001 (2026-08-19)
+
+This is a later governance addendum and does not rewrite the original
+OD-M5-001 decision. OD-M5-001 originally preserved the boundary that captured
+data was not silently treated as redistributable and that large data was not
+uploaded publicly. Following explicit project-owner authorization, the two
+exact already-materialized medium Replay_V1 fixtures are now authorized for
+public project distribution through the immutable asset recorded in
+`docs/M5_PHASE10_PREIMPLEMENTATION_DECISIONS.md`:
+
+```text
+PUBLIC_DISTRIBUTION_AUTHORITY=AUTHORIZED_BY_PROJECT_OWNER
+AUTHORIZED_FIXTURES=
+  M5-REC-SPOT-BTCUSDT-V1
+  M5-REC-USDM-BTCUSDT-V1
+RELEASE_TAG=m5-medium-corpus-v1
+ASSET_NAME=m5-medium-recorded-v1.tar.gz
+RAW_SOURCE_DISTRIBUTION=NO
+SOFTWARE_LICENSE_CHANGED=NO
+```
+
+Raw source remains controlled/local. Actions artifacts remain transport
+artifacts and are not the source of record. This narrow corpus policy does not
+close O-P001 globally, change Projection/Recorder/Contracts software
+licensing, or make a legal statement about third-party rights.

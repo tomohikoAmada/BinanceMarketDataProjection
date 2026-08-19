@@ -6,6 +6,13 @@ No explicit common license was found in the private Contracts or Recorder reposi
 license (or an explicit proprietary policy) before any public distribution. This does not block the
 private engineering baseline.
 
+Narrow exception recorded by P10-PRE-P1-001: the project owner has authorized
+public distribution of only the two exact materialized medium corpus assets
+`M5-REC-SPOT-BTCUSDT-V1` and `M5-REC-USDM-BTCUSDT-V1` through the versioned
+`m5-medium-corpus-v1` release asset. This corpus-specific authorization does not
+close O-P001 globally and does not change Projection, Recorder, or Contracts
+software-license policy.
+
 ## O-P002: TSan platform coverage
 
 Confirm which hosted and deployment toolchains provide a stable ThreadSanitizer runtime. The
@@ -27,10 +34,17 @@ review. `KEEP std::map` is a valid outcome.
 
 M5 recorded corpus v1 is sourced from the Recorder M21.4 validated live Raw capture
 (2026-08-05T15:09:30.200566Z → 2026-08-06T15:09:30.200566Z, BTCUSDT Spot + USD-M perpetual).
-Primary medium fixtures: M5-REC-SPOT-BTCUSDT-V1 and M5-REC-USDM-BTCUSDT-V1, each targeting
-100,000 valid replay operations after synchronization. Large corpus: full 24h window, manual
-only. Corpus materialization is pending M5 implementation. See
-`docs/M5_PREIMPLEMENTATION_DECISIONS.md` for provenance, selection rules, and storage policy.
+Primary medium fixtures are established and validated: `M5-REC-SPOT-BTCUSDT-V1`
+(100002 events, replay SHA-256
+`9e9831231192938ac1bd21c90b157ec17e8e2d4e8034131eb21ba57c99b2cc9d`) and
+`M5-REC-USDM-BTCUSDT-V1` (100002 events, replay SHA-256
+`d28ffe19e134e4d5d1c4d57a60762e8884dee676c858587224aebf8afed29afc`). Both
+passed Core differential validation, adapter differential validation, and
+medium lifecycle validation. Public materialized-fixture distribution is now
+owner-authorized and published as `m5-medium-corpus-v1` /
+`m5-medium-recorded-v1.tar.gz`. The Raw source and full large corpus remain
+controlled/local. See `docs/M5_PHASE10_PREIMPLEMENTATION_DECISIONS.md` for the
+immutable release and provenance details.
 
 ## O-P005: Scheduled medium-tier CI budget — CLOSED (OD-M5-002)
 
