@@ -565,6 +565,17 @@ set_tests_properties(
     PROPERTIES
         ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}"
 )
+add_test(
+    NAME m5_phase10_verifier_tests
+    COMMAND ${Python3_EXECUTABLE} -m unittest discover
+            -s ${CMAKE_CURRENT_SOURCE_DIR}/m5/phase10
+            -p test_phase10.py
+)
+set_tests_properties(
+    m5_phase10_verifier_tests
+    PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}"
+)
 # Bit-for-bit Phase-6 workload identity regression against the committed
 # golden identity set (runs the benchmark binary with a zero-match filter;
 # canonical spec texts/SHAs must match the accepted identities exactly).
