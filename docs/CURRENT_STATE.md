@@ -25,6 +25,13 @@ orientation only.
 
 ## Current Main / Recent Main Baseline
 
+- Phase-8 accepted implementation/evidence baseline before this governance closure:
+  `b06fa2f5716527cc5fda3e102ba358721336246c` with tree
+  `7a8e924879305b3ddba34304573c0ed81ac962bb`. Git history is authoritative for the actual live
+  `main` tip.
+- Phase-8 WP2 is PR #31, accepted and squash-merged at the Phase-8 evidence/source baseline. Its
+  independently approved Head was `f1bbe499f7179094cfefae796f454951e1736add`.
+- Post-merge main CI is run `32203582370` (`ci`, `push`), completed `success`, 19/19 jobs PASS.
 - INFRA-TC-001 / PR #23 squash merge: `24fb72232e928290add45ed8634cd0bf9a8d3442` (reproducible
   Quality toolchain). This is the accepted infrastructure merge baseline immediately preceding
   this docs-only governance synchronization; Git history is authoritative for any later tip.
@@ -39,6 +46,9 @@ orientation only.
 - Main advances as documentation-state PRs merge; Git history is authoritative for the tip.
 - M0-M4 are complete on main.
 - M5 Phase 1 through Phase 6 are complete/merged on main.
+- M5 Phase 7 is COMPLETE / EVIDENCE ACCEPTED, and M5 Phase 8 is COMPLETE / EVIDENCE ACCEPTED.
+- Phase 9 is AUTHORIZED / NOT STARTED. No container winner or production migration has been
+  selected or authorized.
 - ADR-0008 is ACCEPTED: Spot bootstrap uses successor coverage (`U <= L + 1 <= u`,
   overflow-guarded); exact-next `[L+1, ...]` is a valid bridge; `U > L + 1` is the true gap.
   ADR-0008 supersedes only the Spot-bootstrap contains-`L` portion of ADR-0005; USD-M semantics
@@ -51,6 +61,14 @@ orientation only.
   `31987557259` — 19/19 PASS). Delivers the Phase-7 evidence schemas, the independent
   fail-closed validator, the shared Phase-6 workload identities, the M2/M3/M4/replay/
   footprint measurement executables, and the exploratory local driver.
+- Phase-8 WP1 record: PR #30 is ACCEPTED / MERGED.
+- Phase-8 WP2 record: PR #31 is ACCEPTED / MERGED (approved Head
+  `f1bbe499f7179094cfefae796f454951e1736add`; squash merge / Phase-8 evidence baseline
+  `b06fa2f5716527cc5fda3e102ba358721336246c`; tree
+  `7a8e924879305b3ddba34304573c0ed81ac962bb`).
+- Phase-8 formal evidence was independently accepted with verdict `FORMAL_EVIDENCE_ACCEPTED`;
+  P0=0, P1=0, P2=1, INFO=2. The retained P2 is `P8-EVIDENCE-P2-001`, the noisy `std::map`
+  control cell, and is nonblocking.
 - Phase-7 PR-A record: PR #27, `feat: add Phase 7 allocation instrumentation substrate`, is
   MERGED (squash merge `4d6d5b9b0100f91e6cd3cf1bf9388cb1095eba63`). Delivers the
   executable-local allocation instrumentation substrate and its adversarial validation
@@ -159,10 +177,38 @@ artifact is a separate identity and remains outside Projection ownership.
 - USD-M mandatory 100k evidence is validated lifecycle-valid: bridge Applied/Synchronized,
   100,001 Applied operations, zero gaps, final Synchronized.
 
-## Not Implemented
+## Phase-7 and Phase-8 Acceptance
 
-- Phase 7 (allocation/memory) methodology is APPROVED / MERGED (PR #25). Phase-7
-  implementation is **IN PROGRESS**:
+- Phase 7: COMPLETE / EVIDENCE ACCEPTED. Its formal evidence/handoff is complete and independently
+  accepted.
+- Phase 8 WP1: ACCEPTED / MERGED (PR #30).
+- Phase 8 WP2: ACCEPTED / MERGED (PR #31), with post-merge main CI `32203582370` — 19/19 PASS.
+- Phase-8 formal evidence: archive `phase8-formal-evidence-b06fa2f.tar.gz`, SHA-256
+  `2c8dd51d1e91ecdd936d32b95436c93f199f60acce24361e9ae8533c7ad48657`; source
+  `b06fa2f5716527cc5fda3e102ba358721336246c`, tree
+  `7a8e924879305b3ddba34304573c0ed81ac962bb`, evidence binary SHA-256
+  `6ac0361ee8d92e782532a3df0373d660f8f9192931b1d843a20d91d1077114c1`.
+- Formal protocol: three independent process campaigns, seven repetitions, ten workloads, four
+  candidates, forty cells per campaign, no filtering; semantic digest consistency PASS and
+  cross-campaign cohort homogeneity ACCEPTABLE. Archive integrity and all 62 retained SHA-256
+  entries PASS. RSS was not measured; allocation and persistent requested-byte evidence was
+  retained.
+- Controlled host: Ubuntu 22.04.5 LTS, Linux x86_64, Intel Core i5-11320H, fixed logical CPU 3.
+  This is the controlled Phase-8 comparison host, not a universally representative hardware claim.
+- Independent verdict: `FORMAL_EVIDENCE_ACCEPTED` (P0=0, P1=0, P2=1, INFO=2).
+- Retained nonblocking finding: `P8-EVIDENCE-P2-001` — materially noisy `std::map` control for
+  `M5_PHASE8/mixed_updates/1000`; Phase 9 must apply its frozen significance/noise requirements
+  before this cell contributes to a migration decision. No new benchmark campaign is required by
+  this finding.
+
+Governance boundary: `PHASE9=AUTHORIZED / NOT STARTED`, `CONTAINER_WINNER=NONE`, and
+`PRODUCTION_MIGRATION=NO`. Phase 9 will separately analyze the accepted evidence and decide
+whether a candidate qualifies or to KEEP `std::map`.
+
+## Deferred / Not Yet Started
+
+- Phase 7 allocation/memory characterization is COMPLETE / EVIDENCE ACCEPTED. The historical
+  implementation records below remain for work-package provenance:
   - PR-A (work package WP1, PR #27, MERGED at squash merge
     `4d6d5b9b0100f91e6cd3cf1bf9388cb1095eba63`) implements the
     executable-local allocation instrumentation substrate
@@ -205,14 +251,14 @@ artifact is a separate identity and remains outside Projection ownership.
     trust-boundary negative tests
     (`scripts/test-benchmark-allocation-formal.sh`). Formal evidence is
     preserved to `build/benchmark/phase7-formal-results/` (not
-    committed). WP6 remains the final evidence-acceptance phase.
-  - NOT implemented yet (WP6): formal evidence acceptance and Phase-7
-    final acceptance.
-- Phase 8 (container spike) is IN PROGRESS: PR-A / WP1 is accepted/merged in
-  PR #30; PR-B / WP2 implements the benchmark-only same-interface candidate
-  evidence substrate (repeated timing, allocation/persistent footprint,
-  noise-floor, provenance, and fail-closed validation). No container decision
-  exists and no production migration is authorized.
+    committed). WP6 was the final evidence-acceptance phase for this work package.
+  - WP6 formal evidence acceptance is COMPLETE / EVIDENCE ACCEPTED.
+- Phase 8 container spike is COMPLETE / EVIDENCE ACCEPTED. WP1 is accepted/merged in PR #30 and
+  WP2 is accepted/merged in PR #31. No container decision exists and no production migration is
+  authorized.
+- Phase 9 container decision is AUTHORIZED / NOT STARTED. It must apply the frozen statistical-
+  significance, empirical-noise, improvement, regression, and supporting-evidence requirements
+  before choosing a qualifying candidate or KEEP `std::map`.
 - M6 Gateway integration is NOT STARTED.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading remain outside the implemented Projection scope.
@@ -257,18 +303,16 @@ artifact is a separate identity and remains outside Projection ownership.
   canonical Quality at the accepted Head PASS; Projection tests under canonical Quality
   413/413 PASS; staged-install consumer PASS). See `docs/QUALITY_TOOLCHAIN.md` and the PR #23
   record for the implementation/evidence report.
-- No Phase-7 methodology blocker remains: the pre-implementation methodology is
+- No Phase-7 methodology or evidence blocker remains: the pre-implementation methodology is
   APPROVED / MERGED and all findings (M5-P7-MR-001..010, M5-P7-RR-001) are
-  CLOSED. Phase-7 implementation has not yet started — a sequencing fact, not a
-  technical blocker.
+  CLOSED. Phase 7 is COMPLETE / EVIDENCE ACCEPTED.
 - Phase-7 evidence/handoff is COMPLETE / EVIDENCE ACCEPTED (WP6 formal
   evidence generated fresh from merged main `bb1d62ff…` and independently
   accepted); the Phase-8 sequencing blocker defined by the accepted design
   (OD-M5-P7-021) is resolved.
-- Phase 8 (container spike) is IN PROGRESS — PR-A / WP1 is accepted/merged;
-  PR-B / WP2 is implemented pending independent exact-head review. No numeric
-  container conclusions exist yet.
-- Later M5 phases remain separately authorized work.
+- Phase 8 is COMPLETE / EVIDENCE ACCEPTED. The retained nonblocking P2 is recorded above; no
+  numeric winner conclusion has been made.
+- Phase 9 is AUTHORIZED / NOT STARTED and is the next separate decision step.
 
 ## Accepted Semantic Authorities
 
@@ -347,37 +391,15 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 
 ## Next Authorized Step
 
-M5 Phase 6 is complete and merged (PR #21, squash merge
-`227524e6d17cce77813c6f26cd65bb8d996f5677`; accepted implementation Head
-`9776ba6b93990c44e550f289b69127ca721b0d00`; exact-head CI `31803322848` — 18/18 PASS;
-post-merge main CI `31809917018` — 18/18 PASS). P6-AUDIT-003 is CLOSED by the PR #22
-governance/status synchronization. INFRA-TC-001 (reproducible Quality toolchain) is
-COMPLETE / ACCEPTED / MERGED (PR #23; accepted implementation Head
-`6071a9f18bb4f0ebc9f1bed2938477419f7ab2ac`; exact-head acceptance CI `31928210161` —
-19/19 PASS; final independent review APPROVED, P0: 0, P1: 0, P2: 0; squash merge
-`24fb72232e928290add45ed8634cd0bf9a8d3442`; post-merge main CI `31931002850` — 19/19 PASS;
-all known INFRA-TC findings CLOSED). The INFRA-TC-001 prerequisite for later M5 work is
-satisfied. Immediate sequencing:
+Phase 7 is COMPLETE / EVIDENCE ACCEPTED and Phase 8 is COMPLETE / EVIDENCE ACCEPTED. Phase 9 is
+AUTHORIZED / NOT STARTED. The next authorized work is a separate analysis and decision of the
+accepted Phase-8 formal evidence. It must apply the frozen statistical-significance and empirical-
+noise requirements, the >=20% improvement threshold in at least two primary dimensions, the no
+>10% regression requirement, and the supporting allocation/exception-safety/maintenance evidence.
+It may select a qualifying candidate or KEEP `std::map`.
 
-1. INFRA-TC-001: COMPLETE / ACCEPTED / MERGED — no blocker remains.
-2. Phase-7 preimplementation methodology: **APPROVED / MERGED** — PR #25
-   (`Lock M5 Phase 7 allocation/memory measurement contract`); final
-   independent methodology review APPROVED (P0: 0, P1: 0, P2: 0); all findings
-   (M5-P7-MR-001..010, M5-P7-RR-001) CLOSED; approved Head
-   `92288927165f2d7486491371a11a7a586c645565`; squash merge
-   `c2ad198677130d05ad054ea48ade3a1d8021c153` (merged tree == approved Head
-   tree).
-3. Phase-7 implementation: **IN PROGRESS** — PR-A (work package WP1, PR #27)
-   is MERGED; PR-B (work packages WP2–WP4, PR #28) is MERGED; PR-C (work
-   package WP5) delivers the canonical formal Release runner
-   (`scripts/benchmark-allocation-formal.sh`) and its deterministic
-   trust-boundary tests and is pending independent exact-head review.
-   Formal evidence acceptance and Phase-7 final acceptance belong to
-   WP6 and are NOT implemented yet.
-
-Phase 7 implementation is the active engineering step. Phase 8 (container
-spike) is NOT STARTED and must not begin before Phase-7 evidence/handoff
-satisfies the accepted sequencing contract (OD-M5-P7-021).
+The Phase-9 boundary is explicit: `CONTAINER_WINNER=NONE`, `PRODUCTION_MIGRATION=NO`, and
+`PHASE9_STARTED=NO`. This current-state record does not make the Phase-9 decision.
 
 ## AI / Reviewer Reading Order
 

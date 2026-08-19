@@ -25,18 +25,24 @@
   independent review APPROVED, formal exact-head evidence ACCEPTED, squash merge
   `227524e6d17cce77813c6f26cd65bb8d996f5677`, post-merge main CI `31809917018` — PASS 18/18) —
   see `docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`
-- Phase 7 status: methodology **APPROVED / MERGED**; implementation
-  **IN PROGRESS** — pre-implementation decision record
+- Phase 7 status: **COMPLETE / EVIDENCE ACCEPTED** — methodology
+  **APPROVED / MERGED** and formal evidence independently accepted. The pre-implementation decision record
   `docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md` (decisions OD-M5-P7-001
   through OD-M5-P7-023): final independent methodology review APPROVED
   (P0: 0, P1: 0, P2: 0); all findings M5-P7-MR-001..010 and M5-P7-RR-001
   CLOSED; approved Head `92288927165f2d7486491371a11a7a586c645565`; squash
   merged via PR #25 at `c2ad198677130d05ad054ea48ade3a1d8021c153`. Phase-7
-  implementation is IN PROGRESS with PR-A (WP1): the allocation
-  instrumentation substrate and its adversarial validation executable only;
-  the formal measurement inventory, evidence schemas/validator, formal
-  Release runner, and formal evidence are NOT implemented yet. Phase 8
-  (container spike) is NOT STARTED.
+- implementation and formal evidence acceptance are complete. Phase 8 (container spike) is
+  **COMPLETE / EVIDENCE ACCEPTED**; Phase 9 is **AUTHORIZED / NOT STARTED**.
+- Phase-8 formal evidence source SHA: `b06fa2f5716527cc5fda3e102ba358721336246c`; source tree:
+  `7a8e924879305b3ddba34304573c0ed81ac962bb`.
+- Phase-8 formal evidence archive: `phase8-formal-evidence-b06fa2f.tar.gz`, SHA-256
+  `2c8dd51d1e91ecdd936d32b95436c93f199f60acce24361e9ae8533c7ad48657`; evidence binary SHA-256:
+  `6ac0361ee8d92e782532a3df0373d660f8f9192931b1d843a20d91d1077114c1`.
+- Independent Phase-8 verdict: **FORMAL_EVIDENCE_ACCEPTED** (P0=0, P1=0, P2=1, INFO=2).
+  The retained nonblocking P2 is `P8-EVIDENCE-P2-001`, the noisy `std::map` control cell; Phase 9
+  must apply the frozen significance/noise requirements before using that cell in a migration
+  decision. No container winner exists and no production migration is authorized.
 - ADR status: **ACCEPTED** (ADR-0007)
 - Design date: 2026-08-08
 - Initial independent architecture review: **CHANGES REQUESTED** (P0: 0, P1 design: 1, P1 implementation: 2, P2: 7)
