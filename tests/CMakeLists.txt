@@ -481,6 +481,8 @@ add_executable(
     m5/phase8/phase8_conformance_test.cpp
     m5/phase8/phase8_property_test.cpp
     m5/phase8/phase8_exception_safety_test.cpp
+    m5/phase8/phase8_evidence_structure_test.cpp
+    "${PROJECT_SOURCE_DIR}/benchmarks/phase8/phase8_workload.cpp"
 )
 target_include_directories(
     bmd_projection_m5_phase8_container_conformance_tests
@@ -492,6 +494,7 @@ target_link_libraries(
     bmd_projection_m5_phase8_container_conformance_tests
     PRIVATE
         BinanceMarketDataProjection::Core
+        bmd_projection_m5_benchmark_support
         bmd_projection_m5_reference_support
         absl::btree
         GTest::gtest_main
@@ -548,6 +551,17 @@ add_test(
 )
 set_tests_properties(
     m5_phase7_validator_tests
+    PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}"
+)
+add_test(
+    NAME m5_phase8_validator_tests
+    COMMAND ${Python3_EXECUTABLE} -m unittest discover
+            -s ${CMAKE_CURRENT_SOURCE_DIR}/m5/phase8
+            -p test_phase8_validator.py
+)
+set_tests_properties(
+    m5_phase8_validator_tests
     PROPERTIES
         ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}"
 )
