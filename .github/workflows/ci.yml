@@ -165,6 +165,20 @@ jobs:
       CXX: clang++
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EVIDENCE_SHA }}
+      - name: Verify benchmark checkout identity
+        run: |
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$EVIDENCE_SHA" || {
+            echo "CHECKOUT MISMATCH: expected=$EVIDENCE_SHA actual=$actual" >&2
+            exit 1
+          }
+      - name: Compute actual benchmark checkout short SHA
+        id: benchmark_sha
+        run: |
+          actual="$(git rev-parse HEAD)"
+          echo "short=${actual:0:8}" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -181,6 +195,58 @@ jobs:
         run: bash scripts/build.sh benchmark
       - name: Run Phase-6 benchmark smoke (fail-closed, structural only)
         run: bash scripts/benchmark-smoke.sh
+      - name: Validate benchmark smoke provenance and outputs
+        env:
+          EXPECTED_EVIDENCE_SHA: ${{ env.EVIDENCE_SHA }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          results = Path("build/benchmark/phase6-smoke-results")
+          required = (
+              results / "benchmarks.json",
+              results / "benchmarks-wrapper.json",
+              results / "latency.json",
+              results / "latency-wrapper.json",
+          )
+          for path in required:
+              if not path.is_file():
+                  raise SystemExit(f"missing mandatory benchmark smoke output: {path}")
+
+          expected_sha = os.environ["EXPECTED_EVIDENCE_SHA"]
+          for name in ("benchmarks-wrapper.json", "latency-wrapper.json"):
+              path = results / name
+              document = json.loads(path.read_text(encoding="utf-8"))
+              source = document.get("source_provenance")
+              if not isinstance(source, dict):
+                  raise SystemExit(f"{name}: missing source_provenance")
+              if source.get("git_sha") != expected_sha:
+                  raise SystemExit(
+                      f"{name}: source SHA {source.get('git_sha')!r} != {expected_sha!r}"
+                  )
+              if source.get("status") != "known":
+                  raise SystemExit(f"{name}: source provenance status is not known")
+              if source.get("dirty_at_configure") is not False:
+                  raise SystemExit(f"{name}: source was dirty at configure")
+              if document.get("evidence_class") != "exploratory":
+                  raise SystemExit(f"{name}: evidence class is not exploratory")
+
+          print("benchmark smoke outputs and provenance PASS")
+          PY
+      - name: Upload benchmark smoke artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m5-benchmark-smoke-ubuntu-clang-${{ steps.benchmark_sha.outputs.short }}
+          path: |
+            build/benchmark/phase6-smoke-results/benchmarks.json
+            build/benchmark/phase6-smoke-results/benchmarks-wrapper.json
+            build/benchmark/phase6-smoke-results/latency.json
+            build/benchmark/phase6-smoke-results/latency-wrapper.json
+          retention-days: 3
+          if-no-files-found: error
 
   fuzz-smoke:
     name: fuzz smoke (Ubuntu Clang)

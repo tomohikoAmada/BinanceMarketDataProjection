@@ -458,7 +458,8 @@ sibling from every normal host process; neither was blocking.
 The durable governance result is: PHASE7=COMPLETE / EVIDENCE ACCEPTED;
 PHASE8=COMPLETE / EVIDENCE ACCEPTED; PHASE9=COMPLETE / DECISION ACCEPTED;
 CONTAINER_DECISION=KEEP_STD_MAP; CANDIDATE_WINNER=NONE; PRODUCTION_CONTAINER=std::map;
-PRODUCTION_MIGRATION=NO; MIGRATION_IMPLEMENTED=NO; PHASE10=AUTHORIZED / NOT STARTED. The
+PRODUCTION_MIGRATION=NO; MIGRATION_IMPLEMENTED=NO;
+PHASE10=IN PROGRESS / WP-A IMPLEMENTED / WP-B NOT IMPLEMENTED. The
 decision record is `docs/M5_PHASE9_CONTAINER_DECISION.md`.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
@@ -525,21 +526,30 @@ strategy, risk, trading, persistence, Python binding, or production container mi
 - Live/Replay Same Core — identical ordered inputs produce identical outputs.
 - Strategy Independent — no trading, risk, or strategy logic.
 
-## Phase-10 pre-implementation distribution state
+## Phase-10 implementation state
 
-P10-PRE-P1-001 is **ESTABLISHED**. The project owner authorized public
+P10-PRE-P1-001 is **CLOSED**. The project owner authorized public
 distribution of exactly the two accepted materialized Replay_V1 medium
 fixtures, and the immutable versioned Release asset was published:
 
 ```text
 PHASE9=COMPLETE / DECISION ACCEPTED
-PHASE10=AUTHORIZED / NOT STARTED
+PHASE10=IN PROGRESS
+PHASE10_WP_A=IMPLEMENTED
+PHASE10_WP_B=NOT IMPLEMENTED
+P10_PRE_P1_001=CLOSED
 MEDIUM_CORPUS_DISTRIBUTION=ESTABLISHED
 RELEASE_TAG=m5-medium-corpus-v1
 ASSET_NAME=m5-medium-recorded-v1.tar.gz
 RAW_SOURCE_DISTRIBUTION=NO
 WEEKLY_M5_PERFORMANCE=NOT IMPLEMENTED / NOT RUNNING
+M5_PERFORMANCE_WORKFLOW_CREATED=NO
 ```
+
+WP-A implements benchmark-smoke artifact reporting: exact evidence-SHA checkout,
+wrapper provenance binding, and the four required smoke JSON outputs in a
+three-day SHA-named artifact. It adds no CI job, changes no benchmark
+methodology, and adds no numeric performance gate.
 
 The asset contains only `distribution-manifest.json` and the three accepted
 payload files for each of `M5-REC-SPOT-BTCUSDT-V1` and
