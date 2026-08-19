@@ -2,10 +2,15 @@
 
 ## Status
 
-PR-A / WP1 is accepted and merged in PR #30. PR-B / WP2 implements the
-benchmark-only comparison substrate and is pending independent exact-head
-review. Phase 8 remains **IN PROGRESS**; Phase 9 is **NOT STARTED**. No
-candidate is selected and no production order-book migration is authorized.
+PR-A / WP1 is accepted and merged in PR #30. PR-B / WP2 was independently
+accepted and merged in PR #31. Phase 8 is **COMPLETE / EVIDENCE ACCEPTED**;
+Phase 9 is **AUTHORIZED / NOT STARTED**. No candidate is selected and no
+production order-book migration is authorized.
+
+PR #31 approved Head: `f1bbe499f7179094cfefae796f454951e1736add`.
+PR #31 squash merge/current main: `b06fa2f5716527cc5fda3e102ba358721336246c`.
+Post-merge main CI: run `32203582370`, workflow `ci`, event `push`, completed
+`success`, 19/19 jobs PASS.
 
 ## Candidate set
 
@@ -69,7 +74,92 @@ temporary B-tree storage remains an INFO candidate decision risk. WP2 does
 not patch, fork, hide, or remove Abseil and does not claim general
 allocator-exception safety.
 
-Formal controlled-environment performance evidence is not generated or
-claimed by this implementation PR. A later independent review and Phase 9
-decision must interpret repeated evidence and apply any accepted improvement
-criteria; this work package does not choose a winner.
+Historical implementation-PR scope: that PR did not itself generate or claim
+formal controlled-environment performance evidence. The later formal cohort
+and independent acceptance are recorded below; Phase 9 must interpret that
+accepted evidence and apply the frozen decision criteria. This document does
+not choose a winner.
+
+## Formal evidence acceptance
+
+The authoritative formal evidence was collected from:
+
+```text
+SOURCE_SHA=b06fa2f5716527cc5fda3e102ba358721336246c
+SOURCE_TREE=7a8e924879305b3ddba34304573c0ed81ac962bb
+ARCHIVE=phase8-formal-evidence-b06fa2f.tar.gz
+ARCHIVE_SHA256=2c8dd51d1e91ecdd936d32b95436c93f199f60acce24361e9ae8533c7ad48657
+EVIDENCE_BINARY_SHA256=6ac0361ee8d92e782532a3df0373d660f8f9192931b1d843a20d91d1077114c1
+VERDICT=FORMAL_EVIDENCE_ACCEPTED
+P0=0
+P1=0
+P2=1
+INFO=2
+```
+
+Protocol and integrity summary:
+
+- Three independent process campaigns, seven repetitions, exactly ten workloads, exactly four
+  candidates, forty records per campaign, and no filtering.
+- Archive integrity PASS; SHA256SUMS had 62/62 retained entries PASS; provenance, binary, payload,
+  and dependency binding PASS.
+- Formal effective evidence class in all campaigns; semantic digest consistency PASS; empirical
+  `std::map` control noise retained; allocation and persistent requested-byte evidence retained;
+  RSS not measured.
+- Matrix had ten workloads, four candidates, forty cells per campaign, with no duplicates, missing
+  cells, or extras. Cross-campaign cohort homogeneity was ACCEPTABLE.
+
+Controlled host and build userspace:
+
+```text
+Host: Ubuntu 22.04.5 LTS, Linux x86_64, Intel Core i5-11320H
+Measurement CPU: logical CPU 3
+Toolchain: repository canonical amd64 toolchain image, Clang 18.1.3, Release, C++20
+ProtoAdapter: OFF
+Sanitizers: OFF
+LTO: OFF
+Conan: 2.31.2
+```
+
+The host is the controlled Phase-8 comparison host; it is not claimed to be universally
+representative hardware.
+
+### Retained nonblocking finding
+
+`P8-EVIDENCE-P2-001` is P2 / NONBLOCKING. The `std::map` control for
+`M5_PHASE8/mixed_updates/1000` showed materially high within-campaign timing noise: approximately
+13.605M, 12.170M, and 9.950M updates/s campaign medians, with within-campaign CV approximately
+21.65%, 22.11%, and 20.57%. This does not invalidate the Phase-8 cohort. Phase 9 must apply the
+frozen significance and empirical-noise requirements before this cell contributes to a migration
+decision. No new benchmark campaign is required solely to remove this P2.
+
+### INFO limitations
+
+- Effective Intel P-state/HWP controls and stable governor/EPP/turbo/frequency policy were retained,
+  but not a direct `scaling_driver` or `intel_pstate/status` string.
+- Container affinity was bound to logical CPU 3, but its physical core/SMT sibling was not
+  exclusively isolated from every normal host process. No material sustained competing load or
+  cohort-wide timing drift was found.
+
+Both INFO items are nonblocking.
+
+## Governance boundary
+
+On merge, this record establishes:
+
+```text
+PHASE7=COMPLETE / EVIDENCE ACCEPTED
+PHASE8_WP1=ACCEPTED / MERGED
+PHASE8_WP2=ACCEPTED / MERGED
+PHASE8_FORMAL_EVIDENCE=ACCEPTED
+PHASE8=COMPLETE / EVIDENCE ACCEPTED
+PHASE9=AUTHORIZED / NOT STARTED
+CONTAINER_WINNER=NONE
+PRODUCTION_MIGRATION=NO
+PHASE9_STARTED=NO
+```
+
+Phase 9 will separately analyze the accepted formal evidence, apply the frozen statistical-
+significance/noise, >=20% improvement, and no >10% regression requirements, account for supporting
+allocation/exception-safety/maintenance evidence, and choose either a qualifying candidate or
+KEEP `std::map`. This Phase-8 closure makes no such decision.

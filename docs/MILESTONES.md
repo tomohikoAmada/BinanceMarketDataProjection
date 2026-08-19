@@ -357,7 +357,7 @@ package's conaninfo.txt rather than the cache-directory locator). Production `sr
 `include/**` were unchanged by Phase 6. See
 `docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`.
 
-Phase 7 (allocation/memory characterization) implementation is **IN PROGRESS**.
+Phase 7 (allocation/memory characterization) is **COMPLETE / EVIDENCE ACCEPTED**.
 Its pre-implementation decision record is **APPROVED / MERGED** via PR #25:
 `docs/M5_PHASE7_PREIMPLEMENTATION_DECISIONS.md` records decisions OD-M5-P7-001
 through OD-M5-P7-023 (attribution model, instrumentation isolation with a two-lifetime
@@ -377,7 +377,7 @@ final independent methodology review was **APPROVED** (P0: 0, P1: 0, P2: 0); all
 M5-P7-MR-001..010 and M5-P7-RR-001 are **CLOSED**; approved Head
 `92288927165f2d7486491371a11a7a586c645565`; squash merge
 `c2ad198677130d05ad054ea48ade3a1d8021c153` (merged tree == approved Head tree).
-Phase-7 implementation is **IN PROGRESS**:
+Phase-7 implementation and formal evidence acceptance are complete:
 - PR-A (work package WP1, PR #27, MERGED at squash merge
   `4d6d5b9b0100f91e6cd3cf1bf9388cb1095eba63`): the executable-local allocation instrumentation
   substrate (constant-initialized process-lifetime state, fixed-capacity
@@ -406,13 +406,15 @@ Phase-7 implementation is **IN PROGRESS**:
   family with cross-invocation normalized-metric determinism, formal
   evidence class validated without `--allow-exploratory`, and
   deterministic trust-boundary tests
-  (`scripts/test-benchmark-allocation-formal.sh`). Pending independent
-  exact-head review.
+  (`scripts/test-benchmark-allocation-formal.sh`). The formal Release runner and its
+  trust-boundary tests were independently accepted.
 - WP6 (formal evidence acceptance): formal Phase-7 evidence generated
   fresh from merged main `bb1d62ff…` and independently accepted — Phase-7
   is COMPLETE / EVIDENCE ACCEPTED.
-- Phase 8 (container spike) is IN PROGRESS — PR-A / WP1 is accepted and
-  merged in PR #30; PR-B / WP2 implements the
+- Phase 8 (container spike) is **COMPLETE / EVIDENCE ACCEPTED** — PR-A / WP1 is accepted and
+  merged in PR #30; PR-B / WP2 was independently accepted and merged in PR #31 at current main
+  `b06fa2f5716527cc5fda3e102ba358721336246c` (approved Head
+  `f1bbe499f7179094cfefae796f454951e1736add`; post-merge CI `32203582370`, 19/19 PASS). The
   benchmark-only same-interface container-model substrate
   (Phase8StdMapControl, Phase8SortedVectorNaive, Phase8AbslBtreeMap,
   Phase8SortedVectorBatchLww) behind one static-polymorphism model
@@ -421,9 +423,43 @@ Phase-7 implementation is **IN PROGRESS**:
   exception guarantee, deterministic property sequences) and Abseil as an
   explicit TEST/BENCHMARK-only requirement. WP2 adds repeated timing,
   allocation, persistent-footprint, noise-floor, provenance, and fail-closed
-  comparison evidence. No container decision and no production migration are
-  authorized; Phase 9 owns that verdict. See
+  comparison evidence. Formal evidence was independently accepted; no container decision and no
+  production migration are authorized. Phase 9 owns that verdict. See
   `docs/M5_PHASE8_CONTAINER_BENCHMARK_EVIDENCE.md`.
+
+### Phase-8 formal evidence acceptance
+
+The formal cohort was collected from source SHA
+`b06fa2f5716527cc5fda3e102ba358721336246c` and source tree
+`7a8e924879305b3ddba34304573c0ed81ac962bb`. The authoritative archive is
+`phase8-formal-evidence-b06fa2f.tar.gz` with SHA-256
+`2c8dd51d1e91ecdd936d32b95436c93f199f60acce24361e9ae8533c7ad48657`; the evidence binary SHA-256
+is `6ac0361ee8d92e782532a3df0373d660f8f9192931b1d843a20d91d1077114c1`.
+
+Independent verdict: **FORMAL_EVIDENCE_ACCEPTED**. P0=0, P1=0, P2=1, INFO=2. Archive integrity
+passed; all 62 retained SHA-256 entries passed; provenance, binary, payload, and dependency
+binding passed. The cohort comprised three independent process campaigns, seven repetitions, ten
+workloads, four candidates, forty records per campaign, no filtering, semantic digest consistency
+PASS, and ACCEPTABLE cross-campaign cohort homogeneity. RSS was not measured; allocation and
+persistent requested-byte evidence was retained.
+
+The controlled comparison host was Ubuntu 22.04.5 LTS, Linux x86_64, Intel Core i5-11320H, with
+measurement pinned to logical CPU 3. This is the controlled Phase-8 comparison host, not a
+universally representative hardware claim.
+
+Retained finding `P8-EVIDENCE-P2-001` is P2 / NONBLOCKING: the `std::map` control for
+`M5_PHASE8/mixed_updates/1000` has materially high within-campaign timing noise. Phase 9 must
+apply the frozen significance and empirical-noise requirements before this cell contributes to a
+migration decision. The finding does not invalidate the Phase-8 cohort and does not require a new
+campaign solely to remove it. INFO limitations were retained concisely: no direct
+`scaling_driver`/`intel_pstate/status` string, and no exclusive isolation of the physical core/SMT
+sibling from every normal host process; neither was blocking.
+
+Governance result on merge: PHASE7=COMPLETE / EVIDENCE ACCEPTED; PHASE8_WP1=ACCEPTED / MERGED;
+PHASE8_WP2=ACCEPTED / MERGED; PHASE8_FORMAL_EVIDENCE=ACCEPTED; PHASE8=COMPLETE / EVIDENCE
+ACCEPTED; PHASE9=AUTHORIZED / NOT STARTED. `CONTAINER_WINNER=NONE` and
+`PRODUCTION_MIGRATION=NO` remain explicit. Phase 9 must separately analyze this accepted evidence
+and may choose a qualifying candidate or KEEP `std::map`.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 
