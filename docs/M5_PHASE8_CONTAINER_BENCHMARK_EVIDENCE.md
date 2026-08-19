@@ -3,9 +3,10 @@
 ## Status
 
 PR-A / WP1 is accepted and merged in PR #30. PR-B / WP2 was independently
-accepted and merged in PR #31. Phase 8 is **COMPLETE / EVIDENCE ACCEPTED**;
-Phase 9 is **AUTHORIZED / NOT STARTED**. No candidate is selected and no
-production order-book migration is authorized.
+accepted and merged in PR #31. Phase 8 is **COMPLETE / EVIDENCE ACCEPTED**.
+The later Phase-9 decision is **COMPLETE / DECISION ACCEPTED** with `KEEP_STD_MAP`;
+no production order-book migration is authorized. The explicit decision record is
+`docs/M5_PHASE9_CONTAINER_DECISION.md`.
 
 PR #31 approved Head: `f1bbe499f7179094cfefae796f454951e1736add`.
 PR #31 squash merge / Phase-8 formal-evidence source revision:
@@ -77,9 +78,8 @@ allocator-exception safety.
 
 Historical implementation-PR scope: that PR did not itself generate or claim
 formal controlled-environment performance evidence. The later formal cohort
-and independent acceptance are recorded below; Phase 9 must interpret that
-accepted evidence and apply the frozen decision criteria. This document does
-not choose a winner.
+and independent acceptance are recorded below; the Phase-9 decision record interprets that
+accepted evidence and applies the frozen decision criteria. This document does not choose a winner.
 
 ## Formal evidence acceptance
 
@@ -160,7 +160,20 @@ PRODUCTION_MIGRATION=NO
 PHASE9_STARTED=NO
 ```
 
-Phase 9 will separately analyze the accepted formal evidence, apply the frozen statistical-
-significance/noise, >=20% improvement, and no >10% regression requirements, account for supporting
-allocation/exception-safety/maintenance evidence, and choose either a qualifying candidate or
-KEEP `std::map`. This Phase-8 closure makes no such decision.
+Later Phase-9 decision:
+
+The separately conducted Phase-9 decision review concluded `KEEP_STD_MAP`. The durable current
+governance state recorded by `docs/M5_PHASE9_CONTAINER_DECISION.md` is:
+
+```text
+PHASE9=COMPLETE / DECISION ACCEPTED
+CONTAINER_DECISION=KEEP_STD_MAP
+CANDIDATE_WINNER=NONE
+PRODUCTION_CONTAINER=std::map
+PRODUCTION_MIGRATION=NO
+MIGRATION_IMPLEMENTED=NO
+PHASE10=AUTHORIZED / NOT STARTED
+```
+
+The Phase-8 evidence record did not itself make the Phase-9 decision; it remains the immutable
+numeric evidence record.

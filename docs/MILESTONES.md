@@ -423,8 +423,8 @@ Phase-7 implementation and formal evidence acceptance are complete:
   exception guarantee, deterministic property sequences) and Abseil as an
   explicit TEST/BENCHMARK-only requirement. WP2 adds repeated timing,
   allocation, persistent-footprint, noise-floor, provenance, and fail-closed
-  comparison evidence. Formal evidence was independently accepted; no container decision and no
-  production migration are authorized. Phase 9 owns that verdict. See
+  comparison evidence. Formal evidence was independently accepted; Phase 9 owns the decision
+  record and no production migration is authorized. See
   `docs/M5_PHASE8_CONTAINER_BENCHMARK_EVIDENCE.md`.
 
 ### Phase-8 formal evidence acceptance
@@ -455,11 +455,11 @@ campaign solely to remove it. INFO limitations were retained concisely: no direc
 `scaling_driver`/`intel_pstate/status` string, and no exclusive isolation of the physical core/SMT
 sibling from every normal host process; neither was blocking.
 
-Governance result on merge: PHASE7=COMPLETE / EVIDENCE ACCEPTED; PHASE8_WP1=ACCEPTED / MERGED;
-PHASE8_WP2=ACCEPTED / MERGED; PHASE8_FORMAL_EVIDENCE=ACCEPTED; PHASE8=COMPLETE / EVIDENCE
-ACCEPTED; PHASE9=AUTHORIZED / NOT STARTED. `CONTAINER_WINNER=NONE` and
-`PRODUCTION_MIGRATION=NO` remain explicit. Phase 9 must separately analyze this accepted evidence
-and may choose a qualifying candidate or KEEP `std::map`.
+The durable governance result is: PHASE7=COMPLETE / EVIDENCE ACCEPTED;
+PHASE8=COMPLETE / EVIDENCE ACCEPTED; PHASE9=COMPLETE / DECISION ACCEPTED;
+CONTAINER_DECISION=KEEP_STD_MAP; CANDIDATE_WINNER=NONE; PRODUCTION_CONTAINER=std::map;
+PRODUCTION_MIGRATION=NO; MIGRATION_IMPLEMENTED=NO; PHASE10=AUTHORIZED / NOT STARTED. The
+decision record is `docs/M5_PHASE9_CONTAINER_DECISION.md`.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 
