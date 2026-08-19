@@ -209,7 +209,7 @@ def validate(payload_path: Path, wrapper_path: Path) -> None:
     digests: dict[str, str] = {}
     record_workload_ids: set[str] = set()
     workload_specs: dict[str, tuple[str, str]] = {}
-    control_samples: dict[str, list[float]] = {}
+    control_identity: dict[str, tuple[str, str, list[float]]] = {}
     for index, record in enumerate(records):
         prefix = f"record[{index}]"
         require(isinstance(record, dict), f"{prefix}: record is not an object")
@@ -274,8 +274,11 @@ def validate(payload_path: Path, wrapper_path: Path) -> None:
         validate_stats(measurement.get("raw", []), measurement.get("summary", {}), f"{prefix}.measurement")
         require(len(measurement["raw"]) == repetitions, f"{prefix}: raw repetition mismatch")
         if candidate == "phase8-std-map-control-v1":
-            control_samples[workload_id] = [finite(value, f"{prefix}.measurement.raw")
-                                             for value in measurement["raw"]]
+            control_identity[workload_id] = (
+                metric,
+                record["unit"],
+                [finite(value, f"{prefix}.measurement.raw") for value in measurement["raw"]],
+            )
         allocation = record.get("allocation_supporting_evidence")
         require(isinstance(allocation, dict) and allocation.get("boundary") == BOUNDARY,
                 f"{prefix}: invalid allocation boundary")
@@ -315,12 +318,16 @@ def validate(payload_path: Path, wrapper_path: Path) -> None:
                 f"{prefix}: unknown workload")
         require(workload_id not in empirical_ids, f"{prefix}: duplicate workload")
         empirical_ids.add(workload_id)
-        require(sample.get("metric") in METRIC_UNITS and
-                sample.get("unit") == METRIC_UNITS[sample.get("metric")],
-                f"{prefix}: metric/unit mismatch")
+        control = control_identity.get(workload_id)
+        require(control is not None, f"{prefix}: missing control record")
+        control_metric, control_unit, control_raw = control
+        require(sample.get("metric") == control_metric,
+                f"{prefix}: empirical metric is not bound to control record")
+        require(sample.get("unit") == control_unit,
+                f"{prefix}: empirical unit is not bound to control record")
         validate_stats(sample.get("raw", []), sample.get("summary", {}), prefix)
         require(len(sample["raw"]) == repetitions, f"{prefix}: repetition mismatch")
-        require(sample["raw"] == control_samples.get(workload_id),
+        require(sample["raw"] == control_raw,
                 f"{prefix}: does not bind to control measurements")
     require(empirical_ids == wrapper_ids, "empirical noise floor workload set mismatch")
     print(f"Phase-8 evidence validation PASS: {len(workload_specs)} workloads, "

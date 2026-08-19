@@ -157,6 +157,10 @@ class Phase8ValidatorTests(unittest.TestCase):
         self.assertEqual(self.payload["repetitions"], 6)
         self.assertEqual(self.payload["records"][0]["measurement"]["summary"]["median"], 3.5)
 
+    def test_five_repetition_valid_evidence_round_trips(self):
+        payload_path, wrapper_path, _, _ = self._valid_pair(repetitions=5)
+        MODULE.validate(payload_path, wrapper_path)
+
     def test_mutating_google_benchmark_cells_pause_for_teardown(self):
         source = (ROOT / "benchmarks/phase8/phase8_benchmarks.cpp").read_text(encoding="utf-8")
         for operation in ("apply_level", "apply_updates", "replace_all"):
@@ -198,6 +202,13 @@ class Phase8ValidatorTests(unittest.TestCase):
 
     def test_metric_unit_mismatch_is_rejected(self):
         self.payload["records"][0]["unit"] = "ns"
+        self.rewrite_payload()
+        self.assert_rejected()
+
+    def test_empirical_metric_rebinding_is_rejected(self):
+        sample = self.payload["empirical_noise_floor"]["samples"][0]
+        sample["metric"] = "update_latency"
+        sample["unit"] = "ns"
         self.rewrite_payload()
         self.assert_rejected()
 
