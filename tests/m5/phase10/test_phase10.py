@@ -125,6 +125,63 @@ class Phase10VerifierTests(unittest.TestCase):
                     contract=contract,
                 )
 
+    def _benchmark_payload(self, aggregates: dict[str, float]) -> dict[str, object]:
+        expected_name = "M5RecordedReplay/Spot"
+        entries: list[dict[str, object]] = [
+            {
+                "name": f"{expected_name}/real_time",
+                "run_type": "iteration",
+                "repetitions": 5,
+                "repetition_index": index,
+                "iterations": 1,
+                "real_time": 10.0 + index,
+                "cpu_time": 9.0 + index,
+                "items_per_second": 1000.0,
+            }
+            for index in range(5)
+        ]
+        entries.extend(
+            {
+                "name": f"{expected_name}/real_time_{statistic}",
+                "run_type": "aggregate",
+                "aggregate_name": statistic,
+                "real_time": value,
+            }
+            for statistic, value in aggregates.items()
+        )
+        return {"context": {}, "benchmarks": entries}
+
+    def _validate_benchmark_payload(
+        self, aggregates: dict[str, float]
+    ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+        payload = self._benchmark_payload(aggregates)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "benchmark.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            return m5_phase10._validate_benchmark_payload(
+                path, "M5RecordedReplay/Spot", required_repetitions=5
+            )
+
+    def test_five_repetition_default_aggregates_are_accepted(self) -> None:
+        iterations, aggregates = self._validate_benchmark_payload(
+            {"mean": 11.0, "median": 11.0, "stddev": 0.5, "cv": 0.04}
+        )
+        self.assertEqual(len(iterations), 5)
+        self.assertEqual(len(aggregates), 4)
+
+    def test_zero_dispersion_aggregates_are_accepted(self) -> None:
+        iterations, aggregates = self._validate_benchmark_payload(
+            {"mean": 11.0, "median": 11.0, "stddev": 0.0, "cv": 0.0}
+        )
+        self.assertEqual(len(iterations), 5)
+        self.assertEqual(len(aggregates), 4)
+
+    def test_unexpected_aggregate_is_rejected(self) -> None:
+        with self.assertRaises(m5_phase10.VerificationError):
+            self._validate_benchmark_payload(
+                {"mean": 11.0, "median": 11.0, "stddev": 0.5, "cv": 0.04, "p99": 12.0}
+            )
+
     def test_valid_exact_contract_shaped_package(self) -> None:
         package, contract = self._package()
         with tempfile.TemporaryDirectory() as directory:

@@ -382,6 +382,13 @@ def _finite_positive(value: Any, description: str) -> None:
     _require(math.isfinite(float(value)) and float(value) > 0, f"{description} must be positive")
 
 
+def _finite_nonnegative(value: Any, description: str) -> None:
+    _require(isinstance(value, (int, float)) and not isinstance(value, bool),
+             f"{description} must be numeric")
+    _require(math.isfinite(float(value)) and float(value) >= 0,
+             f"{description} must be nonnegative")
+
+
 def _is_iteration_name(name: Any, expected_name: str) -> bool:
     # Google Benchmark appends the selected timer to the JSON/report name
     # when UseRealTime() is active. The canonical workload identity remains
@@ -400,11 +407,14 @@ def _validate_benchmark_payload(
     iterations: list[dict[str, Any]] = []
     aggregates: list[dict[str, Any]] = []
     aggregate_names = {
-        f"{expected_name}_{suffix}"
-        for suffix in ("mean", "median", "stddev")
-    } | {
-        f"{expected_name}/real_time_{suffix}"
-        for suffix in ("mean", "median", "stddev")
+        **{
+            f"{expected_name}_{suffix}": suffix
+            for suffix in ("mean", "median", "stddev", "cv")
+        },
+        **{
+            f"{expected_name}/real_time_{suffix}": suffix
+            for suffix in ("mean", "median", "stddev", "cv")
+        },
     }
     for entry in entries:
         _require(isinstance(entry, dict), "benchmark entry must be an object")
@@ -413,9 +423,15 @@ def _validate_benchmark_payload(
                  "benchmark reports SkipWithError")
         run_type = entry.get("run_type", "iteration")
         if run_type == "aggregate":
-            _require(entry.get("name") in aggregate_names,
+            aggregate_name = aggregate_names.get(entry.get("name"))
+            _require(aggregate_name is not None,
                      f"unexpected aggregate benchmark name: {entry.get('name')}")
-            _finite_positive(entry.get("real_time"), "aggregate real_time")
+            _require(entry.get("aggregate_name") == aggregate_name,
+                     f"aggregate statistic does not match benchmark name: {entry.get('name')}")
+            if aggregate_name in ("mean", "median"):
+                _finite_positive(entry.get("real_time"), "aggregate real_time")
+            else:
+                _finite_nonnegative(entry.get("real_time"), "aggregate real_time")
             aggregates.append(entry)
             continue
         _require(run_type == "iteration", f"unexpected benchmark run_type: {run_type}")
