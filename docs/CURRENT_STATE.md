@@ -50,6 +50,11 @@ orientation only.
 - Phase 9 is COMPLETE / DECISION ACCEPTED. The decision is `KEEP_STD_MAP`; no candidate winner
   exists, the production container remains `std::map`, and production migration is NO.
 - Phase 10 is AUTHORIZED / NOT STARTED.
+- The exact main publication base is `041a9e8516409552ea9d6eeada5d58d378c40fc7` with tree
+  `87d92b0f67bf526768737ba03db2667bfdd1f5fb`; there are no open PRs at publication time.
+- P10-PRE-P1-001 is ESTABLISHED: the two exact accepted materialized medium fixtures are publicly
+  distributed by the versioned `m5-medium-corpus-v1` Release asset. The Raw source remains
+  controlled/local.
 - ADR-0008 is ACCEPTED: Spot bootstrap uses successor coverage (`U <= L + 1 <= u`,
   overflow-guarded); exact-next `[L+1, ...]` is a valid bridge; `U > L + 1` is the true gap.
   ADR-0008 supersedes only the Spot-bootstrap contains-`L` portion of ADR-0005; USD-M semantics
@@ -177,6 +182,47 @@ artifact is a separate identity and remains outside Projection ownership.
   operations, zero gaps, final Synchronized.
 - USD-M mandatory 100k evidence is validated lifecycle-valid: bridge Applied/Synchronized,
   100,001 Applied operations, zero gaps, final Synchronized.
+
+## Phase-10 durable pre-implementation state
+
+```text
+PHASE9=COMPLETE / DECISION ACCEPTED
+PHASE10=AUTHORIZED / NOT STARTED
+MEDIUM_CORPUS_DISTRIBUTION=ESTABLISHED
+WEEKLY_M5_PERFORMANCE=NOT IMPLEMENTED / NOT RUNNING
+```
+
+The exact owner-authorized medium asset is `m5-medium-corpus-v1` /
+`m5-medium-recorded-v1.tar.gz`, bound by outer SHA-256
+`5143521fe9728a7c2ce03522b78be4ba2fd91388cdabac800f4a87e970e4adfb` and
+distribution-manifest SHA-256
+`13e4c37119e26f32c60f64f73565363d51ef58f59245f4a6678f4bf016cdba65`. It is
+not a software migration release and does not change the production
+`std::map` decision.
+
+The authorized, not-yet-running future operation is:
+
+```text
+REQUIRED_PHASE10_WEEKLY_OPERATION=.github/workflows/m5-performance.yml
+SCHEDULE_SEMANTICS=weekly
+TIER=recorded medium v1
+FIXTURES=M5-REC-SPOT-BTCUSDT-V1 + M5-REC-USDM-BTCUSDT-V1
+MODE=Core current-production std::map
+RUNNER=standard GitHub-hosted Ubuntu x86_64
+TIMEOUT=45 minutes
+PR_BLOCKING=NO
+EVIDENCE_CLASS=EXPLORATORY / NONBLOCKING REPORTING
+RETENTION=7 days
+CONTAINER_REDECISION=NO
+PRODUCTION_MIGRATION=NO
+STATUS=AUTHORIZED IMPLEMENTATION CONTRACT / NOT YET RUNNING
+```
+
+When the workflow is later merged, this file, `docs/MILESTONES.md`, and the
+Phase-10 implementation record must be updated with
+the merged/running weekly-performance state and the exact implemented
+`SCHEDULE_CRON`.
+That running state is not true in the current repository state.
 
 ## Phase-7 and Phase-8 Acceptance
 
@@ -314,7 +360,8 @@ is [`docs/M5_PHASE9_CONTAINER_DECISION.md`](M5_PHASE9_CONTAINER_DECISION.md).
   (OD-M5-P7-021) is resolved.
 - Phase 8 is COMPLETE / EVIDENCE ACCEPTED. The retained nonblocking P2 is recorded above; no
   numeric winner conclusion has been made.
-- Phase 9 is AUTHORIZED / NOT STARTED and is the next separate decision step.
+- Phase 9 is COMPLETE / DECISION ACCEPTED with `KEEP_STD_MAP`; Phase-10 remains
+  AUTHORIZED / NOT STARTED after the P10-PRE-P1-001 publication prerequisite.
 
 ## Accepted Semantic Authorities
 
@@ -396,7 +443,8 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 Phase 7 is COMPLETE / EVIDENCE ACCEPTED and Phase 8 is COMPLETE / EVIDENCE ACCEPTED. Phase 9 is
 COMPLETE / DECISION ACCEPTED with `KEEP_STD_MAP`, `CANDIDATE_WINNER=NONE`,
 `PRODUCTION_CONTAINER=std::map`, `PRODUCTION_MIGRATION=NO`, and
-`PHASE10=AUTHORIZED / NOT STARTED`. No Phase-10 implementation is included here.
+`PHASE10=AUTHORIZED / NOT STARTED`. Medium corpus distribution is established by
+P10-PRE-P1-001, but no Phase-10 implementation or weekly performance workflow is included here.
 
 ## AI / Reviewer Reading Order
 

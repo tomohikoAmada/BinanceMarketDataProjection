@@ -524,3 +524,49 @@ strategy, risk, trading, persistence, Python binding, or production container mi
 - Core/Wire Separation — protobuf messages do not enter Core.
 - Live/Replay Same Core — identical ordered inputs produce identical outputs.
 - Strategy Independent — no trading, risk, or strategy logic.
+
+## Phase-10 pre-implementation distribution state
+
+P10-PRE-P1-001 is **ESTABLISHED**. The project owner authorized public
+distribution of exactly the two accepted materialized Replay_V1 medium
+fixtures, and the immutable versioned Release asset was published:
+
+```text
+PHASE9=COMPLETE / DECISION ACCEPTED
+PHASE10=AUTHORIZED / NOT STARTED
+MEDIUM_CORPUS_DISTRIBUTION=ESTABLISHED
+RELEASE_TAG=m5-medium-corpus-v1
+ASSET_NAME=m5-medium-recorded-v1.tar.gz
+RAW_SOURCE_DISTRIBUTION=NO
+WEEKLY_M5_PERFORMANCE=NOT IMPLEMENTED / NOT RUNNING
+```
+
+The asset contains only `distribution-manifest.json` and the three accepted
+payload files for each of `M5-REC-SPOT-BTCUSDT-V1` and
+`M5-REC-USDM-BTCUSDT-V1`. It excludes the Raw source and does not change
+software licensing. The publication and clean anonymous acquisition evidence,
+source authority, exact fixture identities, and hashes are recorded in
+`docs/M5_PHASE10_PREIMPLEMENTATION_DECISIONS.md`.
+
+The authorized future weekly operation remains an implementation contract, not
+current state:
+
+```text
+REQUIRED_PHASE10_WEEKLY_OPERATION=.github/workflows/m5-performance.yml
+SCHEDULE_SEMANTICS=weekly
+TIER=recorded medium v1
+FIXTURES=M5-REC-SPOT-BTCUSDT-V1 + M5-REC-USDM-BTCUSDT-V1
+MODE=Core current-production std::map
+RUNNER=standard GitHub-hosted Ubuntu x86_64
+TIMEOUT=45 minutes
+PR_BLOCKING=NO
+EVIDENCE_CLASS=EXPLORATORY / NONBLOCKING REPORTING
+RETENTION=7 days
+CONTAINER_REDECISION=NO
+PRODUCTION_MIGRATION=NO
+STATUS=AUTHORIZED IMPLEMENTATION CONTRACT / NOT YET RUNNING
+```
+
+When the workflow is actually merged, update this file, `docs/CURRENT_STATE.md`,
+and the Phase-10 implementation record with the merged/running weekly-performance
+state and the exact implemented `SCHEDULE_CRON`. Do not record that state earlier.
