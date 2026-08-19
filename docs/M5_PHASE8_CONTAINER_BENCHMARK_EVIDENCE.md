@@ -8,7 +8,8 @@ Phase 9 is **AUTHORIZED / NOT STARTED**. No candidate is selected and no
 production order-book migration is authorized.
 
 PR #31 approved Head: `f1bbe499f7179094cfefae796f454951e1736add`.
-PR #31 squash merge/current main: `b06fa2f5716527cc5fda3e102ba358721336246c`.
+PR #31 squash merge / Phase-8 formal-evidence source revision:
+`b06fa2f5716527cc5fda3e102ba358721336246c`.
 Post-merge main CI: run `32203582370`, workflow `ci`, event `push`, completed
 `success`, 19/19 jobs PASS.
 

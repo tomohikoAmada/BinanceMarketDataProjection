@@ -412,8 +412,8 @@ Phase-7 implementation and formal evidence acceptance are complete:
   fresh from merged main `bb1d62ff…` and independently accepted — Phase-7
   is COMPLETE / EVIDENCE ACCEPTED.
 - Phase 8 (container spike) is **COMPLETE / EVIDENCE ACCEPTED** — PR-A / WP1 is accepted and
-  merged in PR #30; PR-B / WP2 was independently accepted and merged in PR #31 at current main
-  `b06fa2f5716527cc5fda3e102ba358721336246c` (approved Head
+  merged in PR #30; PR-B / WP2 was independently accepted and squash-merged at the Phase-8
+  accepted baseline `b06fa2f5716527cc5fda3e102ba358721336246c` (approved Head
   `f1bbe499f7179094cfefae796f454951e1736add`; post-merge CI `32203582370`, 19/19 PASS). The
   benchmark-only same-interface container-model substrate
   (Phase8StdMapControl, Phase8SortedVectorNaive, Phase8AbslBtreeMap,

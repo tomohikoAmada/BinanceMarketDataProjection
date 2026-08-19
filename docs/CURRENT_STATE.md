@@ -25,10 +25,12 @@ orientation only.
 
 ## Current Main / Recent Main Baseline
 
-- Current `main`: `b06fa2f5716527cc5fda3e102ba358721336246c` with tree
-  `7a8e924879305b3ddba34304573c0ed81ac962bb`.
-- Phase-8 WP2 is PR #31, accepted and squash-merged at the current `main` tip. Its independently
-  approved Head was `f1bbe499f7179094cfefae796f454951e1736add`.
+- Phase-8 accepted implementation/evidence baseline before this governance closure:
+  `b06fa2f5716527cc5fda3e102ba358721336246c` with tree
+  `7a8e924879305b3ddba34304573c0ed81ac962bb`. Git history is authoritative for the actual live
+  `main` tip.
+- Phase-8 WP2 is PR #31, accepted and squash-merged at the Phase-8 evidence/source baseline. Its
+  independently approved Head was `f1bbe499f7179094cfefae796f454951e1736add`.
 - Post-merge main CI is run `32203582370` (`ci`, `push`), completed `success`, 19/19 jobs PASS.
 - INFRA-TC-001 / PR #23 squash merge: `24fb72232e928290add45ed8634cd0bf9a8d3442` (reproducible
   Quality toolchain). This is the accepted infrastructure merge baseline immediately preceding
@@ -61,7 +63,7 @@ orientation only.
   footprint measurement executables, and the exploratory local driver.
 - Phase-8 WP1 record: PR #30 is ACCEPTED / MERGED.
 - Phase-8 WP2 record: PR #31 is ACCEPTED / MERGED (approved Head
-  `f1bbe499f7179094cfefae796f454951e1736add`; squash merge/current main
+  `f1bbe499f7179094cfefae796f454951e1736add`; squash merge / Phase-8 evidence baseline
   `b06fa2f5716527cc5fda3e102ba358721336246c`; tree
   `7a8e924879305b3ddba34304573c0ed81ac962bb`).
 - Phase-8 formal evidence was independently accepted with verdict `FORMAL_EVIDENCE_ACCEPTED`;
