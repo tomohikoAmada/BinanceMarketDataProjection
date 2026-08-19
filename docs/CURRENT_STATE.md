@@ -47,10 +47,9 @@ orientation only.
 - M0-M4 are complete on main.
 - M5 Phase 1 through Phase 6 are complete/merged on main.
 - M5 Phase 7 is COMPLETE / EVIDENCE ACCEPTED, and M5 Phase 8 is COMPLETE / EVIDENCE ACCEPTED.
-- Phase 9 decision activity is COMPLETE; the governance record is pending merge. The accepted
-  decision is `KEEP_STD_MAP`; no candidate winner or production migration is authorized.
-- On merge of the Phase-9 governance record, Phase 9 becomes COMPLETE / DECISION ACCEPTED and
-  Phase 10 becomes AUTHORIZED / NOT STARTED.
+- Phase 9 is COMPLETE / DECISION ACCEPTED. The decision is `KEEP_STD_MAP`; no candidate winner
+  exists, the production container remains `std::map`, and production migration is NO.
+- Phase 10 is AUTHORIZED / NOT STARTED.
 - ADR-0008 is ACCEPTED: Spot bootstrap uses successor coverage (`U <= L + 1 <= u`,
   overflow-guarded); exact-next `[L+1, ...]` is a valid bridge; `U > L + 1` is the true gap.
   ADR-0008 supersedes only the Spot-bootstrap contains-`L` portion of ADR-0005; USD-M semantics
@@ -203,11 +202,11 @@ artifact is a separate identity and remains outside Projection ownership.
   before this cell contributes to a migration decision. No new benchmark campaign is required by
   this finding.
 
-Governance boundary before this record merges: `PHASE9=DECISION COMPLETE / GOVERNANCE RECORD
-PENDING`, `CONTAINER_DECISION=KEEP_STD_MAP`, `CANDIDATE_WINNER=NONE`, and
-`PRODUCTION_MIGRATION=NO`. The explicit decision record is
-[`docs/M5_PHASE9_CONTAINER_DECISION.md`](M5_PHASE9_CONTAINER_DECISION.md). On merge, Phase 9 is
-`COMPLETE / DECISION ACCEPTED` and Phase 10 is `AUTHORIZED / NOT STARTED`.
+Governance boundary: `PHASE8=COMPLETE / EVIDENCE ACCEPTED`,
+`PHASE9=COMPLETE / DECISION ACCEPTED`, `CONTAINER_DECISION=KEEP_STD_MAP`,
+`CANDIDATE_WINNER=NONE`, `PRODUCTION_CONTAINER=std::map`, `PRODUCTION_MIGRATION=NO`,
+`MIGRATION_IMPLEMENTED=NO`, and `PHASE10=AUTHORIZED / NOT STARTED`. The explicit decision record
+is [`docs/M5_PHASE9_CONTAINER_DECISION.md`](M5_PHASE9_CONTAINER_DECISION.md).
 
 ## Deferred / Not Yet Started
 
@@ -260,8 +259,8 @@ PENDING`, `CONTAINER_DECISION=KEEP_STD_MAP`, `CANDIDATE_WINNER=NONE`, and
 - Phase 8 container spike is COMPLETE / EVIDENCE ACCEPTED. WP1 is accepted/merged in PR #30 and
   WP2 is accepted/merged in PR #31. Its evidence is recorded in
   `docs/M5_PHASE8_CONTAINER_BENCHMARK_EVIDENCE.md`.
-- Phase 9 container decision activity is COMPLETE with `KEEP_STD_MAP`; its explicit governance
-  record is pending merge. No production migration is authorized.
+- Phase 9 container decision is COMPLETE / DECISION ACCEPTED with `KEEP_STD_MAP`; no production
+  migration is authorized.
 - M6 Gateway integration is NOT STARTED.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading remain outside the implemented Projection scope.
@@ -394,9 +393,8 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 
 ## Next Authorized Step
 
-Phase 7 is COMPLETE / EVIDENCE ACCEPTED and Phase 8 is COMPLETE / EVIDENCE ACCEPTED. Phase 9
-decision activity is complete with `KEEP_STD_MAP`; the governance record is pending merge. On
-merge, the state becomes `PHASE9=COMPLETE / DECISION ACCEPTED`, `CANDIDATE_WINNER=NONE`,
+Phase 7 is COMPLETE / EVIDENCE ACCEPTED and Phase 8 is COMPLETE / EVIDENCE ACCEPTED. Phase 9 is
+COMPLETE / DECISION ACCEPTED with `KEEP_STD_MAP`, `CANDIDATE_WINNER=NONE`,
 `PRODUCTION_CONTAINER=std::map`, `PRODUCTION_MIGRATION=NO`, and
 `PHASE10=AUTHORIZED / NOT STARTED`. No Phase-10 implementation is included here.
 

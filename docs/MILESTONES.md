@@ -455,8 +455,7 @@ campaign solely to remove it. INFO limitations were retained concisely: no direc
 `scaling_driver`/`intel_pstate/status` string, and no exclusive isolation of the physical core/SMT
 sibling from every normal host process; neither was blocking.
 
-Phase-9 decision activity is complete with `KEEP_STD_MAP`; the governance record is pending merge.
-On merge, the governance result is: PHASE7=COMPLETE / EVIDENCE ACCEPTED;
+The durable governance result is: PHASE7=COMPLETE / EVIDENCE ACCEPTED;
 PHASE8=COMPLETE / EVIDENCE ACCEPTED; PHASE9=COMPLETE / DECISION ACCEPTED;
 CONTAINER_DECISION=KEEP_STD_MAP; CANDIDATE_WINNER=NONE; PRODUCTION_CONTAINER=std::map;
 PRODUCTION_MIGRATION=NO; MIGRATION_IMPLEMENTED=NO; PHASE10=AUTHORIZED / NOT STARTED. The

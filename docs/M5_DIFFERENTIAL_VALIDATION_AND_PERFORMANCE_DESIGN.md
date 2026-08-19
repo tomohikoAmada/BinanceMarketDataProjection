@@ -33,10 +33,9 @@
   CLOSED; approved Head `92288927165f2d7486491371a11a7a586c645565`; squash
   merged via PR #25 at `c2ad198677130d05ad054ea48ade3a1d8021c153`. Phase-7
 - implementation and formal evidence acceptance are complete. Phase 8 (container spike) is
-  **COMPLETE / EVIDENCE ACCEPTED**; Phase 9 decision activity is
-  **COMPLETE / GOVERNANCE RECORD PENDING** with decision `KEEP_STD_MAP`.
-- On merge of the Phase-9 decision record, Phase 9 becomes **COMPLETE / DECISION ACCEPTED** and
-  Phase 10 becomes **AUTHORIZED / NOT STARTED**.
+  **COMPLETE / EVIDENCE ACCEPTED**; Phase 9 is **COMPLETE / DECISION ACCEPTED** with decision
+  `KEEP_STD_MAP`.
+- Phase 10 is **AUTHORIZED / NOT STARTED**.
 - Phase-8 formal evidence source SHA: `b06fa2f5716527cc5fda3e102ba358721336246c`; source tree:
   `7a8e924879305b3ddba34304573c0ed81ac962bb`.
 - Phase-8 formal evidence archive: `phase8-formal-evidence-b06fa2f.tar.gz`, SHA-256

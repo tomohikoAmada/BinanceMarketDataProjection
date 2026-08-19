@@ -3,10 +3,10 @@
 ## Status
 
 PR-A / WP1 is accepted and merged in PR #30. PR-B / WP2 was independently
-accepted and merged in PR #31. Phase 8 is **COMPLETE / EVIDENCE ACCEPTED**;
-Phase 9 decision activity is **COMPLETE / GOVERNANCE RECORD PENDING** with
-`KEEP_STD_MAP`; no candidate is selected and no production order-book migration is authorized.
-The explicit decision record is `docs/M5_PHASE9_CONTAINER_DECISION.md`.
+accepted and merged in PR #31. Phase 8 is **COMPLETE / EVIDENCE ACCEPTED**.
+The later Phase-9 decision is **COMPLETE / DECISION ACCEPTED** with `KEEP_STD_MAP`;
+no production order-book migration is authorized. The explicit decision record is
+`docs/M5_PHASE9_CONTAINER_DECISION.md`.
 
 PR #31 approved Head: `f1bbe499f7179094cfefae796f454951e1736add`.
 PR #31 squash merge / Phase-8 formal-evidence source revision:
@@ -154,6 +154,18 @@ PHASE8_WP1=ACCEPTED / MERGED
 PHASE8_WP2=ACCEPTED / MERGED
 PHASE8_FORMAL_EVIDENCE=ACCEPTED
 PHASE8=COMPLETE / EVIDENCE ACCEPTED
+PHASE9=AUTHORIZED / NOT STARTED
+CONTAINER_WINNER=NONE
+PRODUCTION_MIGRATION=NO
+PHASE9_STARTED=NO
+```
+
+Later Phase-9 decision:
+
+The separately conducted Phase-9 decision review concluded `KEEP_STD_MAP`. The durable current
+governance state recorded by `docs/M5_PHASE9_CONTAINER_DECISION.md` is:
+
+```text
 PHASE9=COMPLETE / DECISION ACCEPTED
 CONTAINER_DECISION=KEEP_STD_MAP
 CANDIDATE_WINNER=NONE
@@ -163,7 +175,5 @@ MIGRATION_IMPLEMENTED=NO
 PHASE10=AUTHORIZED / NOT STARTED
 ```
 
-The accepted Phase-9 decision is `KEEP std::map`: no alternative candidate satisfied the complete
-frozen migration rule. Phase 10 may proceed separately after this governance record merges. This
-Phase-8 evidence record remains the immutable numeric evidence source and does not itself make the
-Phase-9 decision.
+The Phase-8 evidence record did not itself make the Phase-9 decision; it remains the immutable
+numeric evidence record.

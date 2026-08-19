@@ -4,15 +4,15 @@
 
 ```text
 DECISION=KEEP_STD_MAP
-DECISION_STATUS=ACCEPTED_PENDING_GOVERNANCE_MERGE
+DECISION_STATUS=ACCEPTED
 P0=0
 P1=0
 P2=2
 INFO=1
 ```
 
-The independent Phase-9 decision review is complete. This record is the governance handoff;
-on merge, Phase 9 becomes `COMPLETE / DECISION ACCEPTED`.
+The independent Phase-9 decision review is accepted. This document is the durable governance
+record of that decision.
 
 ## Authority
 
@@ -112,8 +112,9 @@ architecture or order-book storage change is authorized.
 - Production `OrderBook` remains backed by `std::map`.
 - No production code or production dependency changes are made.
 - No production migration or migration regression campaign is required.
-- On merge, Phase 10 is authorized separately for CI/reporting integration, the `m5-replay` job,
-  manifest fold-in, the performance workflow, and artifact retention.
+- Phase 9 is `COMPLETE / DECISION ACCEPTED`; Phase 10 is `AUTHORIZED / NOT STARTED` for
+  CI/reporting integration, the `m5-replay` job, manifest fold-in, the performance workflow, and
+  artifact retention.
 
 ## Non-goals
 
