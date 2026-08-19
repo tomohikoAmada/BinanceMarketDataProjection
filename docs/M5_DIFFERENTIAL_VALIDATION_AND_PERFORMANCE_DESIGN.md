@@ -33,16 +33,20 @@
   CLOSED; approved Head `92288927165f2d7486491371a11a7a586c645565`; squash
   merged via PR #25 at `c2ad198677130d05ad054ea48ade3a1d8021c153`. Phase-7
 - implementation and formal evidence acceptance are complete. Phase 8 (container spike) is
-  **COMPLETE / EVIDENCE ACCEPTED**; Phase 9 is **AUTHORIZED / NOT STARTED**.
+  **COMPLETE / EVIDENCE ACCEPTED**; Phase 9 decision activity is
+  **COMPLETE / GOVERNANCE RECORD PENDING** with decision `KEEP_STD_MAP`.
+- On merge of the Phase-9 decision record, Phase 9 becomes **COMPLETE / DECISION ACCEPTED** and
+  Phase 10 becomes **AUTHORIZED / NOT STARTED**.
 - Phase-8 formal evidence source SHA: `b06fa2f5716527cc5fda3e102ba358721336246c`; source tree:
   `7a8e924879305b3ddba34304573c0ed81ac962bb`.
 - Phase-8 formal evidence archive: `phase8-formal-evidence-b06fa2f.tar.gz`, SHA-256
   `2c8dd51d1e91ecdd936d32b95436c93f199f60acce24361e9ae8533c7ad48657`; evidence binary SHA-256:
   `6ac0361ee8d92e782532a3df0373d660f8f9192931b1d843a20d91d1077114c1`.
 - Independent Phase-8 verdict: **FORMAL_EVIDENCE_ACCEPTED** (P0=0, P1=0, P2=1, INFO=2).
-  The retained nonblocking P2 is `P8-EVIDENCE-P2-001`, the noisy `std::map` control cell; Phase 9
-  must apply the frozen significance/noise requirements before using that cell in a migration
-  decision. No container winner exists and no production migration is authorized.
+  The retained nonblocking P2 is `P8-EVIDENCE-P2-001`, the noisy `std::map` control cell. Phase-9
+  decision activity is complete: no candidate qualifies under the frozen rule, the decision is
+  `KEEP_STD_MAP`, and no production migration is authorized. See
+  `docs/M5_PHASE9_CONTAINER_DECISION.md`.
 - ADR status: **ACCEPTED** (ADR-0007)
 - Design date: 2026-08-08
 - Initial independent architecture review: **CHANGES REQUESTED** (P0: 0, P1 design: 1, P1 implementation: 2, P2: 7)
@@ -1365,9 +1369,10 @@ Phase 7:  allocation/memory instrumentation (counting/live-bytes allocator,
           footprint measurement)
 Phase 8:  container comparison spike (semantic conformance harness, candidate
           models, benchmark comparison, decision matrix evidence)
-Phase 9:  container decision / ADR if needed (KEEP std::map is a valid outcome)
-Phase 10: CI/reporting integration (m5-replay job, manifest fold-in, performance
-          workflow, artifact retention)
+Phase 9:  container decision / ADR if needed — COMPLETE: KEEP std::map; see
+          `docs/M5_PHASE9_CONTAINER_DECISION.md`
+Phase 10: CI/reporting integration — AUTHORIZED / NOT STARTED (m5-replay job, manifest
+          fold-in, performance workflow, artifact retention)
 Phase 11: independent implementation review
 ```
 

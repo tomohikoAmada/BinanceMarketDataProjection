@@ -47,8 +47,10 @@ orientation only.
 - M0-M4 are complete on main.
 - M5 Phase 1 through Phase 6 are complete/merged on main.
 - M5 Phase 7 is COMPLETE / EVIDENCE ACCEPTED, and M5 Phase 8 is COMPLETE / EVIDENCE ACCEPTED.
-- Phase 9 is AUTHORIZED / NOT STARTED. No container winner or production migration has been
-  selected or authorized.
+- Phase 9 decision activity is COMPLETE; the governance record is pending merge. The accepted
+  decision is `KEEP_STD_MAP`; no candidate winner or production migration is authorized.
+- On merge of the Phase-9 governance record, Phase 9 becomes COMPLETE / DECISION ACCEPTED and
+  Phase 10 becomes AUTHORIZED / NOT STARTED.
 - ADR-0008 is ACCEPTED: Spot bootstrap uses successor coverage (`U <= L + 1 <= u`,
   overflow-guarded); exact-next `[L+1, ...]` is a valid bridge; `U > L + 1` is the true gap.
   ADR-0008 supersedes only the Spot-bootstrap contains-`L` portion of ADR-0005; USD-M semantics
@@ -201,9 +203,11 @@ artifact is a separate identity and remains outside Projection ownership.
   before this cell contributes to a migration decision. No new benchmark campaign is required by
   this finding.
 
-Governance boundary: `PHASE9=AUTHORIZED / NOT STARTED`, `CONTAINER_WINNER=NONE`, and
-`PRODUCTION_MIGRATION=NO`. Phase 9 will separately analyze the accepted evidence and decide
-whether a candidate qualifies or to KEEP `std::map`.
+Governance boundary before this record merges: `PHASE9=DECISION COMPLETE / GOVERNANCE RECORD
+PENDING`, `CONTAINER_DECISION=KEEP_STD_MAP`, `CANDIDATE_WINNER=NONE`, and
+`PRODUCTION_MIGRATION=NO`. The explicit decision record is
+[`docs/M5_PHASE9_CONTAINER_DECISION.md`](M5_PHASE9_CONTAINER_DECISION.md). On merge, Phase 9 is
+`COMPLETE / DECISION ACCEPTED` and Phase 10 is `AUTHORIZED / NOT STARTED`.
 
 ## Deferred / Not Yet Started
 
@@ -254,11 +258,10 @@ whether a candidate qualifies or to KEEP `std::map`.
     committed). WP6 was the final evidence-acceptance phase for this work package.
   - WP6 formal evidence acceptance is COMPLETE / EVIDENCE ACCEPTED.
 - Phase 8 container spike is COMPLETE / EVIDENCE ACCEPTED. WP1 is accepted/merged in PR #30 and
-  WP2 is accepted/merged in PR #31. No container decision exists and no production migration is
-  authorized.
-- Phase 9 container decision is AUTHORIZED / NOT STARTED. It must apply the frozen statistical-
-  significance, empirical-noise, improvement, regression, and supporting-evidence requirements
-  before choosing a qualifying candidate or KEEP `std::map`.
+  WP2 is accepted/merged in PR #31. Its evidence is recorded in
+  `docs/M5_PHASE8_CONTAINER_BENCHMARK_EVIDENCE.md`.
+- Phase 9 container decision activity is COMPLETE with `KEEP_STD_MAP`; its explicit governance
+  record is pending merge. No production migration is authorized.
 - M6 Gateway integration is NOT STARTED.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading remain outside the implemented Projection scope.
@@ -391,15 +394,11 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 
 ## Next Authorized Step
 
-Phase 7 is COMPLETE / EVIDENCE ACCEPTED and Phase 8 is COMPLETE / EVIDENCE ACCEPTED. Phase 9 is
-AUTHORIZED / NOT STARTED. The next authorized work is a separate analysis and decision of the
-accepted Phase-8 formal evidence. It must apply the frozen statistical-significance and empirical-
-noise requirements, the >=20% improvement threshold in at least two primary dimensions, the no
->10% regression requirement, and the supporting allocation/exception-safety/maintenance evidence.
-It may select a qualifying candidate or KEEP `std::map`.
-
-The Phase-9 boundary is explicit: `CONTAINER_WINNER=NONE`, `PRODUCTION_MIGRATION=NO`, and
-`PHASE9_STARTED=NO`. This current-state record does not make the Phase-9 decision.
+Phase 7 is COMPLETE / EVIDENCE ACCEPTED and Phase 8 is COMPLETE / EVIDENCE ACCEPTED. Phase 9
+decision activity is complete with `KEEP_STD_MAP`; the governance record is pending merge. On
+merge, the state becomes `PHASE9=COMPLETE / DECISION ACCEPTED`, `CANDIDATE_WINNER=NONE`,
+`PRODUCTION_CONTAINER=std::map`, `PRODUCTION_MIGRATION=NO`, and
+`PHASE10=AUTHORIZED / NOT STARTED`. No Phase-10 implementation is included here.
 
 ## AI / Reviewer Reading Order
 

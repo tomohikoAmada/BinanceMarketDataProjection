@@ -4,8 +4,9 @@
 
 PR-A / WP1 is accepted and merged in PR #30. PR-B / WP2 was independently
 accepted and merged in PR #31. Phase 8 is **COMPLETE / EVIDENCE ACCEPTED**;
-Phase 9 is **AUTHORIZED / NOT STARTED**. No candidate is selected and no
-production order-book migration is authorized.
+Phase 9 decision activity is **COMPLETE / GOVERNANCE RECORD PENDING** with
+`KEEP_STD_MAP`; no candidate is selected and no production order-book migration is authorized.
+The explicit decision record is `docs/M5_PHASE9_CONTAINER_DECISION.md`.
 
 PR #31 approved Head: `f1bbe499f7179094cfefae796f454951e1736add`.
 PR #31 squash merge / Phase-8 formal-evidence source revision:
@@ -77,9 +78,8 @@ allocator-exception safety.
 
 Historical implementation-PR scope: that PR did not itself generate or claim
 formal controlled-environment performance evidence. The later formal cohort
-and independent acceptance are recorded below; Phase 9 must interpret that
-accepted evidence and apply the frozen decision criteria. This document does
-not choose a winner.
+and independent acceptance are recorded below; the Phase-9 decision record interprets that
+accepted evidence and applies the frozen decision criteria. This document does not choose a winner.
 
 ## Formal evidence acceptance
 
@@ -154,13 +154,16 @@ PHASE8_WP1=ACCEPTED / MERGED
 PHASE8_WP2=ACCEPTED / MERGED
 PHASE8_FORMAL_EVIDENCE=ACCEPTED
 PHASE8=COMPLETE / EVIDENCE ACCEPTED
-PHASE9=AUTHORIZED / NOT STARTED
-CONTAINER_WINNER=NONE
+PHASE9=COMPLETE / DECISION ACCEPTED
+CONTAINER_DECISION=KEEP_STD_MAP
+CANDIDATE_WINNER=NONE
+PRODUCTION_CONTAINER=std::map
 PRODUCTION_MIGRATION=NO
-PHASE9_STARTED=NO
+MIGRATION_IMPLEMENTED=NO
+PHASE10=AUTHORIZED / NOT STARTED
 ```
 
-Phase 9 will separately analyze the accepted formal evidence, apply the frozen statistical-
-significance/noise, >=20% improvement, and no >10% regression requirements, account for supporting
-allocation/exception-safety/maintenance evidence, and choose either a qualifying candidate or
-KEEP `std::map`. This Phase-8 closure makes no such decision.
+The accepted Phase-9 decision is `KEEP std::map`: no alternative candidate satisfied the complete
+frozen migration rule. Phase 10 may proceed separately after this governance record merges. This
+Phase-8 evidence record remains the immutable numeric evidence source and does not itself make the
+Phase-9 decision.
