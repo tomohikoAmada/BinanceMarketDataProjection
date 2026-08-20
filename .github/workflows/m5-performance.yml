@@ -67,7 +67,7 @@ jobs:
       - name: Build required Phase-10 targets
         run: |
           cmake --build build/benchmark/cmake \
-            bmd_projection_m5_recorded_replay_benchmark
+            --target bmd_projection_m5_recorded_replay_benchmark
       - name: Run recorded Spot Core benchmark
         run: |
           mkdir -p build/benchmark/phase10-medium-results
