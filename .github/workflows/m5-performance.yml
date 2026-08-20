@@ -67,16 +67,7 @@ jobs:
       - name: Build required Phase-10 targets
         run: |
           cmake --build build/benchmark/cmake \
-            --target bmd_projection_m5_corpus_validate \
             bmd_projection_m5_recorded_replay_benchmark
-      - name: Validate Spot medium corpus with the existing Core validator
-        run: |
-          build/benchmark/cmake/tests/bmd_projection_m5_corpus_validate \
-            "$RUNNER_TEMP/m5-phase10/extracted/fixtures/M5-REC-SPOT-BTCUSDT-V1"
-      - name: Validate USD-M medium corpus with the existing Core validator
-        run: |
-          build/benchmark/cmake/tests/bmd_projection_m5_corpus_validate \
-            "$RUNNER_TEMP/m5-phase10/extracted/fixtures/M5-REC-USDM-BTCUSDT-V1"
       - name: Run recorded Spot Core benchmark
         run: |
           mkdir -p build/benchmark/phase10-medium-results

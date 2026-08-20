@@ -538,7 +538,7 @@ fixtures, and the immutable versioned Release asset was published:
 PHASE9=COMPLETE / DECISION ACCEPTED
 PHASE10=IN PROGRESS
 PHASE10_WP_A=IMPLEMENTED / MERGED / MAIN CI GREEN
-PHASE10_WP_B=IMPLEMENTED / MERGED / CANARY CONTRACT CORRECTION UNDER REVIEW
+PHASE10_WP_B=IMPLEMENTED / MERGED / MINIMAL RUNTIME-BUDGET / DEDICATED-VALIDATOR DECOUPLING CORRECTION UNDER REVIEW
 P10_PRE_P1_001=CLOSED
 P10_WPB_P1_001=CLOSED
 P10_WPB_ACT_P1_001=OPEN
@@ -589,9 +589,14 @@ software licensing. The publication and clean anonymous acquisition evidence,
 source authority, exact fixture identities, and hashes are recorded in
 `docs/M5_PHASE10_PREIMPLEMENTATION_DECISIONS.md`.
 
-The merged WP-B implementation, with this canary-contract correction under
-review, creates the following operation; it is not yet an accepted live
-default-branch run:
+The merged WP-B implementation, with this minimal runtime-budget / dedicated-
+validator-decoupling correction under review, creates the following operation;
+it is not yet an accepted live default-branch run. The weekly exploratory canary
+no longer repeats the dedicated Spot/USD-M Core/reference differential/lifecycle
+validator. The validator implementation remains, and distribution verification,
+benchmark preflight, explicit warmup, three timed repetitions per fixture, timed
+checksums, serial execution, and the formal >=5 repetition methodology remain
+unchanged.
 
 ```text
 REQUIRED_PHASE10_WEEKLY_OPERATION=.github/workflows/m5-performance.yml

@@ -211,6 +211,12 @@ All notable changes will be recorded here.
 
 ### Changed
 
+- Phase-10 weekly canary runtime-budget correction: decouple the dedicated Spot/USD-M
+  Core/reference differential/lifecycle validator executions while retaining the validator
+  implementation and authority, immutable distribution verification, benchmark preflight and
+  explicit warmup, three timed repetitions per fixture, timed checksums, formal `>=5` methodology,
+  production `std::map`, and exact-main activation proof as pending. No production migration.
+
 - M4 recorded as COMPLETE on `main`: merged through PR #8 at
   `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4`, post-merge main CI `31242162782` — 16/16 PASS.
   The three deferred M4 P2 findings remain open and non-blocking.

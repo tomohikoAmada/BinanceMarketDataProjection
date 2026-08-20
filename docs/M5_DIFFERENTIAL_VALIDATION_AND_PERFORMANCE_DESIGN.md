@@ -1246,7 +1246,10 @@ a scheduled workflow (e.g., weekly) for medium-tier trends and the container spi
 a future dedicated self-hosted runner only after a documented noise-floor study
 ```
 
-Design only; no workflow is created in this PR.
+The original design proposed this scheduled/manual shape; the Phase-10 workflow
+is now implemented separately in `.github/workflows/m5-performance.yml` as an
+exploratory medium canary. Its implementation record remains the operational
+authority for the current workflow contract.
 
 ## Historical performance policy
 
@@ -1479,4 +1482,8 @@ acceptance or rejection, a container redecision, container migration, or product
 
 Phase-8 and Phase-9 accepted evidence, `KEEP_STD_MAP`, the production `std::map` container, and
 `PRODUCTION_MIGRATION=NO` remain unchanged. The weekly canary has no numeric gate and no container
-decision authority; its exact-main activation proof remains pending.
+decision authority; its exact-main activation proof remains pending. The weekly exploratory canary
+no longer repeats the dedicated Core/reference differential/lifecycle validator; the validator
+implementation and other correctness/formal authorities remain unchanged. Distribution verification
+remains workflow-owned, while benchmark fixture identity, preflight, explicit warmup, three timed
+repetitions per fixture, and timed checksum verification remain executable-owned.
