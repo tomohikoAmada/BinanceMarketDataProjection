@@ -12,6 +12,13 @@ from scripts import m5_phase10
 
 
 class Phase10VerifierTests(unittest.TestCase):
+    _REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+
+    def _recorded_benchmark_source(self) -> str:
+        return (
+            self._REPOSITORY_ROOT / "benchmarks" / "recorded_replay_benchmark_main.cpp"
+        ).read_text(encoding="utf-8")
+
     def _package(
         self,
         *,
@@ -181,6 +188,35 @@ class Phase10VerifierTests(unittest.TestCase):
             self._validate_benchmark_payload(
                 {"mean": 11.0, "median": 11.0, "stddev": 0.5, "cv": 0.04, "p99": 12.0}
             )
+
+    def test_replay_warmup_is_outside_repeated_callback(self) -> None:
+        source = self._recorded_benchmark_source()
+        callback_start = source.index("void run_recorded_replay(")
+        callback_end = source.index("} // namespace", callback_start)
+        callback = source[callback_start:callback_end]
+        main_start = source.index("int main(")
+        main = source[main_start:]
+
+        self.assertIn("for ([[maybe_unused]] auto _ : state)", callback)
+        self.assertEqual(callback.count("context->executor.run(projection)"), 1)
+        self.assertNotIn("warmup_projection", callback)
+        self.assertEqual(main.count("run_explicit_warmup(context)"), 1)
+        self.assertLess(
+            main.index("set_expected_checksum"), main.index("run_explicit_warmup(context)")
+        )
+
+    def test_phase10_workflow_preserves_five_repetition_budget(self) -> None:
+        workflow = (
+            self._REPOSITORY_ROOT / ".github" / "workflows" / "m5-performance.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('cron: "17 3 * * 1"', workflow)
+        self.assertIn("timeout-minutes: 45", workflow)
+        self.assertEqual(workflow.count("--benchmark_repetitions=5"), 2)
+        self.assertIn("M5-REC-SPOT-BTCUSDT-V1", workflow)
+        self.assertIn("M5-REC-USDM-BTCUSDT-V1", workflow)
+        self.assertNotIn("--benchmark_min_time", workflow)
+        self.assertNotIn("--benchmark_iterations", workflow)
 
     def test_valid_exact_contract_shaped_package(self) -> None:
         package, contract = self._package()
