@@ -44,6 +44,8 @@ SOURCE_INVENTORY_CATALOG_SHA256 = (
     "f7289fcc3383063c5e3b83e65201df29503cf7c9bba227dbb8298dcdb4805d8c"
 )
 MAX_RESULT_BYTES = 200 * 1024 * 1024
+WEEKLY_CANARY_REPETITIONS = 3
+STANDARD_AGGREGATES = frozenset(("mean", "median", "stddev", "cv"))
 RESULT_NAMES = (
     "spot-benchmark.json",
     "spot-wrapper.json",
@@ -397,7 +399,8 @@ def _is_iteration_name(name: Any, expected_name: str) -> bool:
 
 
 def _validate_benchmark_payload(
-    path: Path, expected_name: str, required_repetitions: int = 5
+    path: Path, expected_name: str,
+    required_repetitions: int = WEEKLY_CANARY_REPETITIONS,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     payload = _load_json(path, "benchmark payload")
     _require(isinstance(payload, dict), "benchmark payload must be an object")
@@ -447,9 +450,16 @@ def _validate_benchmark_payload(
     _require(len(iterations) == required_repetitions,
              f"expected {required_repetitions} benchmark repetitions, got {len(iterations)}")
     indices = [entry.get("repetition_index") for entry in iterations]
-    if all(index is not None for index in indices):
+    if any(index is not None for index in indices):
+        _require(all(isinstance(index, int) and not isinstance(index, bool)
+                     for index in indices),
+                 "benchmark repetition indices must be integers when emitted")
         _require(sorted(indices) == list(range(required_repetitions)),
                  "benchmark repetition indices are not contiguous")
+    aggregate_values = [entry["aggregate_name"] for entry in aggregates]
+    _require(len(aggregate_values) == len(STANDARD_AGGREGATES)
+             and set(aggregate_values) == STANDARD_AGGREGATES,
+             "benchmark aggregate set must be exactly mean, median, stddev, cv")
     return iterations, aggregates
 
 
@@ -470,7 +480,7 @@ def _validate_wrapper(
     expected_benchmark_name: str,
     binary_path: Path,
     checkout_sha: str,
-    required_repetitions: int = 5,
+    required_repetitions: int = WEEKLY_CANARY_REPETITIONS,
 ) -> tuple[dict[str, Any], dict[str, str], list[dict[str, Any]]]:
     # Reuse the accepted Phase-6 wrapper contract in addition to the exact
     # Phase-10 identity checks below.
@@ -625,10 +635,7 @@ def validate_results(
     binary: str | os.PathLike[str],
     checkout_sha: str,
     summary_out: str | os.PathLike[str],
-    required_repetitions: int = 5,
 ) -> str:
-    _require(required_repetitions in (1, 2, 5),
-             "Phase-10 result validation repetitions must be 1, 2, or 5")
     _require(GIT_SHA.fullmatch(checkout_sha) is not None, "checkout SHA must be a 40-character Git SHA")
     executable = Path(binary)
     _require(executable.is_file(), f"benchmark executable not found: {executable}")
@@ -642,11 +649,11 @@ def validate_results(
     wrapper_records = []
     for payload, wrapper_path, fixture, benchmark_name in expected_runs:
         iterations, aggregates = _validate_benchmark_payload(
-            payload, benchmark_name, required_repetitions
+            payload, benchmark_name, WEEKLY_CANARY_REPETITIONS
         )
         wrapper, fields, measurements = _validate_wrapper(
             wrapper_path, payload, fixture, benchmark_name, executable, checkout_sha,
-            required_repetitions,
+            WEEKLY_CANARY_REPETITIONS,
         )
         wrapper_records.append((wrapper_path, wrapper, fixture, benchmark_name, measurements, aggregates))
 
@@ -677,7 +684,6 @@ def _main() -> int:
     results.add_argument("--binary", required=True)
     results.add_argument("--checkout-sha", required=True)
     results.add_argument("--summary-out", required=True)
-    results.add_argument("--repetitions", type=int, choices=(1, 2, 5), default=5)
 
     args = parser.parse_args()
     try:
@@ -693,7 +699,6 @@ def _main() -> int:
                 args.binary,
                 args.checkout_sha,
                 args.summary_out,
-                args.repetitions,
             )
             print("Phase-10 distribution-bound benchmark results PASS")
         return 0

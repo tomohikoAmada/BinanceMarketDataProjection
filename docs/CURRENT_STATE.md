@@ -49,8 +49,8 @@ orientation only.
 - M5 Phase 7 is COMPLETE / EVIDENCE ACCEPTED, and M5 Phase 8 is COMPLETE / EVIDENCE ACCEPTED.
 - Phase 9 is COMPLETE / DECISION ACCEPTED. The decision is `KEEP_STD_MAP`; no candidate winner
   exists, the production container remains `std::map`, and production migration is NO.
-- Phase 10 is IN PROGRESS: WP-A benchmark-smoke artifact reporting is implemented; WP-B remains
-  not implemented.
+- Phase 10 is IN PROGRESS: WP-A is implemented/merged with main CI green; WP-B is
+  implemented/merged, with the weekly canary contract correction under review.
 - The exact main publication base is `041a9e8516409552ea9d6eeada5d58d378c40fc7` with tree
   `87d92b0f67bf526768737ba03db2667bfdd1f5fb`; there are no open PRs at publication time.
 - P10-PRE-P1-001 is CLOSED: the two exact accepted materialized medium fixtures are publicly
@@ -189,11 +189,21 @@ artifact is a separate identity and remains outside Projection ownership.
 ```text
 PHASE9=COMPLETE / DECISION ACCEPTED
 PHASE10=IN PROGRESS
-PHASE10_WP_A=IMPLEMENTED
-PHASE10_WP_B=IMPLEMENTED AT THIS TREE / DEFAULT-BRANCH ACTIVATION PROOF PENDING
+PHASE10_WP_A=IMPLEMENTED / MERGED / MAIN CI GREEN
+PHASE10_WP_B=IMPLEMENTED / MERGED / CANARY CONTRACT CORRECTION UNDER REVIEW
 P10_PRE_P1_001=CLOSED
+P10_WPB_P1_001=CLOSED
+P10_WPB_ACT_P1_001=OPEN
+P10_WPB_ACT_P2_001=CLOSED
 MEDIUM_CORPUS_DISTRIBUTION=ESTABLISHED
-WEEKLY_M5_PERFORMANCE=IMPLEMENTED AT THIS TREE / EXACT-MAIN ACTIVATION PROOF PENDING
+WEEKLY_M5_PERFORMANCE=IMPLEMENTED / EXACT-MAIN ACTIVATION NOT PROVEN
+WEEKLY_M5_PERFORMANCE_PURPOSE=EXPLORATORY PERFORMANCE CANARY
+WEEKLY_REPETITIONS_PER_FIXTURE=3
+WEEKLY_SPOT_REPETITIONS=3
+WEEKLY_USDM_REPETITIONS=3
+WEEKLY_NUMERIC_GATE=NO
+WEEKLY_CONTAINER_DECISION_AUTHORITY=NO
+FORMAL_DECISION_EVIDENCE_MIN_REPETITIONS=>=5
 M5_PERFORMANCE_WORKFLOW_CREATED=YES AT THIS TREE
 WORKFLOW=.github/workflows/m5-performance.yml
 SCHEDULE_CRON=17 3 * * 1
@@ -204,11 +214,16 @@ MODE=Core current-production std::map
 RUNNER=ubuntu-24.04 / GitHub-hosted x86_64
 COMPILER=Clang
 TIMEOUT=45 minutes
+ACTIVATION_PROOF=PENDING
 PR_BLOCKING=NO
 EVIDENCE_CLASS=EXPLORATORY / NONBLOCKING REPORTING
 RETENTION=7 days
 CONTAINER_REDECISION=NO
+PRODUCTION_CONTAINER=std::map
 PRODUCTION_MIGRATION=NO
+PHASE10_COMPLETE=NO
+READY_FOR_PHASE11=NO
+PHASE11_STARTED=NO
 ```
 
 The exact owner-authorized medium asset is `m5-medium-corpus-v1` /
@@ -225,8 +240,9 @@ source revision, and publishes the four required smoke JSON outputs as a
 three-day SHA-named artifact. The benchmark remains exploratory structural/
 execution smoke and has no numeric performance gate.
 
-The WP-B implementation at this tree creates the following operation; it is not
-yet an accepted live default-branch run:
+The merged WP-B implementation, with this canary-contract correction under
+review, creates the following operation; it is not yet an accepted live
+default-branch run:
 
 ```text
 REQUIRED_PHASE10_WEEKLY_OPERATION=.github/workflows/m5-performance.yml
@@ -236,12 +252,15 @@ FIXTURES=M5-REC-SPOT-BTCUSDT-V1 + M5-REC-USDM-BTCUSDT-V1
 MODE=Core current-production std::map
 RUNNER=standard GitHub-hosted Ubuntu x86_64
 TIMEOUT=45 minutes
+PURPOSE=EXPLORATORY PERFORMANCE CANARY
+REPETITIONS_PER_ACCEPTED_MEDIUM_FIXTURE=3
+FORMAL_DECISION_EVIDENCE_MIN_REPETITIONS=>=5
 PR_BLOCKING=NO
 EVIDENCE_CLASS=EXPLORATORY / NONBLOCKING REPORTING
 RETENTION=7 days
 CONTAINER_REDECISION=NO
 PRODUCTION_MIGRATION=NO
-STATUS=IMPLEMENTED AT THIS TREE / EXACT-MAIN ACTIVATION PROOF PENDING
+STATUS=IMPLEMENTED / EXACT-MAIN ACTIVATION NOT PROVEN
 ```
 
 Immediately after this implementation is merged, normal main CI must pass and
@@ -280,7 +299,8 @@ Governance boundary: `PHASE8=COMPLETE / EVIDENCE ACCEPTED`,
 `PHASE9=COMPLETE / DECISION ACCEPTED`, `CONTAINER_DECISION=KEEP_STD_MAP`,
 `CANDIDATE_WINNER=NONE`, `PRODUCTION_CONTAINER=std::map`, `PRODUCTION_MIGRATION=NO`,
 `MIGRATION_IMPLEMENTED=NO`, and `PHASE10=IN PROGRESS / WP-A IMPLEMENTED /
-WP-B IMPLEMENTED AT THIS TREE / DEFAULT-BRANCH ACTIVATION PROOF PENDING`.
+MERGED / MAIN CI GREEN / WP-B IMPLEMENTED / MERGED / CANARY CONTRACT CORRECTION
+UNDER REVIEW / DEFAULT-BRANCH ACTIVATION PROOF PENDING`.
 The explicit decision record
 is [`docs/M5_PHASE9_CONTAINER_DECISION.md`](M5_PHASE9_CONTAINER_DECISION.md).
 

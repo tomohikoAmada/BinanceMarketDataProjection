@@ -35,7 +35,8 @@
 - implementation and formal evidence acceptance are complete. Phase 8 (container spike) is
   **COMPLETE / EVIDENCE ACCEPTED**; Phase 9 is **COMPLETE / DECISION ACCEPTED** with decision
   `KEEP_STD_MAP`.
-- Phase 10 is **AUTHORIZED / NOT STARTED**.
+- Phase 10 is **IN PROGRESS**: WP-A is implemented/merged with main CI green, and WP-B is
+  implemented/merged with the weekly canary contract correction under review.
 - Phase-8 formal evidence source SHA: `b06fa2f5716527cc5fda3e102ba358721336246c`; source tree:
   `7a8e924879305b3ddba34304573c0ed81ac962bb`.
 - Phase-8 formal evidence archive: `phase8-formal-evidence-b06fa2f.tar.gz`, SHA-256
@@ -1370,8 +1371,8 @@ Phase 8:  container comparison spike (semantic conformance harness, candidate
           models, benchmark comparison, decision matrix evidence)
 Phase 9:  container decision / ADR if needed — COMPLETE: KEEP std::map; see
           `docs/M5_PHASE9_CONTAINER_DECISION.md`
-Phase 10: CI/reporting integration — AUTHORIZED / NOT STARTED (m5-replay job, manifest
-          fold-in, performance workflow, artifact retention)
+Phase 10: CI/reporting integration — IN PROGRESS (m5-replay job, manifest fold-in,
+          performance workflow, artifact retention)
 Phase 11: independent implementation review
 ```
 
@@ -1463,3 +1464,19 @@ Independent M5 Architecture Review must challenge:
 - `docs/M2_ORDER_BOOK_SEMANTICS.md`, `docs/M3_SEQUENCE_AND_PROJECTION_STATE_DESIGN.md`,
   `docs/M4_SNAPSHOTS_AND_PROTOBUF_BOUNDARY_DESIGN.md`
 - Merged M4 implementation at `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4`
+
+## Phase-10 weekly canary operational clarification
+
+The Phase-10 GitHub-hosted weekly execution is an **EXPLORATORY PERFORMANCE CANARY** and is
+nonblocking exploratory/history evidence. It uses exactly **3 repetitions per accepted medium
+fixture** for both Spot and USD-M. This is a deliberate Phase-10 methodology correction, not a
+runtime bug fix.
+
+The formal M5 methodology above remains unchanged: **at least 5 repetitions (`>=5`) remain
+required for formal / decision-authoritative M5 performance evidence**. Three-repetition Phase-10
+canary output does not satisfy that formal requirement and cannot authorize a numeric performance
+acceptance or rejection, a container redecision, container migration, or production migration.
+
+Phase-8 and Phase-9 accepted evidence, `KEEP_STD_MAP`, the production `std::map` container, and
+`PRODUCTION_MIGRATION=NO` remain unchanged. The weekly canary has no numeric gate and no container
+decision authority; its exact-main activation proof remains pending.
