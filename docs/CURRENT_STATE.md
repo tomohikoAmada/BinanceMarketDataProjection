@@ -190,11 +190,25 @@ artifact is a separate identity and remains outside Projection ownership.
 PHASE9=COMPLETE / DECISION ACCEPTED
 PHASE10=IN PROGRESS
 PHASE10_WP_A=IMPLEMENTED
-PHASE10_WP_B=NOT IMPLEMENTED
+PHASE10_WP_B=IMPLEMENTED AT THIS TREE / DEFAULT-BRANCH ACTIVATION PROOF PENDING
 P10_PRE_P1_001=CLOSED
 MEDIUM_CORPUS_DISTRIBUTION=ESTABLISHED
-WEEKLY_M5_PERFORMANCE=NOT IMPLEMENTED / NOT RUNNING
-M5_PERFORMANCE_WORKFLOW_CREATED=NO
+WEEKLY_M5_PERFORMANCE=IMPLEMENTED AT THIS TREE / EXACT-MAIN ACTIVATION PROOF PENDING
+M5_PERFORMANCE_WORKFLOW_CREATED=YES AT THIS TREE
+WORKFLOW=.github/workflows/m5-performance.yml
+SCHEDULE_CRON=17 3 * * 1
+SCHEDULE_TIMEZONE=UTC
+TIER=recorded medium v1
+FIXTURES=M5-REC-SPOT-BTCUSDT-V1 + M5-REC-USDM-BTCUSDT-V1
+MODE=Core current-production std::map
+RUNNER=ubuntu-24.04 / GitHub-hosted x86_64
+COMPILER=Clang
+TIMEOUT=45 minutes
+PR_BLOCKING=NO
+EVIDENCE_CLASS=EXPLORATORY / NONBLOCKING REPORTING
+RETENTION=7 days
+CONTAINER_REDECISION=NO
+PRODUCTION_MIGRATION=NO
 ```
 
 The exact owner-authorized medium asset is `m5-medium-corpus-v1` /
@@ -211,7 +225,8 @@ source revision, and publishes the four required smoke JSON outputs as a
 three-day SHA-named artifact. The benchmark remains exploratory structural/
 execution smoke and has no numeric performance gate.
 
-The authorized, not-yet-running future operation is:
+The WP-B implementation at this tree creates the following operation; it is not
+yet an accepted live default-branch run:
 
 ```text
 REQUIRED_PHASE10_WEEKLY_OPERATION=.github/workflows/m5-performance.yml
@@ -226,14 +241,16 @@ EVIDENCE_CLASS=EXPLORATORY / NONBLOCKING REPORTING
 RETENTION=7 days
 CONTAINER_REDECISION=NO
 PRODUCTION_MIGRATION=NO
-STATUS=AUTHORIZED IMPLEMENTATION CONTRACT / NOT YET RUNNING
+STATUS=IMPLEMENTED AT THIS TREE / EXACT-MAIN ACTIVATION PROOF PENDING
 ```
 
-When the workflow is later merged, this file, `docs/MILESTONES.md`, and the
-Phase-10 implementation record must be updated with
-the merged/running weekly-performance state and the exact implemented
-`SCHEDULE_CRON`.
-That running state is not true in the current repository state.
+Immediately after this implementation is merged, normal main CI must pass and
+a separate `workflow_dispatch` run must execute on the exact new main SHA. Its
+exact five-file artifact must be independently accepted before a focused
+docs-only closure records `PHASE10=COMPLETE`, both WP states COMPLETE,
+`WEEKLY_M5_PERFORMANCE=ACTIVE`, the actual activation run/SHA/artifact, and
+`READY_FOR_PHASE11=YES`. Those future identifiers and active state are not
+claimed here.
 
 ## Phase-7 and Phase-8 Acceptance
 
@@ -262,7 +279,8 @@ That running state is not true in the current repository state.
 Governance boundary: `PHASE8=COMPLETE / EVIDENCE ACCEPTED`,
 `PHASE9=COMPLETE / DECISION ACCEPTED`, `CONTAINER_DECISION=KEEP_STD_MAP`,
 `CANDIDATE_WINNER=NONE`, `PRODUCTION_CONTAINER=std::map`, `PRODUCTION_MIGRATION=NO`,
-`MIGRATION_IMPLEMENTED=NO`, and `PHASE10=IN PROGRESS / WP-A IMPLEMENTED / WP-B NOT IMPLEMENTED`.
+`MIGRATION_IMPLEMENTED=NO`, and `PHASE10=IN PROGRESS / WP-A IMPLEMENTED /
+WP-B IMPLEMENTED AT THIS TREE / DEFAULT-BRANCH ACTIVATION PROOF PENDING`.
 The explicit decision record
 is [`docs/M5_PHASE9_CONTAINER_DECISION.md`](M5_PHASE9_CONTAINER_DECISION.md).
 
@@ -373,7 +391,7 @@ is [`docs/M5_PHASE9_CONTAINER_DECISION.md`](M5_PHASE9_CONTAINER_DECISION.md).
 - Phase 8 is COMPLETE / EVIDENCE ACCEPTED. The retained nonblocking P2 is recorded above; no
   numeric winner conclusion has been made.
 - Phase 9 is COMPLETE / DECISION ACCEPTED with `KEEP_STD_MAP`; Phase-10 is IN PROGRESS with WP-A
-  implemented and WP-B not implemented after the P10-PRE-P1-001 publication prerequisite.
+  implemented and WP-B implemented at this tree after the P10-PRE-P1-001 publication prerequisite.
 
 ## Accepted Semantic Authorities
 
@@ -455,8 +473,9 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 Phase 7 is COMPLETE / EVIDENCE ACCEPTED and Phase 8 is COMPLETE / EVIDENCE ACCEPTED. Phase 9 is
 COMPLETE / DECISION ACCEPTED with `KEEP_STD_MAP`, `CANDIDATE_WINNER=NONE`,
 `PRODUCTION_CONTAINER=std::map`, and `PRODUCTION_MIGRATION=NO`. Phase 10 is IN PROGRESS:
-WP-A benchmark-smoke artifact reporting is implemented, WP-B and the weekly performance workflow
-remain not implemented, and P10-PRE-P1-001 is closed.
+WP-A benchmark-smoke artifact reporting is implemented, WP-B is implemented at
+this tree, and P10-PRE-P1-001 is closed. The exact-main activation proof and
+final docs-only closure remain pending; no active weekly operation is claimed.
 
 ## AI / Reviewer Reading Order
 

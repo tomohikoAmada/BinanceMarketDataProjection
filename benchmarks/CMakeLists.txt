@@ -110,6 +110,30 @@ set_target_properties(
 )
 bmd_projection_apply_project_options(bmd_projection_replay_latency)
 
+# M5 Phase-10 recorded-medium benchmark. This is a benchmark-only Core
+# consumer: fixture acquisition/validation is owned by the workflow and the
+# executable reuses the accepted Replay_V1 loader and CoreReplayExecutor.
+add_executable(
+    bmd_projection_m5_recorded_replay_benchmark
+    recorded_replay_benchmark_main.cpp
+)
+target_link_libraries(
+    bmd_projection_m5_recorded_replay_benchmark
+    PRIVATE
+        BinanceMarketDataProjection::Core
+        bmd_projection_m5_benchmark_support
+        bmd_projection_m5_phase3_support
+        benchmark::benchmark
+)
+set_target_properties(
+    bmd_projection_m5_recorded_replay_benchmark
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_recorded_replay_benchmark)
+
 # ---------------------------------------------------------------------------
 # M5 Phase-7 allocation measurement executables (OD-M5-P7-002/008/009/010).
 # Each executable owns the replacement global new/delete surface by compiling

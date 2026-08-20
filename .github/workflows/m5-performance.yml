@@ -1,0 +1,121 @@
+name: m5-performance
+
+on:
+  workflow_dispatch:
+  # GitHub schedule cron is evaluated in UTC: weekly Monday at 03:17 UTC.
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m5-performance-main
+  cancel-in-progress: true
+
+env:
+  CC: clang
+  CXX: clang++
+
+jobs:
+  performance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Require the main branch
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main" || {
+            echo "m5-performance is main-only: GITHUB_REF=$GITHUB_REF" >&2
+            exit 1
+          }
+      - name: Checkout the triggering commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify exact checkout and compute short SHA
+        id: checkout_identity
+        run: |
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$GITHUB_SHA" || {
+            echo "CHECKOUT MISMATCH: expected=$GITHUB_SHA actual=$actual" >&2
+            exit 1
+          }
+          echo "short_sha=$(git rev-parse --short=8 HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bootstrap repository-local Conan
+        run: bash scripts/bootstrap.sh
+      - name: Acquire the immutable public medium distribution
+        run: |
+          mkdir -p "$RUNNER_TEMP/m5-phase10"
+          curl --fail --silent --show-error --location \
+            --output "$RUNNER_TEMP/m5-phase10/m5-medium-recorded-v1.tar.gz" \
+            "https://github.com/tomohikoAmada/BinanceMarketDataProjection/releases/download/m5-medium-corpus-v1/m5-medium-recorded-v1.tar.gz"
+      - name: Verify and safely extract the distribution
+        run: |
+          python3 scripts/m5_phase10.py verify-distribution \
+            "$RUNNER_TEMP/m5-phase10/m5-medium-recorded-v1.tar.gz" \
+            "$RUNNER_TEMP/m5-phase10/extracted"
+      - name: Configure Core-only benchmark build
+        run: |
+          bash scripts/configure.sh benchmark \
+            -DBMD_PROJECTION_BUILD_PROTO_ADAPTER=OFF \
+            -DBMD_PROJECTION_BUILD_TESTS=ON \
+            -DBMD_PROJECTION_ENABLE_WERROR=ON
+      - name: Build required Phase-10 targets
+        run: |
+          cmake --build build/benchmark/cmake \
+            --target bmd_projection_m5_corpus_validate \
+            bmd_projection_m5_recorded_replay_benchmark
+      - name: Validate Spot medium corpus with the existing Core validator
+        run: |
+          build/benchmark/cmake/tests/bmd_projection_m5_corpus_validate \
+            "$RUNNER_TEMP/m5-phase10/extracted/fixtures/M5-REC-SPOT-BTCUSDT-V1"
+      - name: Validate USD-M medium corpus with the existing Core validator
+        run: |
+          build/benchmark/cmake/tests/bmd_projection_m5_corpus_validate \
+            "$RUNNER_TEMP/m5-phase10/extracted/fixtures/M5-REC-USDM-BTCUSDT-V1"
+      - name: Run recorded Spot Core benchmark
+        run: |
+          mkdir -p build/benchmark/phase10-medium-results
+          build/benchmark/cmake/benchmarks/bmd_projection_m5_recorded_replay_benchmark \
+            --m5_fixture_dir="$RUNNER_TEMP/m5-phase10/extracted/fixtures/M5-REC-SPOT-BTCUSDT-V1" \
+            --benchmark_format=json \
+            --benchmark_out=build/benchmark/phase10-medium-results/spot-benchmark.json \
+            --benchmark_repetitions=5 \
+            --m5_wrapper_out=build/benchmark/phase10-medium-results/spot-wrapper.json \
+            --m5_evidence_class=exploratory
+      - name: Run recorded USD-M Core benchmark
+        run: |
+          build/benchmark/cmake/benchmarks/bmd_projection_m5_recorded_replay_benchmark \
+            --m5_fixture_dir="$RUNNER_TEMP/m5-phase10/extracted/fixtures/M5-REC-USDM-BTCUSDT-V1" \
+            --benchmark_format=json \
+            --benchmark_out=build/benchmark/phase10-medium-results/usdm-benchmark.json \
+            --benchmark_repetitions=5 \
+            --m5_wrapper_out=build/benchmark/phase10-medium-results/usdm-wrapper.json \
+            --m5_evidence_class=exploratory
+      - name: Validate exact Phase-10 outputs and derive summary
+        run: |
+          python3 scripts/m5_phase10.py validate-results \
+            --spot-benchmark build/benchmark/phase10-medium-results/spot-benchmark.json \
+            --spot-wrapper build/benchmark/phase10-medium-results/spot-wrapper.json \
+            --usdm-benchmark build/benchmark/phase10-medium-results/usdm-benchmark.json \
+            --usdm-wrapper build/benchmark/phase10-medium-results/usdm-wrapper.json \
+            --binary build/benchmark/cmake/benchmarks/bmd_projection_m5_recorded_replay_benchmark \
+            --checkout-sha "$(git rev-parse HEAD)" \
+            --summary-out build/benchmark/phase10-medium-results/performance-summary.txt
+      - name: Upload Phase-10 medium results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m5-performance-ubuntu-clang-${{ steps.checkout_identity.outputs.short_sha }}
+          path: |
+            build/benchmark/phase10-medium-results/spot-benchmark.json
+            build/benchmark/phase10-medium-results/spot-wrapper.json
+            build/benchmark/phase10-medium-results/usdm-benchmark.json
+            build/benchmark/phase10-medium-results/usdm-wrapper.json
+            build/benchmark/phase10-medium-results/performance-summary.txt
+          retention-days: 7
+          if-no-files-found: error

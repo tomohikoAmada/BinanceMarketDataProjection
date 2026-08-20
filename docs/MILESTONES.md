@@ -459,7 +459,8 @@ The durable governance result is: PHASE7=COMPLETE / EVIDENCE ACCEPTED;
 PHASE8=COMPLETE / EVIDENCE ACCEPTED; PHASE9=COMPLETE / DECISION ACCEPTED;
 CONTAINER_DECISION=KEEP_STD_MAP; CANDIDATE_WINNER=NONE; PRODUCTION_CONTAINER=std::map;
 PRODUCTION_MIGRATION=NO; MIGRATION_IMPLEMENTED=NO;
-PHASE10=IN PROGRESS / WP-A IMPLEMENTED / WP-B NOT IMPLEMENTED. The
+PHASE10=IN PROGRESS / WP-A IMPLEMENTED / WP-B IMPLEMENTED AT THIS TREE /
+DEFAULT-BRANCH ACTIVATION PROOF PENDING. The
 decision record is `docs/M5_PHASE9_CONTAINER_DECISION.md`.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
@@ -536,14 +537,28 @@ fixtures, and the immutable versioned Release asset was published:
 PHASE9=COMPLETE / DECISION ACCEPTED
 PHASE10=IN PROGRESS
 PHASE10_WP_A=IMPLEMENTED
-PHASE10_WP_B=NOT IMPLEMENTED
+PHASE10_WP_B=IMPLEMENTED AT THIS TREE / DEFAULT-BRANCH ACTIVATION PROOF PENDING
 P10_PRE_P1_001=CLOSED
 MEDIUM_CORPUS_DISTRIBUTION=ESTABLISHED
 RELEASE_TAG=m5-medium-corpus-v1
 ASSET_NAME=m5-medium-recorded-v1.tar.gz
 RAW_SOURCE_DISTRIBUTION=NO
-WEEKLY_M5_PERFORMANCE=NOT IMPLEMENTED / NOT RUNNING
-M5_PERFORMANCE_WORKFLOW_CREATED=NO
+WEEKLY_M5_PERFORMANCE=IMPLEMENTED AT THIS TREE / EXACT-MAIN ACTIVATION PROOF PENDING
+M5_PERFORMANCE_WORKFLOW_CREATED=YES AT THIS TREE
+WORKFLOW=.github/workflows/m5-performance.yml
+SCHEDULE_CRON=17 3 * * 1
+SCHEDULE_TIMEZONE=UTC
+TIER=recorded medium v1
+FIXTURES=M5-REC-SPOT-BTCUSDT-V1 + M5-REC-USDM-BTCUSDT-V1
+MODE=Core current-production std::map
+RUNNER=ubuntu-24.04 / GitHub-hosted x86_64
+COMPILER=Clang
+TIMEOUT=45 minutes
+PR_BLOCKING=NO
+EVIDENCE_CLASS=EXPLORATORY / NONBLOCKING REPORTING
+RETENTION=7 days
+CONTAINER_REDECISION=NO
+PRODUCTION_MIGRATION=NO
 ```
 
 WP-A implements benchmark-smoke artifact reporting: exact evidence-SHA checkout,
@@ -558,8 +573,8 @@ software licensing. The publication and clean anonymous acquisition evidence,
 source authority, exact fixture identities, and hashes are recorded in
 `docs/M5_PHASE10_PREIMPLEMENTATION_DECISIONS.md`.
 
-The authorized future weekly operation remains an implementation contract, not
-current state:
+The WP-B implementation at this tree creates the following operation; it is not
+yet an accepted live default-branch run:
 
 ```text
 REQUIRED_PHASE10_WEEKLY_OPERATION=.github/workflows/m5-performance.yml
@@ -574,9 +589,13 @@ EVIDENCE_CLASS=EXPLORATORY / NONBLOCKING REPORTING
 RETENTION=7 days
 CONTAINER_REDECISION=NO
 PRODUCTION_MIGRATION=NO
-STATUS=AUTHORIZED IMPLEMENTATION CONTRACT / NOT YET RUNNING
+STATUS=IMPLEMENTED AT THIS TREE / EXACT-MAIN ACTIVATION PROOF PENDING
 ```
 
-When the workflow is actually merged, update this file, `docs/CURRENT_STATE.md`,
-and the Phase-10 implementation record with the merged/running weekly-performance
-state and the exact implemented `SCHEDULE_CRON`. Do not record that state earlier.
+Immediately after merge, normal main CI must pass and a separate exact-main
+`workflow_dispatch` run must produce the exact five-file artifact. Only after
+independent acceptance of that run may a focused docs-only closure record
+`PHASE10=COMPLETE`, `PHASE10_WP_A=COMPLETE`, `PHASE10_WP_B=COMPLETE`,
+`WEEKLY_M5_PERFORMANCE=ACTIVE`, the actual run/SHA/artifact identifiers, and
+`READY_FOR_PHASE11=YES`. This tree records no future identifiers, active state,
+completion claim, or Phase-11 authorization.
