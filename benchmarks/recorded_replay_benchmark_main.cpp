@@ -242,17 +242,14 @@ class CollectingReporter final : public benchmark::BenchmarkReporter {
     int num_cpus_{};
 };
 
+[[nodiscard]] bool run_explicit_warmup(const std::shared_ptr<RunContext>& context) {
+    core::BookProjection warmup_projection{context->executor.numeric_spec(),
+                                           context->executor.policy()};
+    return context->executor.run(warmup_projection) == context->executor.expected_checksum();
+}
+
 void run_recorded_replay(benchmark::State& state, const std::shared_ptr<RunContext>& context,
                          std::string_view benchmark_name) {
-    {
-        core::BookProjection warmup_projection{context->executor.numeric_spec(),
-                                               context->executor.policy()};
-        if (context->executor.run(warmup_projection) != context->executor.expected_checksum()) {
-            state.SkipWithError("explicit warmup checksum mismatch");
-            return;
-        }
-    }
-
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
         core::BookProjection projection{context->executor.numeric_spec(),
@@ -309,6 +306,10 @@ int main(int argc, char** argv) {
     core::BookProjection preflight_projection{context->executor.numeric_spec(),
                                               context->executor.policy()};
     context->executor.set_expected_checksum(context->executor.run(preflight_projection));
+    if (!run_explicit_warmup(context)) {
+        std::fprintf(stderr, "explicit warmup checksum mismatch\n");
+        return 1;
+    }
 
     benchmark::RegisterBenchmark(
         expected->benchmark_name,
