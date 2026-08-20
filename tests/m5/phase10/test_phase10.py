@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts import m5_phase10
 
@@ -132,20 +133,22 @@ class Phase10VerifierTests(unittest.TestCase):
                     contract=contract,
                 )
 
-    def _benchmark_payload(self, aggregates: dict[str, float]) -> dict[str, object]:
+    def _benchmark_payload(
+        self, aggregates: dict[str, float], repetition_count: int = 3
+    ) -> dict[str, object]:
         expected_name = "M5RecordedReplay/Spot"
         entries: list[dict[str, object]] = [
             {
                 "name": f"{expected_name}/real_time",
                 "run_type": "iteration",
-                "repetitions": 5,
+                "repetitions": 3,
                 "repetition_index": index,
                 "iterations": 1,
                 "real_time": 10.0 + index,
                 "cpu_time": 9.0 + index,
                 "items_per_second": 1000.0,
             }
-            for index in range(5)
+            for index in range(repetition_count)
         ]
         entries.extend(
             {
@@ -166,21 +169,21 @@ class Phase10VerifierTests(unittest.TestCase):
             path = Path(directory) / "benchmark.json"
             path.write_text(json.dumps(payload), encoding="utf-8")
             return m5_phase10._validate_benchmark_payload(
-                path, "M5RecordedReplay/Spot", required_repetitions=5
+                path, "M5RecordedReplay/Spot"
             )
 
-    def test_five_repetition_default_aggregates_are_accepted(self) -> None:
+    def test_three_repetition_default_aggregates_are_accepted(self) -> None:
         iterations, aggregates = self._validate_benchmark_payload(
             {"mean": 11.0, "median": 11.0, "stddev": 0.5, "cv": 0.04}
         )
-        self.assertEqual(len(iterations), 5)
+        self.assertEqual(len(iterations), 3)
         self.assertEqual(len(aggregates), 4)
 
     def test_zero_dispersion_aggregates_are_accepted(self) -> None:
         iterations, aggregates = self._validate_benchmark_payload(
             {"mean": 11.0, "median": 11.0, "stddev": 0.0, "cv": 0.0}
         )
-        self.assertEqual(len(iterations), 5)
+        self.assertEqual(len(iterations), 3)
         self.assertEqual(len(aggregates), 4)
 
     def test_unexpected_aggregate_is_rejected(self) -> None:
@@ -188,6 +191,107 @@ class Phase10VerifierTests(unittest.TestCase):
             self._validate_benchmark_payload(
                 {"mean": 11.0, "median": 11.0, "stddev": 0.5, "cv": 0.04, "p99": 12.0}
             )
+
+    def test_wrong_iteration_count_is_rejected(self) -> None:
+        payload = self._benchmark_payload(
+            {"mean": 11.0, "median": 11.0, "stddev": 0.5, "cv": 0.04},
+            repetition_count=2,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "benchmark.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaises(m5_phase10.VerificationError):
+                m5_phase10._validate_benchmark_payload(path, "M5RecordedReplay/Spot")
+
+    def _wrapper_for_measurement_validation(
+        self, directory: str, measurement_count: int
+    ) -> tuple[Path, Path, Path, str]:
+        expected = m5_phase10.PRODUCTION_FIXTURES[0]
+        benchmark_name = "M5RecordedReplay/Spot"
+        checkout_sha = "a" * 40
+        binary_path = Path(directory) / "benchmark"
+        payload_path = Path(directory) / "benchmark.json"
+        wrapper_path = Path(directory) / "wrapper.json"
+        binary_path.write_bytes(b"benchmark")
+        payload_path.write_text("{}", encoding="utf-8")
+        canonical = "\n".join(
+            (
+                f"benchmark_name={benchmark_name}",
+                "replay_mode=CoreOnly",
+                "tier=recorded_medium_v1",
+                f"fixture_id={expected.fixture_id}",
+                f"workload_id={expected.fixture_id}",
+                f"event_count={expected.event_count}",
+                f"market={expected.market}",
+                f"symbol={expected.symbol}",
+                f"price_scale={expected.price_scale}",
+                f"quantity_scale={expected.quantity_scale}",
+                f"policy={expected.market}",
+                f"canonical_log_sha256={expected.replay_sha256}",
+                f"distribution_schema={m5_phase10.DISTRIBUTION_SCHEMA}",
+                f"distribution_package_id={m5_phase10.PACKAGE_ID}",
+                f"distribution_release_tag={m5_phase10.RELEASE_TAG}",
+                f"distribution_asset_name={m5_phase10.ASSET_NAME}",
+                f"distribution_outer_sha256={m5_phase10.ARCHIVE_SHA256}",
+                f"distribution_manifest_sha256={m5_phase10.DISTRIBUTION_MANIFEST_SHA256}",
+                "throughput_denominator=wall_time",
+                "primary_timer=wall",
+                "checksum_methodology_version=M5_PHASE6_REPLAY_CHECKSUM_V1",
+                f"logical_items_per_iteration={expected.event_count}",
+                "generator_schema=M5_PHASE6_REPLAY_V1",
+            )
+        )
+        wrapper = {
+            "schema": "M5_BENCHMARK_WRAPPER_V1",
+            "evidence_class": "exploratory",
+            "requested_evidence_class": "exploratory",
+            "source_provenance": {
+                "git_sha": checkout_sha,
+                "status": "known",
+                "dirty_at_configure": False,
+            },
+            "binary_provenance": {"sha256": m5_phase10._sha256_file(binary_path)},
+            "result_payload": {
+                "schema": "google_benchmark_json",
+                "sha256": m5_phase10._sha256_file(payload_path),
+            },
+            "workload_identities": [
+                {
+                    "benchmark_name": benchmark_name,
+                    "canonical_spec_text": canonical,
+                    "workload_spec_sha256": m5_phase10._sha256_bytes(
+                        canonical.encode("utf-8")
+                    ),
+                }
+            ],
+            "measurements": [
+                {
+                    "name": f"{benchmark_name}/real_time",
+                    "real_time_ns": 10.0 + index,
+                    "cpu_time_ns": 9.0 + index,
+                    "items_per_second": 1000.0,
+                }
+                for index in range(measurement_count)
+            ],
+        }
+        wrapper_path.write_text(json.dumps(wrapper), encoding="utf-8")
+        return wrapper_path, payload_path, binary_path, checkout_sha
+
+    def test_wrapper_measurement_count_must_be_three(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            wrapper_path, payload_path, binary_path, checkout_sha = (
+                self._wrapper_for_measurement_validation(directory, measurement_count=2)
+            )
+            with patch("scripts.benchmark_phase6.validate_wrapper"):
+                with self.assertRaises(m5_phase10.VerificationError):
+                    m5_phase10._validate_wrapper(
+                        wrapper_path,
+                        payload_path,
+                        m5_phase10.PRODUCTION_FIXTURES[0],
+                        "M5RecordedReplay/Spot",
+                        binary_path,
+                        checkout_sha,
+                    )
 
     def test_replay_warmup_is_outside_repeated_callback(self) -> None:
         source = self._recorded_benchmark_source()
@@ -205,14 +309,15 @@ class Phase10VerifierTests(unittest.TestCase):
             main.index("set_expected_checksum"), main.index("run_explicit_warmup(context)")
         )
 
-    def test_phase10_workflow_preserves_five_repetition_budget(self) -> None:
+    def test_phase10_workflow_preserves_three_repetition_canary_contract(self) -> None:
         workflow = (
             self._REPOSITORY_ROOT / ".github" / "workflows" / "m5-performance.yml"
         ).read_text(encoding="utf-8")
 
         self.assertIn('cron: "17 3 * * 1"', workflow)
         self.assertIn("timeout-minutes: 45", workflow)
-        self.assertEqual(workflow.count("--benchmark_repetitions=5"), 2)
+        self.assertEqual(workflow.count("--benchmark_repetitions=3"), 2)
+        self.assertEqual(workflow.count("--benchmark_repetitions=5"), 0)
         self.assertIn("M5-REC-SPOT-BTCUSDT-V1", workflow)
         self.assertIn("M5-REC-USDM-BTCUSDT-V1", workflow)
         self.assertNotIn("--benchmark_min_time", workflow)

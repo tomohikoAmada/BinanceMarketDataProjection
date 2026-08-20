@@ -84,7 +84,7 @@ jobs:
             --m5_fixture_dir="$RUNNER_TEMP/m5-phase10/extracted/fixtures/M5-REC-SPOT-BTCUSDT-V1" \
             --benchmark_format=json \
             --benchmark_out=build/benchmark/phase10-medium-results/spot-benchmark.json \
-            --benchmark_repetitions=5 \
+            --benchmark_repetitions=3 \
             --m5_wrapper_out=build/benchmark/phase10-medium-results/spot-wrapper.json \
             --m5_evidence_class=exploratory
       - name: Run recorded USD-M Core benchmark
@@ -93,7 +93,7 @@ jobs:
             --m5_fixture_dir="$RUNNER_TEMP/m5-phase10/extracted/fixtures/M5-REC-USDM-BTCUSDT-V1" \
             --benchmark_format=json \
             --benchmark_out=build/benchmark/phase10-medium-results/usdm-benchmark.json \
-            --benchmark_repetitions=5 \
+            --benchmark_repetitions=3 \
             --m5_wrapper_out=build/benchmark/phase10-medium-results/usdm-wrapper.json \
             --m5_evidence_class=exploratory
       - name: Validate exact Phase-10 outputs and derive summary
