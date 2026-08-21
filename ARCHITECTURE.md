@@ -37,6 +37,38 @@ maps messages and explicit context; it does not own networking, clocks, bufferin
 Gateway lifecycle. Gateway/gRPC runtime remains M6 scope. The C-M4-001 prerequisite is closed and
 the exact Contracts package metadata is validated only when the optional component is requested.
 
+## M5 closure and M6 Gateway Host boundary
+
+M5 is COMPLETE, including Phase 11 independent final implementation review approval. The weekly
+M5 performance operation remains active as exploratory, nonblocking reporting; it does not change
+the production `std::map` / `KEEP_STD_MAP` decision.
+
+BinanceMarketDataGateway is the future real runtime module and Host. It may embed Projection, but
+Projection does not embed or own Gateway. Gateway owns transport and runtime concerns such as
+Binance WebSocket and REST access, connection and session lifecycle, snapshot/bootstrap handoff,
+reconnect/resync orchestration, queues, backpressure, slow-consumer isolation, threading, gRPC
+server runtime, subscriptions, identity/generation/sequence metadata, publish timestamps, and
+operational status. Gateway must not duplicate OrderBook semantics, Spot/USD-M sequence policy,
+Projection lifecycle, deterministic gap classification, or deterministic book projection.
+
+The frozen logical dependency direction is:
+
+```text
+BinanceMarketDataGateway
+    |
+    +--> BinanceMarketDataContracts
+    |
+    +--> BinanceMarketDataProjection::ProtoAdapter
+              |
+              +--> BinanceMarketDataProjection::Core
+```
+
+Projection may consume the Contracts Protobuf message package only through its optional adapter,
+as already implemented. Projection MUST NOT depend on BinanceMarketDataGateway. The Gateway is the
+Host; Projection remains the strategy-independent, deterministic, replayable, single-writer,
+embedded C++20 library. M6 verifies that a real Gateway Host can correctly embed and drive that
+library; it does not implement Gateway runtime inside Projection.
+
 M5 (Differential Validation and Performance) adds replay/differential/fuzz validation and
 benchmark infrastructure as test/benchmark-only artifacts outside Core. It introduces no new
 production public API, no production dependency, and no container change; validation and

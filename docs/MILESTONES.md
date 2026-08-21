@@ -244,9 +244,9 @@ No Contracts change, gRPC runtime, Gateway lifecycle, network ownership, system-
 generated-code copy, or M5/M6 work is included. `MarketStateSnapshot` generation and derived market
 calculations remain deferred unless separately designed and approved.
 
-## M5 Differential Validation and Performance — APPROVED / MERGED / IN PROGRESS
+## M5 Differential Validation and Performance — COMPLETE
 
-Implementation status: **IN PROGRESS**
+Implementation status: **COMPLETE**
 
 ### Design status
 
@@ -267,7 +267,7 @@ No M5 production change or container migration is authorized by the design.
 
 OD-M5-001 and OD-M5-002 are **CLOSED**. Implementation authorization decisions and CI policy
 are recorded in `docs/M5_PREIMPLEMENTATION_DECISIONS.md`. OD-M5-003 remains SPIKE-RESOLVABLE.
-M5 implementation is authorized. Phases 1, 2, 3, 4, 5, and 6 are complete and merged; Phase 5
+M5 implementation was authorized. Phases 1, 2, 3, 4, 5, and 6 are COMPLETE / MERGED; Phase 5
 is COMPLETE / MERGED (evidence in the Phase-5 record below).
 Phase 6: decision record APPROVED / MERGED; implementation COMPLETE / MERGED (evidence in the
 Phase-6 record below; see `docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`).
@@ -505,9 +505,10 @@ strategy, risk, trading, persistence, Python binding, or production container mi
 5. **M4 Snapshots and Protobuf Boundary — COMPLETE** — Optional
    wire-format adapter outside Core; snapshot production boundary. Merged through PR #8 at
    `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4`; main CI `31242162782` — 16/16 PASS.
-6. **M5 Differential Validation and Performance — APPROVED / MERGED / IN PROGRESS** —
+6. **M5 Differential Validation and Performance — COMPLETE** —
    Replay/differential/fuzz validation; benchmark with representative workloads.
-7. **M6 Gateway Integration** — Production host embedding surface; live ingestion.
+7. **M6 Gateway Integration — NOT STARTED** — First activity is cross-repository integration
+   contract design; it is not Gateway runtime implementation inside Projection.
 8. **M7 Platform Hardening and Acceptance** — Harden architectures, toolchains; end-to-end acceptance.
 
 ### Cross-cutting concerns
@@ -527,7 +528,7 @@ strategy, risk, trading, persistence, Python binding, or production container mi
 - Live/Replay Same Core — identical ordered inputs produce identical outputs.
 - Strategy Independent — no trading, risk, or strategy logic.
 
-## Phase-10 implementation state
+## M5 final / M6 current implementation state
 
 P10-PRE-P1-001 is **CLOSED**. The project owner authorized public
 distribution of exactly the two accepted materialized Replay_V1 medium
@@ -535,7 +536,18 @@ fixtures, and the immutable versioned Release asset was published:
 
 ```text
 PHASE9=COMPLETE / DECISION ACCEPTED
-M5=IN PROGRESS
+M5=COMPLETE
+M5_PHASE1=COMPLETE
+M5_PHASE2=COMPLETE
+M5_PHASE3=COMPLETE
+M5_PHASE4=COMPLETE
+M5_PHASE5=COMPLETE
+M5_PHASE6=COMPLETE
+M5_PHASE7=COMPLETE
+M5_PHASE8=COMPLETE
+M5_PHASE9=COMPLETE
+M5_PHASE10=COMPLETE
+M5_PHASE11=COMPLETE
 PHASE10=COMPLETE
 PHASE10_WP_A=COMPLETE
 PHASE10_WP_B=COMPLETE
@@ -581,9 +593,23 @@ ACTIVATION_ARTIFACT_NAME=m5-performance-ubuntu-clang-e6d2cf09
 ACTIVATION_ARTIFACT_DIGEST=sha256:f2404a068310c3ba39737e7cc6d8fa0107b83ed71e4539840f000210d7cb1d2f
 PHASE10_COMPLETE=YES
 READY_FOR_PHASE11=YES
-PHASE11_STARTED=NO
-NEXT_M5_PHASE=PHASE11 / INDEPENDENT IMPLEMENTATION REVIEW
+PHASE11=COMPLETE
+PHASE11_STARTED=YES
+PHASE11_REVIEW=APPROVED
+PHASE11_P0=0
+PHASE11_P1=0
+PHASE11_NEW_CURRENT_P2=0
+PHASE11_INFO=2
+M5_COMPLETE_AUTHORIZED=YES
+M5_COMPLETE_RECORDED=YES
+NEXT_AUTHORIZED_STEP=M6 CROSS-REPOSITORY INTEGRATION CONTRACT DESIGN
 M6_GATEWAY_INTEGRATION=NOT STARTED
+M6_PLANNING_AUTHORIZED=YES
+M6_DESIGN=NOT STARTED
+M6_IMPLEMENTATION=NOT STARTED
+GATEWAY_RUNTIME_IMPLEMENTATION=OUTSIDE PROJECTION
+GATEWAY_IMPLEMENTATION_ORDER=AFTER M6 INTEGRATION CONTRACT DESIGN
+PROJECTION_M6_IMPLEMENTATION_ORDER=AFTER MINIMAL RUNNABLE GATEWAY HOST EXISTS
 ```
 
 WP-A provides benchmark-smoke artifact reporting: exact evidence-SHA checkout,
@@ -626,7 +652,40 @@ STATUS=ACTIVE
 
 Normal exact-main CI passed, and activation run `32453032145` on the exact
 main SHA produced the exact five-file artifact that was independently accepted.
-Phase 10 is complete and M5 is ready for Phase 11 independent implementation
-review. M5 remains in progress until Phase 11 is completed and accepted.
-`READY_FOR_PHASE11=YES` and `PHASE11_STARTED=NO`; full immutable activation
-evidence is recorded in `docs/M5_PHASE10_CI_REPORTING_INTEGRATION.md`.
+Phase 10 is complete and its weekly canary remains exploratory/nonblocking. The
+independent Phase-11 final implementation review is APPROVED, Phase 11 is
+COMPLETE, and M5 is COMPLETE. Full immutable activation evidence remains
+recorded in `docs/M5_PHASE10_CI_REPORTING_INTEGRATION.md`.
+
+M6 planning is authorized but not started. The approved order is: M6
+cross-repository integration contract design; the narrowly scoped Contracts C++
+and gRPC prerequisite if required; BinanceMarketDataGateway implementation; a
+minimal runnable Gateway Host; then Projection M6 Gateway Integration. The
+Projection milestone verifies the real Host-to-Projection integration and does
+not implement Gateway runtime in this repository.
+
+### Phase 11 — COMPLETE / INDEPENDENT REVIEW APPROVED
+
+The independent final implementation review was performed against the current
+docs-closure main SHA `5d39ec08d7365250822bac1cca4d3fd68b4116d6` and tree
+`5437884b780e90b694f51350c6e24f2d5c7d0620`. Its technical parent and exact
+Phase-10 activation head remain `e6d2cf099ae4d9c5dc7c77789c3b4b55336af672`
+with tree `98b085b577a3b3731587e89983acd785a758d122`. The result was APPROVED: P0=0,
+P1=0, NEW_CURRENT_P2=0, INFO=2; correctness, performance, architecture
+boundary, evidence integrity, and M6 integration boundary gates all passed.
+
+The two INFO observations are nonblocking: hosted TSan should be re-evaluated
+when M6 introduces production threads/queues/session lifecycle, and the original
+Phase-8 formal tar archive is not retained as a current repository/Actions
+artifact although its frozen accepted evidence remains sufficient. Historical
+accepted or deferred P2 records remain unchanged and nonblocking where already
+accepted. See `docs/M5_PHASE11_FINAL_IMPLEMENTATION_REVIEW.md`.
+
+## M6 Gateway Integration — NOT STARTED
+
+Planning is AUTHORIZED; design and implementation are NOT STARTED. The first
+activity is a read-only, architecture-first cross-repository integration
+contract design. Gateway runtime is developed in
+`BinanceMarketDataGateway`, not inside this repository. Projection M6 begins
+only after a minimal runnable Gateway Host exists. See
+`docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md`.

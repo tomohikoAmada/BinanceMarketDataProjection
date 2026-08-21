@@ -187,11 +187,22 @@ artifact is a separate identity and remains outside Projection ownership.
 - USD-M mandatory 100k evidence is validated lifecycle-valid: bridge Applied/Synchronized,
   100,001 Applied operations, zero gaps, final Synchronized.
 
-## Phase-10 current implementation state
+## M5 final / M6 current implementation state
 
 ```text
 PHASE9=COMPLETE / DECISION ACCEPTED
-M5=IN PROGRESS
+M5=COMPLETE
+M5_PHASE1=COMPLETE
+M5_PHASE2=COMPLETE
+M5_PHASE3=COMPLETE
+M5_PHASE4=COMPLETE
+M5_PHASE5=COMPLETE
+M5_PHASE6=COMPLETE
+M5_PHASE7=COMPLETE
+M5_PHASE8=COMPLETE
+M5_PHASE9=COMPLETE
+M5_PHASE10=COMPLETE
+M5_PHASE11=COMPLETE
 PHASE10=COMPLETE
 PHASE10_WP_A=COMPLETE
 PHASE10_WP_B=COMPLETE
@@ -235,9 +246,23 @@ ACTIVATION_ARTIFACT_NAME=m5-performance-ubuntu-clang-e6d2cf09
 ACTIVATION_ARTIFACT_DIGEST=sha256:f2404a068310c3ba39737e7cc6d8fa0107b83ed71e4539840f000210d7cb1d2f
 PHASE10_COMPLETE=YES
 READY_FOR_PHASE11=YES
-PHASE11_STARTED=NO
-NEXT_M5_PHASE=PHASE11 / INDEPENDENT IMPLEMENTATION REVIEW
+PHASE11=COMPLETE
+PHASE11_STARTED=YES
+PHASE11_REVIEW=APPROVED
+PHASE11_P0=0
+PHASE11_P1=0
+PHASE11_NEW_CURRENT_P2=0
+PHASE11_INFO=2
+M5_COMPLETE_AUTHORIZED=YES
+M5_COMPLETE_RECORDED=YES
+NEXT_AUTHORIZED_STEP=M6 CROSS-REPOSITORY INTEGRATION CONTRACT DESIGN
 M6_GATEWAY_INTEGRATION=NOT STARTED
+M6_PLANNING_AUTHORIZED=YES
+M6_DESIGN=NOT STARTED
+M6_IMPLEMENTATION=NOT STARTED
+GATEWAY_RUNTIME_IMPLEMENTATION=OUTSIDE PROJECTION
+GATEWAY_IMPLEMENTATION_ORDER=AFTER M6 INTEGRATION CONTRACT DESIGN
+PROJECTION_M6_IMPLEMENTATION_ORDER=AFTER MINIMAL RUNNABLE GATEWAY HOST EXISTS
 ```
 
 The exact owner-authorized medium asset is `m5-medium-corpus-v1` /
@@ -284,7 +309,8 @@ STATUS=ACTIVE
 Normal exact-main CI passed, and activation run `32453032145` on the exact
 main SHA produced the exact five-file artifact that was independently accepted.
 Phase 10 is complete and the weekly canary is active under its
-exploratory/nonblocking authority. Full immutable activation evidence is in
+exploratory/nonblocking authority. Phase 11 is COMPLETE with an APPROVED
+independent final implementation review, and M5 is COMPLETE. Full immutable activation evidence is in
 [`docs/M5_PHASE10_CI_REPORTING_INTEGRATION.md`](M5_PHASE10_CI_REPORTING_INTEGRATION.md).
 
 ## Phase-7 and Phase-8 Acceptance
@@ -372,7 +398,8 @@ is [`docs/M5_PHASE9_CONTAINER_DECISION.md`](M5_PHASE9_CONTAINER_DECISION.md).
   `docs/M5_PHASE8_CONTAINER_BENCHMARK_EVIDENCE.md`.
 - Phase 9 container decision is COMPLETE / DECISION ACCEPTED with `KEEP_STD_MAP`; no production
   migration is authorized.
-- M6 Gateway integration is NOT STARTED.
+- M6 Gateway integration is NOT STARTED. Planning is AUTHORIZED; M6 design and implementation are
+  NOT STARTED. Gateway runtime implementation is OUTSIDE PROJECTION.
 - Networking, persistence, Gateway runtime, History runtime, derived market state, strategy, and
   trading remain outside the implemented Projection scope.
 
@@ -507,12 +534,16 @@ neither rule.
 
 ## Next Authorized Step
 
-M5 Phase 10 is COMPLETE. `READY_FOR_PHASE11=YES` and `PHASE11_STARTED=NO`.
-M5 Differential Validation and Performance remains IN PROGRESS because the
-frozen M5 sequence still requires Phase 11 independent implementation review.
-The next authorized step is M5 Phase 11 independent implementation review.
-M6 Gateway Integration remains NOT STARTED. This closure does not start Phase 11
-or M6.
+M5 Phase 10 is COMPLETE and its activation evidence remains preserved. Phase 11
+is COMPLETE with `PHASE11_REVIEW=APPROVED`; M5 Differential Validation and
+Performance is COMPLETE. M6 Gateway Integration remains NOT STARTED and this
+closure does not start M6. The next authorized step is the read-only,
+architecture-first `M6 CROSS-REPOSITORY INTEGRATION CONTRACT DESIGN`.
+
+Gateway runtime implementation is outside Projection and follows that contract
+design. Projection M6 Gateway Integration follows only after a minimal runnable
+Gateway Host exists. The sequence and responsibility boundary are frozen in
+[`docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md`](M6_GATEWAY_INTEGRATION_SEQUENCE.md).
 
 ## AI / Reviewer Reading Order
 
