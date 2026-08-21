@@ -17,7 +17,7 @@ case "$mode" in
         ;;
 esac
 
-benchmark_exe="build/benchmark/cmake/benchmarks/bmd_projection_benchmarks"
+benchmark_exe="build/benchmark/cmake/benchmarks/bmd_projection_m5_phase8_benchmarks"
 evidence_exe="build/benchmark/cmake/benchmarks/bmd_projection_m5_phase8_container_evidence"
 if [[ ! -x "$benchmark_exe" || ! -x "$evidence_exe" ]]; then
     echo "Phase-8 benchmark binaries are not built; configure/build the benchmark preset first" >&2

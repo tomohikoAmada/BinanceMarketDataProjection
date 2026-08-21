@@ -38,9 +38,10 @@ identities. A separate
 `M5_PHASE8/mixed_updates/1000` identity covers insertion, quantity update,
 deletion, and duplicate-price last-write-wins input in one logical stream.
 
-`bmd_projection_benchmarks` registers the same cells for all four candidates
-through one Google Benchmark wrapper. Candidate construction, population,
-state restoration, and destruction are outside the timed operation bracket.
+`bmd_projection_m5_phase8_benchmarks` registers the same cells for all four
+candidates through one exploratory Google Benchmark wrapper. Candidate
+construction, population, state restoration, and destruction are outside the
+timed operation bracket.
 `bmd_projection_m5_phase8_container_evidence` records raw repeated wall-clock
 samples for replay/update throughput, update latency, full replacement latency,
 and top-N latency.

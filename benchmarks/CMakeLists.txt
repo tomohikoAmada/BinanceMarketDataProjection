@@ -13,8 +13,6 @@ add_executable(
     m2_benchmarks.cpp
     m3_benchmarks.cpp
     replay_benchmarks.cpp
-    phase8/phase8_benchmarks.cpp
-    phase8/phase8_workload.cpp
     benchmark_support/replay_workload_specs.cpp
 )
 target_link_libraries(
@@ -26,7 +24,6 @@ target_link_libraries(
         bmd_projection_m5_oracle_support
         bmd_projection_m5_reference_support
         benchmark::benchmark
-        absl::btree
 )
 set_target_properties(
     bmd_projection_benchmarks
@@ -36,6 +33,34 @@ set_target_properties(
         CXX_EXTENSIONS NO
 )
 bmd_projection_apply_project_options(bmd_projection_benchmarks)
+
+# M5 Phase-8 exploratory Google Benchmark registrations. Keep these outside
+# the Phase-6 formal executable: Phase-8 uses the shared M2 workload inputs,
+# but its candidate cells are not Phase-6 workload identities. The dedicated
+# Phase-8 evidence producer below remains the canonical allocation/evidence
+# authority.
+add_executable(
+    bmd_projection_m5_phase8_benchmarks
+    benchmark_main.cpp
+    phase8/phase8_benchmarks.cpp
+    phase8/phase8_workload.cpp
+)
+target_link_libraries(
+    bmd_projection_m5_phase8_benchmarks
+    PRIVATE
+        BinanceMarketDataProjection::Core
+        bmd_projection_m5_benchmark_support
+        benchmark::benchmark
+        absl::btree
+)
+set_target_properties(
+    bmd_projection_m5_phase8_benchmarks
+    PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED YES
+        CXX_EXTENSIONS NO
+)
+bmd_projection_apply_project_options(bmd_projection_m5_phase8_benchmarks)
 
 # M5 Phase-8 PR-B evidence producer. It reuses the Phase-7 allocation
 # instrumentation only in this dedicated executable; the replacement global
@@ -69,6 +94,16 @@ set_target_properties(
         CXX_EXTENSIONS NO
 )
 bmd_projection_apply_project_options(bmd_projection_m5_phase8_container_evidence)
+
+if(BMD_PROJECTION_BUILD_TESTS)
+    add_test(
+        NAME m5_phase6_phase8_registration_separation
+        COMMAND ${Python3_EXECUTABLE}
+                "${PROJECT_SOURCE_DIR}/tests/m5/benchmark/check_phase6_phase8_separation.py"
+                $<TARGET_FILE:bmd_projection_benchmarks>
+                $<TARGET_FILE:bmd_projection_m5_phase8_benchmarks>
+    )
+endif()
 
 if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
     target_sources(
