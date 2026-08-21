@@ -459,10 +459,9 @@ The durable governance result is: PHASE7=COMPLETE / EVIDENCE ACCEPTED;
 PHASE8=COMPLETE / EVIDENCE ACCEPTED; PHASE9=COMPLETE / DECISION ACCEPTED;
 CONTAINER_DECISION=KEEP_STD_MAP; CANDIDATE_WINNER=NONE; PRODUCTION_CONTAINER=std::map;
 PRODUCTION_MIGRATION=NO; MIGRATION_IMPLEMENTED=NO;
-PHASE10=IN PROGRESS / WP-A IMPLEMENTED / MERGED / MAIN CI GREEN /
-WP-B IMPLEMENTED / MERGED / CANARY CONTRACT CORRECTION UNDER REVIEW /
-DEFAULT-BRANCH ACTIVATION PROOF PENDING. The
-decision record is `docs/M5_PHASE9_CONTAINER_DECISION.md`.
+PHASE10=COMPLETE / WP-A COMPLETE / WP-B COMPLETE /
+WEEKLY_M5_PERFORMANCE=ACTIVE / ACTIVATION_PROOF=ACCEPTED. The decision record
+is `docs/M5_PHASE9_CONTAINER_DECISION.md`.
 
 ### M3 Spot successor-coverage correction (2026-08-10)
 
@@ -536,18 +535,20 @@ fixtures, and the immutable versioned Release asset was published:
 
 ```text
 PHASE9=COMPLETE / DECISION ACCEPTED
-PHASE10=IN PROGRESS
-PHASE10_WP_A=IMPLEMENTED / MERGED / MAIN CI GREEN
-PHASE10_WP_B=IMPLEMENTED / MERGED / MINIMAL RUNTIME-BUDGET / DEDICATED-VALIDATOR DECOUPLING CORRECTION UNDER REVIEW
+M5=IN PROGRESS
+PHASE10=COMPLETE
+PHASE10_WP_A=COMPLETE
+PHASE10_WP_B=COMPLETE
 P10_PRE_P1_001=CLOSED
 P10_WPB_P1_001=CLOSED
-P10_WPB_ACT_P1_001=OPEN
+P10_WPB_ACT_P1_001=CLOSED
 P10_WPB_ACT_P2_001=CLOSED
 MEDIUM_CORPUS_DISTRIBUTION=ESTABLISHED
+MEDIUM_CORPUS_RELEASE_TARGET_SHA=041a9e8516409552ea9d6eeada5d58d378c40fc7
 RELEASE_TAG=m5-medium-corpus-v1
 ASSET_NAME=m5-medium-recorded-v1.tar.gz
 RAW_SOURCE_DISTRIBUTION=NO
-WEEKLY_M5_PERFORMANCE=IMPLEMENTED / EXACT-MAIN ACTIVATION NOT PROVEN
+WEEKLY_M5_PERFORMANCE=ACTIVE
 WEEKLY_M5_PERFORMANCE_PURPOSE=EXPLORATORY PERFORMANCE CANARY
 WEEKLY_REPETITIONS_PER_FIXTURE=3
 WEEKLY_SPOT_REPETITIONS=3
@@ -565,19 +566,27 @@ MODE=Core current-production std::map
 RUNNER=ubuntu-24.04 / GitHub-hosted x86_64
 COMPILER=Clang
 TIMEOUT=45 minutes
-ACTIVATION_PROOF=PENDING
+ACTIVATION_PROOF=ACCEPTED
 PR_BLOCKING=NO
 EVIDENCE_CLASS=EXPLORATORY / NONBLOCKING REPORTING
 RETENTION=7 days
+CONTAINER_DECISION=KEEP_STD_MAP
 CONTAINER_REDECISION=NO
 PRODUCTION_CONTAINER=std::map
 PRODUCTION_MIGRATION=NO
-PHASE10_COMPLETE=NO
-READY_FOR_PHASE11=NO
+ACTIVATION_RUN_ID=32453032145
+ACTIVATION_HEAD_SHA=e6d2cf099ae4d9c5dc7c77789c3b4b55336af672
+ACTIVATION_ARTIFACT_ID=9436787118
+ACTIVATION_ARTIFACT_NAME=m5-performance-ubuntu-clang-e6d2cf09
+ACTIVATION_ARTIFACT_DIGEST=sha256:f2404a068310c3ba39737e7cc6d8fa0107b83ed71e4539840f000210d7cb1d2f
+PHASE10_COMPLETE=YES
+READY_FOR_PHASE11=YES
 PHASE11_STARTED=NO
+NEXT_M5_PHASE=PHASE11 / INDEPENDENT IMPLEMENTATION REVIEW
+M6_GATEWAY_INTEGRATION=NOT STARTED
 ```
 
-WP-A implements benchmark-smoke artifact reporting: exact evidence-SHA checkout,
+WP-A provides benchmark-smoke artifact reporting: exact evidence-SHA checkout,
 wrapper provenance binding, and the four required smoke JSON outputs in a
 three-day SHA-named artifact. It adds no CI job, changes no benchmark
 methodology, and adds no numeric performance gate.
@@ -589,14 +598,12 @@ software licensing. The publication and clean anonymous acquisition evidence,
 source authority, exact fixture identities, and hashes are recorded in
 `docs/M5_PHASE10_PREIMPLEMENTATION_DECISIONS.md`.
 
-The merged WP-B implementation, with this minimal runtime-budget / dedicated-
-validator-decoupling correction under review, creates the following operation;
-it is not yet an accepted live default-branch run. The weekly exploratory canary
-no longer repeats the dedicated Spot/USD-M Core/reference differential/lifecycle
-validator. The validator implementation remains, and distribution verification,
-benchmark preflight, explicit warmup, three timed repetitions per fixture, timed
-checksums, serial execution, and the formal >=5 repetition methodology remain
-unchanged.
+The merged WP-B implementation creates the active weekly operation below. The
+weekly exploratory canary no longer repeats the dedicated Spot/USD-M
+Core/reference differential/lifecycle validator. The validator implementation
+remains, and distribution verification, benchmark preflight, explicit warmup,
+three timed repetitions per fixture, timed checksums, serial execution, and the
+formal >=5 repetition methodology remain unchanged.
 
 ```text
 REQUIRED_PHASE10_WEEKLY_OPERATION=.github/workflows/m5-performance.yml
@@ -614,13 +621,12 @@ EVIDENCE_CLASS=EXPLORATORY / NONBLOCKING REPORTING
 RETENTION=7 days
 CONTAINER_REDECISION=NO
 PRODUCTION_MIGRATION=NO
-STATUS=IMPLEMENTED / EXACT-MAIN ACTIVATION NOT PROVEN
+STATUS=ACTIVE
 ```
 
-Immediately after merge, normal main CI must pass and a separate exact-main
-`workflow_dispatch` run must produce the exact five-file artifact. Only after
-independent acceptance of that run may a focused docs-only closure record
-`PHASE10=COMPLETE`, `PHASE10_WP_A=COMPLETE`, `PHASE10_WP_B=COMPLETE`,
-`WEEKLY_M5_PERFORMANCE=ACTIVE`, the actual run/SHA/artifact identifiers, and
-`READY_FOR_PHASE11=YES`. This tree records no future identifiers, active state,
-completion claim, or Phase-11 authorization.
+Normal exact-main CI passed, and activation run `32453032145` on the exact
+main SHA produced the exact five-file artifact that was independently accepted.
+Phase 10 is complete and M5 is ready for Phase 11 independent implementation
+review. M5 remains in progress until Phase 11 is completed and accepted.
+`READY_FOR_PHASE11=YES` and `PHASE11_STARTED=NO`; full immutable activation
+evidence is recorded in `docs/M5_PHASE10_CI_REPORTING_INTEGRATION.md`.
