@@ -3,19 +3,20 @@
 ## Current implementation state
 
 ```text
-PHASE10=IN PROGRESS
-WP_A=IMPLEMENTED / MERGED / MAIN CI GREEN
-WP_B=IMPLEMENTED / MERGED / MINIMAL RUNTIME-BUDGET / DEDICATED-VALIDATOR DECOUPLING CORRECTION UNDER REVIEW
+M5=IN PROGRESS
+PHASE10=COMPLETE
+WP_A=COMPLETE
+WP_B=COMPLETE
 P10_PRE_P1_001=CLOSED
 P10_WPB_P1_001=CLOSED
-P10_WPB_ACT_P1_001=OPEN
+P10_WPB_ACT_P1_001=CLOSED
 P10_WPB_ACT_P2_001=CLOSED
 PR_BLOCKING_JOB_COUNT=19
 BENCHMARK_SMOKE_ARTIFACT=m5-benchmark-smoke-ubuntu-clang-<short-actual-checkout-sha>
 BENCHMARK_SMOKE_RETENTION=3 days
 BENCHMARK_SMOKE_EVIDENCE_CLASS=EXPLORATORY / STRUCTURAL-SMOKE
 NUMERIC_PERFORMANCE_GATE=NO
-WEEKLY_M5_PERFORMANCE=IMPLEMENTED / EXACT-MAIN ACTIVATION NOT PROVEN
+WEEKLY_M5_PERFORMANCE=ACTIVE
 WEEKLY_M5_PERFORMANCE_PURPOSE=EXPLORATORY PERFORMANCE CANARY
 WEEKLY_REPETITIONS_PER_FIXTURE=3
 WEEKLY_SPOT_REPETITIONS=3
@@ -32,16 +33,68 @@ FIXTURES=M5-REC-SPOT-BTCUSDT-V1 + M5-REC-USDM-BTCUSDT-V1
 RUNNER=ubuntu-24.04 / GitHub-hosted x86_64
 COMPILER=Clang
 TIMEOUT=45 minutes
-ACTIVATION_PROOF=PENDING
+ACTIVATION_PROOF=ACCEPTED
 PR_BLOCKING=NO
 EVIDENCE_CLASS=EXPLORATORY / NONBLOCKING REPORTING
 RETENTION=7 days
+CONTAINER_DECISION=KEEP_STD_MAP
 PRODUCTION_CONTAINER=std::map
 PRODUCTION_MIGRATION=NO
-PHASE10_COMPLETE=NO
-READY_FOR_PHASE11=NO
+PHASE10_COMPLETE=YES
+READY_FOR_PHASE11=YES
 PHASE11_STARTED=NO
+NEXT_M5_PHASE=PHASE11 / INDEPENDENT IMPLEMENTATION REVIEW
 ```
+
+## Exact-main activation and independent acceptance
+
+The normal exact-main post-merge CI run `32431673420` (`ci`, `push`) completed
+successfully with 19/19 jobs passing. The dedicated activation run
+`32453032145` ([run details](https://github.com/tomohikoAmada/BinanceMarketDataProjection/actions/runs/32453032145))
+completed successfully via `workflow_dispatch` on exact main SHA
+`e6d2cf099ae4d9c5dc7c77789c3b4b55336af672`, whose tree is
+`98b085b577a3b3731587e89983acd785a758d122`. It was created at
+`2026-08-21T06:05:48Z` and updated at `2026-08-21T06:28:28Z`; performance job
+`96684882412` succeeded.
+
+The unexpired activation artifact was ID `9436787118`, named
+`m5-performance-ubuntu-clang-e6d2cf09`, with digest
+`sha256:f2404a068310c3ba39737e7cc6d8fa0107b83ed71e4539840f000210d7cb1d2f`.
+It was created at `2026-08-21T06:28:25Z` and expires at
+`2026-08-28T06:28:25Z`. Its exact five-file inventory is:
+
+```text
+spot-benchmark.json
+spot-wrapper.json
+usdm-benchmark.json
+usdm-wrapper.json
+performance-summary.txt
+```
+
+The accepted file SHA-256 values are:
+
+```text
+SPOT_BENCHMARK_SHA256=83a99285bd5399e5cb8403d3b1584d9af8962d3014e8b00e9cff62e5f367dc44
+SPOT_WRAPPER_SHA256=8c892cf21a2e926e2e5cd263fb02f589236027ba22b33a157839078f854a0c87
+USDM_BENCHMARK_SHA256=3b3794655ca677c0b8b81181c3d41e8d23ae4b05d415f1b345527484cd08626b
+USDM_WRAPPER_SHA256=70ef9ba252410be9b5809e8475922805b407cb9f6c4f4cb20585a309ef15dc75
+PERFORMANCE_SUMMARY_SHA256=013cc69a0e9d8eed0951385f5227a945b87cfe907a0dbfef123f11570fa5bc9f
+```
+
+Independent acceptance is `ACCEPT_WITH_NONBLOCKING_NOTES` with P0=0, P1=0,
+and P2=0. GitHub Actions emitted a Node.js 20 deprecation annotation with no
+execution impact. The weekly canary deliberately does not duplicate the
+dedicated Core/reference differential validator; this limits its correctness
+authority but is consistent with the frozen exploratory performance-canary
+contract.
+
+The activation establishes the frozen exploratory/nonblocking performance-canary
+contract. It does not elevate the canary into a numeric performance gate,
+container-decision authority, or independent Core/reference correctness proof.
+`NUMERIC_PERFORMANCE_GATE=NO`, `CONTAINER_DECISION=KEEP_STD_MAP`,
+`PRODUCTION_CONTAINER=std::map`, and `PRODUCTION_MIGRATION=NO` remain in force.
+`P10_WPB_ACT_P1_001=CLOSED`; this evidence authorizes the focused documentation
+closure.
 
 WP-A extends the existing `benchmark-smoke` job only. It checks out the exact
 `EVIDENCE_SHA`, verifies the actual checkout identity, runs the unchanged full
@@ -80,8 +133,7 @@ lifecycle validator; its implementation remains existing correctness infrastruct
 and its other authorities are unchanged. It changes no production API, no production
 container, and no ordinary PR/push CI job.
 
-The implemented operation, with the narrow canary-contract correction under
-review, is:
+The implemented and accepted operation is:
 
 ```text
 .github/workflows/m5-performance.yml
@@ -97,13 +149,10 @@ FORMAL_DECISION_EVIDENCE_MIN_REPETITIONS=>=5
 PR_BLOCKING=NO
 EXPLORATORY / NONBLOCKING REPORTING
 7-day retention
-STATUS=IMPLEMENTED / EXACT-MAIN ACTIVATION NOT PROVEN
+STATUS=ACTIVE
 ```
 
-This is not final Phase-10 closure. After merge, ordinary main CI must pass and
-a separately dispatched run on the exact new main SHA must produce and
-independently pass the exact five-file artifact contract. Only then may a
-focused docs-only closure record `PHASE10=COMPLETE`, both WP states COMPLETE,
-`WEEKLY_M5_PERFORMANCE=ACTIVE`, the actual activation identifiers, and
-`READY_FOR_PHASE11=YES`. No future run ID, SHA, artifact name, active state, or
-Phase-11 authorization is invented here.
+Phase 10 is complete and the exact five-file activation artifact is independently
+accepted. The weekly operation is active under the exploratory/nonblocking
+contract above. Phase 11 is ready but has not started; no Phase-11 implementation
+is included in this closure.

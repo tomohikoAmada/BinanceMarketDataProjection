@@ -49,10 +49,13 @@ orientation only.
 - M5 Phase 7 is COMPLETE / EVIDENCE ACCEPTED, and M5 Phase 8 is COMPLETE / EVIDENCE ACCEPTED.
 - Phase 9 is COMPLETE / DECISION ACCEPTED. The decision is `KEEP_STD_MAP`; no candidate winner
   exists, the production container remains `std::map`, and production migration is NO.
-- Phase 10 is IN PROGRESS: WP-A is implemented/merged with main CI green; WP-B is
-  implemented/merged, with the weekly canary contract correction under review.
+- Phase 10 is COMPLETE: WP-A and WP-B are complete, exact-main activation is
+  independently accepted, and the weekly canary is active under its exploratory
+  nonblocking contract.
 - The exact main publication base is `041a9e8516409552ea9d6eeada5d58d378c40fc7` with tree
-  `87d92b0f67bf526768737ba03db2667bfdd1f5fb`; there are no open PRs at publication time.
+  `87d92b0f67bf526768737ba03db2667bfdd1f5fb`; this is the frozen medium-corpus Release target.
+- The accepted exact-main activation used SHA `e6d2cf099ae4d9c5dc7c77789c3b4b55336af672`
+  with tree `98b085b577a3b3731587e89983acd785a758d122`.
 - P10-PRE-P1-001 is CLOSED: the two exact accepted materialized medium fixtures are publicly
   distributed by the versioned `m5-medium-corpus-v1` Release asset. The Raw source remains
   controlled/local.
@@ -188,15 +191,17 @@ artifact is a separate identity and remains outside Projection ownership.
 
 ```text
 PHASE9=COMPLETE / DECISION ACCEPTED
-PHASE10=IN PROGRESS
-PHASE10_WP_A=IMPLEMENTED / MERGED / MAIN CI GREEN
-PHASE10_WP_B=IMPLEMENTED / MERGED / MINIMAL RUNTIME-BUDGET / DEDICATED-VALIDATOR DECOUPLING CORRECTION UNDER REVIEW
+M5=IN PROGRESS
+PHASE10=COMPLETE
+PHASE10_WP_A=COMPLETE
+PHASE10_WP_B=COMPLETE
 P10_PRE_P1_001=CLOSED
 P10_WPB_P1_001=CLOSED
-P10_WPB_ACT_P1_001=OPEN
+P10_WPB_ACT_P1_001=CLOSED
 P10_WPB_ACT_P2_001=CLOSED
 MEDIUM_CORPUS_DISTRIBUTION=ESTABLISHED
-WEEKLY_M5_PERFORMANCE=IMPLEMENTED / EXACT-MAIN ACTIVATION NOT PROVEN
+MEDIUM_CORPUS_RELEASE_TARGET_SHA=041a9e8516409552ea9d6eeada5d58d378c40fc7
+WEEKLY_M5_PERFORMANCE=ACTIVE
 WEEKLY_M5_PERFORMANCE_PURPOSE=EXPLORATORY PERFORMANCE CANARY
 WEEKLY_REPETITIONS_PER_FIXTURE=3
 WEEKLY_SPOT_REPETITIONS=3
@@ -214,16 +219,25 @@ MODE=Core current-production std::map
 RUNNER=ubuntu-24.04 / GitHub-hosted x86_64
 COMPILER=Clang
 TIMEOUT=45 minutes
-ACTIVATION_PROOF=PENDING
+ACTIVATION_PROOF=ACCEPTED
 PR_BLOCKING=NO
 EVIDENCE_CLASS=EXPLORATORY / NONBLOCKING REPORTING
 RETENTION=7 days
+CONTAINER_DECISION=KEEP_STD_MAP
 CONTAINER_REDECISION=NO
 PRODUCTION_CONTAINER=std::map
 PRODUCTION_MIGRATION=NO
-PHASE10_COMPLETE=NO
-READY_FOR_PHASE11=NO
+ACTIVATION_RUN_ID=32453032145
+ACTIVATION_HEAD_SHA=e6d2cf099ae4d9c5dc7c77789c3b4b55336af672
+ACTIVATION_HEAD_TREE=98b085b577a3b3731587e89983acd785a758d122
+ACTIVATION_ARTIFACT_ID=9436787118
+ACTIVATION_ARTIFACT_NAME=m5-performance-ubuntu-clang-e6d2cf09
+ACTIVATION_ARTIFACT_DIGEST=sha256:f2404a068310c3ba39737e7cc6d8fa0107b83ed71e4539840f000210d7cb1d2f
+PHASE10_COMPLETE=YES
+READY_FOR_PHASE11=YES
 PHASE11_STARTED=NO
+NEXT_M5_PHASE=PHASE11 / INDEPENDENT IMPLEMENTATION REVIEW
+M6_GATEWAY_INTEGRATION=NOT STARTED
 ```
 
 The exact owner-authorized medium asset is `m5-medium-corpus-v1` /
@@ -234,20 +248,19 @@ distribution-manifest SHA-256
 not a software migration release and does not change the production
 `std::map` decision.
 
-P10-PRE-P1-001 is CLOSED. Phase-10 WP-A is implemented on the benchmark-smoke
-job: it checks out the exact evidence SHA, binds both benchmark wrappers to that
-source revision, and publishes the four required smoke JSON outputs as a
-three-day SHA-named artifact. The benchmark remains exploratory structural/
-execution smoke and has no numeric performance gate.
+P10-PRE-P1-001 is CLOSED. Phase-10 WP-A is complete on the benchmark-smoke job:
+it checks out the exact evidence SHA, binds both benchmark wrappers to that
+source revision, and publishes the required smoke JSON outputs. The benchmark
+remains exploratory structural/execution smoke and has no numeric performance
+gate.
 
-The merged WP-B implementation, with this minimal runtime-budget / dedicated-
-validator-decoupling correction under review, creates the following operation;
-it is not yet an accepted live default-branch run. The weekly exploratory canary
-no longer repeats the dedicated Spot/USD-M Core/reference differential/lifecycle
-validator. The validator implementation and CMake/test authority remain, while
-distribution verification, benchmark preflight, explicit warmup, three timed
-repetitions per fixture, timed checksums, serial Spot-then-USD-M execution, and
-the formal >=5 repetition methodology remain unchanged.
+The merged WP-B implementation creates the active weekly operation below. The
+weekly exploratory canary no longer repeats the dedicated Spot/USD-M
+Core/reference differential/lifecycle validator. The validator implementation
+and CMake/test authority remain, while distribution verification, benchmark
+preflight, explicit warmup, three timed repetitions per fixture, timed
+checksums, serial Spot-then-USD-M execution, and the formal >=5 repetition
+methodology remain unchanged.
 
 ```text
 REQUIRED_PHASE10_WEEKLY_OPERATION=.github/workflows/m5-performance.yml
@@ -265,16 +278,14 @@ EVIDENCE_CLASS=EXPLORATORY / NONBLOCKING REPORTING
 RETENTION=7 days
 CONTAINER_REDECISION=NO
 PRODUCTION_MIGRATION=NO
-STATUS=IMPLEMENTED / EXACT-MAIN ACTIVATION NOT PROVEN
+STATUS=ACTIVE
 ```
 
-Immediately after this implementation is merged, normal main CI must pass and
-a separate `workflow_dispatch` run must execute on the exact new main SHA. Its
-exact five-file artifact must be independently accepted before a focused
-docs-only closure records `PHASE10=COMPLETE`, both WP states COMPLETE,
-`WEEKLY_M5_PERFORMANCE=ACTIVE`, the actual activation run/SHA/artifact, and
-`READY_FOR_PHASE11=YES`. Those future identifiers and active state are not
-claimed here.
+Normal exact-main CI passed, and activation run `32453032145` on the exact
+main SHA produced the exact five-file artifact that was independently accepted.
+Phase 10 is complete and the weekly canary is active under its
+exploratory/nonblocking authority. Full immutable activation evidence is in
+[`docs/M5_PHASE10_CI_REPORTING_INTEGRATION.md`](M5_PHASE10_CI_REPORTING_INTEGRATION.md).
 
 ## Phase-7 and Phase-8 Acceptance
 
@@ -303,9 +314,8 @@ claimed here.
 Governance boundary: `PHASE8=COMPLETE / EVIDENCE ACCEPTED`,
 `PHASE9=COMPLETE / DECISION ACCEPTED`, `CONTAINER_DECISION=KEEP_STD_MAP`,
 `CANDIDATE_WINNER=NONE`, `PRODUCTION_CONTAINER=std::map`, `PRODUCTION_MIGRATION=NO`,
-`MIGRATION_IMPLEMENTED=NO`, and `PHASE10=IN PROGRESS / WP-A IMPLEMENTED /
-MERGED / MAIN CI GREEN / WP-B IMPLEMENTED / MERGED / CANARY CONTRACT CORRECTION
-UNDER REVIEW / DEFAULT-BRANCH ACTIVATION PROOF PENDING`.
+`MIGRATION_IMPLEMENTED=NO`, and `PHASE10=COMPLETE / WP-A COMPLETE / WP-B
+COMPLETE / WEEKLY_M5_PERFORMANCE=ACTIVE / ACTIVATION_PROOF=ACCEPTED`.
 The explicit decision record
 is [`docs/M5_PHASE9_CONTAINER_DECISION.md`](M5_PHASE9_CONTAINER_DECISION.md).
 
@@ -415,8 +425,8 @@ is [`docs/M5_PHASE9_CONTAINER_DECISION.md`](M5_PHASE9_CONTAINER_DECISION.md).
   (OD-M5-P7-021) is resolved.
 - Phase 8 is COMPLETE / EVIDENCE ACCEPTED. The retained nonblocking P2 is recorded above; no
   numeric winner conclusion has been made.
-- Phase 9 is COMPLETE / DECISION ACCEPTED with `KEEP_STD_MAP`; Phase-10 is IN PROGRESS with WP-A
-  implemented and WP-B implemented at this tree after the P10-PRE-P1-001 publication prerequisite.
+- Phase 9 is COMPLETE / DECISION ACCEPTED with `KEEP_STD_MAP`; Phase 10 is COMPLETE with both work
+  packages complete, exact-main activation independently accepted, and no Phase-10 blocker remaining.
 
 ## Accepted Semantic Authorities
 
@@ -432,9 +442,11 @@ or design documents.
 
 ## Known Semantic Conflicts
 
-Recorder R-034 remains OPEN: Recorder's local reconstruction behavior uses `lastUpdateId + 1`.
-ADR-0008 records the independently reviewed official 2025-11-12 Spot correction; the Projection
-Spot bootstrap rule is successor coverage. Contracts owns neither rule.
+Recorder R-034 remains OPEN as an upstream/documentation interpretation/history distinction.
+Projection's accepted Spot bootstrap semantics are successor coverage `U <= L + 1 <= u`.
+Recorder local reconstruction also uses the snapshot successor `lastUpdateId + 1`, so there is no
+current Recorder-vs-Projection local algorithm conflict on the successor target. Contracts owns
+neither rule.
 
 ## Cross-Repository Relationships
 
@@ -495,12 +507,12 @@ Spot bootstrap rule is successor coverage. Contracts owns neither rule.
 
 ## Next Authorized Step
 
-Phase 7 is COMPLETE / EVIDENCE ACCEPTED and Phase 8 is COMPLETE / EVIDENCE ACCEPTED. Phase 9 is
-COMPLETE / DECISION ACCEPTED with `KEEP_STD_MAP`, `CANDIDATE_WINNER=NONE`,
-`PRODUCTION_CONTAINER=std::map`, and `PRODUCTION_MIGRATION=NO`. Phase 10 is IN PROGRESS:
-WP-A benchmark-smoke artifact reporting is implemented, WP-B is implemented at
-this tree, and P10-PRE-P1-001 is closed. The exact-main activation proof and
-final docs-only closure remain pending; no active weekly operation is claimed.
+M5 Phase 10 is COMPLETE. `READY_FOR_PHASE11=YES` and `PHASE11_STARTED=NO`.
+M5 Differential Validation and Performance remains IN PROGRESS because the
+frozen M5 sequence still requires Phase 11 independent implementation review.
+The next authorized step is M5 Phase 11 independent implementation review.
+M6 Gateway Integration remains NOT STARTED. This closure does not start Phase 11
+or M6.
 
 ## AI / Reviewer Reading Order
 
