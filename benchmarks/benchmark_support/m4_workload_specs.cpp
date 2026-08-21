@@ -17,8 +17,6 @@ namespace {
 namespace replay = bmd_projection::m5::replay;
 namespace wire_support = bmd_projection::m5::benchmark::adapter_support;
 
-constexpr std::array<std::size_t, 3> kM4DepthSet{8, 100, 1'000};
-
 [[nodiscard]] std::string m4_generated_sha256(std::string_view family, std::size_t depth) {
     const auto hash =
         replay::sha256_hex(wire_support::m4_generated_workload_description(family, depth));
@@ -40,7 +38,22 @@ void register_m4_workload_specs() {
                                                        "SerializeSnapshot/FreshBuffer",
                                                        "SerializeSnapshot/ReusedBuffer"};
     for (const auto family : families) {
-        for (const auto depth : kM4DepthSet) {
+        if (family == "AdaptDepthUpdate/Spot") {
+            const auto name = "M4/" + std::string{family} + "/" +
+                              std::to_string(wire_support::kM4UpdateLevelCount);
+            auto& builder = register_workload(name);
+            builder.set("benchmark_name", name);
+            builder.set("operation", family);
+            builder.set("market", "Spot");
+            builder.set("generator_schema", "M5_PHASE6_M4_CELLS_V1");
+            builder.set("generated_workload_sha256",
+                        m4_generated_sha256(family, wire_support::kM4UpdateLevelCount));
+            builder.set("update_level_count", wire_support::kM4UpdateLevelCount);
+            builder.set("primary_timer", "cpu");
+            builder.set("primary_denominator", "cpu_time");
+            continue;
+        }
+        for (const auto depth : wire_support::kM4DepthSet) {
             const auto name = "M4/" + std::string{family} + "/" + std::to_string(depth);
             auto& builder = register_workload(name);
             builder.set("benchmark_name", name);

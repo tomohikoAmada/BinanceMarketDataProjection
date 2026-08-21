@@ -117,11 +117,16 @@ candidate rebuild is excluded and only the production `apply_updates` operation 
 
 ### M4 (fail-closed availability, OD-M5-P6-013/022)
 
-`M4/AdaptExchangeDepthSnapshot/Spot/{8,100,1000}`, `M4/AdaptDepthUpdate/Spot/{8,100,1000}`,
+`M4/AdaptExchangeDepthSnapshot/Spot/{8,100,1000}`, `M4/AdaptDepthUpdate/Spot/10`,
 `M4/CheckedInstall/{8,100,1000}`, `M4/CheckedApply/{8,100,1000}`,
 `M4/MakeLocalOrderBookSnapshot/{Unlimited,Limited}/{8,100,1000}`,
 `M4/SerializeSnapshot/{FreshBuffer,ReusedBuffer}/{8,100,1000}` (FreshBuffer is the formal
 primary; ReusedBuffer is the optional diagnostic).
+
+The AdaptDepthUpdate operation is intentionally a fixed 10-level wire
+adaptation and therefore has one fixed-cardinality workload identity rather
+than three depth-labelled cells. The Limited snapshot family uses the shared
+authoritative runtime and identity depth limit of 20.
 
 Timing boundaries: adaptation excludes wire construction/install/snapshot/serialization;
 CheckedInstall pre-adapts the owner outside timing and times `install_into` against freshly

@@ -8,6 +8,7 @@
 // dependency). adapter_wire_support.hpp aggregates this header for the
 // wire-building consumers.
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -19,6 +20,8 @@
 namespace bmd_projection::m5::benchmark::adapter_support {
 
 inline constexpr std::size_t kM4UpdateLevelCount = 10;
+inline constexpr std::size_t kM4LimitedSnapshotDepthLimit = 20;
+inline constexpr std::array<std::size_t, 3> kM4DepthSet{8, 100, 1'000};
 
 // One authoritative Spot DepthUpdate successor-range description shared by the
 // M4 update-boundary families. The actual timed wire and the canonical

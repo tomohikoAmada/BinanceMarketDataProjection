@@ -57,6 +57,7 @@ M3_DEPTH_SET = [0, 8, 100, 1000, 5000, 10000]
 M3_BATCH_SET = [0, 1, 10, 100]
 TOP_N_SET = [1, 5, 50]
 M4_DEPTH_SET = [8, 100, 1000]
+M4_ADAPT_DEPTH_UPDATE_CARDINALITY = 10
 M4_FAMILIES = [
     "AdaptExchangeDepthSnapshot/Spot",
     "AdaptDepthUpdate/Spot",
@@ -190,7 +191,13 @@ def m3_required_inventory() -> list[str]:
 
 
 def m4_required_inventory() -> list[str]:
-    return [f"M4/{family}/{depth}" for family in M4_FAMILIES for depth in M4_DEPTH_SET]
+    required: list[str] = []
+    for family in M4_FAMILIES:
+        if family == "AdaptDepthUpdate/Spot":
+            required.append(f"M4/{family}/{M4_ADAPT_DEPTH_UPDATE_CARDINALITY}")
+        else:
+            required.extend(f"M4/{family}/{depth}" for depth in M4_DEPTH_SET)
+    return required
 
 
 def footprint_required_inventory() -> list[str]:

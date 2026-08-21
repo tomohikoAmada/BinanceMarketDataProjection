@@ -336,6 +336,17 @@ adapter::SnapshotContext benchmark_snapshot_context() {
             std::nullopt};
 }
 
+adapter::SnapshotOptions benchmark_limited_snapshot_options() {
+    const auto limit =
+        adapter::DepthLimit::create(static_cast<std::int64_t>(kM4LimitedSnapshotDepthLimit));
+    if (std::holds_alternative<adapter::AdapterError>(limit)) {
+        std::abort();
+    }
+    adapter::SnapshotOptions options;
+    options.depth_limit = std::get<adapter::DepthLimit>(limit);
+    return options;
+}
+
 market_wire::ExchangeDepthSnapshot make_snapshot_wire(std::size_t depth) {
     const BookParams params{};
     market_wire::ExchangeDepthSnapshot wire;
@@ -404,8 +415,12 @@ std::vector<std::pair<std::string, std::string>> checked_apply_canonical_sequenc
 }
 
 std::string m4_generated_workload_description(std::string_view family, std::size_t depth) {
-    std::string concrete =
-        "m4_cell_v1\nfamily=" + std::string{family} + "\ndepth=" + std::to_string(depth) + '\n';
+    std::string concrete = "m4_cell_v1\nfamily=" + std::string{family} + '\n';
+    if (family == "AdaptDepthUpdate/Spot") {
+        concrete += "update_level_count=" + std::to_string(kM4UpdateLevelCount) + '\n';
+    } else {
+        concrete += "depth=" + std::to_string(depth) + '\n';
+    }
     const auto append_bytes = [&concrete](std::string_view label, const std::string& bytes) {
         concrete += label;
         concrete += '_';
@@ -430,7 +445,7 @@ std::string m4_generated_workload_description(std::string_view family, std::size
                     "\nprojection_asks=" + describe_levels(build_ask_levels(depth)) +
                     "\nprojection_update_id=1000001\npolicy=Spot\n";
         if (family == "MakeLocalOrderBookSnapshot/Limited") {
-            concrete += "depth_limit=5\n";
+            concrete += "depth_limit=" + std::to_string(kM4LimitedSnapshotDepthLimit) + '\n';
         } else {
             concrete += "depth_limit=unlimited\n";
         }

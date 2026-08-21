@@ -39,9 +39,10 @@ fi
 
 # Locked smoke filter: M1 (all), M2 representatives, the 8-cell accepted-live
 # M3 subset (D{8,1000} x B{0,10} x {Spot,UsdMPerpetual}), all classification
-# cells, component/proxy depth-8 cells, M4 depth-100 cells, Core/Adapter
+# cells, component/proxy depth-8 cells, M4 depth-100 cells plus the fixed
+# AdaptDepthUpdate cell, Core/Adapter
 # replays, and the infrastructure smoke benchmark.
-filter='^(M1/|M2/(apply_level/(insert|update|delete|missing_delete)/8|apply_updates/(10/8|update_mix/8)|replace_all/8|best_bid/8|best_ask/8|quantity_at/(hit|miss)/8|top_levels/5/8|all_levels/8)|M3/(LiveApply/Accepted/(Spot|UsdMPerpetual)/D(8|1000)/B(0|10)/|Classification/(Stale|Duplicate|Gap|Reset|BaselineInstall)/(Spot|UsdMPerpetual)|Component/AllLevelsBothSides/8|Proxy/(CandidateRebuildFromVectors|CandidateApplyUpdates|OrderBookMoveCommit)/8)|M4/.*/100/|CoreNormalizedReplay/(Spot|UsdMPerpetual)|AdapterWireReplay/(Spot|UsdMPerpetual)|BM_LibraryVersionAccess)'
+filter='^(M1/|M2/(apply_level/(insert|update|delete|missing_delete)/8|apply_updates/(10/8|update_mix/8)|replace_all/8|best_bid/8|best_ask/8|quantity_at/(hit|miss)/8|top_levels/5/8|all_levels/8)|M3/(LiveApply/Accepted/(Spot|UsdMPerpetual)/D(8|1000)/B(0|10)/|Classification/(Stale|Duplicate|Gap|Reset|BaselineInstall)/(Spot|UsdMPerpetual)|Component/AllLevelsBothSides/8|Proxy/(CandidateRebuildFromVectors|CandidateApplyUpdates|OrderBookMoveCommit)/8)|M4/(AdaptDepthUpdate/Spot/10|.*/100)/|CoreNormalizedReplay/(Spot|UsdMPerpetual)|AdapterWireReplay/(Spot|UsdMPerpetual)|BM_LibraryVersionAccess)'
 
 echo "Phase-6 benchmark smoke (filter=$filter)"
 build/benchmark/cmake/benchmarks/bmd_projection_benchmarks \

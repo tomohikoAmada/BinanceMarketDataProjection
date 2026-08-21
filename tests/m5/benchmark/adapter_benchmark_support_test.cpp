@@ -97,13 +97,37 @@ TEST(Phase6M4CheckedApply, ProvenanceDescribesTheActualSuccessorWorkload) {
 // apply; its identity must stay bound to that exact wire.
 TEST(Phase6M4AdaptDepthUpdate, ProvenanceBoundToTheAdaptedWire) {
     constexpr std::size_t kDepth = 8;
+    constexpr int kExpectedUpdateLevelCount = 10;
     const auto wire = wire_support::make_update_wire(wire_support::kM4AdaptDepthUpdateCell);
     const auto wire_bytes = wire.SerializeAsString();
-    const std::string expected =
-        "m4_cell_v1\nfamily=AdaptDepthUpdate/Spot\ndepth=" + std::to_string(kDepth) + '\n' +
-        "update_wire_" + std::to_string(wire_bytes.size()) + ':' + wire_bytes + '\n';
+    const std::string expected = "m4_cell_v1\nfamily=AdaptDepthUpdate/Spot\nupdate_level_count=" +
+                                 std::to_string(kExpectedUpdateLevelCount) + '\n' + "update_wire_" +
+                                 std::to_string(wire_bytes.size()) + ':' + wire_bytes + '\n';
+    EXPECT_EQ(wire.bids_size(), kExpectedUpdateLevelCount);
     EXPECT_EQ(wire_support::m4_generated_workload_description("AdaptDepthUpdate/Spot", kDepth),
               expected);
+}
+
+// The Limited snapshot identity is checked against a constructed production
+// snapshot, not against a duplicated expected depth literal.
+TEST(Phase6M4SnapshotFixture, LimitedIdentityMatchesRuntimeDepthLimit) {
+    constexpr std::size_t kDepth = 100;
+    const auto projection =
+        bm::build_synchronized_projection(core::SequencePolicyKind::Spot, kDepth);
+    const auto options = wire_support::benchmark_limited_snapshot_options();
+    ASSERT_TRUE(options.depth_limit.has_value());
+
+    const auto produced = adapter::make_local_order_book_snapshot(
+        projection, wire_support::benchmark_snapshot_context(), options);
+    ASSERT_TRUE(std::holds_alternative<core::LocalOrderBookSnapshot>(produced));
+    const auto& snapshot = std::get<core::LocalOrderBookSnapshot>(produced);
+    ASSERT_TRUE(snapshot.has_depth_limit());
+    EXPECT_EQ(snapshot.depth_limit(), options.depth_limit->value());
+
+    const auto description = wire_support::m4_generated_workload_description(
+        "MakeLocalOrderBookSnapshot/Limited", kDepth);
+    EXPECT_NE(description.find("depth_limit=" + std::to_string(snapshot.depth_limit()) + '\n'),
+              std::string::npos);
 }
 
 // P6-FINAL-001: the formal canonical CheckedApply sequence parameters must

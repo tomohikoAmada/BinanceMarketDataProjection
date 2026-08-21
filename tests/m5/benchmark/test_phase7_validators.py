@@ -26,6 +26,14 @@ STDLIB = {"name": "libc++", "version": "190000", "detection_status": "detected_v
 M4_OFF = {"status": "OFF", "reason": "not_applicable_core_only_payload"}
 
 
+class M4InventoryDefinitionTest(unittest.TestCase):
+    def test_adapt_depth_update_is_fixed_cardinality(self) -> None:
+        names = [name for name in phase7.m4_required_inventory()
+                 if name.startswith("M4/AdaptDepthUpdate/Spot/")]
+        self.assertEqual(names, ["M4/AdaptDepthUpdate/Spot/10"])
+        self.assertEqual(len(phase7.m4_required_inventory()), 22)
+
+
 def _provenance() -> dict[str, Any]:
     return {
         "source": {"git_sha": "a" * 40, "status": "known", "dirty_at_configure": False},
