@@ -115,14 +115,18 @@ TEST(Phase6M4SnapshotFixture, LimitedIdentityMatchesRuntimeDepthLimit) {
     const auto projection =
         bm::build_synchronized_projection(core::SequencePolicyKind::Spot, kDepth);
     const auto options = wire_support::benchmark_limited_snapshot_options();
-    ASSERT_TRUE(options.depth_limit.has_value());
+    if (!options.depth_limit.has_value()) {
+        ADD_FAILURE() << "Limited snapshot options must carry a depth limit";
+        return;
+    }
+    const auto runtime_depth_limit = options.depth_limit.value();
 
     const auto produced = adapter::make_local_order_book_snapshot(
         projection, wire_support::benchmark_snapshot_context(), options);
     ASSERT_TRUE(std::holds_alternative<core::LocalOrderBookSnapshot>(produced));
     const auto& snapshot = std::get<core::LocalOrderBookSnapshot>(produced);
     ASSERT_TRUE(snapshot.has_depth_limit());
-    EXPECT_EQ(snapshot.depth_limit(), options.depth_limit->value());
+    EXPECT_EQ(snapshot.depth_limit(), runtime_depth_limit.value());
 
     const auto description = wire_support::m4_generated_workload_description(
         "MakeLocalOrderBookSnapshot/Limited", kDepth);
