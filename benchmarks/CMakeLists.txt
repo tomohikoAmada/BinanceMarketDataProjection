@@ -111,8 +111,9 @@ set_target_properties(
 bmd_projection_apply_project_options(bmd_projection_replay_latency)
 
 # M5 Phase-10 recorded-medium benchmark. This is a benchmark-only Core
-# consumer: fixture acquisition/validation is owned by the workflow and the
-# executable reuses the accepted Replay_V1 loader and CoreReplayExecutor.
+# consumer: distribution acquisition/verification is workflow-owned; fixture
+# identity checks, preflight, and warmup are executable-owned. The executable
+# reuses the accepted Replay_V1 loader and CoreReplayExecutor.
 add_executable(
     bmd_projection_m5_recorded_replay_benchmark
     recorded_replay_benchmark_main.cpp

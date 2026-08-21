@@ -1,10 +1,12 @@
 // M5 Phase-10 recorded-medium production Core replay benchmark.
 //
-// The workflow performs immutable distribution verification and the existing
-// Core/reference differential validation before invoking this executable. The
-// executable itself only loads one already-extracted Replay_V1 fixture,
-// preflights its production checksum, performs one explicit warmup, and times
-// CoreReplayExecutor::run() against a fresh production BookProjection.
+// The workflow owns immutable distribution acquisition, verification, and safe
+// extraction. This executable loads one exact Replay_V1 fixture, checks its
+// identity, validates prepared production inputs, performs one full preflight
+// and one explicit warmup, then times production-Core CoreReplayExecutor::run()
+// against a fresh BookProjection with checksum verification. The dedicated
+// Core/reference differential and lifecycle validator remains existing
+// correctness infrastructure but is not repeated by the weekly canary.
 
 #include "benchmark_support/core_replay_executor.hpp"
 #include "benchmark_support/environment_identity.hpp"

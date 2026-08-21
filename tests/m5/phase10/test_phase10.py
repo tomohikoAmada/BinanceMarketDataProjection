@@ -322,6 +322,13 @@ class Phase10VerifierTests(unittest.TestCase):
         self.assertIn("M5-REC-USDM-BTCUSDT-V1", workflow)
         self.assertNotIn("--benchmark_min_time", workflow)
         self.assertNotIn("--benchmark_iterations", workflow)
+        self.assertIn(
+            "--target bmd_projection_m5_recorded_replay_benchmark",
+            workflow,
+        )
+        self.assertNotIn("bmd_projection_m5_corpus_validate", workflow)
+        self.assertNotIn("Validate Spot medium corpus with the existing Core validator", workflow)
+        self.assertNotIn("Validate USD-M medium corpus with the existing Core validator", workflow)
 
     def test_valid_exact_contract_shaped_package(self) -> None:
         package, contract = self._package()

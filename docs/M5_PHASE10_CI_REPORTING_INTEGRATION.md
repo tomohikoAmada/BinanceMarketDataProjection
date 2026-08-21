@@ -5,7 +5,7 @@
 ```text
 PHASE10=IN PROGRESS
 WP_A=IMPLEMENTED / MERGED / MAIN CI GREEN
-WP_B=IMPLEMENTED / MERGED / CANARY CONTRACT CORRECTION UNDER REVIEW
+WP_B=IMPLEMENTED / MERGED / MINIMAL RUNTIME-BUDGET / DEDICATED-VALIDATOR DECOUPLING CORRECTION UNDER REVIEW
 P10_PRE_P1_001=CLOSED
 P10_WPB_P1_001=CLOSED
 P10_WPB_ACT_P1_001=OPEN
@@ -71,11 +71,14 @@ WP-B implements:
 - weekly main-only medium reporting;
 - offline synthetic verifier tests registered in CTest.
 
-The workflow binds the exact two recorded fixtures, reuses `replay::load_fixture`,
-`CoreReplayExecutor`, and the existing Core differential/lifecycle validator,
-and keeps acquisition, archive verification, fixture parsing, differential
-validation, and wrapper generation outside the timed Core path. It changes no
-production API, no production container, and no ordinary PR/push CI job.
+The workflow binds the exact two recorded fixtures and keeps acquisition, archive
+verification, and safe extraction outside the benchmark executable. The benchmark
+owns fixture loading/identity checks, prepared-input validation, preflight, explicit
+warmup, timed production-Core replay, and checksum verification. The weekly
+exploratory canary no longer repeats the dedicated Core/reference differential and
+lifecycle validator; its implementation remains existing correctness infrastructure
+and its other authorities are unchanged. It changes no production API, no production
+container, and no ordinary PR/push CI job.
 
 The implemented operation, with the narrow canary-contract correction under
 review, is:
