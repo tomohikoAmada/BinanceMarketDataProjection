@@ -347,6 +347,17 @@ adapter::SnapshotOptions benchmark_limited_snapshot_options() {
     return options;
 }
 
+bool benchmark_limited_snapshot_matches_identity(const adapter::SnapshotOptions& options,
+                                                 std::size_t depth) {
+    if (!options.depth_limit.has_value()) {
+        return false;
+    }
+    const auto depth_limit = options.depth_limit.value();
+    const auto expected_marker = "depth_limit=" + std::to_string(depth_limit.value()) + '\n';
+    return m4_generated_workload_description("MakeLocalOrderBookSnapshot/Limited", depth)
+               .find(expected_marker) != std::string::npos;
+}
+
 market_wire::ExchangeDepthSnapshot make_snapshot_wire(std::size_t depth) {
     const BookParams params{};
     market_wire::ExchangeDepthSnapshot wire;

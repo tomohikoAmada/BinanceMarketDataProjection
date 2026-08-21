@@ -309,6 +309,12 @@ const auto kM4SpecRegistration = [] {
     adapter::SnapshotOptions options;
     if (limited) {
         options = wire_support::benchmark_limited_snapshot_options();
+        if (!wire_support::benchmark_limited_snapshot_matches_identity(options, depth)) {
+            std::fprintf(stderr,
+                         "%s runtime depth limit disagrees with generated workload identity\n",
+                         name.c_str());
+            std::exit(2);
+        }
     }
     std::optional<std::variant<core::LocalOrderBookSnapshot, adapter::AdapterError>> owned;
     bool produced_ok = false;

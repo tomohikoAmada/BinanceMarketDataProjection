@@ -134,6 +134,23 @@ TEST(Phase6M4SnapshotFixture, LimitedIdentityMatchesRuntimeDepthLimit) {
               std::string::npos);
 }
 
+// The provenance seam must reject the original failure mode even when a
+// runtime caller supplies a value different from the accepted fixture.
+TEST(Phase6M4SnapshotFixture, LimitedIdentityCheckRejectsRuntimeDrift) {
+    constexpr std::size_t kDepth = 100;
+    const auto options = wire_support::benchmark_limited_snapshot_options();
+    EXPECT_TRUE(wire_support::benchmark_limited_snapshot_matches_identity(options, kDepth));
+
+    auto drifted = options;
+    const auto drifted_limit = adapter::DepthLimit::create(21);
+    if (!std::holds_alternative<adapter::DepthLimit>(drifted_limit)) {
+        ADD_FAILURE() << "test drift value must be a valid depth limit";
+        return;
+    }
+    drifted.depth_limit = std::get<adapter::DepthLimit>(drifted_limit);
+    EXPECT_FALSE(wire_support::benchmark_limited_snapshot_matches_identity(drifted, kDepth));
+}
+
 // P6-FINAL-001: the formal canonical CheckedApply sequence parameters must
 // explicitly encode the locked successor operation. Asserted against explicit
 // literals so the fields cannot silently drift from the timed successor wire.

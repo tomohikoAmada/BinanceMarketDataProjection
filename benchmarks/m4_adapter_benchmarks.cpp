@@ -230,6 +230,17 @@ static void BM_M4MakeLocalOrderBookSnapshotLimited(benchmark::State& state) {
     const auto projection = make_prepared_projection(depth);
     const auto context = make_snapshot_context();
     const auto options = wire_support::benchmark_limited_snapshot_options();
+    if (!options.depth_limit.has_value()) {
+        state.SkipWithError("M4/MakeLocalOrderBookSnapshot/Limited depth limit missing");
+        return;
+    }
+    if (!wire_support::benchmark_limited_snapshot_matches_identity(options, depth)) {
+        state.SkipWithError(
+            "M4/MakeLocalOrderBookSnapshot/Limited runtime depth limit disagrees with identity");
+        return;
+    }
+    const auto runtime_depth_limit = options.depth_limit.value();
+    state.SetLabel("depth_limit=" + std::to_string(runtime_depth_limit.value()));
     benchmark::DoNotOptimize(adapter::make_local_order_book_snapshot(projection, context, options));
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
