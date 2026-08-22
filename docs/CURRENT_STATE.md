@@ -107,7 +107,10 @@ OWNER_EXPLICIT_START_REQUIRED=YES
 
 M6 planning and the approved sequence are recorded in
 [`M6_GATEWAY_INTEGRATION_SEQUENCE.md`](M6_GATEWAY_INTEGRATION_SEQUENCE.md). The next scoped
-activity is the read-only, architecture-first cross-repository integration contract design.
+potential/logical activity is the read-only, architecture-first M6 cross-repository integration
+contract design. It has **NOT STARTED**.
+`NEXT_POTENTIAL_ACTIVITY=M6 CROSS-REPOSITORY INTEGRATION CONTRACT DESIGN`
+`M6_DESIGN_STARTED=NO`; `M6_IMPLEMENTATION_STARTED=NO`; `GATEWAY_IMPLEMENTATION_STARTED=NO`.
 Gateway runtime belongs in `BinanceMarketDataGateway`, not this repository. This documentation
 closure does not start M6 design, M6 implementation, or Gateway implementation.
 
