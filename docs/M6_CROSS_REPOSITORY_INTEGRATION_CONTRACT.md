@@ -188,8 +188,20 @@ These values are distinct and must never be interchanged:
 | `connection_generation` | Gateway-owned upstream source transport epoch; a rebuild/replacement of the applicable source advances it |
 | `gateway_instance_id` | One Gateway runtime/process incarnation; a new runtime start gets a new ID |
 | `subscription_id` | One accepted consumer subscription |
-| `session_sequence` | Per-subscription Gateway delivery order, starting at 1 and increasing monotonically |
+| `session_sequence` | Per-accepted-subscription Gateway delivery sequence; first emitted item is 1, each subsequent item increments exactly by 1; defines consumer-delivery ordering and is not Binance `U/u/pu` or `connection_generation` |
 | Protobuf field number | Wire-schema identity; not a runtime or exchange sequence |
+
+For one accepted subscription with emitted items `e_1, ..., e_n`, the sequence
+is defined mathematically as:
+
+```text
+session_sequence(e_i) = i, for i = 1, ..., n
+```
+
+Therefore `1, 2, 4, 5` is invalid even though it is monotonically increasing.
+The sequence is scoped to that subscription and describes Gateway
+consumer-delivery order; it is not an exchange sequence or a connection
+generation.
 
 `connection_generation` has an important presence rule. If one upstream source
 uniquely applies to the published item, expose that source's generation. If no

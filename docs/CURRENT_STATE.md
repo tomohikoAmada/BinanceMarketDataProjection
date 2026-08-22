@@ -1,10 +1,10 @@
 # Current State
 
 ```text
-CURRENT_MAIN=59a7bca6a22e39a31323b221d18cfd4d5ac24b90
-CURRENT_TREE=d18e4e66c3eb5972c3a96e6557f28fbf487468fd
-POST_MERGE_CI=NOT_RECORDED_FOR_THIS_DOCS_FREEZE
-OPEN_PRS=0
+REVIEWED_BASE_MAIN=59a7bca6a22e39a31323b221d18cfd4d5ac24b90
+REVIEWED_BASE_TREE=d18e4e66c3eb5972c3a96e6557f28fbf487468fd
+DOC_FREEZE_PR=44
+FULL_CI_RUN=NO
 
 M0-M4=COMPLETE
 M5_PHASE1_11=COMPLETE
@@ -112,7 +112,7 @@ M6 planning and the approved sequence are recorded in
 [`M6 cross-repository integration contract`](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md).
 The contract design is complete; M6 implementation and Gateway implementation remain **NOT
 STARTED**.
-`NEXT_AUTHORIZED_STEP=CONTRACTS GATEWAY DRAFT SEMANTIC CORRECTION`
+`NEXT_POTENTIAL_ACTIVITY=CONTRACTS GATEWAY DRAFT SEMANTIC CORRECTION`
 `M6_IMPLEMENTATION_STARTED=NO`; `GATEWAY_IMPLEMENTATION_STARTED=NO`.
 Gateway runtime belongs in `BinanceMarketDataGateway`, not this repository. This documentation
 closure does not start M6 implementation or Gateway implementation.
