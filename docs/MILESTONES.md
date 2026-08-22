@@ -7,7 +7,7 @@
 - M5: **COMPLETE**.
 - PR #42 corrective closure: **COMPLETE**; Production Core semantics were unchanged.
 - `KEEP_STD_MAP`: accepted; no production container migration was made.
-- M6 design: **NOT STARTED**.
+- M6 cross-repository integration contract design: **COMPLETE**.
 - M6 implementation: **NOT STARTED**.
 - Gateway implementation/runtime: **NOT STARTED** and outside this repository.
 
@@ -523,8 +523,8 @@ strategy, risk, trading, persistence, Python binding, or production container mi
    `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4`; main CI `31242162782` — 16/16 PASS.
 6. **M5 Differential Validation and Performance — COMPLETE** —
    Replay/differential/fuzz validation; benchmark with representative workloads.
-7. **M6 Gateway Integration — NOT STARTED** — First activity is cross-repository integration
-   contract design; it is not Gateway runtime implementation inside Projection.
+7. **M6 Gateway Integration — CONTRACT DESIGN COMPLETE; IMPLEMENTATION NOT STARTED** — The
+   cross-repository contract is frozen; this is not Gateway runtime implementation inside Projection.
 8. **M7 Platform Hardening and Acceptance** — Harden architectures, toolchains; end-to-end acceptance.
 
 ### Cross-cutting concerns
@@ -618,10 +618,11 @@ PHASE11_NEW_CURRENT_P2=0
 PHASE11_INFO=2
 M5_COMPLETE_AUTHORIZED=YES
 M5_COMPLETE_RECORDED=YES
-NEXT_AUTHORIZED_STEP=M6 CROSS-REPOSITORY INTEGRATION CONTRACT DESIGN
+NEXT_POTENTIAL_ACTIVITY=CONTRACTS GATEWAY DRAFT SEMANTIC CORRECTION
 M6_GATEWAY_INTEGRATION=NOT STARTED
 M6_PLANNING_AUTHORIZED=YES
-M6_DESIGN=NOT STARTED
+M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
+M6_DESIGN=COMPLETE_CONTRACT_ONLY
 M6_IMPLEMENTATION=NOT STARTED
 GATEWAY_RUNTIME_IMPLEMENTATION=OUTSIDE PROJECTION
 GATEWAY_IMPLEMENTATION_ORDER=AFTER M6 INTEGRATION CONTRACT DESIGN
@@ -673,8 +674,8 @@ independent Phase-11 final implementation review is APPROVED, Phase 11 is
 COMPLETE, and M5 is COMPLETE. Full immutable activation evidence remains
 recorded in `docs/M5_PHASE10_CI_REPORTING_INTEGRATION.md`.
 
-M6 planning is authorized but not started. The approved order is: M6
-cross-repository integration contract design; the narrowly scoped Contracts C++
+M6 planning is authorized; the cross-repository integration contract design is
+complete. The approved order continues with the narrowly scoped Contracts C++
 and gRPC prerequisite if required; BinanceMarketDataGateway implementation; a
 minimal runnable Gateway Host; then Projection M6 Gateway Integration. The
 Projection milestone verifies the real Host-to-Projection integration and does
@@ -697,11 +698,13 @@ artifact although its frozen accepted evidence remains sufficient. Historical
 accepted or deferred P2 records remain unchanged and nonblocking where already
 accepted. See `docs/M5_PHASE11_FINAL_IMPLEMENTATION_REVIEW.md`.
 
-## M6 Gateway Integration — NOT STARTED
+## M6 Gateway Integration — CONTRACT DESIGN COMPLETE; IMPLEMENTATION NOT STARTED
 
-Planning is AUTHORIZED; design and implementation are NOT STARTED. The first
-activity is a read-only, architecture-first cross-repository integration
-contract design. Gateway runtime is developed in
+Planning is AUTHORIZED; the cross-repository integration contract design is
+COMPLETE and implementation is NOT STARTED. The authoritative freeze is
+[`docs/M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md`](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md).
+Gateway runtime is developed in
 `BinanceMarketDataGateway`, not inside this repository. Projection M6 begins
-only after a minimal runnable Gateway Host exists. See
+only after a minimal runnable Gateway Host exists. The next prerequisite stages
+and sequence are in
 `docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md`.

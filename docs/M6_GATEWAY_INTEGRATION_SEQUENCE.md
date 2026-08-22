@@ -2,25 +2,28 @@
 
 ```text
 STATUS=PROJECT-LEAD APPROVED DEVELOPMENT SEQUENCE
-M6_DESIGN=NOT STARTED
+M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
+M6_DESIGN=COMPLETE_CONTRACT_ONLY
 M6_IMPLEMENTATION=NOT STARTED
 GATEWAY_RUNTIME=NOT IMPLEMENTED IN THIS REPOSITORY
 GATEWAY_IMPLEMENTATION_STARTED=NO
 OWNER_EXPLICIT_START_REQUIRED=YES
 ```
 
-This document freezes development order and responsibility boundaries only.
+This document freezes development order and responsibility boundaries only. The
+cross-repository contract itself is frozen in
+[`M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md`](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md).
 
 It is NOT:
 
-- the M6 integration contract;
 - the Gateway implementation design;
 - a thread model design;
 - a queue sizing design;
 - a networking implementation plan;
 - a gRPC performance design.
 
-Those require the next independent M6 preimplementation review.
+Those remain later implementation design work and are not authorized by this
+documentation freeze.
 
 ## Approved development order
 
@@ -44,8 +47,10 @@ The five development steps are:
 
 1. M5 formally closes. This record establishes that M5 and Phase 11 are
    complete.
-2. Perform the read-only, architecture-first M6 cross-repository integration
-   contract design. The next review defines only the necessary boundaries:
+2. Freeze the read-only, architecture-first M6 cross-repository integration
+   contract in
+   [`M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md`](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md).
+   It defines only the necessary boundaries:
    Gateway-to-Contracts and Gateway-to-Projection dependencies, Projection Host
    interface expectations, snapshot ownership, WebSocket buffering/bootstrap
    handoff, reconnect/resync orchestration, single-writer preservation,
@@ -112,8 +117,8 @@ M6_PLANNING_AUTHORIZED=YES
 
 `DEVELOP_GATEWAY_FIRST=YES` describes sequencing after the M6 integration-contract and any
 required prerequisite stages, followed by explicit project-owner authorization. It does not
-authorize Gateway implementation now. M6 design, M6 implementation, and Gateway implementation
-remain not started.
+authorize Gateway implementation now. M6 contract design is complete; M6 implementation and
+Gateway implementation remain not started.
 
 Projection remains strategy-independent, deterministic, replayable,
 single-writer, and embedded. It does not own WebSocket clients, REST clients,

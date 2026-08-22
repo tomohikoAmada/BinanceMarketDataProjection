@@ -67,7 +67,9 @@ Projection may consume the Contracts Protobuf message package only through its o
 as already implemented. Projection MUST NOT depend on BinanceMarketDataGateway. The Gateway is the
 Host; Projection remains the strategy-independent, deterministic, replayable, single-writer,
 embedded C++20 library. M6 verifies that a real Gateway Host can correctly embed and drive that
-library; it does not implement Gateway runtime inside Projection.
+library; it does not implement Gateway runtime inside Projection. The detailed frozen
+cross-repository contract is [M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md](docs/M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md);
+its acceptance does not start M6 implementation.
 
 M5 (Differential Validation and Performance) is COMPLETE and validation-only. Its replay,
 differential/reference, cross-compiler manifest, fuzzing, benchmark, allocation/memory,
