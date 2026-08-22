@@ -43,6 +43,11 @@ code changes rely on them.
   `docs/QUALITY_TOOLCHAIN.md`). CI's quality job only invokes that entrypoint; never redefine
   Quality semantics in the workflow, and never treat an arbitrary local clang-tidy pass as
   canonical acceptance. Deterministic contract tests: `scripts/test-quality-toolchain.sh`.
+- For C++/C++ test or toolchain-sensitive changes, use the pre-push order: focused tests, broad
+  supplemental `scripts/verify.sh` as applicable, canonical `bash scripts/quality.sh`, then push
+  and allow automatic GitHub CI. `quality.sh` is the canonical local acceptance gate and the CI
+  `quality` job uses the same entrypoint; arbitrary host clang-tidy is not canonical. Docs-only
+  changes do not require Quality/CI solely because of this workflow.
 - Do not modify the Contracts or Recorder repositories from this workspace.
 - Do not use system-global package installation. Keep virtual environments, caches, and builds in
   this repository.

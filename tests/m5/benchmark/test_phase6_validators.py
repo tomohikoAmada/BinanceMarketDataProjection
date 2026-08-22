@@ -158,6 +158,14 @@ class BaseTestCase(unittest.TestCase):
 
 
 class InventoryTest(BaseTestCase):
+    def test_m4_adapt_depth_update_is_one_fixed_cardinality_cell(self) -> None:
+        names = [name for name in validator._required_inventory()
+                 if name.startswith("M4/AdaptDepthUpdate/Spot/")]
+        self.assertEqual(names, ["M4/AdaptDepthUpdate/Spot/10"])
+        self.assertNotIn("M4/AdaptDepthUpdate/Spot/8", validator._required_inventory())
+        self.assertNotIn("M4/AdaptDepthUpdate/Spot/100", validator._required_inventory())
+        self.assertNotIn("M4/AdaptDepthUpdate/Spot/1000", validator._required_inventory())
+
     def test_required_inventory_complete_passes(self) -> None:
         wrapper = self.wrapper_with_inventory()
         names = validator.validate_inventory(wrapper)

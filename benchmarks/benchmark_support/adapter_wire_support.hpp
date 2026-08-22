@@ -43,6 +43,18 @@ struct WireIdentity final {
 // drift (OD-M5-P7-012; M5-P7-PRB-002).
 [[nodiscard]] adapter::SnapshotContext benchmark_snapshot_context();
 
+// The authoritative Limited snapshot option shared by Phase-6 timing and
+// Phase-7 allocation. Its depth limit is also part of generated workload
+// identity (OD-M5-P6-021/023; OD-M5-P7-012).
+[[nodiscard]] adapter::SnapshotOptions benchmark_limited_snapshot_options();
+
+// Checks a concrete Limited runtime option against the generated identity for
+// the same benchmark depth. This is a narrow provenance seam for the actual
+// Phase-6 and Phase-7 execution paths, not a generic benchmark framework.
+[[nodiscard]] bool
+benchmark_limited_snapshot_matches_identity(const adapter::SnapshotOptions& options,
+                                            std::size_t depth);
+
 // ExchangeDepthSnapshot with `depth` bids and `depth` asks at the benchmark
 // prices/quantities.
 [[nodiscard]] market_wire::ExchangeDepthSnapshot make_snapshot_wire(std::size_t depth);

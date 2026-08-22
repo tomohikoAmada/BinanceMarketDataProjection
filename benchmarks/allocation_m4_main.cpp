@@ -59,7 +59,6 @@ namespace core = binance_market_data::projection::v1;
 namespace bm = bmd_projection::m5::benchmark;
 namespace wire_support = bmd_projection::m5::benchmark::adapter_support;
 
-constexpr std::size_t kM4DepthSet[] = {8, 100, 1'000};
 constexpr std::string_view kCalibrationId = "calibration/empty-bracket-v1";
 
 const auto kM4SpecRegistration = [] {
@@ -78,7 +77,12 @@ const auto kM4SpecRegistration = [] {
                                          "SerializeSnapshot/ReusedBuffer"};
     std::vector<std::string> names;
     for (const auto family : families) {
-        for (const auto depth : kM4DepthSet) {
+        if (family == "AdaptDepthUpdate/Spot") {
+            names.push_back("M4/" + std::string{family} + "/" +
+                            std::to_string(wire_support::kM4UpdateLevelCount));
+            continue;
+        }
+        for (const auto depth : wire_support::kM4DepthSet) {
             names.push_back("M4/" + std::string{family} + "/" + std::to_string(depth));
         }
     }
@@ -304,12 +308,13 @@ const auto kM4SpecRegistration = [] {
     const auto context = make_snapshot_context();
     adapter::SnapshotOptions options;
     if (limited) {
-        const auto limit = adapter::DepthLimit::create(20);
-        if (std::holds_alternative<adapter::AdapterError>(limit)) {
-            std::fprintf(stderr, "%s depth limit invalid\n", name.c_str());
+        options = wire_support::benchmark_limited_snapshot_options();
+        if (!wire_support::benchmark_limited_snapshot_matches_identity(options, depth)) {
+            std::fprintf(stderr,
+                         "%s runtime depth limit disagrees with generated workload identity\n",
+                         name.c_str());
             std::exit(2);
         }
-        options.depth_limit = std::get<adapter::DepthLimit>(limit);
     }
     std::optional<std::variant<core::LocalOrderBookSnapshot, adapter::AdapterError>> owned;
     bool produced_ok = false;

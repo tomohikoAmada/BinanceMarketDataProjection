@@ -31,8 +31,6 @@ namespace core = binance_market_data::projection::v1;
 namespace bm = bmd_projection::m5::benchmark;
 namespace wire_support = bmd_projection::m5::benchmark::adapter_support;
 
-constexpr std::size_t kM4DepthSet[] = {8, 100, 1'000};
-
 // ---------------------------------------------------------------------------
 // Static workload-spec registration. The canonical specs come from the shared
 // M4 identity source (m4_workload_specs) so Phase-6 timing and Phase-7 M4
@@ -231,13 +229,18 @@ static void BM_M4MakeLocalOrderBookSnapshotLimited(benchmark::State& state) {
     const auto depth = m4_depth(state);
     const auto projection = make_prepared_projection(depth);
     const auto context = make_snapshot_context();
-    const auto limit = adapter::DepthLimit::create(20);
-    if (std::holds_alternative<adapter::AdapterError>(limit)) {
-        state.SkipWithError("M4/MakeLocalOrderBookSnapshot/Limited depth limit invalid");
+    const auto options = wire_support::benchmark_limited_snapshot_options();
+    if (!options.depth_limit.has_value()) {
+        state.SkipWithError("M4/MakeLocalOrderBookSnapshot/Limited depth limit missing");
         return;
     }
-    adapter::SnapshotOptions options;
-    options.depth_limit = std::get<adapter::DepthLimit>(limit);
+    if (!wire_support::benchmark_limited_snapshot_matches_identity(options, depth)) {
+        state.SkipWithError(
+            "M4/MakeLocalOrderBookSnapshot/Limited runtime depth limit disagrees with identity");
+        return;
+    }
+    const auto runtime_depth_limit = options.depth_limit.value();
+    state.SetLabel("depth_limit=" + std::to_string(runtime_depth_limit.value()));
     benchmark::DoNotOptimize(adapter::make_local_order_book_snapshot(projection, context, options));
     std::uint64_t accumulator = 0;
     for ([[maybe_unused]] auto _ : state) {
@@ -319,15 +322,15 @@ static void BM_M4SerializeSnapshotReusedBuffer(benchmark::State& state) {
 namespace {
 
 const auto kM4Registration = [] {
-    for (const auto depth : kM4DepthSet) {
+    BMD_PHASE6_REGISTER(BM_M4AdaptDepthUpdate, BM_M4AdaptDepthUpdate)
+        ->Name("M4/AdaptDepthUpdate/Spot/" + std::to_string(wire_support::kM4UpdateLevelCount))
+        ->ArgName("update_level_count")
+        ->Arg(static_cast<std::int64_t>(wire_support::kM4UpdateLevelCount))
+        ->Unit(benchmark::kMicrosecond)
+        ->MinTime(0.05);
+    for (const auto depth : wire_support::kM4DepthSet) {
         BMD_PHASE6_REGISTER(BM_M4AdaptExchangeDepthSnapshot, BM_M4AdaptExchangeDepthSnapshot)
             ->Name("M4/AdaptExchangeDepthSnapshot/Spot/" + std::to_string(depth))
-            ->ArgName("depth")
-            ->Arg(static_cast<std::int64_t>(depth))
-            ->Unit(benchmark::kMicrosecond)
-            ->MinTime(0.05);
-        BMD_PHASE6_REGISTER(BM_M4AdaptDepthUpdate, BM_M4AdaptDepthUpdate)
-            ->Name("M4/AdaptDepthUpdate/Spot/" + std::to_string(depth))
             ->ArgName("depth")
             ->Arg(static_cast<std::int64_t>(depth))
             ->Unit(benchmark::kMicrosecond)

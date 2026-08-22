@@ -52,6 +52,7 @@ M1_NAMES = [
 ]
 
 ROUTINE_DEPTHS = [8, 100, 1000]
+M4_ADAPT_DEPTH_UPDATE_CARDINALITY = 10
 FULL_DEPTH_SET = [0, 8, 100, 1000, 5000, 10000]
 BATCH_SET = [1, 10, 100]
 M3_DEPTH_SET = [0, 8, 100, 1000, 5000, 10000]
@@ -122,8 +123,11 @@ def _required_inventory() -> list[str]:
         required.append(f"M3/Proxy/CandidateApplyUpdates/{depth}")
         required.append(f"M3/Proxy/OrderBookMoveCommit/{depth}")
     for family in M4_FAMILIES:
-        for depth in ROUTINE_DEPTHS:
-            required.append(f"M4/{family}/{depth}")
+        if family == "AdaptDepthUpdate/Spot":
+            required.append(f"M4/{family}/{M4_ADAPT_DEPTH_UPDATE_CARDINALITY}")
+        else:
+            for depth in ROUTINE_DEPTHS:
+                required.append(f"M4/{family}/{depth}")
     required.append("CoreNormalizedReplay/Spot")
     required.append("CoreNormalizedReplay/UsdMPerpetual")
     required.append("AdapterWireReplay/Spot")
@@ -157,7 +161,10 @@ def _smoke_expected_set() -> list[str]:
     expected.append("M3/Proxy/CandidateApplyUpdates/8")
     expected.append("M3/Proxy/OrderBookMoveCommit/8")
     for family in M4_FAMILIES:
-        expected.append(f"M4/{family}/100")
+        if family == "AdaptDepthUpdate/Spot":
+            expected.append(f"M4/{family}/{M4_ADAPT_DEPTH_UPDATE_CARDINALITY}")
+        else:
+            expected.append(f"M4/{family}/100")
     expected.append("CoreNormalizedReplay/Spot")
     expected.append("CoreNormalizedReplay/UsdMPerpetual")
     expected.append("AdapterWireReplay/Spot")
@@ -354,8 +361,8 @@ def validate_inventory(wrapper: dict[str, Any]) -> set[str]:
     _require(len(m3_cells) == 48,
              f"expected 48 registered M3 accepted cells, got {len(m3_cells)}")
     m4_names = [name for name in names if name.startswith("M4/")]
-    _require(len(m4_names) >= len(M4_FAMILIES) * 3,
-             f"required M4 benchmark inventory missing: got {len(m4_names)} M4 entries")
+    _require(len(m4_names) == 22,
+             f"required M4 benchmark inventory must contain 22 entries, got {len(m4_names)}")
     return names
 
 
