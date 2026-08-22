@@ -1,5 +1,21 @@
 # Milestones
 
+## Current ledger
+
+- M0-M4: **COMPLETE**.
+- M5 Phase 1-11: **COMPLETE**.
+- M5: **COMPLETE**.
+- PR #42 corrective closure: **COMPLETE**; Production Core semantics were unchanged.
+- `KEEP_STD_MAP`: accepted; no production container migration was made.
+- M6 design: **NOT STARTED**.
+- M6 implementation: **NOT STARTED**.
+- Gateway implementation/runtime: **NOT STARTED** and outside this repository.
+
+The detailed M5 acceptance, evidence, and historical provenance remain in the linked phase
+documents and accepted ADRs below. This ledger does not authorize M6 or Gateway implementation;
+the approved sequence and owner start control are in
+[`docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md`](M6_GATEWAY_INTEGRATION_SEQUENCE.md).
+
 ## M0 Repository Foundation — COMPLETE
 
 ### Goal

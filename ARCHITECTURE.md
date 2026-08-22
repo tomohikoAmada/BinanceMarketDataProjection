@@ -69,20 +69,14 @@ Host; Projection remains the strategy-independent, deterministic, replayable, si
 embedded C++20 library. M6 verifies that a real Gateway Host can correctly embed and drive that
 library; it does not implement Gateway runtime inside Projection.
 
-M5 (Differential Validation and Performance) adds replay/differential/fuzz validation and
-benchmark infrastructure as test/benchmark-only artifacts outside Core. It introduces no new
-production public API, no production dependency, and no container change; validation and
-performance evidence are recorded separately. The M5 architecture was independently reviewed
-and APPROVED (ADR-0007 ACCEPTED); pre-implementation decisions OD-M5-001 and OD-M5-002 are
-CLOSED. Phases 1 and 2 are COMPLETE / MERGED; Phase 2 is PR #12 at merge
-`75c619dd683ff2a3893f9535e206231e7bfecc41` with post-merge main CI `31315421548` — PASS 16/16.
-Phase 3 remains test/tool-only and is COMPLETE / MERGED in PR #13 (merge
-`473a907eba2001d18926c57d6c8d16b10c7505be`): its
-small-tier, scalable comparison, deterministic diagnostics, offline Raw-v1 materializer, and
-medium lifecycle validation are implemented. The pinned authoritative archive was located and
-validated; under the accepted ADR-0008 successor-coverage rule both the Spot and the USD-M
-mandatory 100k medium corpora are validated PASS. See `docs/M5_PHASE3_DETERMINISTIC_REPLAY.md`.
-OD-M5-003 remains SPIKE-RESOLVABLE.
+M5 (Differential Validation and Performance) is COMPLETE and validation-only. Its replay,
+differential/reference, cross-compiler manifest, fuzzing, benchmark, allocation/memory,
+container-experiment, recorded-replay/canary, and final-audit evidence is recorded in the
+[M5 phase documents](docs/M5_PHASE1_CANONICAL_REPLAY.md) and
+[`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md). M5 introduces no new production public API,
+production dependency, production container migration, or Gateway runtime. The M5 architecture
+was independently reviewed and APPROVED (ADR-0007 ACCEPTED); `KEEP_STD_MAP` is the accepted
+container decision.
 
 Adapter owners are bound to the conversion `NumericSpec` and sequence policy and must check both
 against the target Core instance before mutation. Schema baseline/fingerprint identity is distinct
