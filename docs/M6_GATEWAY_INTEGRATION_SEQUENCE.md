@@ -5,6 +5,8 @@ STATUS=PROJECT-LEAD APPROVED DEVELOPMENT SEQUENCE
 M6_DESIGN=NOT STARTED
 M6_IMPLEMENTATION=NOT STARTED
 GATEWAY_RUNTIME=NOT IMPLEMENTED IN THIS REPOSITORY
+GATEWAY_IMPLEMENTATION_STARTED=NO
+OWNER_EXPLICIT_START_REQUIRED=YES
 ```
 
 This document freezes development order and responsibility boundaries only.
@@ -107,6 +109,11 @@ PROJECTION_M6_FINAL_INTEGRATION_AFTER_RUNNABLE_GATEWAY=YES
 M6_GATEWAY_INTEGRATION=NOT STARTED
 M6_PLANNING_AUTHORIZED=YES
 ```
+
+`DEVELOP_GATEWAY_FIRST=YES` describes sequencing after the M6 integration-contract and any
+required prerequisite stages, followed by explicit project-owner authorization. It does not
+authorize Gateway implementation now. M6 design, M6 implementation, and Gateway implementation
+remain not started.
 
 Projection remains strategy-independent, deterministic, replayable,
 single-writer, and embedded. It does not own WebSocket clients, REST clients,

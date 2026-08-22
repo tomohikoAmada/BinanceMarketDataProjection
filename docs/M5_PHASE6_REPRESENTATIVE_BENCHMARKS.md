@@ -7,9 +7,7 @@
   (`docs/M5_PHASE6_PREIMPLEMENTATION_DECISIONS.md`, APPROVED / MERGED)
 - Phase-6 implementation authorization: **YES / CONSUMED FOR THIS IMPLEMENTATION**
 - Production `src/**` and public `include/**`: **UNCHANGED**
-- Phase 7 (allocation/memory): NOT STARTED
-- Phase 8 (alternative container spike): NOT STARTED
-- Phase 10 (reporting/workflow integration): NOT STARTED
+- Later M5 phases: COMPLETE; their detailed records remain separate historical authorities.
 
 ## Completion and Acceptance
 
@@ -18,9 +16,9 @@ Phase 6 is **COMPLETE / MERGED** via PR #21:
 - Final independently accepted implementation Head:
   `9776ba6b93990c44e550f289b69127ca721b0d00`
 - Accepted exact-head CI: `31803322848` — 18/18 PASS
-- Formal exact-head Phase-6 evidence: **ACCEPTED** (generated from the accepted
+- **Original/historical PR #21 formal acceptance:** **ACCEPTED** (generated from the accepted
   implementation Head above with clean source at configure, Release, ProtoAdapter ON,
-  sanitizers off, 5 benchmark repetitions, 5 latency passes, 169/169 required inventory,
+  sanitizers off, 5 benchmark repetitions, 5 latency passes, **169/169 required inventory**,
   complete 48-cell M3 accepted matrix, four production replay workloads, event latency
   evidence, and source/binary/payload/workload/dependency provenance validated)
 - Independent final review: **APPROVED** — P0 = 0, P1 = 0, P2 = 1
@@ -38,6 +36,29 @@ not reproduced here.
 
 This document describes the implemented Phase-6 benchmark infrastructure. It is not performance
 evidence by itself; measured numbers live in the machine-readable result files described below.
+
+## Post-PR42 corrective acceptance
+
+PR #42 corrected benchmark evidence provenance and is **COMPLETE**. It did not change Production
+Core semantics.
+
+```text
+SOURCE_HEAD=4b4f0ee085591f45c3d93dca970ea617f6976d0f
+PHASE6=PASS
+FORMAL_REPETITIONS=5
+REGISTERED=167
+REQUIRED=167
+M4_LIMITED_IDENTITY=depth_limit=20
+M4_ADAPT_DEPTH_IDENTITY=M4/AdaptDepthUpdate/Spot/10
+OLD_FALSE_IDENTITIES=ABSENT
+PRODUCTION_CORE_CHANGED_BY_PR42=NO
+```
+
+The corrected inventory is 167/167 because the false three-cell `AdaptDepthUpdate` depth
+dimension became one truthful fixed-cardinality cell, and Phase-8-only registrations were
+structurally removed from the Phase-6 formal executable. This correction does not imply that
+M1-M3 or replay semantics were defective; the corrected record is an evidence/provenance and
+scope correction.
 
 ## Scope
 
@@ -236,6 +257,11 @@ benchmark-smoke workflow intentionally uses 45 minutes because fail-closed M4 in
 ProtoAdapter ON and a pinned Contracts bootstrap; on cold CI runners the dependency path alone can
 consume roughly 10-15 minutes before benchmark execution. The 45-minute value is an implementation
 deviation with cold-run margin, not a claim that accepted authority mandated 45 minutes.
+
+Operational prerequisite: `scripts/benchmark-full.sh` consumes an existing benchmark build. For
+exact-source formal evidence, first produce a fresh benchmark configure/build from the intended
+exact source. Existing provenance remains fail-closed; this is an execution prerequisite, not a
+new evidence architecture.
 
 ## CI policy
 
