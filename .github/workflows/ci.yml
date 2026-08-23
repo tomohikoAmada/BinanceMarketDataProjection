@@ -236,7 +236,11 @@ jobs:
           print("benchmark smoke outputs and provenance PASS")
           PY
       - name: Upload benchmark smoke artifact
-        if: always()
+        # A cancelled cold dependency bootstrap may produce no result files. Do not turn that
+        # primary cancellation into a misleading secondary upload failure; when any output exists,
+        # retain the upload and let the fail-closed provenance/benchmark validation report real
+        # missing or invalid outputs.
+        if: always() && hashFiles('build/benchmark/phase6-smoke-results/benchmarks.json', 'build/benchmark/phase6-smoke-results/benchmarks-wrapper.json', 'build/benchmark/phase6-smoke-results/latency.json', 'build/benchmark/phase6-smoke-results/latency-wrapper.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: m5-benchmark-smoke-ubuntu-clang-${{ steps.benchmark_sha.outputs.short }}

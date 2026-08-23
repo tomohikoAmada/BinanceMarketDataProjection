@@ -259,6 +259,13 @@ configure time and keeps the optional `BinanceMarketDataProjection::ProtoAdapter
 semantically unchanged. The formal Contracts Package Revision remains
 `NOT_FORMALLY_ASSIGNED` until release.
 
+The M6 prerequisite was re-reviewed against Contracts main
+`6cc80249beb9cbed350eb04828cda128d853652c` (Contracts PR #9). M6-P1-001 is resolved by the
+optional Gateway delivery metadata `connection_generation` field, and M6-P1-003 is resolved by
+the separate `BinanceMarketDataContracts::Grpc` service/stub component. Formal package revision
+assignment and publication remain pending; M6 implementation and Gateway runtime remain out of
+scope here.
+
 ### Non-goals
 
 No Contracts change, gRPC runtime, Gateway lifecycle, network ownership, system-time read,
@@ -623,12 +630,15 @@ PHASE11_NEW_CURRENT_P2=0
 PHASE11_INFO=2
 M5_COMPLETE_AUTHORIZED=YES
 M5_COMPLETE_RECORDED=YES
-NEXT_POTENTIAL_ACTIVITY=CONTRACTS GATEWAY DRAFT SEMANTIC CORRECTION
+NEXT_POTENTIAL_ACTIVITY=CONTRACTS PACKAGE RELEASE/PUBLICATION OR GATEWAY PREREQUISITE
 M6_GATEWAY_INTEGRATION=NOT STARTED
 M6_PLANNING_AUTHORIZED=YES
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_DESIGN=COMPLETE_CONTRACT_ONLY
 M6_IMPLEMENTATION=NOT STARTED
+M6_CONTRACTS_REVIEWED_HEAD=6cc80249beb9cbed350eb04828cda128d853652c
+M6_P1_001=RESOLVED_IN_CONTRACTS_MAIN_PENDING_FORMAL_PACKAGE_RELEASE
+M6_P1_003=RESOLVED_IN_CONTRACTS_MAIN_PENDING_FORMAL_PACKAGE_RELEASE
 GATEWAY_RUNTIME_IMPLEMENTATION=OUTSIDE PROJECTION
 GATEWAY_IMPLEMENTATION_ORDER=AFTER M6 INTEGRATION CONTRACT DESIGN
 PROJECTION_M6_IMPLEMENTATION_ORDER=AFTER MINIMAL RUNNABLE GATEWAY HOST EXISTS

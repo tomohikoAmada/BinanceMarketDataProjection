@@ -20,6 +20,10 @@ The freeze was reviewed against these exact `main` baselines:
 | `BinanceMarketDataContracts` | `4068bdc865a30b0d513ea40298660e9883896ce5` |
 | `BinanceMarketDataRecorder` | `23e0a2164431d78bbc2425872559e794053c5350` |
 
+The Contracts prerequisite was re-reviewed after the freeze against Contracts main
+`6cc80249beb9cbed350eb04828cda128d853652c` (Contracts PR #9). This is the current prerequisite
+implementation baseline; the table above remains the historical design-freeze baseline.
+
 Semantic authority is applied in this order:
 
 1. verified external Binance protocol facts recorded in accepted authorities;
@@ -207,8 +211,10 @@ generation.
 uniquely applies to the published item, expose that source's generation. If no
 unique upstream source applies, the wire contract must express **N/A**. Never
 fabricate a generation merely to populate a mandatory field. The exact Contracts
-Proto3 presence correction is a subsequent Contracts task and is not prescribed
-by this Projection document.
+Proto3 presence correction is implemented on Contracts main
+`6cc80249beb9cbed350eb04828cda128d853652c` through optional Gateway delivery metadata. The
+original freeze's required Contracts correction is therefore resolved at the implementation
+level; formal package release remains pending.
 
 `CONTIGUOUS_EVENTS` means no silent loss inside the Gateway's ordered consumer
 delivery session. It does not mean a global Binance sequence across multiple
@@ -298,13 +304,13 @@ this decision.
 CONTRACTS_CPP_GRPC_PREREQUISITE=YES
 ```
 
-At the reviewed Contracts baseline, `BinanceMarketDataContracts::Protobuf` is a
-message-only C++ package. Its CMake generation covers seven message protos with
-`--cpp_out`; it does not generate or export C++ bindings for
-`gateway/v1/gateway_service.proto`. The subsequent Contracts prerequisite must
-narrowly provide the Contracts-owned C++ gRPC service/stub bindings needed by the
-Gateway. It must not be implemented in this task, and Projection must not copy
-the service definitions.
+At the historical reviewed Contracts baseline, `BinanceMarketDataContracts::Protobuf` was a
+message-only C++ package and did not generate or export C++ bindings for
+`gateway/v1/gateway_service.proto`. Contracts main
+`6cc80249beb9cbed350eb04828cda128d853652c` now provides the separate
+`BinanceMarketDataContracts::Grpc` component with the Contracts-owned service/stub bindings.
+This resolves the implementation prerequisite; formal package revision assignment and
+publication remain pending. Projection must not copy the service definitions.
 
 ## Recorder boundary
 
@@ -333,12 +339,17 @@ lock-free queues, arbitrary thread counts or capacities, or Kubernetes.
 
 ## Risks and open prerequisites
 
-Only these blocking prerequisites remain from the freeze:
+The following were the blocking prerequisites recorded by the freeze; their current disposition
+is:
 
 | ID | Risk | Resolution owner |
 |---|---|---|
-| `M6-P1-001` | The Contracts Gateway wire must support absence of a unique applicable upstream `connection_generation`; a fabricated generation is invalid. | Contracts prerequisite stage |
-| `M6-P1-003` | The reviewed Contracts C++ package lacks Gateway gRPC service bindings. | Contracts prerequisite stage |
+| `M6-P1-001` | The Contracts Gateway wire must support absence of a unique applicable upstream `connection_generation`; a fabricated generation is invalid. | **RESOLVED in Contracts main `6cc8024`; formal package release pending** |
+| `M6-P1-003` | The reviewed Contracts C++ package lacks Gateway gRPC service bindings. | **RESOLVED in Contracts main `6cc8024`; formal package release pending** |
+
+The two blockers above are implementation-level resolutions verified against Contracts PR #9.
+They do not by themselves authorize M6 runtime work or establish a formally published Contracts
+package.
 
 The order-book publication cut is resolved by this design and is not an open P1.
 Market-state composition is deferred and nonblocking for the minimal runnable
@@ -373,7 +384,7 @@ M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_IMPLEMENTATION=NOT STARTED
 GATEWAY_IMPLEMENTATION=NOT STARTED
 PROJECTION_CODE_CHANGE_REQUIRED_BEFORE_GATEWAY=NO
-CONTRACTS_CHANGE_REQUIRED_BEFORE_GATEWAY=YES
+CONTRACTS_CHANGE_REQUIRED_BEFORE_GATEWAY=NO_IMPLEMENTATION_CHANGE; FORMAL_PACKAGE_RELEASE_PENDING
 CONTRACTS_CPP_GRPC_PREREQUISITE=YES
 GATEWAY_IMPLEMENTATION_LANGUAGE=C++
 NEW_GATEWAY_PROJECTION_HOST_ABSTRACTION=NO
