@@ -354,6 +354,11 @@ The two blockers above are candidate-level resolutions verified against public C
 They do not by themselves authorize M6 runtime work or establish a default-merged or formally
 published Contracts package.
 
+Projection Issue #46 tracks publication-status documentation and Issue #47 tracks exclusion of
+the gRPC dependency chain from a cold message-only Projection graph. Both remain open: this
+candidate demonstrates the intended acceptance semantics, but clean-cache Ubuntu evidence, real
+default-merge identities, formal publication, and issue closure are still pending.
+
 The order-book publication cut is resolved by this design and is not an open P1.
 Market-state composition is deferred and nonblocking for the minimal runnable
 Gateway.

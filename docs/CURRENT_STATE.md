@@ -21,6 +21,8 @@ M6_CONTRACTS_PR16_CANDIDATE_HEAD=9c34199f42467b92a4380c6e88617dde0e54ae13
 M6_P1_001=RESOLVED_IN_PR16_CANDIDATE_PENDING_DEFAULT_MERGE_AND_PUBLICATION
 M6_P1_003=RESOLVED_IN_PR16_CANDIDATE_PENDING_DEFAULT_MERGE_AND_PUBLICATION
 M6_CONTRACTS_PACKAGE_PUBLICATION=PENDING
+PROJECTION_ISSUE_46=CANDIDATE_ACCEPTANCE_DEMONSTRATED_PENDING_MERGE_PUBLICATION_AND_FORMAL_CLOSE
+PROJECTION_ISSUE_47=CANDIDATE_ACCEPTANCE_DEMONSTRATED_PENDING_CLEAN_CACHE_UBUNTU_AND_FORMAL_CLOSE
 ```
 
 CURRENT_STATE is an orientation summary only. It does not override accepted ADRs, accepted
@@ -126,6 +128,10 @@ Projection, and a separate `binance-market-data-contracts-grpc-cpp` service-bind
 Gateway. The candidate includes the dependent PR #18 changes, but neither prerequisite is a
 default-branch merge, published package, or formal release. The formal Contracts Package Revision
 remains `NOT_FORMALLY_ASSIGNED`.
+Projection Issues #46 (publication-status drift) and #47 (the cold message-only dependency graph)
+remain open. The PR #16 candidate demonstrates their intended resolution, while default merge,
+formal publication, and clean-cache Ubuntu evidence remain acceptance gates rather than claims made
+by this candidate.
 `NEXT_POTENTIAL_ACTIVITY=CONTRACTS PACKAGE RELEASE/PUBLICATION OR GATEWAY PREREQUISITE`
 `M6_IMPLEMENTATION_STARTED=NO`; `GATEWAY_RUNTIME_PIPELINE_STARTED=NO`.
 Gateway runtime belongs in `BinanceMarketDataGateway`, not this repository. This documentation

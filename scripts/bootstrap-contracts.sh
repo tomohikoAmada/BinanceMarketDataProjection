@@ -53,6 +53,7 @@ if ! "$repo_root/.venv-tools/bin/python" "$repo_root/scripts/verify-contracts-pa
     "$conan" create "$contracts_dir" \
         --lockfile="$contracts_dir/conan.lock" \
         --build=missing \
+        --build='binance-market-data-contracts-cpp/*' \
         -s build_type=Release \
         -s compiler.cppstd=20
     "$conan" list \
