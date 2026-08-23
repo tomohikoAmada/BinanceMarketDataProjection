@@ -404,7 +404,8 @@ Validation is ordered and deterministic:
 1. Rely on the configure/package integrity boundary; do not hash descriptors per message.
 2. Reject `VENUE_UNSPECIFIED`, unknown venue values, and every venue except Binance.
 3. Map only Spot and USD-M perpetual; reject unspecified/unknown/unsupported markets.
-4. Require a valid non-empty Contracts symbol and exact equality with `ExpectedIdentity.symbol`.
+4. Require a valid non-empty opaque symbol under [ADR-0009](adr/ADR-0009-opaque-utf8-symbol-identity.md)
+   and exact equality with `ExpectedIdentity.symbol`.
 5. Require market-to-policy mapping to equal `ExpectedIdentity.policy`.
 6. Require schema version exactly `exchange-depth-snapshot.v1`.
 7. Validate required producer, producer-version, and request-identity strings even though Core does
@@ -647,8 +648,9 @@ canonical rank, and add explicit mapping/tests.
 - `std::string symbol`; and
 - `SequencePolicyKind policy`.
 
-Venue is implicitly Binance. Inbound symbol must satisfy Contracts syntax and equal the expected
-owned string. Market must map to the expected policy.
+Venue is implicitly Binance. Inbound symbol must satisfy the opaque strict-UTF-8 and exact-identity
+contract in [ADR-0009](adr/ADR-0009-opaque-utf8-symbol-identity.md) and equal the expected owned
+string. Market must map to the expected policy.
 
 `SnapshotContext` is a Host-created owning value containing:
 

@@ -7,9 +7,11 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -73,6 +75,58 @@ error_of(const ref::ReferenceBaselinePrediction& prediction) {
 [[nodiscard]] ref::ReferenceSnapshotPrediction
 snapshot_of(const ref::ReferenceSnapshotResult& result) {
     return std::get<ref::ReferenceSnapshotPrediction>(result);
+}
+
+TEST(ReferenceAdapterTest, ValidatesOpaqueStrictUtf8IdentityIndependently) {
+    const std::array<std::string, 8> valid_symbols{
+        "a",        "BTC_USDT", "BTC_\xEF\xBC\x91", "ABCDEFGHIJKLMNOPQRSTU",
+        "\xC2\x80", "\xC2\xA2", "\xF0\x90\x80\x80", "\xF4\x8F\xBF\xBF"};
+    for (const auto& symbol : valid_symbols) {
+        ref::ReferenceAdapterDimensions dimensions;
+        dimensions.wire_symbol = symbol;
+        dimensions.expected_symbol = symbol;
+        const ref::ReferenceAdapter candidate{std::move(dimensions)};
+        const auto result = candidate.predict_baseline_input(baseline(50, {}, {}), {});
+        ASSERT_TRUE(std::holds_alternative<ref::ReferenceInputPrediction>(result))
+            << "symbol bytes were rejected: " << symbol;
+    }
+}
+
+TEST(ReferenceAdapterTest, RejectsMalformedAndUnsafeOpaqueSymbolIdentity) {
+    const std::array<std::string, 13> invalid_symbols{"",
+                                                      " ",
+                                                      "\t",
+                                                      "\x01",
+                                                      "\x7F",
+                                                      "\x80",
+                                                      "\xC2",
+                                                      "\xC2\x41",
+                                                      "\xC0\x80",
+                                                      "\xE0\x80\x80",
+                                                      "\xE1\x80\x41",
+                                                      "\xED\xA0\x80",
+                                                      "\xF4\x90\x80\x80"};
+    for (const auto& symbol : invalid_symbols) {
+        ref::ReferenceAdapterDimensions dimensions;
+        dimensions.wire_symbol = symbol;
+        dimensions.expected_symbol = symbol;
+        const ref::ReferenceAdapter candidate{std::move(dimensions)};
+        const auto result = candidate.predict_baseline_input(baseline(50, {}, {}), {});
+        ASSERT_TRUE(std::holds_alternative<ref::ReferenceAdapterError>(result));
+        EXPECT_EQ(std::get<ref::ReferenceAdapterError>(result).code,
+                  ref::ReferenceAdapterErrorCode::InvalidIdentifier);
+    }
+}
+
+TEST(ReferenceAdapterTest, RejectsMismatchedOpaqueSymbolIdentity) {
+    ref::ReferenceAdapterDimensions mismatch_dimensions;
+    mismatch_dimensions.wire_symbol = "BTC_\xEF\xBC\x91";
+    mismatch_dimensions.expected_symbol = "BTC_\xEF\xBC\x92";
+    const ref::ReferenceAdapter mismatch{std::move(mismatch_dimensions)};
+    const auto mismatch_result = mismatch.predict_baseline_input(baseline(50, {}, {}), {});
+    ASSERT_TRUE(std::holds_alternative<ref::ReferenceAdapterError>(mismatch_result));
+    EXPECT_EQ(std::get<ref::ReferenceAdapterError>(mismatch_result).code,
+              ref::ReferenceAdapterErrorCode::IdentityMismatch);
 }
 
 TEST(ReferenceAdapterTest, MapsObservedQualityCanonically) {
