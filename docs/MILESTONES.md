@@ -9,7 +9,8 @@
 - `KEEP_STD_MAP`: accepted; no production container migration was made.
 - M6 cross-repository integration contract design: **COMPLETE**.
 - M6 implementation: **NOT STARTED**.
-- Gateway implementation/runtime: **NOT STARTED** and outside this repository.
+- Gateway G0 foundation: **IMPLEMENTED PENDING REVIEW** in public Draft PR #2 at `8b70f35`.
+- Gateway runtime pipeline: **NOT STARTED** and outside this repository.
 
 The detailed M5 acceptance, evidence, and historical provenance remain in the linked phase
 documents and accepted ADRs below. This ledger does not authorize M6 or Gateway implementation;
@@ -640,8 +641,10 @@ M6_IMPLEMENTATION=NOT STARTED
 M6_CONTRACTS_PR16_CANDIDATE_HEAD=9c34199f42467b92a4380c6e88617dde0e54ae13
 M6_P1_001=RESOLVED_IN_PR16_CANDIDATE_PENDING_DEFAULT_MERGE_AND_PUBLICATION
 M6_P1_003=RESOLVED_IN_PR16_CANDIDATE_PENDING_DEFAULT_MERGE_AND_PUBLICATION
+GATEWAY_G0_FOUNDATION=IMPLEMENTED_PENDING_REVIEW_AT_DRAFT_PR2_8b70f35
 GATEWAY_RUNTIME_IMPLEMENTATION=OUTSIDE PROJECTION
-GATEWAY_IMPLEMENTATION_ORDER=AFTER M6 INTEGRATION CONTRACT DESIGN
+GATEWAY_RUNTIME_PIPELINE=NOT_STARTED
+GATEWAY_RUNTIME_IMPLEMENTATION_ORDER=AFTER M6 INTEGRATION CONTRACT DESIGN
 PROJECTION_M6_IMPLEMENTATION_ORDER=AFTER MINIMAL RUNNABLE GATEWAY HOST EXISTS
 ```
 
@@ -719,8 +722,9 @@ accepted. See `docs/M5_PHASE11_FINAL_IMPLEMENTATION_REVIEW.md`.
 Planning is AUTHORIZED; the cross-repository integration contract design is
 COMPLETE and implementation is NOT STARTED. The authoritative freeze is
 [`docs/M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md`](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md).
-Gateway runtime is developed in
-`BinanceMarketDataGateway`, not inside this repository. Projection M6 begins
+The Gateway G0 foundation is implemented pending review in public Draft PR #2 at `8b70f35`; it is
+not the Gateway runtime pipeline. Gateway runtime is developed in `BinanceMarketDataGateway`, not
+inside this repository, and that pipeline remains NOT STARTED. Projection M6 begins
 only after a minimal runnable Gateway Host exists. The next prerequisite stages
 and sequence are in
 `docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md`.

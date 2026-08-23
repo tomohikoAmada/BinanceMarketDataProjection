@@ -6,7 +6,8 @@ M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_DESIGN=COMPLETE_CONTRACT_ONLY
 M6_IMPLEMENTATION=NOT STARTED
 GATEWAY_RUNTIME=NOT IMPLEMENTED IN THIS REPOSITORY
-GATEWAY_IMPLEMENTATION_STARTED=NO
+GATEWAY_G0_FOUNDATION=IMPLEMENTED_PENDING_REVIEW_AT_DRAFT_PR2_8b70f35
+GATEWAY_RUNTIME_PIPELINE_STARTED=NO
 OWNER_EXPLICIT_START_REQUIRED=YES
 ```
 
@@ -116,9 +117,10 @@ M6_PLANNING_AUTHORIZED=YES
 ```
 
 `DEVELOP_GATEWAY_FIRST=YES` describes sequencing after the M6 integration-contract and any
-required prerequisite stages, followed by explicit project-owner authorization. It does not
-authorize Gateway implementation now. M6 contract design is complete; M6 implementation and
-Gateway implementation remain not started.
+required prerequisite stages, followed by explicit project-owner authorization. The Gateway G0
+foundation is implemented pending review in public Draft PR #2 at `8b70f35`; it owns no runtime
+resources and does not authorize the Gateway runtime pipeline. M6 implementation and that runtime
+pipeline remain not started.
 
 Projection remains strategy-independent, deterministic, replayable,
 single-writer, and embedded. It does not own WebSocket clients, REST clients,

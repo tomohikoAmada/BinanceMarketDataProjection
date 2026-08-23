@@ -385,7 +385,8 @@ accepted with the following frozen conclusions:
 ```text
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_IMPLEMENTATION=NOT STARTED
-GATEWAY_IMPLEMENTATION=NOT STARTED
+GATEWAY_G0_FOUNDATION=IMPLEMENTED_PENDING_REVIEW_AT_DRAFT_PR2_8b70f35
+GATEWAY_RUNTIME_PIPELINE=NOT_STARTED
 PROJECTION_CODE_CHANGE_REQUIRED_BEFORE_GATEWAY=NO
 CONTRACTS_CHANGE_REQUIRED_BEFORE_GATEWAY=NO_IMPLEMENTATION_CHANGE; FORMAL_PACKAGE_RELEASE_PENDING
 CONTRACTS_CPP_GRPC_PREREQUISITE=YES
@@ -399,4 +400,6 @@ boundary, single-writer invariant, bootstrap/reconnect boundary, identity and
 ordering domains, snapshot publication cut, bounded delivery semantics,
 MarketState deferral, language choice, Contracts prerequisite, Recorder boundary,
 anti-overengineering limits, risks, and implementation order above are the M6
-contract. It does not claim any M6 runtime or Gateway implementation exists.
+contract. The Gateway G0 foundation is implemented pending review in public Draft PR #2 at
+`8b70f35`; that resource-free foundation is not a Gateway runtime pipeline and does not start M6.
+No M6 runtime or Gateway runtime pipeline is claimed to exist.

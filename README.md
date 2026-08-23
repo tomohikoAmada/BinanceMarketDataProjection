@@ -2,7 +2,8 @@
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. M0-M4 are COMPLETE, M5 is COMPLETE, the M6 cross-repository contract
-design is COMPLETE, and M6 implementation/Gateway runtime are NOT STARTED.
+design is COMPLETE, and M6 implementation/Gateway runtime pipeline are NOT STARTED. The Gateway G0
+foundation is implemented pending review in public Draft PR #2 at `8b70f35`.
 
 ## For AI agents and independent reviewers
 
@@ -202,9 +203,11 @@ PR #42 corrected benchmark evidence provenance. It did **not** change Production
 See the [M5 phase records](docs/M5_PHASE1_CANONICAL_REPLAY.md) and
 [MILESTONES.md](docs/MILESTONES.md) for detailed historical provenance.
 
-The M6 cross-repository integration contract design is COMPLETE. M6 implementation and Gateway
-runtime are NOT STARTED, and Gateway runtime is outside this repository. The authoritative contract
-is [M6 Cross-Repository Integration](docs/M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md); its
+The M6 cross-repository integration contract design is COMPLETE. The Gateway G0 foundation is
+implemented pending review in public Draft PR #2 at `8b70f35`; it contains no Gateway runtime
+pipeline and does not start Projection M6. M6 implementation and the Gateway runtime pipeline are
+NOT STARTED, and Gateway runtime is outside this repository. The authoritative contract is
+[M6 Cross-Repository Integration](docs/M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md); its
 sequence in [M6 Gateway Integration](docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md) still requires the
 Contracts prerequisite stages plus explicit owner authorization and is not an implementation
 authorization.

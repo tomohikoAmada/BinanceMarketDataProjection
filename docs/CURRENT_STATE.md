@@ -15,7 +15,8 @@ KEEP_STD_MAP
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_DESIGN=COMPLETE_CONTRACT_ONLY
 M6_IMPLEMENTATION=NOT STARTED
-GATEWAY_IMPLEMENTATION=NOT STARTED
+GATEWAY_G0_FOUNDATION=IMPLEMENTED_PENDING_REVIEW_AT_DRAFT_PR2_8b70f35
+GATEWAY_RUNTIME_PIPELINE=NOT_STARTED
 M6_CONTRACTS_PR16_CANDIDATE_HEAD=9c34199f42467b92a4380c6e88617dde0e54ae13
 M6_P1_001=RESOLVED_IN_PR16_CANDIDATE_PENDING_DEFAULT_MERGE_AND_PUBLICATION
 M6_P1_003=RESOLVED_IN_PR16_CANDIDATE_PENDING_DEFAULT_MERGE_AND_PUBLICATION
@@ -106,7 +107,8 @@ the historical superseded decision remains in [ADR-0005](adr/ADR-0005-market-spe
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_DESIGN_STARTED=YES_CONTRACT_ONLY
 M6_IMPLEMENTATION_STARTED=NO
-GATEWAY_IMPLEMENTATION_STARTED=NO
+GATEWAY_G0_FOUNDATION=IMPLEMENTED_PENDING_REVIEW_AT_DRAFT_PR2_8b70f35
+GATEWAY_RUNTIME_PIPELINE_STARTED=NO
 M6_PLANNING_AUTHORIZED=YES
 OWNER_EXPLICIT_START_REQUIRED=YES
 ```
@@ -114,8 +116,10 @@ OWNER_EXPLICIT_START_REQUIRED=YES
 M6 planning and the approved sequence are recorded in
 [`M6_GATEWAY_INTEGRATION_SEQUENCE.md`](M6_GATEWAY_INTEGRATION_SEQUENCE.md) and the completed
 [`M6 cross-repository integration contract`](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md).
-The contract design is complete; M6 implementation and Gateway implementation remain **NOT
-STARTED**. The public Contracts PR #16 candidate at
+The contract design is complete. The Gateway G0 foundation is implemented pending review in public
+Draft PR #2 at `8b70f35`; its typed configuration and synchronous lifecycle seam contain no runtime
+resources. M6 implementation and the Gateway runtime pipeline remain **NOT STARTED**. The public
+Contracts PR #16 candidate at
 `9c34199f42467b92a4380c6e88617dde0e54ae13` demonstrates Gateway delivery metadata with absent
 `connection_generation`, a message-only `binance-market-data-contracts-cpp` artifact for
 Projection, and a separate `binance-market-data-contracts-grpc-cpp` service-binding artifact for
@@ -123,9 +127,9 @@ Gateway. The candidate includes the dependent PR #18 changes, but neither prereq
 default-branch merge, published package, or formal release. The formal Contracts Package Revision
 remains `NOT_FORMALLY_ASSIGNED`.
 `NEXT_POTENTIAL_ACTIVITY=CONTRACTS PACKAGE RELEASE/PUBLICATION OR GATEWAY PREREQUISITE`
-`M6_IMPLEMENTATION_STARTED=NO`; `GATEWAY_IMPLEMENTATION_STARTED=NO`.
+`M6_IMPLEMENTATION_STARTED=NO`; `GATEWAY_RUNTIME_PIPELINE_STARTED=NO`.
 Gateway runtime belongs in `BinanceMarketDataGateway`, not this repository. This documentation
-closure does not start M6 implementation or Gateway implementation.
+closure does not start M6 implementation or the Gateway runtime pipeline.
 
 ## Authority model
 
