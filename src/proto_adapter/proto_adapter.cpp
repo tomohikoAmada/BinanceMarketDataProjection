@@ -7,7 +7,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -61,18 +60,88 @@ constexpr std::string_view kLocalSnapshotSchema{"local-order-book-snapshot.v1"};
     return std::all_of(value.begin() + 1, value.end(), is_identifier_tail);
 }
 
-[[nodiscard]] bool is_symbol(std::string_view value) noexcept {
-    if (value.size() < 2 || value.size() > 20) {
-        return false;
-    }
-    return std::all_of(value.begin(), value.end(), [](char character) {
-        return (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9');
-    });
-}
-
 [[nodiscard]] constexpr bool is_ascii_whitespace(char value) noexcept {
     return value == ' ' || value == '\t' || value == '\n' || value == '\r' || value == '\f' ||
            value == '\v';
+}
+
+[[nodiscard]] constexpr bool is_safe_ascii_symbol_byte(unsigned char value) noexcept {
+    return value != 0U && value >= 0x20U && value != 0x7FU &&
+           !is_ascii_whitespace(static_cast<char>(value));
+}
+
+struct Utf8SymbolCodePoint {
+    std::size_t width;
+    std::uint32_t code_point;
+    std::uint32_t minimum;
+};
+
+[[nodiscard]] std::optional<Utf8SymbolCodePoint>
+decode_utf8_symbol_code_point(std::string_view value, std::size_t index) noexcept {
+    const auto lead = static_cast<unsigned char>(value[index]);
+    Utf8SymbolCodePoint decoded{};
+    if (lead >= 0xC2U && lead <= 0xDFU) {
+        decoded.width = 2;
+        decoded.code_point = lead & 0x1FU;
+        decoded.minimum = 0x80U;
+    } else if (lead >= 0xE0U && lead <= 0xEFU) {
+        decoded.width = 3;
+        decoded.code_point = lead & 0x0FU;
+        decoded.minimum = 0x800U;
+    } else if (lead >= 0xF0U && lead <= 0xF4U) {
+        decoded.width = 4;
+        decoded.code_point = lead & 0x07U;
+        decoded.minimum = 0x10000U;
+    } else {
+        return std::nullopt;
+    }
+
+    if (value.size() - index < decoded.width) {
+        return std::nullopt;
+    }
+    for (std::size_t offset = 1; offset < decoded.width; ++offset) {
+        const auto continuation = static_cast<unsigned char>(value[index + offset]);
+        if ((continuation & 0xC0U) != 0x80U) {
+            return std::nullopt;
+        }
+        decoded.code_point = (decoded.code_point << 6U) | (continuation & 0x3FU);
+    }
+    return decoded;
+}
+
+[[nodiscard]] constexpr bool is_valid_utf8_symbol_code_point(std::uint32_t code_point,
+                                                             std::uint32_t minimum) noexcept {
+    return code_point >= minimum && code_point <= 0x10FFFFU &&
+           (code_point < 0xD800U || code_point > 0xDFFFU);
+}
+
+// Symbol is an exact opaque identity at the adapter boundary. Validate only
+// transport-safe text shape here; exchange grammar, membership, and lowercase
+// stream-name mapping belong to the Host/Gateway boundary.
+[[nodiscard]] bool is_symbol(std::string_view value) noexcept {
+    if (value.empty()) {
+        return false;
+    }
+
+    std::size_t index = 0;
+    while (index < value.size()) {
+        const auto lead = static_cast<unsigned char>(value[index]);
+        if (lead < 0x80U) {
+            if (!is_safe_ascii_symbol_byte(lead)) {
+                return false;
+            }
+            ++index;
+            continue;
+        }
+
+        const auto decoded = decode_utf8_symbol_code_point(value, index);
+        if (!decoded.has_value() ||
+            !is_valid_utf8_symbol_code_point(decoded->code_point, decoded->minimum)) {
+            return false;
+        }
+        index += decoded->width;
+    }
+    return true;
 }
 
 [[nodiscard]] bool is_non_empty_text(std::string_view value) noexcept {

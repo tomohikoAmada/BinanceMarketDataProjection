@@ -246,6 +246,73 @@ TEST(InboundValidationTest, RejectsEnumIdentitySchemaIdentifierAndDecimalFailure
               adapter::AdapterErrorCode::ScaleMismatch);
 }
 
+TEST(SymbolIdentityTest, AcceptsOpaqueStrictUtf8AndRejectsMalformedValues) {
+    const std::array<std::string, 8> valid_symbols{
+        "a",        "BTC_USDT", "BTC_\xEF\xBC\x91", "ABCDEFGHIJKLMNOPQRSTU",
+        "\xC2\x80", "\xC2\xA2", "\xF0\x90\x80\x80", "\xF4\x8F\xBF\xBF"};
+    for (const auto& symbol : valid_symbols) {
+        auto wire = baseline_wire();
+        wire.set_symbol(symbol);
+        auto expected = spot_identity();
+        expected.symbol = symbol;
+        const auto result = adapter::adapt_exchange_depth_snapshot(wire, spec(), expected);
+        ASSERT_TRUE(std::holds_alternative<adapter::AdaptedBookBaseline>(result))
+            << "symbol bytes were rejected: " << symbol;
+    }
+
+    const std::array<std::string, 13> invalid_symbols{"",
+                                                      " ",
+                                                      "\t",
+                                                      "\x01",
+                                                      "\x7F",
+                                                      "\x80",
+                                                      "\xC2",
+                                                      "\xC2\x41",
+                                                      "\xC0\x80",
+                                                      "\xE0\x80\x80",
+                                                      "\xE1\x80\x41",
+                                                      "\xED\xA0\x80",
+                                                      "\xF4\x90\x80\x80"};
+    for (const auto& symbol : invalid_symbols) {
+        auto wire = baseline_wire();
+        wire.set_symbol(symbol);
+        const auto result = adapter::adapt_exchange_depth_snapshot(wire, spec(), spot_identity());
+        ASSERT_TRUE(std::holds_alternative<adapter::AdapterError>(result))
+            << "invalid symbol bytes were accepted";
+        EXPECT_EQ(std::get<adapter::AdapterError>(result).code,
+                  adapter::AdapterErrorCode::InvalidIdentifier);
+    }
+}
+
+TEST(SymbolIdentityTest, PreservesExactUtf8IdentityThroughSnapshotAndRejectsMismatch) {
+    const std::string symbol{"BTC_\xEF\xBC\x91"};
+    auto wire = baseline_wire();
+    wire.set_symbol(symbol);
+    auto expected = spot_identity();
+    expected.symbol = symbol;
+
+    const auto adapted = adapter::adapt_exchange_depth_snapshot(wire, spec(), expected);
+    ASSERT_TRUE(std::holds_alternative<adapter::AdaptedBookBaseline>(adapted));
+
+    auto mismatched = expected;
+    mismatched.symbol = "BTC_\xEF\xBC\x92";
+    const auto mismatch = adapter::adapt_exchange_depth_snapshot(wire, spec(), mismatched);
+    ASSERT_TRUE(std::holds_alternative<adapter::AdapterError>(mismatch));
+    EXPECT_EQ(std::get<adapter::AdapterError>(mismatch).code,
+              adapter::AdapterErrorCode::IdentityMismatch);
+
+    core::BookProjection projection{spec(), core::SequencePolicyKind::Spot};
+    ASSERT_EQ(std::get<core::InstallResult>(
+                  std::get<adapter::AdaptedBookBaseline>(adapted).install_into(projection))
+                  .disposition,
+              core::InstallDisposition::Installed);
+    auto snapshot_context = context();
+    snapshot_context.identity = expected;
+    const auto snapshot = adapter::make_local_order_book_snapshot(projection, snapshot_context, {});
+    ASSERT_TRUE(std::holds_alternative<core::LocalOrderBookSnapshot>(snapshot));
+    EXPECT_EQ(std::get<core::LocalOrderBookSnapshot>(snapshot).symbol(), symbol);
+}
+
 TEST(InboundUpdateTest, PreservesPuPresenceOrderAndM3Results) {
     auto baseline =
         adapter::adapt_exchange_depth_snapshot(baseline_wire(), spec(), spot_identity());
@@ -333,7 +400,7 @@ TEST(InboundMatrixTest, RejectsAllIdentityEnumSchemaAndNumericDomains) {
     wire = baseline_wire(common_wire::MARKET_USD_M_PERPETUAL);
     expect_baseline_error(wire, adapter::AdapterErrorCode::IdentityMismatch);
 
-    for (const std::string symbol : {"", "a", "btc usdt", "BTC_USDT"}) {
+    for (const std::string symbol : {"", " ", "btc usdt"}) {
         wire = baseline_wire();
         wire.set_symbol(symbol);
         expect_baseline_rejected(wire);

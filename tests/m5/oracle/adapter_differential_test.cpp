@@ -273,6 +273,27 @@ TEST(AdapterDifferentialReplayTest, UsdmTinySnapshotSemanticsAgree) {
     EXPECT_EQ(*snapshot.snapshot, semantic);
 }
 
+TEST(AdapterDifferentialReplayTest, Utf8SymbolIdentityAndSnapshotRoundtripAgree) {
+    const auto fixture = oracle::test::load_fixture("adapter_tiny");
+    auto scenario = oracle::default_adapter_scenario(fixture);
+    const std::string symbol{"BTC_\xEF\xBC\x91_LONG_SYMBOL_01"};
+    scenario.wire_symbol = symbol;
+    scenario.expected_symbol = symbol;
+
+    const auto outcome = run_adapter(fixture, scenario);
+    ASSERT_FALSE(outcome.first_divergence.has_value());
+
+    const SnapshotOutcome* snapshot = nullptr;
+    for (const auto& observation_value : outcome.observations) {
+        if (const auto* candidate = std::get_if<SnapshotOutcome>(&observation_value.result.value)) {
+            snapshot = candidate;
+            break;
+        }
+    }
+    ASSERT_NE(snapshot, nullptr);
+    EXPECT_EQ(snapshot->symbol, symbol);
+}
+
 TEST(AdapterSnapshotExtractionTest, SnapshotSourceValidValuesMapExplicitly) {
     for (const auto& [wire_source, expected] :
          {std::pair{common_wire::SNAPSHOT_SOURCE_GATEWAY_LIVE,
