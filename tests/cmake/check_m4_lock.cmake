@@ -8,6 +8,18 @@ foreach(_identity IN ITEMS
     endif()
 endforeach()
 
+set(_bootstrap "${CMAKE_CURRENT_LIST_DIR}/../../scripts/bootstrap-contracts.sh")
+file(READ "${_bootstrap}" _bootstrap_source)
+foreach(_required_build_mode IN ITEMS
+        "--build=missing"
+        "--build='binance-market-data-contracts-cpp/*'")
+    string(FIND "${_bootstrap_source}" "${_required_build_mode}" _position)
+    if(_position EQUAL -1)
+        message(FATAL_ERROR
+            "Contracts bootstrap is missing required create mode ${_required_build_mode}")
+    endif()
+endforeach()
+
 foreach(_forbidden_identity IN ITEMS "grpc/" "re2/" "openssl/" "c-ares/")
     string(FIND "${_lock}" "${_forbidden_identity}" _position)
     if(NOT _position EQUAL -1)
