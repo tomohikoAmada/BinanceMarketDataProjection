@@ -247,12 +247,17 @@ owning M1/M2/M3 inputs and converts `BookProjection` plus explicit Host context 
 External architecture review Round 2: **APPROVED**. Round 1 findings are **3 CLOSED** and
 architecture blocking findings are **0**.
 
-The merged C-M4-001 prerequisite at `67ee1bf69fad980d114cfa278c3a6ffe310a4d7a`
-provides `binance-market-data-contracts-cpp/0.1.0` and
-`BinanceMarketDataContracts::Protobuf`. Projection pins Conan RREV
-`7fd3efe3d289462fb16c78ffeced1682`, validates the approved schema/runtime metadata at configure
-time, and implements the optional `BinanceMarketDataProjection::ProtoAdapter` component without
-changing Core. The formal Contracts Package Revision remains `NOT_FORMALLY_ASSIGNED` until release.
+The merged C-M4-001 prerequisite was originally accepted against source revision
+`67ee1bf69fad980d114cfa278c3a6ffe310a4d7a` and Conan RREV
+`7fd3efe3d289462fb16c78ffeced1682`; that M4 acceptance provenance remains historical. The
+current Projection candidate for the GW-PREQ-001 cross-repository prerequisite is source revision
+`6cc80249beb9cbed350eb04828cda128d853652c` with Conan RREV
+`22897acd8e0fcc6d9b2d0b1bbba824c2`. It provides `binance-market-data-contracts-cpp/0.1.0`,
+`BinanceMarketDataContracts::Protobuf`, and the separate `BinanceMarketDataContracts::Grpc`
+component, while Projection continues to validate the approved schema/runtime metadata at
+configure time and keeps the optional `BinanceMarketDataProjection::ProtoAdapter` component
+semantically unchanged. The formal Contracts Package Revision remains
+`NOT_FORMALLY_ASSIGNED` until release.
 
 ### Non-goals
 

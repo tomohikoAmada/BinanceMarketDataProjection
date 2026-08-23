@@ -28,7 +28,7 @@ class BinanceMarketDataProjectionConan(ConanFile):
     def requirements(self):
         if self.options.proto_adapter:
             self.requires(
-                "binance-market-data-contracts-cpp/0.1.0#7fd3efe3d289462fb16c78ffeced1682",
+                "binance-market-data-contracts-cpp/0.1.0#22897acd8e0fcc6d9b2d0b1bbba824c2",
                 transitive_headers=True,
                 transitive_libs=True,
             )

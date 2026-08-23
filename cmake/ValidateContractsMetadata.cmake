@@ -32,7 +32,7 @@ function(bmd_projection_validate_contracts_metadata)
         PROTOBUF_RUNTIME_RREV "ca5ff466767b31a1b496ec60247e105c"
         PROTOBUF_RUNTIME_COMPATIBILITY "exactly 6.33.5 for this implementation candidate"
         PROTOBUF_RUNTIME_FLAVOR "full"
-        CONTRACTS_SOURCE_REVISION "67ee1bf69fad980d114cfa278c3a6ffe310a4d7a")
+        CONTRACTS_SOURCE_REVISION "6cc80249beb9cbed350eb04828cda128d853652c")
     list(LENGTH _expected_pairs _pair_length)
     math(EXPR _pair_last "${_pair_length} - 1")
     foreach(_index RANGE 0 ${_pair_last} 2)
