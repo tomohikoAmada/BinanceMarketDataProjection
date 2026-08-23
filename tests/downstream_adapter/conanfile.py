@@ -9,7 +9,7 @@ class ProtoAdapterConsumerConan(ConanFile):
 
     def requirements(self):
         self.requires(
-            "binance-market-data-contracts-cpp/0.1.0#22897acd8e0fcc6d9b2d0b1bbba824c2"
+            "binance-market-data-contracts-cpp/0.1.0#53713fb82c27cf6ea0395f6b8a853006"
         )
 
     def generate(self):

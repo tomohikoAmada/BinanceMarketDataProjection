@@ -2,8 +2,8 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-contracts_revision="6cc80249beb9cbed350eb04828cda128d853652c"
-contracts_rrev="22897acd8e0fcc6d9b2d0b1bbba824c2"
+contracts_revision="9c34199f42467b92a4380c6e88617dde0e54ae13"
+contracts_rrev="53713fb82c27cf6ea0395f6b8a853006"
 contracts_dir="$repo_root/build/m4-prerequisite/contracts"
 export CONAN_HOME="$repo_root/.cache/conan2"
 export PIP_CACHE_DIR="$repo_root/.cache/pip"

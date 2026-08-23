@@ -250,21 +250,22 @@ architecture blocking findings are **0**.
 The merged C-M4-001 prerequisite was originally accepted against source revision
 `67ee1bf69fad980d114cfa278c3a6ffe310a4d7a` and Conan RREV
 `7fd3efe3d289462fb16c78ffeced1682`; that M4 acceptance provenance remains historical. The
-current Projection candidate for the GW-PREQ-001 cross-repository prerequisite is source revision
-`6cc80249beb9cbed350eb04828cda128d853652c` with Conan RREV
-`22897acd8e0fcc6d9b2d0b1bbba824c2`. It provides `binance-market-data-contracts-cpp/0.1.0`,
-`BinanceMarketDataContracts::Protobuf`, and the separate `BinanceMarketDataContracts::Grpc`
-component, while Projection continues to validate the approved schema/runtime metadata at
-configure time and keeps the optional `BinanceMarketDataProjection::ProtoAdapter` component
-semantically unchanged. The formal Contracts Package Revision remains
-`NOT_FORMALLY_ASSIGNED` until release.
+current Projection candidate for the GW-PREQ-001 cross-repository prerequisite uses public
+Contracts PR #16 source revision `9c34199f42467b92a4380c6e88617dde0e54ae13`. Projection pins
+only the message artifact
+`binance-market-data-contracts-cpp/0.1.0#53713fb82c27cf6ea0395f6b8a853006` and target
+`BinanceMarketDataContracts::Protobuf`; Gateway separately consumes
+`binance-market-data-contracts-grpc-cpp/0.1.0#c3661aa735e1eb6450c1a93f635dbc20` and target
+`BinanceMarketDataContracts::Grpc`. Projection continues to validate the approved schema/runtime
+metadata and keeps `BinanceMarketDataProjection::ProtoAdapter` semantically unchanged. These are
+PR-candidate identities, not Contracts `main`, publication, or formal release evidence. The
+formal Contracts Package Revision remains `NOT_FORMALLY_ASSIGNED` until release.
 
-The M6 prerequisite was re-reviewed against Contracts main
-`6cc80249beb9cbed350eb04828cda128d853652c` (Contracts PR #9). M6-P1-001 is resolved by the
-optional Gateway delivery metadata `connection_generation` field, and M6-P1-003 is resolved by
-the separate `BinanceMarketDataContracts::Grpc` service/stub component. Formal package revision
-assignment and publication remain pending; M6 implementation and Gateway runtime remain out of
-scope here.
+The PR #16 candidate resolves M6-P1-001 with optional Gateway delivery metadata
+`connection_generation` and M6-P1-003 with the separate
+`BinanceMarketDataContracts::Grpc` service/stub target. Its dependent PR #18 changes and PR #16
+still await default-branch integration; formal package revision assignment and publication also
+remain pending. M6 implementation and Gateway runtime remain out of scope here.
 
 ### Non-goals
 
@@ -636,9 +637,9 @@ M6_PLANNING_AUTHORIZED=YES
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_DESIGN=COMPLETE_CONTRACT_ONLY
 M6_IMPLEMENTATION=NOT STARTED
-M6_CONTRACTS_REVIEWED_HEAD=6cc80249beb9cbed350eb04828cda128d853652c
-M6_P1_001=RESOLVED_IN_CONTRACTS_MAIN_PENDING_FORMAL_PACKAGE_RELEASE
-M6_P1_003=RESOLVED_IN_CONTRACTS_MAIN_PENDING_FORMAL_PACKAGE_RELEASE
+M6_CONTRACTS_PR16_CANDIDATE_HEAD=9c34199f42467b92a4380c6e88617dde0e54ae13
+M6_P1_001=RESOLVED_IN_PR16_CANDIDATE_PENDING_DEFAULT_MERGE_AND_PUBLICATION
+M6_P1_003=RESOLVED_IN_PR16_CANDIDATE_PENDING_DEFAULT_MERGE_AND_PUBLICATION
 GATEWAY_RUNTIME_IMPLEMENTATION=OUTSIDE PROJECTION
 GATEWAY_IMPLEMENTATION_ORDER=AFTER M6 INTEGRATION CONTRACT DESIGN
 PROJECTION_M6_IMPLEMENTATION_ORDER=AFTER MINIMAL RUNNABLE GATEWAY HOST EXISTS

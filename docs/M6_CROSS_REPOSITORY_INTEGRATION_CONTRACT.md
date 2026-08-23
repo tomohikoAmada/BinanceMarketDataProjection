@@ -20,9 +20,10 @@ The freeze was reviewed against these exact `main` baselines:
 | `BinanceMarketDataContracts` | `4068bdc865a30b0d513ea40298660e9883896ce5` |
 | `BinanceMarketDataRecorder` | `23e0a2164431d78bbc2425872559e794053c5350` |
 
-The Contracts prerequisite was re-reviewed after the freeze against Contracts main
-`6cc80249beb9cbed350eb04828cda128d853652c` (Contracts PR #9). This is the current prerequisite
-implementation baseline; the table above remains the historical design-freeze baseline.
+A public Contracts PR #16 candidate at
+`9c34199f42467b92a4380c6e88617dde0e54ae13` was exercised after the freeze. It includes the
+dependent PR #18 changes and is candidate implementation evidence only, not Contracts `main`, a
+published package, or a replacement for the historical design-freeze baseline above.
 
 Semantic authority is applied in this order:
 
@@ -210,11 +211,11 @@ generation.
 `connection_generation` has an important presence rule. If one upstream source
 uniquely applies to the published item, expose that source's generation. If no
 unique upstream source applies, the wire contract must express **N/A**. Never
-fabricate a generation merely to populate a mandatory field. The exact Contracts
-Proto3 presence correction is implemented on Contracts main
-`6cc80249beb9cbed350eb04828cda128d853652c` through optional Gateway delivery metadata. The
-original freeze's required Contracts correction is therefore resolved at the implementation
-level; formal package release remains pending.
+fabricate a generation merely to populate a mandatory field. The exact Contracts Proto3 presence
+correction is demonstrated by the public PR #16 candidate
+`9c34199f42467b92a4380c6e88617dde0e54ae13` through optional Gateway delivery metadata. The
+original freeze's required correction is therefore resolved in the candidate only; default-branch
+merge and formal package release remain pending.
 
 `CONTIGUOUS_EVENTS` means no silent loss inside the Gateway's ordered consumer
 delivery session. It does not mean a global Binance sequence across multiple
@@ -306,11 +307,13 @@ CONTRACTS_CPP_GRPC_PREREQUISITE=YES
 
 At the historical reviewed Contracts baseline, `BinanceMarketDataContracts::Protobuf` was a
 message-only C++ package and did not generate or export C++ bindings for
-`gateway/v1/gateway_service.proto`. Contracts main
-`6cc80249beb9cbed350eb04828cda128d853652c` now provides the separate
-`BinanceMarketDataContracts::Grpc` component with the Contracts-owned service/stub bindings.
-This resolves the implementation prerequisite; formal package revision assignment and
-publication remain pending. Projection must not copy the service definitions.
+`gateway/v1/gateway_service.proto`. The PR #16 candidate keeps that message-only boundary as
+`binance-market-data-contracts-cpp/0.1.0#53713fb82c27cf6ea0395f6b8a853006` and provides the
+Contracts-owned service/stub bindings separately as
+`binance-market-data-contracts-grpc-cpp/0.1.0#c3661aa735e1eb6450c1a93f635dbc20` with target
+`BinanceMarketDataContracts::Grpc`. This demonstrates the implementation prerequisite without
+making the candidate source or RREVs a formal publication claim. Projection must continue to pin
+only the message artifact and must not copy the service definitions.
 
 ## Recorder boundary
 
@@ -344,12 +347,12 @@ is:
 
 | ID | Risk | Resolution owner |
 |---|---|---|
-| `M6-P1-001` | The Contracts Gateway wire must support absence of a unique applicable upstream `connection_generation`; a fabricated generation is invalid. | **RESOLVED in Contracts main `6cc8024`; formal package release pending** |
-| `M6-P1-003` | The reviewed Contracts C++ package lacks Gateway gRPC service bindings. | **RESOLVED in Contracts main `6cc8024`; formal package release pending** |
+| `M6-P1-001` | The Contracts Gateway wire must support absence of a unique applicable upstream `connection_generation`; a fabricated generation is invalid. | **RESOLVED in PR #16 candidate `9c34199`; default merge and formal package release pending** |
+| `M6-P1-003` | The reviewed Contracts C++ package lacks Gateway gRPC service bindings. | **RESOLVED in PR #16 candidate `9c34199`; default merge and formal package release pending** |
 
-The two blockers above are implementation-level resolutions verified against Contracts PR #9.
-They do not by themselves authorize M6 runtime work or establish a formally published Contracts
-package.
+The two blockers above are candidate-level resolutions verified against public Contracts PR #16.
+They do not by themselves authorize M6 runtime work or establish a default-merged or formally
+published Contracts package.
 
 The order-book publication cut is resolved by this design and is not an open P1.
 Market-state composition is deferred and nonblocking for the minimal runnable

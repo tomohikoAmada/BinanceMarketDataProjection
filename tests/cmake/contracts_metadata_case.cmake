@@ -20,7 +20,7 @@ set(BinanceMarketDataContracts_PROTOBUF_RUNTIME_COMPATIBILITY
 set(BinanceMarketDataContracts_PROTOBUF_RUNTIME_FLAVOR "full")
 set(BinanceMarketDataContracts_PROTOBUF_RUNTIME_LINKAGE "static")
 set(BinanceMarketDataContracts_CONTRACTS_SOURCE_REVISION
-    "6cc80249beb9cbed350eb04828cda128d853652c")
+    "9c34199f42467b92a4380c6e88617dde0e54ae13")
 
 if(CASE STREQUAL "baseline")
     set(BinanceMarketDataContracts_SCHEMA_BASELINE wrong)
