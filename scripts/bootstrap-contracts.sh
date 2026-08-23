@@ -5,6 +5,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 contracts_revision="9c34199f42467b92a4380c6e88617dde0e54ae13"
 contracts_rrev="53713fb82c27cf6ea0395f6b8a853006"
 contracts_dir="$repo_root/build/m4-prerequisite/contracts"
+export BMD_CONTRACTS_SOURCE_REVISION="$contracts_revision"
 export CONAN_HOME="$repo_root/.cache/conan2"
 export PIP_CACHE_DIR="$repo_root/.cache/pip"
 
