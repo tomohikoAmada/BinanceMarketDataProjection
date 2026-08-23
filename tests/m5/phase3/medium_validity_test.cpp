@@ -141,7 +141,10 @@ run_core(const replay::ReplayFixture& fixture,
 
 class TempDirectory final {
   public:
-    TempDirectory() : path_{std::filesystem::temp_directory_path() / "bmd-m5-med-tmp"} {
+    TempDirectory()
+        : path_{std::filesystem::temp_directory_path() /
+                (std::string{"bmd-m5-med-tmp-"} + current_test_suffix())} {
+        std::filesystem::remove_all(path_);
         std::filesystem::create_directories(path_);
     }
 
@@ -155,6 +158,28 @@ class TempDirectory final {
     [[nodiscard]] const std::filesystem::path& path() const noexcept { return path_; }
 
   private:
+    [[nodiscard]] static std::string current_test_suffix() {
+        const auto* const test_info = ::testing::UnitTest::GetInstance()->current_test_info();
+        if (test_info == nullptr) {
+            std::abort();
+        }
+
+        std::string suffix;
+        const auto append_component = [&suffix](std::string_view component) {
+            for (const char character : component) {
+                const bool ascii_alphanumeric = ('A' <= character && character <= 'Z') ||
+                                                ('a' <= character && character <= 'z') ||
+                                                ('0' <= character && character <= '9');
+                suffix.push_back(
+                    ascii_alphanumeric || character == '_' || character == '-' ? character : '_');
+            }
+        };
+        append_component(test_info->test_suite_name());
+        suffix += "__";
+        append_component(test_info->name());
+        return suffix;
+    }
+
     std::filesystem::path path_;
 };
 
