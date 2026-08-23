@@ -33,18 +33,82 @@ constexpr std::string_view kLocalOrderBookSnapshotSchema{"local-order-book-snaps
     return {code, field, detail};
 }
 
-[[nodiscard]] bool is_symbol(std::string_view value) noexcept {
-    if (value.size() < 2 || value.size() > 20) {
-        return false;
-    }
-    return std::ranges::all_of(value, [](char character) {
-        return (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9');
-    });
-}
-
 [[nodiscard]] constexpr bool is_ascii_whitespace(char value) noexcept {
     return value == ' ' || value == '\t' || value == '\n' || value == '\r' || value == '\f' ||
            value == '\v';
+}
+
+[[nodiscard]] constexpr bool is_safe_ascii_symbol_byte(unsigned char value) noexcept {
+    return value != 0U && value >= 0x20U && value != 0x7FU &&
+           !is_ascii_whitespace(static_cast<char>(value));
+}
+
+[[nodiscard]] constexpr std::size_t utf8_symbol_width(unsigned char lead) noexcept {
+    if (lead >= 0xC2U && lead <= 0xDFU) {
+        return 2;
+    }
+    if (lead >= 0xE0U && lead <= 0xEFU) {
+        return 3;
+    }
+    if (lead >= 0xF0U && lead <= 0xF4U) {
+        return 4;
+    }
+    return 0;
+}
+
+struct Utf8SymbolBoundary {
+    unsigned char lead;
+    std::size_t index;
+    std::size_t width;
+};
+
+[[nodiscard]] bool has_valid_utf8_symbol_boundaries(std::string_view value,
+                                                    Utf8SymbolBoundary boundary) noexcept {
+    const auto second = static_cast<unsigned char>(value[boundary.index + 1]);
+    if ((second & 0xC0U) != 0x80U) {
+        return false;
+    }
+    if ((boundary.lead == 0xE0U && second < 0xA0U) || (boundary.lead == 0xEDU && second > 0x9FU) ||
+        (boundary.lead == 0xF0U && second < 0x90U) || (boundary.lead == 0xF4U && second > 0x8FU)) {
+        return false;
+    }
+    for (std::size_t offset = 2; offset < boundary.width; ++offset) {
+        const auto continuation = static_cast<unsigned char>(value[boundary.index + offset]);
+        if ((continuation & 0xC0U) != 0x80U) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// R4 independently validates the same wire identity contract as production:
+// opaque exact bytes, strict UTF-8, and no NUL/control/ASCII-whitespace bytes.
+// This uses UTF-8 lead/second-byte boundary tables rather than production's
+// decoded-code-point/minimum algorithm, so the oracle does not share its bug.
+[[nodiscard]] bool is_symbol(std::string_view value) noexcept {
+    if (value.empty()) {
+        return false;
+    }
+
+    std::size_t index = 0;
+    while (index < value.size()) {
+        const auto lead = static_cast<unsigned char>(value[index]);
+        if (lead < 0x80U) {
+            if (!is_safe_ascii_symbol_byte(lead)) {
+                return false;
+            }
+            ++index;
+            continue;
+        }
+
+        const std::size_t width = utf8_symbol_width(lead);
+        if (width == 0 || value.size() - index < width ||
+            !has_valid_utf8_symbol_boundaries(value, {lead, index, width})) {
+            return false;
+        }
+        index += width;
+    }
+    return true;
 }
 
 [[nodiscard]] bool is_non_empty_text(std::string_view value) noexcept {

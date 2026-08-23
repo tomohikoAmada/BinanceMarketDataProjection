@@ -92,6 +92,12 @@ All notable changes will be recorded here.
 
 ### Changed
 
+- M4 ProtoAdapter and independent M5 R4 identity validation now accept opaque strictly valid UTF-8
+  symbols while rejecting NUL/ASCII-C0/DEL/ASCII-whitespace and malformed UTF-8 bytes. The unsupported
+  ASCII-uppercase/digit 2..20 grammar was removed; exact identity equality remains, and lowercase
+  stream-name routing remains Gateway responsibility. The accepted contract is recorded in
+  `docs/adr/ADR-0009-opaque-utf8-symbol-identity.md`.
+
 - Repaired the Phase-6 measurement contract after focused review: total logical-item reporting,
   explicit discarded warmup passes, prepared CandidateApplyUpdates and M4 checked-operation
   storage, adapter-path rebaseline, pre-parsed typed event latency, complete generated-workload
