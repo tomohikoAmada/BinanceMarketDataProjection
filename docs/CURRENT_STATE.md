@@ -129,9 +129,9 @@ Gateway. The candidate includes the dependent PR #18 changes, but neither prereq
 default-branch merge, published package, or formal release. The formal Contracts Package Revision
 remains `NOT_FORMALLY_ASSIGNED`.
 Projection Issues #46 (publication-status drift) and #47 (the cold message-only dependency graph)
-remain open. The PR #16 candidate demonstrates their intended resolution, while default merge,
-formal publication, and clean-cache Ubuntu evidence remain acceptance gates rather than claims made
-by this candidate.
+remain open. This Projection candidate, consuming public Contracts PR #16, demonstrates their
+intended resolution; default merge, formal publication, and clean-cache Ubuntu evidence remain
+acceptance gates rather than claims made by this candidate.
 `NEXT_POTENTIAL_ACTIVITY=CONTRACTS PACKAGE RELEASE/PUBLICATION OR GATEWAY PREREQUISITE`
 `M6_IMPLEMENTATION_STARTED=NO`; `GATEWAY_RUNTIME_PIPELINE_STARTED=NO`.
 Gateway runtime belongs in `BinanceMarketDataGateway`, not this repository. This documentation

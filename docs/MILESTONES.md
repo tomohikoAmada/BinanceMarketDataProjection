@@ -266,9 +266,10 @@ The PR #16 candidate resolves M6-P1-001 with optional Gateway delivery metadata
 `connection_generation` and M6-P1-003 with the separate
 `BinanceMarketDataContracts::Grpc` service/stub target. Its dependent PR #18 changes and PR #16
 still await default-branch integration; formal package revision assignment and publication also
-remain pending. Projection Issues #46 and #47 remain open until the candidate evidence is followed
-by real default-merge identities, formal publication, and the required clean-cache Ubuntu gate.
-M6 implementation and the Gateway runtime pipeline remain out of scope here.
+remain pending. Projection Issues #46 and #47 remain open: this Projection candidate consuming
+public Contracts PR #16 demonstrates their intended acceptance semantics, while real default-merge
+identities, formal publication, and the required clean-cache Ubuntu gate remain pending. M6
+implementation and the Gateway runtime pipeline remain out of scope here.
 
 ### Non-goals
 
