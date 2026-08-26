@@ -73,7 +73,7 @@ class BinanceMarketDataProjectionConan(ConanFile):
         toolchain.cache_variables["BMD_PROJECTION_BUILD_FUZZERS"] = False
         if self.options.proto_adapter:
             contracts = self.dependencies.host["binance-market-data-contracts-cpp"]
-            toolchain.cache_variables["BinanceMarketDataContracts_DIR"] = str(
+            toolchain.variables["BinanceMarketDataContracts_DIR"] = str(
                 Path(contracts.package_folder) / "lib" / "cmake" / "BinanceMarketDataContracts"
             )
         toolchain.generate()
