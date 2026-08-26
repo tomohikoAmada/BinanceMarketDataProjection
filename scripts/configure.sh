@@ -46,6 +46,16 @@ if [[ ! -f "$repo_root/conan.lock" ]]; then
     exit 1
 fi
 
+if [[ "$proto_adapter" == "True" ]]; then
+    contracts_revision="$(sed -n 's/^contracts_revision="\([0-9a-f]\{40\}\)"/\1/p' \
+        "$repo_root/scripts/bootstrap-contracts.sh")"
+    if [[ ! "$contracts_revision" =~ ^[0-9a-f]{40}$ ]]; then
+        echo "Cannot read the pinned Contracts source revision from scripts/bootstrap-contracts.sh" >&2
+        exit 1
+    fi
+    export BMD_CONTRACTS_SOURCE_REVISION="$contracts_revision"
+fi
+
 "$conan" install "$repo_root" \
     --output-folder="$repo_root/build/$preset" \
     --lockfile="$repo_root/conan.lock" \
