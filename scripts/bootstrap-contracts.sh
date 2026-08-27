@@ -2,9 +2,10 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-contracts_revision="67ee1bf69fad980d114cfa278c3a6ffe310a4d7a"
-contracts_rrev="7fd3efe3d289462fb16c78ffeced1682"
+contracts_revision="518880bdfa60948c3b65b6b3525d024526995166"
+contracts_rrev="53713fb82c27cf6ea0395f6b8a853006"
 contracts_dir="$repo_root/build/m4-prerequisite/contracts"
+export BMD_CONTRACTS_SOURCE_REVISION="$contracts_revision"
 export CONAN_HOME="$repo_root/.cache/conan2"
 export PIP_CACHE_DIR="$repo_root/.cache/pip"
 
@@ -53,6 +54,7 @@ if ! "$repo_root/.venv-tools/bin/python" "$repo_root/scripts/verify-contracts-pa
     "$conan" create "$contracts_dir" \
         --lockfile="$contracts_dir/conan.lock" \
         --build=missing \
+        --build='binance-market-data-contracts-cpp/*' \
         -s build_type=Release \
         -s compiler.cppstd=20
     "$conan" list \

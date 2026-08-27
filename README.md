@@ -2,7 +2,9 @@
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
 market-data projection core. M0-M4 are COMPLETE, M5 is COMPLETE, the M6 cross-repository contract
-design is COMPLETE, and M6 implementation/Gateway runtime are NOT STARTED.
+design is COMPLETE, and M6 implementation/Gateway runtime pipeline are NOT STARTED. Gateway G0 is
+complete, and Gateway G1 exact candidate dependency integration is merged on Gateway main at
+`04e7cc37622a5feb0e416bf75ba000f13aa7f62a`.
 
 ## For AI agents and independent reviewers
 
@@ -130,6 +132,13 @@ invocation. It also builds deterministic `LocalOrderBookSnapshot` values from Co
 Host identity, time, recovery, depth, and quality context. The adapter does not own clocks,
 networking, buffering, persistence, recovery orchestration, or gRPC. See [ADR-0006](docs/adr/ADR-0006-protobuf-adapter-boundary.md).
 
+The current repository-level package integration consumes the message-only artifact
+`binance-market-data-contracts-cpp/0.1.0` from Contracts main
+`518880bdfa60948c3b65b6b3525d024526995166`, with message RREV
+`53713fb82c27cf6ea0395f6b8a853006`. Projection does not depend on the separate Contracts gRPC
+artifact. Formal package publication/release is a later release concern, not a blocker for this
+Projection stage.
+
 ## Sanitizers and fuzz smoke
 
 ```bash
@@ -202,9 +211,11 @@ PR #42 corrected benchmark evidence provenance. It did **not** change Production
 See the [M5 phase records](docs/M5_PHASE1_CANONICAL_REPLAY.md) and
 [MILESTONES.md](docs/MILESTONES.md) for detailed historical provenance.
 
-The M6 cross-repository integration contract design is COMPLETE. M6 implementation and Gateway
-runtime are NOT STARTED, and Gateway runtime is outside this repository. The authoritative contract
-is [M6 Cross-Repository Integration](docs/M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md); its
+The M6 cross-repository integration contract design is COMPLETE. Gateway G0 is complete and Gateway
+G1 exact candidate dependency integration is merged on Gateway main at `04e7cc3`; neither is the
+Gateway runtime pipeline and neither starts Projection M6. M6 implementation and the Gateway
+runtime pipeline are NOT STARTED, and Gateway runtime is outside this repository. The authoritative contract is
+[M6 Cross-Repository Integration](docs/M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md); its
 sequence in [M6 Gateway Integration](docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md) still requires the
 Contracts prerequisite stages plus explicit owner authorization and is not an implementation
 authorization.

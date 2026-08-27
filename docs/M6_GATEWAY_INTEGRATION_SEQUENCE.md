@@ -6,7 +6,9 @@ M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_DESIGN=COMPLETE_CONTRACT_ONLY
 M6_IMPLEMENTATION=NOT STARTED
 GATEWAY_RUNTIME=NOT IMPLEMENTED IN THIS REPOSITORY
-GATEWAY_IMPLEMENTATION_STARTED=NO
+GATEWAY_G0_FOUNDATION=COMPLETE
+GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED_AT_04e7cc37622a5feb0e416bf75ba000f13aa7f62a
+GATEWAY_RUNTIME_PIPELINE_STARTED=NO
 OWNER_EXPLICIT_START_REQUIRED=YES
 ```
 
@@ -24,6 +26,16 @@ It is NOT:
 
 Those remain later implementation design work and are not authorized by this
 documentation freeze.
+
+## Current execution status
+
+The Contracts prerequisite is complete on Contracts main
+`518880bdfa60948c3b65b6b3525d024526995166`. Gateway G0 is complete, and G1 exact candidate
+dependency integration is merged on Gateway main at
+`04e7cc37622a5feb0e416bf75ba000f13aa7f62a`. These are prerequisite/foundation states, not the
+Gateway runtime pipeline. Projection M6 real-Gateway integration remains **NOT STARTED**.
+Formal package publication/release remains a separate future release concern and is not a blocker
+for closing the current repository-level Projection stage.
 
 ## Approved development order
 
@@ -116,9 +128,10 @@ M6_PLANNING_AUTHORIZED=YES
 ```
 
 `DEVELOP_GATEWAY_FIRST=YES` describes sequencing after the M6 integration-contract and any
-required prerequisite stages, followed by explicit project-owner authorization. It does not
-authorize Gateway implementation now. M6 contract design is complete; M6 implementation and
-Gateway implementation remain not started.
+required prerequisite stages, followed by explicit project-owner authorization. The Gateway G0
+foundation is complete and G1 exact candidate dependency integration is merged on Gateway main;
+they own no Projection runtime and do not authorize the Gateway runtime pipeline. M6 implementation
+and that runtime pipeline remain not started.
 
 Projection remains strategy-independent, deterministic, replayable,
 single-writer, and embedded. It does not own WebSocket clients, REST clients,

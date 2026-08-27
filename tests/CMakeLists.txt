@@ -533,6 +533,12 @@ add_test(
             -p test_compare_manifest.py
 )
 add_test(
+    NAME contracts_build_script_tests
+    COMMAND ${Python3_EXECUTABLE} -m unittest discover
+            -s ${CMAKE_CURRENT_SOURCE_DIR}
+            -p test_bootstrap_contracts.py
+)
+add_test(
     NAME m5_benchmark_validator_tests
     COMMAND ${Python3_EXECUTABLE} -m unittest discover
             -s ${CMAKE_CURRENT_SOURCE_DIR}/m5/benchmark

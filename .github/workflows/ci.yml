@@ -50,6 +50,42 @@ jobs:
       - name: Deterministic toolchain identity tests
         run: bash scripts/test-quality-toolchain.sh
 
+  conan-package-regression:
+    name: Conan package regression (Release static ProtoAdapter)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CC: gcc
+      CXX: g++
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EVIDENCE_SHA }}
+      - name: Verify checkout identity
+        run: |
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$EVIDENCE_SHA" || {
+            echo "CHECKOUT MISMATCH: expected=$EVIDENCE_SHA actual=$actual" >&2
+            exit 1
+          }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Bootstrap repository-local Conan
+        run: bash scripts/bootstrap.sh
+      - name: Bootstrap pinned Contracts package
+        run: bash scripts/bootstrap-contracts.sh
+      - name: Create and consume the static ProtoAdapter package
+        run: >-
+          .venv-tools/bin/conan create .
+          --lockfile=conan.lock
+          --build=missing
+          -s build_type=Release
+          -s compiler.cppstd=20
+          -o 'binance-market-data-projection/*:shared=False'
+          -o 'binance-market-data-projection/*:proto_adapter=True'
+          -o 'binance-market-data-contracts-cpp/*:shared=False'
+
   build-matrix:
     name: release (${{ matrix.name }})
     strategy:
@@ -236,7 +272,11 @@ jobs:
           print("benchmark smoke outputs and provenance PASS")
           PY
       - name: Upload benchmark smoke artifact
-        if: always()
+        # A cancelled cold dependency bootstrap may produce no result files. Do not turn that
+        # primary cancellation into a misleading secondary upload failure; when any output exists,
+        # retain the upload and let the fail-closed provenance/benchmark validation report real
+        # missing or invalid outputs.
+        if: always() && hashFiles('build/benchmark/phase6-smoke-results/benchmarks.json', 'build/benchmark/phase6-smoke-results/benchmarks-wrapper.json', 'build/benchmark/phase6-smoke-results/latency.json', 'build/benchmark/phase6-smoke-results/latency-wrapper.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: m5-benchmark-smoke-ubuntu-clang-${{ steps.benchmark_sha.outputs.short }}

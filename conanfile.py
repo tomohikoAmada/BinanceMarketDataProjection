@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from conan import ConanFile
-from conan.tools.cmake import CMakeDeps, CMakeToolchain, cmake_layout
+from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
 
 
 class BinanceMarketDataProjectionConan(ConanFile):
@@ -20,6 +20,21 @@ class BinanceMarketDataProjectionConan(ConanFile):
         "fPIC": True,
         "proto_adapter": False,
     }
+    exports_sources = (
+        "CMakeLists.txt",
+        "cmake/BinanceMarketDataProjectionConfig.cmake.in",
+        "cmake/CompilerWarnings.cmake",
+        "cmake/Coverage.cmake",
+        "cmake/Sanitizers.cmake",
+        "cmake/StaticAnalysis.cmake",
+        "cmake/ValidateContractsMetadata.cmake",
+        "include/**",
+        "src/numeric/*.cpp",
+        "src/order_book/*.cpp",
+        "src/projection_state/*.cpp",
+        "src/proto_adapter/*.cpp",
+        "src/version.cpp",
+    )
 
     def configure(self):
         if self.options.proto_adapter:
@@ -28,7 +43,7 @@ class BinanceMarketDataProjectionConan(ConanFile):
     def requirements(self):
         if self.options.proto_adapter:
             self.requires(
-                "binance-market-data-contracts-cpp/0.1.0#7fd3efe3d289462fb16c78ffeced1682",
+                "binance-market-data-contracts-cpp/0.1.0#53713fb82c27cf6ea0395f6b8a853006",
                 transitive_headers=True,
                 transitive_libs=True,
             )
@@ -51,11 +66,45 @@ class BinanceMarketDataProjectionConan(ConanFile):
 
         toolchain = CMakeToolchain(self)
         toolchain.user_presets_path = False
-        toolchain.variables["BUILD_SHARED_LIBS"] = self.options.shared
-        toolchain.variables["BMD_PROJECTION_BUILD_PROTO_ADAPTER"] = self.options.proto_adapter
+        toolchain.cache_variables["BUILD_SHARED_LIBS"] = self.options.shared
+        toolchain.cache_variables["BMD_PROJECTION_BUILD_PROTO_ADAPTER"] = self.options.proto_adapter
+        toolchain.cache_variables["BMD_PROJECTION_BUILD_TESTS"] = False
+        toolchain.cache_variables["BMD_PROJECTION_BUILD_BENCHMARKS"] = False
+        toolchain.cache_variables["BMD_PROJECTION_BUILD_FUZZERS"] = False
         if self.options.proto_adapter:
             contracts = self.dependencies.host["binance-market-data-contracts-cpp"]
             toolchain.variables["BinanceMarketDataContracts_DIR"] = str(
                 Path(contracts.package_folder) / "lib" / "cmake" / "BinanceMarketDataContracts"
             )
         toolchain.generate()
+
+    def build(self):
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
+
+    def package(self):
+        cmake = CMake(self)
+        cmake.install()
+
+    def package_info(self):
+        # The project installs the canonical component-aware config. CMakeDeps
+        # must not generate a competing package config for consumers.
+        self.cpp_info.set_property("cmake_find_mode", "none")
+        self.cpp_info.set_property("cmake_file_name", "BinanceMarketDataProjection")
+        self.cpp_info.builddirs.append("lib/cmake/BinanceMarketDataProjection")
+
+        core = self.cpp_info.components["Core"]
+        core.libs = ["bmd_projection_core"]
+        core.set_property("cmake_target_name", "BinanceMarketDataProjection::Core")
+
+        if self.options.proto_adapter:
+            proto_adapter = self.cpp_info.components["ProtoAdapter"]
+            proto_adapter.libs = ["bmd_projection_proto_adapter"]
+            proto_adapter.requires = [
+                "Core",
+                "binance-market-data-contracts-cpp::Protobuf",
+            ]
+            proto_adapter.set_property(
+                "cmake_target_name", "BinanceMarketDataProjection::ProtoAdapter"
+            )

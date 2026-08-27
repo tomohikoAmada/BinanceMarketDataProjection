@@ -9,7 +9,10 @@
 - `KEEP_STD_MAP`: accepted; no production container migration was made.
 - M6 cross-repository integration contract design: **COMPLETE**.
 - M6 implementation: **NOT STARTED**.
-- Gateway implementation/runtime: **NOT STARTED** and outside this repository.
+- Gateway G0 foundation: **COMPLETE**.
+- Gateway G1 exact candidate dependency integration: **MERGED** on Gateway main at
+  `04e7cc37622a5feb0e416bf75ba000f13aa7f62a`.
+- Gateway runtime pipeline: **NOT STARTED** and outside this repository.
 
 The detailed M5 acceptance, evidence, and historical provenance remain in the linked phase
 documents and accepted ADRs below. This ledger does not authorize M6 or Gateway implementation;
@@ -247,12 +250,30 @@ owning M1/M2/M3 inputs and converts `BookProjection` plus explicit Host context 
 External architecture review Round 2: **APPROVED**. Round 1 findings are **3 CLOSED** and
 architecture blocking findings are **0**.
 
-The merged C-M4-001 prerequisite at `67ee1bf69fad980d114cfa278c3a6ffe310a4d7a`
-provides `binance-market-data-contracts-cpp/0.1.0` and
-`BinanceMarketDataContracts::Protobuf`. Projection pins Conan RREV
-`7fd3efe3d289462fb16c78ffeced1682`, validates the approved schema/runtime metadata at configure
-time, and implements the optional `BinanceMarketDataProjection::ProtoAdapter` component without
-changing Core. The formal Contracts Package Revision remains `NOT_FORMALLY_ASSIGNED` until release.
+The merged C-M4-001 prerequisite was originally accepted against source revision
+`67ee1bf69fad980d114cfa278c3a6ffe310a4d7a` and Conan RREV
+`7fd3efe3d289462fb16c78ffeced1682`; that M4 acceptance provenance remains historical. The
+Historical GW-PREQ-001 candidate evidence used public
+Contracts PR #16 source revision `9c34199f42467b92a4380c6e88617dde0e54ae13`. Projection pins
+only the message artifact
+`binance-market-data-contracts-cpp/0.1.0#53713fb82c27cf6ea0395f6b8a853006` and target
+`BinanceMarketDataContracts::Protobuf`; Gateway separately consumes
+`binance-market-data-contracts-grpc-cpp/0.1.0#c3661aa735e1eb6450c1a93f635dbc20` and target
+`BinanceMarketDataContracts::Grpc`. Projection continues to validate the approved schema/runtime
+metadata and keeps `BinanceMarketDataProjection::ProtoAdapter` semantically unchanged. These
+candidate identities are historical, not Contracts `main`, publication, or formal release evidence.
+
+Subsequent current status: Contracts PR #16 and its dependent PR #18 changes are merged into
+Contracts main `518880bdfa60948c3b65b6b3525d024526995166`. The current Projection integration
+consumes the message-only artifact at RREV `53713fb82c27cf6ea0395f6b8a853006`; the separate gRPC
+artifact is not a Projection dependency. This merged source resolves M6-P1-001 with optional
+Gateway delivery metadata
+`connection_generation` and M6-P1-003 with the separate
+`BinanceMarketDataContracts::Grpc` service/stub target. Formal package publication/release remains
+a separate future release concern, not a blocker for closing this repository-level Projection
+stage. Projection Issues #46 and #47 remain open; their resolution is carried by PR #45 and issue
+closure occurs when PR #45 merges. M6 implementation and the Gateway runtime pipeline remain out
+of scope here.
 
 ### Non-goals
 
@@ -525,7 +546,6 @@ strategy, risk, trading, persistence, Python binding, or production container mi
    Replay/differential/fuzz validation; benchmark with representative workloads.
 7. **M6 Gateway Integration — CONTRACT DESIGN COMPLETE; IMPLEMENTATION NOT STARTED** — The
    cross-repository contract is frozen; this is not Gateway runtime implementation inside Projection.
-8. **M7 Platform Hardening and Acceptance** — Harden architectures, toolchains; end-to-end acceptance.
 
 ### Cross-cutting concerns
 
@@ -618,14 +638,23 @@ PHASE11_NEW_CURRENT_P2=0
 PHASE11_INFO=2
 M5_COMPLETE_AUTHORIZED=YES
 M5_COMPLETE_RECORDED=YES
-NEXT_POTENTIAL_ACTIVITY=CONTRACTS GATEWAY DRAFT SEMANTIC CORRECTION
+CURRENT_PROJECTION_STAGE=PACKAGE/DEPENDENCY FINALIZATION AND DOCUMENTATION CLOSURE
+NEXT_POTENTIAL_ACTIVITY=GATEWAY DEVELOPMENT AFTER THE ACCEPTED INTEGRATION GATE
 M6_GATEWAY_INTEGRATION=NOT STARTED
 M6_PLANNING_AUTHORIZED=YES
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_DESIGN=COMPLETE_CONTRACT_ONLY
 M6_IMPLEMENTATION=NOT STARTED
+CONTRACTS_MAIN=518880bdfa60948c3b65b6b3525d024526995166
+CONTRACTS_MESSAGE_RREV=53713fb82c27cf6ea0395f6b8a853006
+M6_P1_001=RESOLVED_IN_CONTRACTS_MAIN
+M6_P1_003=RESOLVED_IN_CONTRACTS_MAIN
+M6_CONTRACTS_PACKAGE_PUBLICATION=SEPARATE_FUTURE_RELEASE_CONCERN_NOT_STAGE_BLOCKER
+GATEWAY_G0_FOUNDATION=COMPLETE
+GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED_AT_04e7cc37622a5feb0e416bf75ba000f13aa7f62a
 GATEWAY_RUNTIME_IMPLEMENTATION=OUTSIDE PROJECTION
-GATEWAY_IMPLEMENTATION_ORDER=AFTER M6 INTEGRATION CONTRACT DESIGN
+GATEWAY_RUNTIME_PIPELINE=NOT_STARTED
+GATEWAY_RUNTIME_IMPLEMENTATION_ORDER=AFTER M6 INTEGRATION CONTRACT DESIGN
 PROJECTION_M6_IMPLEMENTATION_ORDER=AFTER MINIMAL RUNNABLE GATEWAY HOST EXISTS
 ```
 
@@ -701,10 +730,12 @@ accepted. See `docs/M5_PHASE11_FINAL_IMPLEMENTATION_REVIEW.md`.
 ## M6 Gateway Integration — CONTRACT DESIGN COMPLETE; IMPLEMENTATION NOT STARTED
 
 Planning is AUTHORIZED; the cross-repository integration contract design is
-COMPLETE and implementation is NOT STARTED. The authoritative freeze is
+COMPLETE and implementation is NOT STARTED. Gateway G0 is complete and G1 exact candidate
+dependency integration is merged on Gateway main at `04e7cc3`; this is not the Gateway runtime
+pipeline. The authoritative freeze is
 [`docs/M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md`](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md).
-Gateway runtime is developed in
-`BinanceMarketDataGateway`, not inside this repository. Projection M6 begins
+Gateway runtime is developed in `BinanceMarketDataGateway`, not inside this repository, and that
+pipeline remains NOT STARTED. Projection M6 begins
 only after a minimal runnable Gateway Host exists. The next prerequisite stages
 and sequence are in
 `docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md`.

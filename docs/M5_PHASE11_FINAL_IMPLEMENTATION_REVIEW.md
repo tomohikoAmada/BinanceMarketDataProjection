@@ -80,6 +80,8 @@ PRODUCTION_MIGRATION=NO
 ```
 
 This closure changes documentation governance only. It makes no code,
-configuration, workflow, benchmark, fuzzer, or methodology change. M6 planning
-is authorized only; M6 design, Gateway implementation, and Projection M6
-integration have not started.
+configuration, workflow, benchmark, fuzzer, or methodology change. At this Phase-11 closure, M6
+design, Gateway implementation, and Projection M6 integration had not started. Subsequently, the
+M6 contract design completed and the Gateway G0 resource-free foundation was implemented pending
+review in public Draft PR #2 at `8b70f35`; M6 implementation and the Gateway runtime pipeline remain
+not started.
