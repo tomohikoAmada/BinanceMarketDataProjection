@@ -5,6 +5,13 @@ REVIEWED_BASE_MAIN=59a7bca6a22e39a31323b221d18cfd4d5ac24b90
 REVIEWED_BASE_TREE=d18e4e66c3eb5972c3a96e6557f28fbf487468fd
 DOC_FREEZE_PR=44
 FULL_CI_RUN=NO
+CURRENT_TECHNICAL_CANDIDATE=4b01082fc31dfb3a24ec65542a7931eab8520f26
+TECHNICAL_REVIEW=APPROVED_FOR_DOCUMENTATION_ALIGNMENT
+TECHNICAL_REVIEW_FINDINGS=P0=0 P1=0 P2=0 P3=0
+TECHNICAL_CI_RUN=33059838857 SUCCESS
+CONTRACTS_MAIN=518880bdfa60948c3b65b6b3525d024526995166
+CONTRACTS_MESSAGE_RREV=53713fb82c27cf6ea0395f6b8a853006
+GATEWAY_MAIN=04e7cc37622a5feb0e416bf75ba000f13aa7f62a
 
 M0-M4=COMPLETE
 M5_PHASE1_11=COMPLETE
@@ -15,14 +22,14 @@ KEEP_STD_MAP
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_DESIGN=COMPLETE_CONTRACT_ONLY
 M6_IMPLEMENTATION=NOT STARTED
-GATEWAY_G0_FOUNDATION=IMPLEMENTED_PENDING_REVIEW_AT_DRAFT_PR2_8b70f35
+GATEWAY_G0_FOUNDATION=COMPLETE
+GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED
 GATEWAY_RUNTIME_PIPELINE=NOT_STARTED
-M6_CONTRACTS_PR16_CANDIDATE_HEAD=9c34199f42467b92a4380c6e88617dde0e54ae13
-M6_P1_001=RESOLVED_IN_PR16_CANDIDATE_PENDING_DEFAULT_MERGE_AND_PUBLICATION
-M6_P1_003=RESOLVED_IN_PR16_CANDIDATE_PENDING_DEFAULT_MERGE_AND_PUBLICATION
-M6_CONTRACTS_PACKAGE_PUBLICATION=PENDING
-PROJECTION_ISSUE_46=CANDIDATE_ACCEPTANCE_DEMONSTRATED_PENDING_MERGE_PUBLICATION_AND_FORMAL_CLOSE
-PROJECTION_ISSUE_47=CANDIDATE_ACCEPTANCE_DEMONSTRATED_PENDING_CLEAN_CACHE_UBUNTU_AND_FORMAL_CLOSE
+M6_P1_001=RESOLVED_IN_CONTRACTS_MAIN
+M6_P1_003=RESOLVED_IN_CONTRACTS_MAIN
+M6_CONTRACTS_PACKAGE_PUBLICATION=SEPARATE_FUTURE_RELEASE_CONCERN_NOT_STAGE_BLOCKER
+PROJECTION_ISSUE_46=OPEN_RESOLUTION_CARRIED_BY_PR45_CLOSURE_ON_MERGE
+PROJECTION_ISSUE_47=OPEN_RESOLUTION_CARRIED_BY_PR45_CLOSURE_ON_MERGE
 ```
 
 CURRENT_STATE is an orientation summary only. It does not override accepted ADRs, accepted
@@ -109,7 +116,8 @@ the historical superseded decision remains in [ADR-0005](adr/ADR-0005-market-spe
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_DESIGN_STARTED=YES_CONTRACT_ONLY
 M6_IMPLEMENTATION_STARTED=NO
-GATEWAY_G0_FOUNDATION=IMPLEMENTED_PENDING_REVIEW_AT_DRAFT_PR2_8b70f35
+GATEWAY_G0_FOUNDATION=COMPLETE
+GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED_AT_04e7cc37622a5feb0e416bf75ba000f13aa7f62a
 GATEWAY_RUNTIME_PIPELINE_STARTED=NO
 M6_PLANNING_AUTHORIZED=YES
 OWNER_EXPLICIT_START_REQUIRED=YES
@@ -118,21 +126,17 @@ OWNER_EXPLICIT_START_REQUIRED=YES
 M6 planning and the approved sequence are recorded in
 [`M6_GATEWAY_INTEGRATION_SEQUENCE.md`](M6_GATEWAY_INTEGRATION_SEQUENCE.md) and the completed
 [`M6 cross-repository integration contract`](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md).
-The contract design is complete. The Gateway G0 foundation is implemented pending review in public
-Draft PR #2 at `8b70f35`; its typed configuration and synchronous lifecycle seam contain no runtime
-resources. M6 implementation and the Gateway runtime pipeline remain **NOT STARTED**. The public
-Contracts PR #16 candidate at
-`9c34199f42467b92a4380c6e88617dde0e54ae13` demonstrates Gateway delivery metadata with absent
-`connection_generation`, a message-only `binance-market-data-contracts-cpp` artifact for
-Projection, and a separate `binance-market-data-contracts-grpc-cpp` service-binding artifact for
-Gateway. The candidate includes the dependent PR #18 changes, but neither prerequisite is a
-default-branch merge, published package, or formal release. The formal Contracts Package Revision
-remains `NOT_FORMALLY_ASSIGNED`.
-Projection Issues #46 (publication-status drift) and #47 (the cold message-only dependency graph)
-remain open. This Projection candidate, consuming public Contracts PR #16, demonstrates their
-intended resolution; default merge, formal publication, and clean-cache Ubuntu evidence remain
-acceptance gates rather than claims made by this candidate.
-`NEXT_POTENTIAL_ACTIVITY=CONTRACTS PACKAGE RELEASE/PUBLICATION OR GATEWAY PREREQUISITE`
+The contract design is complete. Gateway G0 is complete, and Gateway G1 exact candidate dependency
+integration is merged on Gateway main at `04e7cc37622a5feb0e416bf75ba000f13aa7f62a`; this is not
+the Gateway runtime pipeline. M6 implementation and the Gateway runtime pipeline remain
+**NOT STARTED**. The current Projection package integration consumes the message-only
+`binance-market-data-contracts-cpp/0.1.0` artifact from Contracts main
+`518880bdfa60948c3b65b6b3525d024526995166`, with message RREV
+`53713fb82c27cf6ea0395f6b8a853006`. The separate Contracts gRPC artifact is not a Projection
+dependency. Formal package publication/release is a separate future release concern, not a blocker
+for closing this repository-level Projection stage. Projection Issues #46 and #47 remain OPEN;
+their resolution is carried by PR #45 and issue closure occurs when PR #45 merges.
+`NEXT_POTENTIAL_ACTIVITY=GATEWAY DEVELOPMENT AFTER THE ACCEPTED INTEGRATION GATE`
 `M6_IMPLEMENTATION_STARTED=NO`; `GATEWAY_RUNTIME_PIPELINE_STARTED=NO`.
 Gateway runtime belongs in `BinanceMarketDataGateway`, not this repository. This documentation
 closure does not start M6 implementation or the Gateway runtime pipeline.

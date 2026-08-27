@@ -21,9 +21,22 @@ The freeze was reviewed against these exact `main` baselines:
 | `BinanceMarketDataRecorder` | `23e0a2164431d78bbc2425872559e794053c5350` |
 
 A public Contracts PR #16 candidate at
-`9c34199f42467b92a4380c6e88617dde0e54ae13` was exercised after the freeze. It includes the
-dependent PR #18 changes and is candidate implementation evidence only, not Contracts `main`, a
-published package, or a replacement for the historical design-freeze baseline above.
+`9c34199f42467b92a4380c6e88617dde0e54ae13` was exercised after the freeze. At that time it
+included the dependent PR #18 changes and was candidate implementation evidence only, not
+Contracts `main`, a published package, or a replacement for the historical design-freeze baseline
+above. It subsequently merged into Contracts main; the current package integration is recorded in
+the status sections below.
+
+### Subsequent current status
+
+Contracts PR #16 and its dependent PR #18 changes are now merged into Contracts main
+`518880bdfa60948c3b65b6b3525d024526995166`. Projection consumes the message-only artifact
+`binance-market-data-contracts-cpp/0.1.0` at message RREV
+`53713fb82c27cf6ea0395f6b8a853006`; the separate gRPC artifact is not a Projection dependency.
+The required M6 package-boundary and delivery-metadata semantics are therefore resolved in the
+merged source. Formal package publication/release remains a separate future release concern and
+is not a blocker for closing this repository-level Projection stage. Projection M6 implementation
+remains **NOT STARTED**.
 
 Semantic authority is applied in this order:
 
@@ -212,10 +225,11 @@ generation.
 uniquely applies to the published item, expose that source's generation. If no
 unique upstream source applies, the wire contract must express **N/A**. Never
 fabricate a generation merely to populate a mandatory field. The exact Contracts Proto3 presence
-correction is demonstrated by the public PR #16 candidate
+correction was demonstrated during the freeze follow-up by the public PR #16 candidate
 `9c34199f42467b92a4380c6e88617dde0e54ae13` through optional Gateway delivery metadata. The
-original freeze's required correction is therefore resolved in the candidate only; default-branch
-merge and formal package release remain pending.
+original freeze's required correction is now resolved in merged Contracts main
+`518880bdfa60948c3b65b6b3525d024526995166`; formal package release remains a separate future
+release concern.
 
 `CONTIGUOUS_EVENTS` means no silent loss inside the Gateway's ordered consumer
 delivery session. It does not mean a global Binance sequence across multiple
@@ -307,13 +321,14 @@ CONTRACTS_CPP_GRPC_PREREQUISITE=YES
 
 At the historical reviewed Contracts baseline, `BinanceMarketDataContracts::Protobuf` was a
 message-only C++ package and did not generate or export C++ bindings for
-`gateway/v1/gateway_service.proto`. The PR #16 candidate keeps that message-only boundary as
-`binance-market-data-contracts-cpp/0.1.0#53713fb82c27cf6ea0395f6b8a853006` and provides the
-Contracts-owned service/stub bindings separately as
+`gateway/v1/gateway_service.proto`. The PR #16 candidate subsequently demonstrated the required
+split: message artifact `binance-market-data-contracts-cpp/0.1.0#53713fb82c27cf6ea0395f6b8a853006`
+and separate Contracts-owned service/stub artifact
 `binance-market-data-contracts-grpc-cpp/0.1.0#c3661aa735e1eb6450c1a93f635dbc20` with target
-`BinanceMarketDataContracts::Grpc`. This demonstrates the implementation prerequisite without
-making the candidate source or RREVs a formal publication claim. Projection must continue to pin
-only the message artifact and must not copy the service definitions.
+`BinanceMarketDataContracts::Grpc`. The source is now merged in Contracts main
+`518880bdfa60948c3b65b6b3525d024526995166`; the message artifact remains the only Projection
+dependency, and Projection must not copy the service definitions. Formal publication/release is
+not claimed here and remains a separate future release concern.
 
 ## Recorder boundary
 
@@ -347,18 +362,18 @@ is:
 
 | ID | Risk | Resolution owner |
 |---|---|---|
-| `M6-P1-001` | The Contracts Gateway wire must support absence of a unique applicable upstream `connection_generation`; a fabricated generation is invalid. | **RESOLVED in PR #16 candidate `9c34199`; default merge and formal package release pending** |
-| `M6-P1-003` | The reviewed Contracts C++ package lacks Gateway gRPC service bindings. | **RESOLVED in PR #16 candidate `9c34199`; default merge and formal package release pending** |
+| `M6-P1-001` | The Contracts Gateway wire must support absence of a unique applicable upstream `connection_generation`; a fabricated generation is invalid. | **At freeze: resolved in PR #16 candidate `9c34199`; subsequently resolved in merged Contracts main `518880bd`** |
+| `M6-P1-003` | The reviewed Contracts C++ package lacks Gateway gRPC service bindings. | **At freeze: resolved in PR #16 candidate `9c34199`; subsequently resolved in merged Contracts main `518880bd`** |
 
-The two blockers above are candidate-level resolutions verified against public Contracts PR #16.
-They do not by themselves authorize M6 runtime work or establish a default-merged or formally
-published Contracts package.
+At freeze time, the two blockers above had candidate-level resolutions verified against public
+Contracts PR #16. Their required semantics and package boundary are now present in merged
+Contracts main. They do not authorize M6 runtime work or establish a formally published package.
 
 Projection Issue #46 tracks publication-status documentation and Issue #47 tracks exclusion of
-the gRPC dependency chain from a cold message-only Projection graph. Both remain open: this
-Projection candidate, consuming public Contracts PR #16, demonstrates the intended acceptance
-semantics, but clean-cache Ubuntu evidence, real default-merge identities, formal publication, and
-issue closure are still pending.
+the gRPC dependency chain from a cold message-only Projection graph. Both remain open; their
+resolution is carried by Projection PR #45 and issue closure occurs when PR #45 merges. Formal
+publication remains a separate future release concern and is not a blocker for this repository-level
+Projection stage.
 
 The order-book publication cut is resolved by this design and is not an open P1.
 Market-state composition is deferred and nonblocking for the minimal runnable
@@ -367,7 +382,10 @@ Gateway.
 ## Frozen implementation sequence
 
 This sequence is recorded for later authorization; this documentation task does
-not authorize steps 2 through 13:
+not authorize runtime implementation. Steps 1 through 3 are complete in the current cross-repository
+state; Gateway G0 is complete and Gateway G1 exact candidate dependency integration is merged on
+Gateway main at `04e7cc37622a5feb0e416bf75ba000f13aa7f62a`. Projection M6 real-Gateway integration
+remains not started.
 
 1. M6 cross-repository integration contract freeze.
 2. Contracts Gateway DRAFT semantic correction.
@@ -391,10 +409,11 @@ accepted with the following frozen conclusions:
 ```text
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_IMPLEMENTATION=NOT STARTED
-GATEWAY_G0_FOUNDATION=IMPLEMENTED_PENDING_REVIEW_AT_DRAFT_PR2_8b70f35
+GATEWAY_G0_FOUNDATION=COMPLETE
+GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED_AT_04e7cc37622a5feb0e416bf75ba000f13aa7f62a
 GATEWAY_RUNTIME_PIPELINE=NOT_STARTED
 PROJECTION_CODE_CHANGE_REQUIRED_BEFORE_GATEWAY=NO
-CONTRACTS_CHANGE_REQUIRED_BEFORE_GATEWAY=NO_IMPLEMENTATION_CHANGE; FORMAL_PACKAGE_RELEASE_PENDING
+CONTRACTS_CHANGE_REQUIRED_BEFORE_GATEWAY=NO_IMPLEMENTATION_CHANGE; FORMAL_PACKAGE_RELEASE_SEPARATE
 CONTRACTS_CPP_GRPC_PREREQUISITE=YES
 GATEWAY_IMPLEMENTATION_LANGUAGE=C++
 NEW_GATEWAY_PROJECTION_HOST_ABSTRACTION=NO
@@ -406,6 +425,6 @@ boundary, single-writer invariant, bootstrap/reconnect boundary, identity and
 ordering domains, snapshot publication cut, bounded delivery semantics,
 MarketState deferral, language choice, Contracts prerequisite, Recorder boundary,
 anti-overengineering limits, risks, and implementation order above are the M6
-contract. The Gateway G0 foundation is implemented pending review in public Draft PR #2 at
-`8b70f35`; that resource-free foundation is not a Gateway runtime pipeline and does not start M6.
+contract. The Gateway G0 foundation is complete and the G1 exact candidate dependency integration
+is merged on Gateway main; these are not a Gateway runtime pipeline and do not start Projection M6.
 No M6 runtime or Gateway runtime pipeline is claimed to exist.
