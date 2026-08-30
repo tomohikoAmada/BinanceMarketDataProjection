@@ -3,7 +3,9 @@
 - Status: **ACCEPTED DESIGN / DOCUMENTATION FREEZE**
 - Date: 2026-08-22
 - Scope: Projection-side cross-repository contract only
-- Implementation status: **NOT STARTED**
+- Cross-repository integration acceptance: **COMPLETE**
+- Projection production implementation change: **NOT REQUIRED**
+- Gateway implementation: **COMPLETE THROUGH G8 FOR THIS M6 BOUNDARY**
 
 This document freezes the accepted M6 integration contract between
 `BinanceMarketDataGateway`, `BinanceMarketDataContracts`, and
@@ -35,8 +37,12 @@ Contracts PR #16 and its dependent PR #18 changes are now merged into Contracts 
 `53713fb82c27cf6ea0395f6b8a853006`; the separate gRPC artifact is not a Projection dependency.
 The required M6 package-boundary and delivery-metadata semantics are therefore resolved in the
 merged source. Formal package publication/release remains a separate future release concern and
-is not a blocker for closing this repository-level Projection stage. Projection M6 implementation
-remains **NOT STARTED**.
+is not a blocker for closing this repository-level Projection stage. Projection M6 real-Gateway
+integration acceptance is **COMPLETE**; Projection production code was not changed.
+
+Current authority: Contracts main `518880bdfa60948c3b65b6b3525d024526995166`; Projection main
+`01a66aa80c764d2600da2cc3099c0fd69655b55c`; Gateway main
+`7b189b5caa805bc22ff8c7276a324681093da9fe`. Gateway G8 is complete and Gateway next is G9.
 
 Semantic authority is applied in this order:
 
@@ -370,8 +376,8 @@ Contracts PR #16. Their required semantics and package boundary are now present 
 Contracts main. They do not authorize M6 runtime work or establish a formally published package.
 
 Projection Issue #46 tracks publication-status documentation and Issue #47 tracks exclusion of
-the gRPC dependency chain from a cold message-only Projection graph. Both remain open; their
-resolution is carried by Projection PR #45 and issue closure occurs when PR #45 merges. Formal
+the gRPC dependency chain from a cold message-only Projection graph. Both were closed as completed
+on 2026-08-27 after the associated dependency/documentation closure. Formal
 publication remains a separate future release concern and is not a blocker for this repository-level
 Projection stage.
 
@@ -381,11 +387,11 @@ Gateway.
 
 ## Frozen implementation sequence
 
-This sequence is recorded for later authorization; this documentation task does
-not authorize runtime implementation. Steps 1 through 3 are complete in the current cross-repository
-state; Gateway G0 is complete and Gateway G1 exact candidate dependency integration is merged on
-Gateway main at `04e7cc37622a5feb0e416bf75ba000f13aa7f62a`. Projection M6 real-Gateway integration
-remains not started.
+This numbered sequence is preserved as historical design authority. Steps corresponding to
+runtime/network/recovery/rotation/bounded publication and `SubscribeOrderBook` are implemented;
+the M6 acceptance corresponding to step 13 was completed in Gateway G8. `SubscribeEvents` and
+`GetGatewayStatus` remain Gateway G9 and G10; their later implementation does not invalidate this
+completed M6 order-book acceptance, as independently reviewed.
 
 1. M6 cross-repository integration contract freeze.
 2. Contracts Gateway DRAFT semantic correction.
@@ -408,10 +414,16 @@ accepted with the following frozen conclusions:
 
 ```text
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
-M6_IMPLEMENTATION=NOT STARTED
+M6_IMPLEMENTATION=COMPLETE_THROUGH_REAL_GATEWAY_INTEGRATION
 GATEWAY_G0_FOUNDATION=COMPLETE
 GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED_AT_04e7cc37622a5feb0e416bf75ba000f13aa7f62a
-GATEWAY_RUNTIME_PIPELINE=NOT_STARTED
+GATEWAY_RUNTIME_PIPELINE=IMPLEMENTED_THROUGH_G8
+M6_REAL_GATEWAY_INTEGRATION_ACCEPTANCE=COMPLETE
+M6=COMPLETE
+GATEWAY_G8=COMPLETE
+GATEWAY_NEXT=G9
+PROJECTION_CODE_CHANGE_REQUIRED_FOR_M6_ACCEPTANCE=NO
+PROJECTION_PRODUCTION_CODE_CHANGED=NO
 PROJECTION_CODE_CHANGE_REQUIRED_BEFORE_GATEWAY=NO
 CONTRACTS_CHANGE_REQUIRED_BEFORE_GATEWAY=NO_IMPLEMENTATION_CHANGE; FORMAL_PACKAGE_RELEASE_SEPARATE
 CONTRACTS_CPP_GRPC_PREREQUISITE=YES
@@ -425,6 +437,6 @@ boundary, single-writer invariant, bootstrap/reconnect boundary, identity and
 ordering domains, snapshot publication cut, bounded delivery semantics,
 MarketState deferral, language choice, Contracts prerequisite, Recorder boundary,
 anti-overengineering limits, risks, and implementation order above are the M6
-contract. The Gateway G0 foundation is complete and the G1 exact candidate dependency integration
-is merged on Gateway main; these are not a Gateway runtime pipeline and do not start Projection M6.
-No M6 runtime or Gateway runtime pipeline is claimed to exist.
+contract. Gateway G0 through G8 are complete on Gateway; G8 added acceptance/test composition only and did
+not modify G3-G7 production source. No new Projection runtime or Gateway-to-Projection abstraction
+was added.

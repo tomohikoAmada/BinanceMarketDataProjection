@@ -11,7 +11,7 @@ TECHNICAL_REVIEW_FINDINGS=P0=0 P1=0 P2=0 P3=0
 TECHNICAL_CI_RUN=33059838857 SUCCESS
 CONTRACTS_MAIN=518880bdfa60948c3b65b6b3525d024526995166
 CONTRACTS_MESSAGE_RREV=53713fb82c27cf6ea0395f6b8a853006
-GATEWAY_MAIN=04e7cc37622a5feb0e416bf75ba000f13aa7f62a
+GATEWAY_MAIN=7b189b5caa805bc22ff8c7276a324681093da9fe
 
 M0-M4=COMPLETE
 M5_PHASE1_11=COMPLETE
@@ -21,15 +21,20 @@ KEEP_STD_MAP
 
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_DESIGN=COMPLETE_CONTRACT_ONLY
-M6_IMPLEMENTATION=NOT STARTED
+M6_IMPLEMENTATION=COMPLETE_THROUGH_REAL_GATEWAY_INTEGRATION
 GATEWAY_G0_FOUNDATION=COMPLETE
 GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED
-GATEWAY_RUNTIME_PIPELINE=NOT_STARTED
+GATEWAY_RUNTIME_PIPELINE=IMPLEMENTED_THROUGH_G8
+GATEWAY_G8=COMPLETE
+GATEWAY_NEXT=G9
+M6_REAL_GATEWAY_INTEGRATION_ACCEPTANCE=COMPLETE
+M6=COMPLETE
+PROJECTION_PRODUCTION_CODE_CHANGED_BY_M6=NO
 M6_P1_001=RESOLVED_IN_CONTRACTS_MAIN
 M6_P1_003=RESOLVED_IN_CONTRACTS_MAIN
 M6_CONTRACTS_PACKAGE_PUBLICATION=SEPARATE_FUTURE_RELEASE_CONCERN_NOT_STAGE_BLOCKER
-PROJECTION_ISSUE_46=OPEN_RESOLUTION_CARRIED_BY_PR45_CLOSURE_ON_MERGE
-PROJECTION_ISSUE_47=OPEN_RESOLUTION_CARRIED_BY_PR45_CLOSURE_ON_MERGE
+PROJECTION_ISSUE_46=CLOSED_COMPLETED_2026-08-27
+PROJECTION_ISSUE_47=CLOSED_COMPLETED_2026-08-27
 ```
 
 CURRENT_STATE is an orientation summary only. It does not override accepted ADRs, accepted
@@ -110,36 +115,37 @@ phase-specific documents:
 The accepted semantic correction for Spot successor coverage is [ADR-0008](adr/ADR-0008-spot-bootstrap-successor-coverage.md);
 the historical superseded decision remains in [ADR-0005](adr/ADR-0005-market-specific-sequence-policy.md).
 
-## M6 and Gateway start control
+## M6 and Gateway integration closure
 
 ```text
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_DESIGN_STARTED=YES_CONTRACT_ONLY
-M6_IMPLEMENTATION_STARTED=NO
+M6_IMPLEMENTATION_STARTED=YES_IN_GATEWAY_G8
 GATEWAY_G0_FOUNDATION=COMPLETE
 GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED_AT_04e7cc37622a5feb0e416bf75ba000f13aa7f62a
-GATEWAY_RUNTIME_PIPELINE_STARTED=NO
+GATEWAY_RUNTIME_PIPELINE_STARTED=YES_THROUGH_G8
 M6_PLANNING_AUTHORIZED=YES
-OWNER_EXPLICIT_START_REQUIRED=YES
+GATEWAY_G8=COMPLETE
+GATEWAY_NEXT=G9
+M6_REAL_GATEWAY_INTEGRATION_ACCEPTANCE=COMPLETE
+PROJECTION_PRODUCTION_CODE_CHANGED_BY_M6=NO
 ```
 
 M6 planning and the approved sequence are recorded in
 [`M6_GATEWAY_INTEGRATION_SEQUENCE.md`](M6_GATEWAY_INTEGRATION_SEQUENCE.md) and the completed
 [`M6 cross-repository integration contract`](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md).
-The contract design is complete. Gateway G0 is complete, and Gateway G1 exact candidate dependency
-integration is merged on Gateway main at `04e7cc37622a5feb0e416bf75ba000f13aa7f62a`; this is not
-the Gateway runtime pipeline. M6 implementation and the Gateway runtime pipeline remain
-**NOT STARTED**. The current Projection package integration consumes the message-only
+The contract design is complete. Gateway G0 through G8 are complete, and Gateway G8 is the
+accepted real-Gateway Projection M6 order-book integration boundary. Gateway implementation and
+runtime pipeline are in `BinanceMarketDataGateway`, whose current authority is
+`7b189b5caa805bc22ff8c7276a324681093da9fe`; no Projection production code change was required.
+The current Projection package integration consumes the message-only
 `binance-market-data-contracts-cpp/0.1.0` artifact from Contracts main
 `518880bdfa60948c3b65b6b3525d024526995166`, with message RREV
 `53713fb82c27cf6ea0395f6b8a853006`. The separate Contracts gRPC artifact is not a Projection
 dependency. Formal package publication/release is a separate future release concern, not a blocker
-for closing this repository-level Projection stage. Projection Issues #46 and #47 remain OPEN;
-their resolution is carried by PR #45 and issue closure occurs when PR #45 merges.
-`NEXT_POTENTIAL_ACTIVITY=GATEWAY DEVELOPMENT AFTER THE ACCEPTED INTEGRATION GATE`
-`M6_IMPLEMENTATION_STARTED=NO`; `GATEWAY_RUNTIME_PIPELINE_STARTED=NO`.
-Gateway runtime belongs in `BinanceMarketDataGateway`, not this repository. This documentation
-closure does not start M6 implementation or the Gateway runtime pipeline.
+for closing this repository-level Projection stage. Issues #46 and #47 were closed as completed
+on 2026-08-27. Gateway runtime belongs in `BinanceMarketDataGateway`, not this repository.
+Gateway next work is G9 `SubscribeEvents`; G9 and G10 were not prerequisites for M6 acceptance.
 
 ## Authority model
 
