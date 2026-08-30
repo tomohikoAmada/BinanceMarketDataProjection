@@ -43,7 +43,7 @@ M5 is COMPLETE, including Phase 11 independent final implementation review appro
 M5 performance operation remains active as exploratory, nonblocking reporting; it does not change
 the production `std::map` / `KEEP_STD_MAP` decision.
 
-BinanceMarketDataGateway is the future real runtime module and Host. It may embed Projection, but
+BinanceMarketDataGateway is the implemented real runtime module and Host. It may embed Projection, but
 Projection does not embed or own Gateway. Gateway owns transport and runtime concerns such as
 Binance WebSocket and REST access, connection and session lifecycle, snapshot/bootstrap handoff,
 reconnect/resync orchestration, queues, backpressure, slow-consumer isolation, threading, gRPC
@@ -69,7 +69,15 @@ Host; Projection remains the strategy-independent, deterministic, replayable, si
 embedded C++20 library. M6 verifies that a real Gateway Host can correctly embed and drive that
 library; it does not implement Gateway runtime inside Projection. The detailed frozen
 cross-repository contract is [M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md](docs/M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md);
-its acceptance does not start M6 implementation.
+The original contract freeze did not itself start M6 implementation; M6 is now complete through
+real Gateway integration acceptance in Gateway G8. That acceptance required no Projection
+production change.
+
+G8 composes the existing G3-G7 production components at the accepted cross-repository boundary.
+It proves consumer-visible Projection NeedsResync, G5 recovery/rebootstrap, G6 planned
+rotation/rebootstrap, fresh resubscription, generation provenance, session sequencing, and final
+shutdown. It does not create a production G8 runtime layer, second order book, sequence classifier,
+recovery coordinator, or new host abstraction.
 
 M5 (Differential Validation and Performance) is COMPLETE and validation-only. Its replay,
 differential/reference, cross-compiler manifest, fuzzing, benchmark, allocation/memory,

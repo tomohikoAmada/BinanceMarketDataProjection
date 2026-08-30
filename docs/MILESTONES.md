@@ -8,15 +8,16 @@
 - PR #42 corrective closure: **COMPLETE**; Production Core semantics were unchanged.
 - `KEEP_STD_MAP`: accepted; no production container migration was made.
 - M6 cross-repository integration contract design: **COMPLETE**.
-- M6 implementation: **NOT STARTED**.
+- M6 real-Gateway integration acceptance: **COMPLETE**.
 - Gateway G0 foundation: **COMPLETE**.
 - Gateway G1 exact candidate dependency integration: **MERGED** on Gateway main at
   `04e7cc37622a5feb0e416bf75ba000f13aa7f62a`.
-- Gateway runtime pipeline: **NOT STARTED** and outside this repository.
+- Gateway G0-G8: **COMPLETE**; runtime pipeline implemented through G8 outside this repository.
+- Gateway G8 is the accepted Projection M6 real-Gateway integration acceptance; Gateway NEXT=G9.
 
 The detailed M5 acceptance, evidence, and historical provenance remain in the linked phase
-documents and accepted ADRs below. This ledger does not authorize M6 or Gateway implementation;
-the approved sequence and owner start control are in
+documents and accepted ADRs below. M6 design and real-Gateway acceptance are complete; the
+approved ownership sequence remains in
 [`docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md`](M6_GATEWAY_INTEGRATION_SEQUENCE.md).
 
 ## M0 Repository Foundation — COMPLETE
@@ -544,8 +545,9 @@ strategy, risk, trading, persistence, Python binding, or production container mi
    `ac780d9eb7b49ff20a6b3b4bee6a993b51b70af4`; main CI `31242162782` — 16/16 PASS.
 6. **M5 Differential Validation and Performance — COMPLETE** —
    Replay/differential/fuzz validation; benchmark with representative workloads.
-7. **M6 Gateway Integration — CONTRACT DESIGN COMPLETE; IMPLEMENTATION NOT STARTED** — The
-   cross-repository contract is frozen; this is not Gateway runtime implementation inside Projection.
+7. **M6 Gateway Integration — COMPLETE** — The cross-repository contract is frozen and the
+   real-Gateway order-book integration acceptance was completed by Gateway G8. This is not
+   Gateway runtime implementation inside Projection.
 
 ### Cross-cutting concerns
 
@@ -638,13 +640,13 @@ PHASE11_NEW_CURRENT_P2=0
 PHASE11_INFO=2
 M5_COMPLETE_AUTHORIZED=YES
 M5_COMPLETE_RECORDED=YES
-CURRENT_PROJECTION_STAGE=PACKAGE/DEPENDENCY FINALIZATION AND DOCUMENTATION CLOSURE
-NEXT_POTENTIAL_ACTIVITY=GATEWAY DEVELOPMENT AFTER THE ACCEPTED INTEGRATION GATE
-M6_GATEWAY_INTEGRATION=NOT STARTED
+CURRENT_PROJECTION_STAGE=M6_REAL_GATEWAY_INTEGRATION_ACCEPTANCE_COMPLETE
+NEXT_POTENTIAL_ACTIVITY=GATEWAY G9 SUBSCRIBEEVENTS
+M6_GATEWAY_INTEGRATION=COMPLETE
 M6_PLANNING_AUTHORIZED=YES
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_DESIGN=COMPLETE_CONTRACT_ONLY
-M6_IMPLEMENTATION=NOT STARTED
+M6_IMPLEMENTATION=COMPLETE_THROUGH_REAL_GATEWAY_INTEGRATION
 CONTRACTS_MAIN=518880bdfa60948c3b65b6b3525d024526995166
 CONTRACTS_MESSAGE_RREV=53713fb82c27cf6ea0395f6b8a853006
 M6_P1_001=RESOLVED_IN_CONTRACTS_MAIN
@@ -653,9 +655,13 @@ M6_CONTRACTS_PACKAGE_PUBLICATION=SEPARATE_FUTURE_RELEASE_CONCERN_NOT_STAGE_BLOCK
 GATEWAY_G0_FOUNDATION=COMPLETE
 GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED_AT_04e7cc37622a5feb0e416bf75ba000f13aa7f62a
 GATEWAY_RUNTIME_IMPLEMENTATION=OUTSIDE PROJECTION
-GATEWAY_RUNTIME_PIPELINE=NOT_STARTED
-GATEWAY_RUNTIME_IMPLEMENTATION_ORDER=AFTER M6 INTEGRATION CONTRACT DESIGN
-PROJECTION_M6_IMPLEMENTATION_ORDER=AFTER MINIMAL RUNNABLE GATEWAY HOST EXISTS
+GATEWAY_RUNTIME_PIPELINE=IMPLEMENTED_THROUGH_G8
+M6_REAL_GATEWAY_INTEGRATION_ACCEPTANCE=COMPLETE
+M6=COMPLETE
+GATEWAY_G8=COMPLETE
+GATEWAY_NEXT=G9
+GATEWAY_RUNTIME_IMPLEMENTATION_ORDER=G4_THROUGH_G8_COMPLETE; G9_NEXT
+PROJECTION_M6_IMPLEMENTATION_ORDER=COMPLETE_THROUGH_GATEWAY_G8
 ```
 
 WP-A provides benchmark-smoke artifact reporting: exact evidence-SHA checkout,
@@ -727,15 +733,21 @@ artifact although its frozen accepted evidence remains sufficient. Historical
 accepted or deferred P2 records remain unchanged and nonblocking where already
 accepted. See `docs/M5_PHASE11_FINAL_IMPLEMENTATION_REVIEW.md`.
 
-## M6 Gateway Integration — CONTRACT DESIGN COMPLETE; IMPLEMENTATION NOT STARTED
+## M6 Gateway Integration — COMPLETE
 
-Planning is AUTHORIZED; the cross-repository integration contract design is
-COMPLETE and implementation is NOT STARTED. Gateway G0 is complete and G1 exact candidate
-dependency integration is merged on Gateway main at `04e7cc3`; this is not the Gateway runtime
-pipeline. The authoritative freeze is
+The cross-repository integration contract design and real-Gateway acceptance are COMPLETE. Gateway
+G0-G8 are complete; G8 is the accepted Projection M6 order-book integration boundary and is not
+Gateway runtime implementation inside Projection. The authoritative freeze is
 [`docs/M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md`](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md).
 Gateway runtime is developed in `BinanceMarketDataGateway`, not inside this repository, and that
-pipeline remains NOT STARTED. Projection M6 begins
-only after a minimal runnable Gateway Host exists. The next prerequisite stages
-and sequence are in
+Gateway runtime is developed in `BinanceMarketDataGateway`; Gateway NEXT=G9. Projection production
+code was not changed for M6. The historical prerequisite stages and sequence are in
 `docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md`.
+
+M6 acceptance provenance: Projection main `01a66aa80c764d2600da2cc3099c0fd69655b55c`, Contracts
+main `518880bdfa60948c3b65b6b3525d024526995166`, Gateway reviewed G8 head
+`d272b59c74d813483137619e9640f9726700b32c`, and Gateway merge
+`4c46b8667a183dd9b30e04fa8e97363cc8ca2254` (PR #14). Exact-head CI `33303448578` was SUCCESS;
+independent technical review recorded P0=0, P1=0, and `G8_TECHNICAL_ACCEPTANCE=PASS`.
+The acceptance reused the merged Projection Core and ProtoAdapter; Projection production code
+and Contracts code did not change for G8.

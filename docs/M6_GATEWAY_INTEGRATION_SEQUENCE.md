@@ -4,12 +4,16 @@
 STATUS=PROJECT-LEAD APPROVED DEVELOPMENT SEQUENCE
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
 M6_DESIGN=COMPLETE_CONTRACT_ONLY
-M6_IMPLEMENTATION=NOT STARTED
-GATEWAY_RUNTIME=NOT IMPLEMENTED IN THIS REPOSITORY
+M6_IMPLEMENTATION=COMPLETE_THROUGH_REAL_GATEWAY_INTEGRATION
+GATEWAY_RUNTIME=IMPLEMENTED_IN_BINANCEMARKETDATAGATEWAY
 GATEWAY_G0_FOUNDATION=COMPLETE
 GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED_AT_04e7cc37622a5feb0e416bf75ba000f13aa7f62a
-GATEWAY_RUNTIME_PIPELINE_STARTED=NO
-OWNER_EXPLICIT_START_REQUIRED=YES
+GATEWAY_RUNTIME_PIPELINE_STARTED=YES_THROUGH_G8
+GATEWAY_G0_G8=COMPLETE
+GATEWAY_NEXT=G9
+M6_REAL_GATEWAY_INTEGRATION_ACCEPTANCE=COMPLETE
+M6=COMPLETE
+PROJECTION_PRODUCTION_RUNTIME_ADDED=NO
 ```
 
 This document freezes development order and responsibility boundaries only. The
@@ -30,12 +34,20 @@ documentation freeze.
 ## Current execution status
 
 The Contracts prerequisite is complete on Contracts main
-`518880bdfa60948c3b65b6b3525d024526995166`. Gateway G0 is complete, and G1 exact candidate
-dependency integration is merged on Gateway main at
-`04e7cc37622a5feb0e416bf75ba000f13aa7f62a`. These are prerequisite/foundation states, not the
-Gateway runtime pipeline. Projection M6 real-Gateway integration remains **NOT STARTED**.
+`518880bdfa60948c3b65b6b3525d024526995166`. Gateway G0 through G8 are complete, and Gateway G8
+is the accepted Projection M6 real-Gateway integration acceptance on Gateway main
+`7b189b5caa805bc22ff8c7276a324681093da9fe`. Gateway runtime remains outside this repository;
+Projection production code was not changed for the acceptance.
 Formal package publication/release remains a separate future release concern and is not a blocker
 for closing the current repository-level Projection stage.
+
+## Accepted execution mapping
+
+The original design sequence remains frozen historical authority. The accepted Gateway execution
+mapping is G4 real network, G5 reconnect/resync, G6 planned rotation, G7 bounded publication plus
+`SubscribeOrderBook`, and G8 Projection M6 real-Gateway order-book integration acceptance.
+G9 `SubscribeEvents` and G10 `GetGatewayStatus` remain future Gateway work. Independent review
+confirmed they are not semantic prerequisites for the completed M6 order-book acceptance.
 
 ## Approved development order
 
@@ -123,7 +135,7 @@ DEVELOP_PROJECTION_M6_RUNTIME_FIRST=NO
 DEVELOP_GATEWAY_FIRST=YES
 M6_INTEGRATION_CONTRACT_DESIGN_FIRST=YES
 PROJECTION_M6_FINAL_INTEGRATION_AFTER_RUNNABLE_GATEWAY=YES
-M6_GATEWAY_INTEGRATION=NOT STARTED
+M6_GATEWAY_INTEGRATION=COMPLETE
 M6_PLANNING_AUTHORIZED=YES
 ```
 
@@ -131,7 +143,7 @@ M6_PLANNING_AUTHORIZED=YES
 required prerequisite stages, followed by explicit project-owner authorization. The Gateway G0
 foundation is complete and G1 exact candidate dependency integration is merged on Gateway main;
 they own no Projection runtime and do not authorize the Gateway runtime pipeline. M6 implementation
-and that runtime pipeline remain not started.
+and that runtime pipeline are complete through Gateway G8.
 
 Projection remains strategy-independent, deterministic, replayable,
 single-writer, and embedded. It does not own WebSocket clients, REST clients,
