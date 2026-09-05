@@ -12,8 +12,11 @@
 - Gateway G0 foundation: **COMPLETE**.
 - Gateway G1 exact candidate dependency integration: **MERGED** on Gateway main at
   `04e7cc37622a5feb0e416bf75ba000f13aa7f62a`.
-- Gateway G0-G8: **COMPLETE**; runtime pipeline implemented through G8 outside this repository.
-- Gateway G8 is the accepted Projection M6 real-Gateway integration acceptance; Gateway NEXT=G9.
+- Gateway G0-G11: **COMPLETE**; runtime pipeline implemented through G11 outside this repository.
+- Gateway G8 remains the historical accepted Projection M6 real-Gateway integration boundary.
+- Gateway post-G11 runtime productization, recovery observability, performance instrumentation, and
+  the accepted post-G11 performance baseline are complete; no further numbered Gateway milestone
+  is frozen.
 
 The detailed M5 acceptance, evidence, and historical provenance remain in the linked phase
 documents and accepted ADRs below. M6 design and real-Gateway acceptance are complete; the
@@ -641,7 +644,7 @@ PHASE11_INFO=2
 M5_COMPLETE_AUTHORIZED=YES
 M5_COMPLETE_RECORDED=YES
 CURRENT_PROJECTION_STAGE=M6_REAL_GATEWAY_INTEGRATION_ACCEPTANCE_COMPLETE
-NEXT_POTENTIAL_ACTIVITY=GATEWAY G9 SUBSCRIBEEVENTS
+NEXT_POTENTIAL_ACTIVITY=NOT_YET_FROZEN
 M6_GATEWAY_INTEGRATION=COMPLETE
 M6_PLANNING_AUTHORIZED=YES
 M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
@@ -655,12 +658,15 @@ M6_CONTRACTS_PACKAGE_PUBLICATION=SEPARATE_FUTURE_RELEASE_CONCERN_NOT_STAGE_BLOCK
 GATEWAY_G0_FOUNDATION=COMPLETE
 GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED_AT_04e7cc37622a5feb0e416bf75ba000f13aa7f62a
 GATEWAY_RUNTIME_IMPLEMENTATION=OUTSIDE PROJECTION
-GATEWAY_RUNTIME_PIPELINE=IMPLEMENTED_THROUGH_G8
+GATEWAY_RUNTIME_PIPELINE=IMPLEMENTED_THROUGH_G11
 M6_REAL_GATEWAY_INTEGRATION_ACCEPTANCE=COMPLETE
 M6=COMPLETE
 GATEWAY_G8=COMPLETE
-GATEWAY_NEXT=G9
-GATEWAY_RUNTIME_IMPLEMENTATION_ORDER=G4_THROUGH_G8_COMPLETE; G9_NEXT
+GATEWAY_G9=COMPLETE
+GATEWAY_G10=COMPLETE
+GATEWAY_G11=COMPLETE
+GATEWAY_NEXT=NOT_FROZEN
+GATEWAY_RUNTIME_IMPLEMENTATION_ORDER=G4_THROUGH_G11_COMPLETE; NO_FURTHER_NUMBERED_MILESTONE_FROZEN
 PROJECTION_M6_IMPLEMENTATION_ORDER=COMPLETE_THROUGH_GATEWAY_G8
 ```
 
@@ -709,12 +715,12 @@ independent Phase-11 final implementation review is APPROVED, Phase 11 is
 COMPLETE, and M5 is COMPLETE. Full immutable activation evidence remains
 recorded in `docs/M5_PHASE10_CI_REPORTING_INTEGRATION.md`.
 
-M6 planning is authorized; the cross-repository integration contract design is
-complete. The approved order continues with the narrowly scoped Contracts C++
-and gRPC prerequisite if required; BinanceMarketDataGateway implementation; a
-minimal runnable Gateway Host; then Projection M6 Gateway Integration. The
-Projection milestone verifies the real Host-to-Projection integration and does
-not implement Gateway runtime in this repository.
+M6 planning and the cross-repository integration contract design are historical
+context. The Projection M6 milestone verified the real Host-to-Projection
+integration at Gateway G8 and did not implement Gateway runtime in this
+repository. Gateway later completed G9, G10, G11, post-G11 productization,
+recovery observability, performance instrumentation, and its accepted
+performance baseline. No new numbered Gateway milestone is frozen.
 
 ### Phase 11 — COMPLETE / INDEPENDENT REVIEW APPROVED
 
@@ -736,12 +742,11 @@ accepted. See `docs/M5_PHASE11_FINAL_IMPLEMENTATION_REVIEW.md`.
 ## M6 Gateway Integration — COMPLETE
 
 The cross-repository integration contract design and real-Gateway acceptance are COMPLETE. Gateway
-G0-G8 are complete; G8 is the accepted Projection M6 order-book integration boundary and is not
-Gateway runtime implementation inside Projection. The authoritative freeze is
+G0-G11 are complete; G8 remains the historical accepted Projection M6 order-book integration
+boundary and is not Gateway runtime implementation inside Projection. The authoritative freeze is
 [`docs/M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md`](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md).
-Gateway runtime is developed in `BinanceMarketDataGateway`, not inside this repository, and that
-Gateway runtime is developed in `BinanceMarketDataGateway`; Gateway NEXT=G9. Projection production
-code was not changed for M6. The historical prerequisite stages and sequence are in
+Gateway runtime is developed in `BinanceMarketDataGateway`, not inside this repository. The
+historical prerequisite stages and sequence are in
 `docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md`.
 
 M6 acceptance provenance: Projection main `01a66aa80c764d2600da2cc3099c0fd69655b55c`, Contracts

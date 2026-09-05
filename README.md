@@ -1,10 +1,12 @@
 # BinanceMarketDataProjection
 
 `BinanceMarketDataProjection` is a C++20 library for a deterministic, strategy-independent Binance
-market-data projection core. M0-M4 are COMPLETE, M5 is COMPLETE, the M6 cross-repository contract
-design is COMPLETE, and M6 implementation/Gateway runtime pipeline are NOT STARTED. Gateway G0 is
-complete, and Gateway G1 exact candidate dependency integration is merged on Gateway main at
-`04e7cc37622a5feb0e416bf75ba000f13aa7f62a`.
+market-data projection core. M0-M4 are COMPLETE, M5 is COMPLETE, and M6 real-Gateway integration
+acceptance is COMPLETE. The separate Gateway repository later completed G0-G11, post-G11 runtime
+productization, recovery observability, performance instrumentation, and the accepted post-G11
+performance baseline. Its ordinary daemon is the fixed two-product `bmd-gatewayd`; Gateway runtime
+remains outside this repository and Projection production code was not changed by M6 or later
+Gateway work.
 
 ## For AI agents and independent reviewers
 
@@ -22,8 +24,8 @@ M1 introduced strict decimal parsing, strongly typed signed 64-bit units, exact 
 deterministic formatting. M2 added the deterministic order book core, M3 added sequence validation
 and projection lifecycle state, and M4 added the optional Contracts message adapter and
 local-order-book snapshot production boundary. M5 adds validation and benchmark infrastructure
-only; runtime Gateway/History integration, networking, persistence, market-state derivation, and
-trading remain unimplemented.
+only; networking, persistence, market-state derivation, and trading remain outside this library's
+scope. Gateway/History runtime remains owned by their respective repositories/hosts.
 
 ## Architecture boundary
 
@@ -211,14 +213,14 @@ PR #42 corrected benchmark evidence provenance. It did **not** change Production
 See the [M5 phase records](docs/M5_PHASE1_CANONICAL_REPLAY.md) and
 [MILESTONES.md](docs/MILESTONES.md) for detailed historical provenance.
 
-The M6 cross-repository integration contract design is COMPLETE. Gateway G0 is complete and Gateway
-G1 exact candidate dependency integration is merged on Gateway main at `04e7cc3`; neither is the
-Gateway runtime pipeline and neither starts Projection M6. M6 implementation and the Gateway
-runtime pipeline are NOT STARTED, and Gateway runtime is outside this repository. The authoritative contract is
+The M6 cross-repository integration contract design and real-Gateway acceptance are COMPLETE. The
+historical M6 acceptance boundary closed at Gateway G8; the separate Gateway repository later
+progressed through G9, G10, and G11, then completed post-G11 runtime productization, recovery
+observability, performance instrumentation, and its accepted performance baseline. Gateway runtime
+is outside this repository. The authoritative contract is
 [M6 Cross-Repository Integration](docs/M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md); its
-sequence in [M6 Gateway Integration](docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md) still requires the
-Contracts prerequisite stages plus explicit owner authorization and is not an implementation
-authorization.
+sequence in [M6 Gateway Integration](docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md) records the historical
+M6 sequence and is not a current Gateway implementation authorization.
 
 ## Canonical Quality acceptance
 

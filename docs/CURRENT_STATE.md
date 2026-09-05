@@ -11,8 +11,6 @@ TECHNICAL_REVIEW_FINDINGS=P0=0 P1=0 P2=0 P3=0
 TECHNICAL_CI_RUN=33059838857 SUCCESS
 CONTRACTS_MAIN=518880bdfa60948c3b65b6b3525d024526995166
 CONTRACTS_MESSAGE_RREV=53713fb82c27cf6ea0395f6b8a853006
-GATEWAY_MAIN=7b189b5caa805bc22ff8c7276a324681093da9fe
-
 M0-M4=COMPLETE
 M5_PHASE1_11=COMPLETE
 M5=COMPLETE
@@ -24,9 +22,17 @@ M6_DESIGN=COMPLETE_CONTRACT_ONLY
 M6_IMPLEMENTATION=COMPLETE_THROUGH_REAL_GATEWAY_INTEGRATION
 GATEWAY_G0_FOUNDATION=COMPLETE
 GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED
-GATEWAY_RUNTIME_PIPELINE=IMPLEMENTED_THROUGH_G8
+GATEWAY_RUNTIME_PIPELINE=IMPLEMENTED_THROUGH_G11
 GATEWAY_G8=COMPLETE
-GATEWAY_NEXT=G9
+GATEWAY_G9=COMPLETE
+GATEWAY_G10=COMPLETE
+GATEWAY_G11=COMPLETE
+POST_G11_RUNTIME_PRODUCTIZATION=COMPLETE
+RECOVERY_OBSERVABILITY=COMPLETE
+PERFORMANCE_INSTRUMENTATION=COMPLETE
+POST_G11_PERFORMANCE_BASELINE=COMPLETE
+RECOVERY_OBSERVATION_CAMPAIGN=COMPLETE
+GATEWAY_NEXT=NOT_FROZEN
 M6_REAL_GATEWAY_INTEGRATION_ACCEPTANCE=COMPLETE
 M6=COMPLETE
 PROJECTION_PRODUCTION_CODE_CHANGED_BY_M6=NO
@@ -123,10 +129,13 @@ M6_DESIGN_STARTED=YES_CONTRACT_ONLY
 M6_IMPLEMENTATION_STARTED=YES_IN_GATEWAY_G8
 GATEWAY_G0_FOUNDATION=COMPLETE
 GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED_AT_04e7cc37622a5feb0e416bf75ba000f13aa7f62a
-GATEWAY_RUNTIME_PIPELINE_STARTED=YES_THROUGH_G8
+GATEWAY_RUNTIME_PIPELINE_STARTED=YES_THROUGH_G11
 M6_PLANNING_AUTHORIZED=YES
 GATEWAY_G8=COMPLETE
-GATEWAY_NEXT=G9
+GATEWAY_G9=COMPLETE
+GATEWAY_G10=COMPLETE
+GATEWAY_G11=COMPLETE
+GATEWAY_NEXT=NOT_FROZEN
 M6_REAL_GATEWAY_INTEGRATION_ACCEPTANCE=COMPLETE
 PROJECTION_PRODUCTION_CODE_CHANGED_BY_M6=NO
 ```
@@ -135,17 +144,20 @@ M6 planning and the approved sequence are recorded in
 [`M6_GATEWAY_INTEGRATION_SEQUENCE.md`](M6_GATEWAY_INTEGRATION_SEQUENCE.md) and the completed
 [`M6 cross-repository integration contract`](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md).
 The contract design is complete. Gateway G0 through G8 are complete, and Gateway G8 is the
-accepted real-Gateway Projection M6 order-book integration boundary. Gateway implementation and
-runtime pipeline are in `BinanceMarketDataGateway`, whose current authority is
-`7b189b5caa805bc22ff8c7276a324681093da9fe`; no Projection production code change was required.
+accepted real-Gateway Projection M6 order-book integration boundary. Gateway later progressed
+through G9, G10, and G11, then completed post-G11 runtime productization, recovery observability,
+performance instrumentation, and the accepted post-G11 performance baseline. Gateway implementation
+and runtime pipeline are in `BinanceMarketDataGateway`; live Gateway repository authority must be
+verified in that repository. No Projection production code change was required.
 The current Projection package integration consumes the message-only
 `binance-market-data-contracts-cpp/0.1.0` artifact from Contracts main
 `518880bdfa60948c3b65b6b3525d024526995166`, with message RREV
 `53713fb82c27cf6ea0395f6b8a853006`. The separate Contracts gRPC artifact is not a Projection
 dependency. Formal package publication/release is a separate future release concern, not a blocker
 for closing this repository-level Projection stage. Issues #46 and #47 were closed as completed
-on 2026-08-27. Gateway runtime belongs in `BinanceMarketDataGateway`, not this repository.
-Gateway next work is G9 `SubscribeEvents`; G9 and G10 were not prerequisites for M6 acceptance.
+on 2026-08-27. Gateway runtime belongs in `BinanceMarketDataGateway`, not this repository. G9 and
+G10 were not prerequisites for the historical M6 acceptance; both, plus G11, are now complete. No
+further numbered Gateway milestone is frozen.
 
 ## Authority model
 
