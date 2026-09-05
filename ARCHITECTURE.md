@@ -34,7 +34,8 @@ The optional adapter boundary is implemented, independently reviewed, merged thr
 verified on `main`. Core remains independently
 buildable, installable, and usable without Protobuf, generated Contracts code, or gRPC. The adapter
 maps messages and explicit context; it does not own networking, clocks, buffering, recovery, or
-Gateway lifecycle. Gateway/gRPC runtime remains M6 scope. The C-M4-001 prerequisite is closed and
+Gateway lifecycle. Gateway/gRPC runtime was the M6 integration scope and is implemented in the
+separate Gateway repository; it remains outside Projection. The C-M4-001 prerequisite is closed and
 the exact Contracts package metadata is validated only when the optional component is requested.
 
 ## M5 closure and M6 Gateway Host boundary
