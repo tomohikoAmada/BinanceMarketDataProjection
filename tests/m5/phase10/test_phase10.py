@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import io
 import json
+import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -344,6 +346,34 @@ class Phase10VerifierTests(unittest.TestCase):
     def test_wrong_outer_sha(self) -> None:
         package, contract = self._package()
         self._verify_invalid(package, replace(contract, archive_sha256="0" * 64))
+
+    def test_cli_rejects_missing_or_tampered_archive_before_extraction(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / "package.tar.gz"
+            extracted = Path(directory) / "extracted"
+            for scenario, diagnostic in (
+                ("missing", "cannot read"),
+                ("tampered", "outer archive SHA mismatch"),
+            ):
+                with self.subTest(scenario=scenario):
+                    if scenario == "tampered":
+                        archive.write_bytes(b"tampered release asset")
+                    result = subprocess.run(
+                        [
+                            sys.executable,
+                            str(self._REPOSITORY_ROOT / "scripts" / "m5_phase10.py"),
+                            "verify-distribution",
+                            str(archive),
+                            str(extracted),
+                        ],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    self.assertEqual(result.returncode, 1)
+                    self.assertIn("M5_PHASE10_VERIFICATION_FAILED:", result.stderr)
+                    self.assertIn(diagnostic, result.stderr)
+                    self.assertFalse(extracted.exists())
 
     def test_wrong_distribution_manifest_sha(self) -> None:
         package, contract = self._package()
