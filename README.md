@@ -269,5 +269,5 @@ orientation is [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md); architecture is
 
 ## License status
 
-No open-source license has been selected yet. The repository remains private; license selection is
-tracked as `O-P001` in [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md).
+No open-source license has been selected yet. The repository is currently public; license selection
+is tracked as `O-P001` in [docs/OPEN_QUESTIONS.md](docs/OPEN_QUESTIONS.md).
