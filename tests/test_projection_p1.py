@@ -61,6 +61,25 @@ class TraceAnalysisTests(unittest.TestCase):
             with self.subTest(rows=rows[:3]), self.assertRaises(ValueError):
                 self.analyze(rows)
 
+    def test_heterogeneous_product_counts(self):
+        rows = fixture_rows()
+        key = rows[0]["product"]
+        rows[0]["trace_count"] = 2
+        for row in rows[1:4]:
+            extra = copy.deepcopy(row)
+            extra["trace_id"] = 2
+            rows.append(extra)
+        counts = {p: (2 if p == key else 1) for p in P1.PRODUCTS}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "trace.jsonl"
+            path.write_text("\n".join(json.dumps(r) for r in rows))
+            result = P1.analyze_trace(path, counts)
+            self.assertEqual(result[key]["timings"]["checked_apply"]["n"], 2)
+            with self.assertRaises(ValueError):
+                P1.analyze_trace(path, 1)
+            with self.assertRaises(ValueError):
+                P1.analyze_trace(path, {**counts, "BINANCE/SPOT/UNKNOWN": 1})
+
     def test_nearest_rank_percentile(self):
         self.assertEqual(P1.stats(list(range(1, 101)))["p99_ns"], 99)
         self.assertEqual(P1.stats([8])["p99_ns"], 8)

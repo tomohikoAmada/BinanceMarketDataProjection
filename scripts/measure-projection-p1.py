@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Paired offline four-product campaigns using the existing Gateway G2 graph.
+"""Paired offline configured-product campaigns using the existing Gateway G2 graph.
 
 Requires repository-local psutil (7.2.2 used for the retained campaign).
 No network access, daemon deployment, threshold, or production qualification.
@@ -41,13 +41,16 @@ def stats(values):
 
 
 def analyze_trace(path, count):
+    counts = count if isinstance(count, dict) else {p: count for p in PRODUCTS}
+    products = set(counts)
     rows = [json.loads(line) for line in Path(path).read_text().splitlines()]
     campaigns = [r for r in rows if r["record"] == "campaign"]
-    require(len(campaigns) == 4 and {r["product"] for r in campaigns} == PRODUCTS,
-            "trace must contain exactly four distinct product campaigns")
+    require(len(campaigns) == len(products) and {r["product"] for r in campaigns} == products,
+            "trace product campaigns do not match expected identities")
     result = {}
     for campaign in campaigns:
         product = campaign["product"]
+        count = counts[product]
         require(campaign["evidence_valid"] and campaign["trace_count"] == count,
                 f"invalid/count-mismatched campaign: {product}")
         for field in ("trace_storage_overflow", "delivery_storage_overflow", "clock_error_count",
@@ -100,8 +103,12 @@ def analyze_trace(path, count):
     return result
 
 
-def run_trial(binary, out, depth, batch, count, interval):
-    command = [str(binary), str(depth), str(batch), str(count), str(interval), str(out)]
+def run_trial(binary, out, depth, batch, count, interval, profile=None, scenario=None):
+    command = ([str(binary), "--profile", str(profile), scenario, str(out)] if profile else
+               [str(binary), str(depth), str(batch), str(count), str(interval), str(out)])
+    expected = ({f"BINANCE/{p['market']}/{p['symbol']}": p["workloads"][scenario]
+                 for p in json.loads(profile.read_text())["products"]} if profile else
+                {p: {"depth": depth, "batch": batch, "count": count, "interval_us": interval} for p in PRODUCTS})
     before_sha = sha(binary)
     samples = []
     psutil.cpu_percent(percpu=True)
@@ -121,15 +128,18 @@ def run_trial(binary, out, depth, batch, count, interval):
         require(process.returncode == 0, f"campaign failed: {command}, see {log.name}")
     require(sha(binary) == before_sha, "measurement binary changed during campaign")
     result = json.loads(out.read_text())
-    require(len(result["products"]) == 4, "summary must contain four products")
+    require(len(result["products"]) == len(expected), "summary product count mismatch")
     observed_products = {f"BINANCE/{p['market'].removeprefix('MARKET_')}/{p['symbol']}" for p in result["products"]}
-    require(observed_products == PRODUCTS, "summary product identity mismatch")
-    require((result["depth_per_side"], result["batch_levels"], result["events_per_product"], result["interval_us"])
-            == (depth, batch, count, interval), "summary workload mismatch")
+    require(observed_products == set(expected), "summary product identity mismatch")
     for p in result["products"]:
-        require(p["last_update_id"] == 134 + count, "final ID mismatch")
+        key = f"BINANCE/{p['market'].removeprefix('MARKET_')}/{p['symbol']}"
+        w = expected[key]
+        actual = p if profile else result
+        require((actual["depth_per_side"], actual["batch_levels"], actual["events_per_product"], actual["interval_us"])
+                == (w["depth"], w["batch"], w["count"], w["interval_us"]), "summary workload mismatch")
+        require(p["last_update_id"] == 134 + w["count"], "final ID mismatch")
         for branch in ("book_client_latency", "event_client_latency"):
-            require(p[branch]["n"] == count, "client delivery count")
+            require(p[branch]["n"] == w["count"], "client delivery count")
     swap_end = psutil.swap_memory()
     resource_path = out.with_suffix(".resources.json")
     resource_path.write_text(json.dumps({"samples": samples, "swap_in_delta_bytes": swap_end.sin - swap_start.sin,
@@ -145,7 +155,7 @@ def run_trial(binary, out, depth, batch, count, interval):
         trace = Path(str(out) + ".traces.jsonl")
         entry["trace_file"] = trace.name
         entry["trace_sha256"] = sha(trace)
-        entry["trace_analysis"] = analyze_trace(trace, count)
+        entry["trace_analysis"] = analyze_trace(trace, {p: w["count"] for p, w in expected.items()})
     return entry
 
 
@@ -175,10 +185,14 @@ def main():
     parser.add_argument("--gateway-source", type=Path, required=True)
     parser.add_argument("--repetitions", type=int, default=3)
     parser.add_argument("--smoke", action="store_true")
+    parser.add_argument("--profile", type=Path, help="Frozen twenty-key mixed workload JSON")
     args = parser.parse_args()
     require(args.repetitions > 0, "positive repetitions required")
     args.gateway_source = args.gateway_source.resolve()
     source = source_identity(args.gateway_source)
+    if args.profile:
+        args.profile = args.profile.resolve()
+    profile_sha = sha(args.profile) if args.profile else None
     normal_cache, normal_settings = cache_settings(args.normal.resolve())
     on_cache, on_settings = cache_settings(args.instrumented.resolve())
     for setting in ("CMAKE_BUILD_TYPE", "CMAKE_CXX_COMPILER", "CMAKE_CXX_FLAGS", "CMAKE_CXX_FLAGS_RELEASE", "CMAKE_TOOLCHAIN_FILE",
@@ -191,12 +205,14 @@ def main():
     args.output.mkdir(parents=True, exist_ok=False)
     scenarios = [("normal_depth", 1000, 10, 300, 100000), ("deep_stress", 5000, 10, 1000, 10000),
                  ("batch_stress", 5000, 100, 1000, 10000)]
+    if args.profile:
+        scenarios = [(name, None, None, None, None) for name in ("normal", "deep", "batch")]
     if args.smoke:
         scenarios = [("smoke", 8, 1, 8, 1000)]
     report = {"gateway_source": source, "driver_sha256": sha(__file__),
               "normal_cmake_cache_sha256": sha(normal_cache), "instrumented_cmake_cache_sha256": sha(on_cache),
               "common_build_settings": {k: v for k, v in normal_settings.items() if k in ("CMAKE_BUILD_TYPE", "CMAKE_CXX_COMPILER", "CMAKE_CXX_FLAGS", "CMAKE_CXX_FLAGS_RELEASE", "CMAKE_TOOLCHAIN_FILE")},
-              "schema": "projection-p1-paired-campaign.v1", "platform": platform.platform(),
+              "schema": "projection-p1-paired-campaign.v1", "profile_sha256": profile_sha, "platform": platform.platform(),
               "processor": platform.processor(), "logical_cpus": psutil.cpu_count(),
               "physical_cpus": psutil.cpu_count(logical=False), "host_memory_bytes": psutil.virtual_memory().total,
               "psutil_version": psutil.__version__, "scope": "offline local host, embedded loopback clients, no numeric acceptance gate", "trials": []}
@@ -207,11 +223,12 @@ def main():
                 pair.reverse()
             for mode, binary in pair:
                 print(f"{name} repetition={repetition + 1} instrumentation={mode}", flush=True)
-                entry = run_trial(binary.resolve(), args.output / f"{name}-{repetition + 1}-{mode}.json", depth, batch, count, interval)
+                entry = run_trial(binary.resolve(), args.output / f"{name}-{repetition + 1}-{mode}.json", depth, batch, count, interval, args.profile, name)
                 require(entry["summary"]["instrumented"] == (mode == "on"), "wrong instrumentation binary")
                 entry.update(scenario=name, repetition=repetition + 1, mode=mode)
                 report["trials"].append(entry)
                 (args.output / "campaign.json").write_text(json.dumps(report, indent=2) + "\n")
+    require(not args.profile or sha(args.profile) == profile_sha, "profile changed during campaign")
     require(source_identity(args.gateway_source) == source, "Gateway source changed during campaign")
     print(f"complete: {args.output / 'campaign.json'}", flush=True)
 
