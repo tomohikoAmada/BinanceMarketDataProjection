@@ -49,10 +49,13 @@ disagree, verify the higher-authority source and update this file.
 
 ## Projection P0 under the v0.3 plan
 
-The owner authorized Projection P0 on 2026-10-12: fixed-asset acquisition and the
-tests+benchmarks Python CTest repair. The candidate is implemented on
-`codex/projection-p0-ci-ctest` and awaits independent review. Scope, diagnosis,
-and validation are recorded in [the P0 result](PROJECTION_P0_RESULT.md).
+Projection P0 (fixed-asset acquisition and the tests+benchmarks Python CTest repair)
+is **COMPLETE / MERGED** following owner-authorized closure on 2026-10-18.
+[PR #54](https://github.com/tomohikoAmada/BinanceMarketDataProjection/pull/54)
+merged at `c8a880d80fc5c7a932413fe42533b81fca49136c`; tested head `b458c7e`
+passed all 20 jobs in CI run `38224252026`. Main had no divergent commits and
+the merged tree equals the tested head tree. Scope, diagnosis, validation, and
+closure identities are recorded in [the P0 result](PROJECTION_P0_RESULT.md).
 P1/P2, Gateway G1/G2, production VPS access, and Recorder qualification work
 are outside this change.
 

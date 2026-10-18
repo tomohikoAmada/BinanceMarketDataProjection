@@ -2,6 +2,9 @@
 
 ## Current ledger
 
+- Projection P0 under the v0.3 plan (CI/CTest repair): **COMPLETE / MERGED** through
+  PR #54 on 2026-10-18; exact-head CI 20/20 PASS. See
+  [the P0 result](PROJECTION_P0_RESULT.md). Projection P1/P2 have not started.
 - M0-M4: **COMPLETE**.
 - M5 Phase 1-11: **COMPLETE**.
 - M5: **COMPLETE**.

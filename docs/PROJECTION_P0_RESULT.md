@@ -1,10 +1,25 @@
 # Projection P0 — CI/CTest repair
 
-2026-10-12; scoped by the owner-provided BinanceMarketData v0.3 overall and
-Projection plans. Implementation is submitted for independent review; merge and
-post-merge weekly activation remain separate. Baseline:
+2026-10-12 implementation; scoped by the owner-provided BinanceMarketData v0.3
+overall and Projection plans. P0 is **COMPLETE / MERGED** as of 2026-10-18. Baseline:
 `555dd1f4d846e19cfd6fbe55676c86504559048e`. Technical commit:
 `0430d84e4d269973f207b5e47d301cf73da42713`.
+
+## Closure — 2026-10-18
+
+The owner authorized closure and merge after compatibility verification.
+[PR #54](https://github.com/tomohikoAmada/BinanceMarketDataProjection/pull/54)
+was merged at `c8a880d80fc5c7a932413fe42533b81fca49136c` from tested head
+`b458c7eb6a80350ee91389301fcf2a314a83c4ac`.
+[Exact-head CI run 38224252026](https://github.com/tomohikoAmada/BinanceMarketDataProjection/actions/runs/38224252026)
+completed successfully: **20/20 jobs PASS**, including canonical Quality and
+cross-compiler semantic comparison.
+
+At merge, main was still baseline `555dd1f4`; it was an ancestor of the candidate
+with no divergent commits. GitHub reported CLEAN / MERGEABLE. The merged tree
+equals the tested head tree: `1ad939c84238da371aca7ad8d683decb0463fc67`.
+Closure reuses the existing implementation and validation evidence. This follow-up
+updates documentation only; the existing weekly main-only canary remains scheduled.
 
 ## Changes and diagnosis
 
