@@ -2,7 +2,9 @@
 
 2026-10-18. Scope: the owner-provided v0.3 Projection P1, sharing Gateway's
 four-product production path. The offline cost-attribution campaign is complete; final result review and CI delivery
-are recorded below. Target-VPS budget acceptance remains with Gateway G3.
+are recorded below. The subsequently revised v0.4 plan adds representative 20-key
+mixed-load attribution; the owner authorized that increment on 2026-10-19. Its
+[separate twenty-key record](PROJECTION_P1_TWENTY_RESULT.md) preserves this four-product campaign. Target-VPS budget acceptance remains with Gateway G3.
 Core, ProtoAdapter, sequence policy, public APIs, dependencies and `KEEP_STD_MAP`
 are unchanged. P2 optimization is not implemented.
 
@@ -20,7 +22,7 @@ are unchanged. P2 optimization is not implemented.
   corresponding Release/sanitizer/format and Python validation passed.
 - [x] Fresh independent agent approved the final 18-trial result, raw hashes,
   trace reanalysis, units, quantile aggregation and conditional decision.
-- [ ] Exact-head GitHub CI delivery.
+- [x] Technical commit `248c622` exact-head GitHub CI delivery: 20/20 PASS.
 - [x] Optimization disposition: hotspot confirmed; P2 stays CONDITIONAL pending
   approved target/shared-host budgets. No production optimization or OUT claim.
 
@@ -56,8 +58,11 @@ numeric pass threshold is introduced.
 Thread CPU is the sum of per-update T2→owner_done CPU intervals for each owner;
 it excludes mailbox/dequeue, waiting, startup, snapshots and other owner work.
 Whole-process CPU **includes the embedded producers/parsers and loopback clients**
-as well as the Gateway graph. RSS is a process-lifetime high-water mark including
-prebuilt JSON, clients and optional preallocated trace/delivery buffers. These are
+as well as the Gateway graph. Its window runs from release of measured producers
+through confirmation that all measured client receipts arrived, including final
+drain/polling confirmation. RSS is the process high-water through this load-end
+sample, including setup/warmup, prebuilt JSON, clients and optional preallocated
+trace/delivery buffers; subsequent shutdown/export peaks are excluded. These are
 not isolated daemon CPU or order-book resident-byte measurements. Host CPU,
 OS-reported available memory and swap activity are sampled externally at 100 ms; they describe
 this host during the experiment, not future capacity or target-VPS reserves.
@@ -92,8 +97,8 @@ Book / Event occupancies were 7 / 7 / 8 against capacity 64.
 
 Ranges below are across three processes. Book p99 is the **worst product's
 client p99 in each process**, then its min/max across processes; it is not a
-pooled quantile. CPU includes the embedded clients/fixture. RSS is the entire
-process-lifetime peak.
+pooled quantile. CPU includes the embedded clients/fixture. RSS is the process high-water
+through load completion, including setup/warmup; shutdown/export is excluded.
 
 | Depth/side, batch, rate/product | Mode | Process CPU cores min–max (mean) | Peak RSS MiB min–max | Book client p99 ms min–max |
 | --- | --- | --- | --- | --- |
@@ -109,7 +114,10 @@ subtracted. CPU/latency ordering varies across paired trials; these runs do not
 resolve a reliable observer CPU factor or demonstrate zero observer cost.
 
 The four owners' measured update-segment CPU sums averaged 0.018 / 0.719 /
-0.714 cores across the three ON scenarios. The checked-call span accounted for
+0.714 cores across the three ON scenarios. These are update-cohort segment CPU
+sums normalized to the receipt-confirmation wall window; small boundary-tail
+work may cross it, so they are not a precisely additive process-CPU decomposition.
+The checked-call span accounted for
 94.7% / 99.1% / 98.2% of measured owner update wall time. Arithmetic means below
 cover equal-size product/process trials; they are not pure-Core decomposition.
 
@@ -202,6 +210,7 @@ validation/build logs. Reproduction still uses the repositories and pinned packa
 | Gateway TSan affected runtime/RPC/P1/instrumentation/four-product groups | 5/5 PASS |
 | Gateway Linux/GCC13 exact head `255eaea`, CI `39141119116` | all ordinary jobs PASS; production 22/22 |
 | Gateway format / both repositories diff check | PASS |
+| Projection technical commit `248c622`, CI `39142012653` | 20/20 PASS, including canonical Quality, ASan/UBSan, fuzz and M5 |
 | Projection trace analyzer tests (valid attribution, bad evidence, nearest-rank quantiles) | 3 tests, adversarial subcases PASS |
 | M5 Phase-7 validators | 48 Core + 22 Adapter + 4 replay records PASS |
 | M5 representative wrapper / two latency validators | PASS, source/binary/payload binding |
@@ -210,8 +219,9 @@ validation/build logs. Reproduction still uses the repositories and pinned packa
 
 Sanitizer graphs omit the two historical synthetic/G8 groups included by the
 Release graphs; pinned upstream static packages were not newly instrumented.
-Projection production C++/toolchain is unchanged, so its historical full
-verify/Quality matrix was not repeated for this Python/docs measurement work.
+Projection production C++/toolchain is unchanged, so the full
+local verify/Quality matrix was not manually repeated for this Python/docs work;
+automatic exact-head CI subsequently passed all 20 jobs, including canonical Quality.
 No check was disabled. Initial compile-time metadata accessor mistakes and an
 obsolete instrumented-preflight test expectation were corrected before measured
 binaries were frozen; failed build/test logs are retained.
@@ -260,6 +270,11 @@ commit `255eaeaa82ad576afedc929223f243638dfe8b88`.
 passed all seven ordinary jobs, including Linux production 22/22; the manual
 binary-preparation job was skipped as intended. No upstream cold build or
 Binance connection was needed.
+
+Projection tooling: [PR #55](https://github.com/tomohikoAmada/BinanceMarketDataProjection/pull/55).
+Four-product technical commit `248c622699dc6838553a5d1cc087a598097cb8f1`
+passed [all 20 CI jobs](https://github.com/tomohikoAmada/BinanceMarketDataProjection/actions/runs/39142012653).
+The subsequent twenty-key increment is tracked separately.
 
 ## Decision boundary
 

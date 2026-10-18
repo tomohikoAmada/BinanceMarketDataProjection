@@ -227,7 +227,8 @@ M6 sequence and is not a current Gateway implementation authorization.
 The v0.3 four-product offline assessment reuses Gateway G2's production graph.
 Normal/instrumented Release trials measure owner/checked-apply/publication/queue/
 Write costs, CPU and RSS; existing M5 tools provide separate Core/allocation/
-replay evidence. See [P1 results and reproduction](docs/PROJECTION_P1_RESULT.md).
+replay evidence. See [four-product P1 results and reproduction](docs/PROJECTION_P1_RESULT.md)
+and the owner-authorized [twenty-key increment](docs/PROJECTION_P1_TWENTY_RESULT.md).
 Core/Adapter and `std::map` remain unchanged. Target-VPS/Recorder resource budgets
 are a Gateway G3 decision; P2 optimization remains conditional.
 
