@@ -4,7 +4,7 @@
 market-data projection core. M0-M4 are COMPLETE, M5 is COMPLETE, and M6 real-Gateway integration
 acceptance is COMPLETE. The separate Gateway repository later completed G0-G11, post-G11 runtime
 productization, recovery observability, performance instrumentation, and the accepted post-G11
-performance baseline. Its ordinary daemon is the fixed two-product `bmd-gatewayd`; Gateway runtime
+performance baseline. Its configured `bmd-gatewayd` now exercises four products through Gateway v0.3 G2; Gateway runtime
 remains outside this repository and Projection production code was not changed by M6 or later
 Gateway work.
 
@@ -221,6 +221,15 @@ is outside this repository. The authoritative contract is
 [M6 Cross-Repository Integration](docs/M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md); its
 sequence in [M6 Gateway Integration](docs/M6_GATEWAY_INTEGRATION_SEQUENCE.md) records the historical
 M6 sequence and is not a current Gateway implementation authorization.
+
+## Projection P1 cost attribution
+
+The v0.3 four-product offline assessment reuses Gateway G2's production graph.
+Normal/instrumented Release trials measure owner/checked-apply/publication/queue/
+Write costs, CPU and RSS; existing M5 tools provide separate Core/allocation/
+replay evidence. See [P1 results and reproduction](docs/PROJECTION_P1_RESULT.md).
+Core/Adapter and `std::map` remain unchanged. Target-VPS/Recorder resource budgets
+are a Gateway G3 decision; P2 optimization remains conditional.
 
 ## Canonical Quality acceptance
 

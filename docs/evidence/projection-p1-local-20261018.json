@@ -1,0 +1,1045 @@
+{
+  "schema": "projection-p1-local-summary.v1",
+  "scope": "controlled offline cost attribution; not VPS/Recorder/SLA qualification",
+  "host": {
+    "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "logical_cpus": 8,
+    "physical_cpus": 8,
+    "host_memory_bytes": 25769803776
+  },
+  "gateway_source_at_measurement": {
+    "head": "6927acf5091a0e495b38a4d352379a2fde5d57f3",
+    "diff_sha256": "06fafc83d06a501f367597a051f6c4361bb4975854a13f8c4fc8ca2fae376ecf",
+    "untracked": {
+      "tests/projection_p1_measurements.cpp": "424e49eae6dc4159fa08211340d58c29e7ed4b48ae37459b5ba505ecda6149f3"
+    }
+  },
+  "common_build_settings": {
+    "CMAKE_BUILD_TYPE": "Release",
+    "CMAKE_CXX_COMPILER": "/usr/bin/c++",
+    "CMAKE_CXX_FLAGS": "-stdlib=libc++",
+    "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG",
+    "CMAKE_TOOLCHAIN_FILE": "/Users/amada/Documents/Development/Crypto/BinanceMarketDataGateway/build/g7-conan/conan_toolchain.cmake"
+  },
+  "driver_sha256": "d78c9bc26948a4c037be530929fe8e9c44240318d416815bef76be5a5ff2e2a5",
+  "scenarios": {
+    "normal_depth": {
+      "depth_per_side": 1000,
+      "batch_levels": 10,
+      "events_per_product": 300,
+      "interval_us": 100000,
+      "off": {
+        "process_cpu_cores": {
+          "mean": 0.05679197877384126,
+          "min": 0.05497808696737878,
+          "max": 0.05792665072406077
+        },
+        "peak_rss_process_bytes": {
+          "mean": 19431424,
+          "min": 19398656,
+          "max": 19480576
+        },
+        "worst_product_book_client_p99_ns": {
+          "mean": 4421916.666666667,
+          "min": 3189500,
+          "max": 5878542
+        },
+        "worst_product_event_client_p99_ns": {
+          "mean": 3661902.6666666665,
+          "min": 3106875,
+          "max": 4228958
+        },
+        "host_min_available_bytes": 7117275136,
+        "host_mean_busy_cores": {
+          "mean": 1.1706691897347175,
+          "min": 1.0855640138408305,
+          "max": 1.317256055363322
+        },
+        "binary_sha256": "c43f6a324153f9edbe7c26fde8970216063a37c00a0adbf741657ad6560c8bb1",
+        "swap_in_delta_bytes": 68829184,
+        "swap_out_delta_bytes": 0
+      },
+      "on": {
+        "process_cpu_cores": {
+          "mean": 0.052991070475377995,
+          "min": 0.048970290865666274,
+          "max": 0.05811107913193731
+        },
+        "peak_rss_process_bytes": {
+          "mean": 42489173.333333336,
+          "min": 42434560,
+          "max": 42516480
+        },
+        "worst_product_book_client_p99_ns": {
+          "mean": 3285472,
+          "min": 2939958,
+          "max": 3505125
+        },
+        "worst_product_event_client_p99_ns": {
+          "mean": 2949180.6666666665,
+          "min": 2579667,
+          "max": 3168167
+        },
+        "host_min_available_bytes": 7466450944,
+        "host_mean_busy_cores": {
+          "mean": 1.0907808535178778,
+          "min": 1.0446332179930795,
+          "max": 1.1555570934256056
+        },
+        "binary_sha256": "88d771fa907571561310225124758ff343d43f08e8c378e364eaab8aa781dde2",
+        "swap_in_delta_bytes": 42827776,
+        "swap_out_delta_bytes": 0,
+        "four_owner_update_cpu_cores": {
+          "mean": 0.018333607010580188,
+          "min": 0.01684709819186121,
+          "max": 0.020590820692212436
+        },
+        "stage_metrics": {
+          "parse": {
+            "mean_ns_across_equal_size_product_trials": 58877.334444444445,
+            "per_product_trial_p99_ns": {
+              "mean": 162944.25,
+              "min": 121875,
+              "max": 204958
+            }
+          },
+          "event_publish_and_ingress_submit": {
+            "mean_ns_across_equal_size_product_trials": 18953.260833333334,
+            "per_product_trial_p99_ns": {
+              "mean": 71184.08333333333,
+              "min": 30042,
+              "max": 123084
+            }
+          },
+          "ingress_wait": {
+            "mean_ns_across_equal_size_product_trials": 113967.82194444444,
+            "per_product_trial_p99_ns": {
+              "mean": 758090.3333333334,
+              "min": 535000,
+              "max": 918875
+            }
+          },
+          "adapter_before_checked_call": {
+            "mean_ns_across_equal_size_product_trials": 8345.78388888889,
+            "per_product_trial_p99_ns": {
+              "mean": 38979.083333333336,
+              "min": 21041,
+              "max": 119333
+            }
+          },
+          "checked_apply": {
+            "mean_ns_across_equal_size_product_trials": 487821.56916666665,
+            "per_product_trial_p99_ns": {
+              "mean": 1002395.9166666666,
+              "min": 803083,
+              "max": 1211459
+            }
+          },
+          "post_apply_owner": {
+            "mean_ns_across_equal_size_product_trials": 18916.82611111111,
+            "per_product_trial_p99_ns": {
+              "mean": 92198,
+              "min": 68458,
+              "max": 116000
+            }
+          },
+          "input_to_applied": {
+            "mean_ns_across_equal_size_product_trials": 687965.7702777778,
+            "per_product_trial_p99_ns": {
+              "mean": 1562302.25,
+              "min": 1353042,
+              "max": 1706500
+            }
+          },
+          "owner_update_cpu": {
+            "mean_ns_across_equal_size_product_trials": 456910.84194444446,
+            "per_product_trial_p99_ns": {
+              "mean": 779739.75,
+              "min": 635292,
+              "max": 897208
+            }
+          },
+          "order_book_publication": {
+            "mean_ns_across_equal_size_product_trials": 5657.0488888888885,
+            "per_product_trial_p99_ns": {
+              "mean": 23538.166666666668,
+              "min": 11125,
+              "max": 45542
+            }
+          },
+          "order_book_subscriber_wait_materialize": {
+            "mean_ns_across_equal_size_product_trials": 234944.72166666668,
+            "per_product_trial_p99_ns": {
+              "mean": 1134559.0833333333,
+              "min": 892375,
+              "max": 1353708
+            }
+          },
+          "order_book_server_write": {
+            "mean_ns_across_equal_size_product_trials": 169844.12027777778,
+            "per_product_trial_p99_ns": {
+              "mean": 759455.0833333334,
+              "min": 541542,
+              "max": 986042
+            }
+          },
+          "order_book_input_to_write_completed": {
+            "mean_ns_across_equal_size_product_trials": 1098411.661111111,
+            "per_product_trial_p99_ns": {
+              "mean": 2786125,
+              "min": 2296917,
+              "max": 3191500
+            }
+          },
+          "event_publication": {
+            "mean_ns_across_equal_size_product_trials": 6498.061111111111,
+            "per_product_trial_p99_ns": {
+              "mean": 25201.416666666668,
+              "min": 9209,
+              "max": 71667
+            }
+          },
+          "event_subscriber_wait_materialize": {
+            "mean_ns_across_equal_size_product_trials": 377550.89694444445,
+            "per_product_trial_p99_ns": {
+              "mean": 1477510.5,
+              "min": 1159250,
+              "max": 1914208
+            }
+          },
+          "event_server_write": {
+            "mean_ns_across_equal_size_product_trials": 228991.6875,
+            "per_product_trial_p99_ns": {
+              "mean": 883944.4166666666,
+              "min": 794625,
+              "max": 994667
+            }
+          },
+          "event_input_to_write_completed": {
+            "mean_ns_across_equal_size_product_trials": 671917.98,
+            "per_product_trial_p99_ns": {
+              "mean": 2149194.3333333335,
+              "min": 1850500,
+              "max": 2489666
+            }
+          }
+        },
+        "ingress_max_occupancy": 1,
+        "book_max_occupancy": 1,
+        "event_max_occupancy": 1,
+        "checked_share_of_owner_wall": 0.947071544608287
+      }
+    },
+    "deep_stress": {
+      "depth_per_side": 5000,
+      "batch_levels": 10,
+      "events_per_product": 1000,
+      "interval_us": 10000,
+      "off": {
+        "process_cpu_cores": {
+          "mean": 0.925122889810919,
+          "min": 0.8920309295092564,
+          "max": 0.9451461742279195
+        },
+        "peak_rss_process_bytes": {
+          "mean": 29726037.333333332,
+          "min": 28803072,
+          "max": 31064064
+        },
+        "worst_product_book_client_p99_ns": {
+          "mean": 4376319.666666667,
+          "min": 4179375,
+          "max": 4534459
+        },
+        "worst_product_event_client_p99_ns": {
+          "mean": 3411430.6666666665,
+          "min": 3309792,
+          "max": 3516875
+        },
+        "host_min_available_bytes": 7586332672,
+        "host_mean_busy_cores": {
+          "mean": 1.7422414965986395,
+          "min": 1.7121836734693878,
+          "max": 1.760765306122449
+        },
+        "binary_sha256": "c43f6a324153f9edbe7c26fde8970216063a37c00a0adbf741657ad6560c8bb1",
+        "swap_in_delta_bytes": 2621440,
+        "swap_out_delta_bytes": 0
+      },
+      "on": {
+        "process_cpu_cores": {
+          "mean": 0.9080158777499782,
+          "min": 0.8660974259351507,
+          "max": 0.9350203458252802
+        },
+        "peak_rss_process_bytes": {
+          "mean": 56634026.666666664,
+          "min": 55672832,
+          "max": 58474496
+        },
+        "worst_product_book_client_p99_ns": {
+          "mean": 4551639.333333333,
+          "min": 4232584,
+          "max": 5108959
+        },
+        "worst_product_event_client_p99_ns": {
+          "mean": 3725555.6666666665,
+          "min": 3359917,
+          "max": 4328542
+        },
+        "host_min_available_bytes": 7286620160,
+        "host_mean_busy_cores": {
+          "mean": 1.9602823129251703,
+          "min": 1.730469387755102,
+          "max": 2.3636632653061227
+        },
+        "binary_sha256": "88d771fa907571561310225124758ff343d43f08e8c378e364eaab8aa781dde2",
+        "swap_in_delta_bytes": 74072064,
+        "swap_out_delta_bytes": 0,
+        "four_owner_update_cpu_cores": {
+          "mean": 0.7186341816999497,
+          "min": 0.6813471667677407,
+          "max": 0.7422999725527236
+        },
+        "stage_metrics": {
+          "parse": {
+            "mean_ns_across_equal_size_product_trials": 36308.93441666666,
+            "per_product_trial_p99_ns": {
+              "mean": 100753.41666666667,
+              "min": 86333,
+              "max": 111000
+            }
+          },
+          "event_publish_and_ingress_submit": {
+            "mean_ns_across_equal_size_product_trials": 9493.050583333334,
+            "per_product_trial_p99_ns": {
+              "mean": 29010.333333333332,
+              "min": 21375,
+              "max": 39000
+            }
+          },
+          "ingress_wait": {
+            "mean_ns_across_equal_size_product_trials": 92187.16508333333,
+            "per_product_trial_p99_ns": {
+              "mean": 1609184,
+              "min": 936042,
+              "max": 2120958
+            }
+          },
+          "adapter_before_checked_call": {
+            "mean_ns_across_equal_size_product_trials": 5085.309666666667,
+            "per_product_trial_p99_ns": {
+              "mean": 27954.75,
+              "min": 23833,
+              "max": 35083
+            }
+          },
+          "checked_apply": {
+            "mean_ns_across_equal_size_product_trials": 1863257.21225,
+            "per_product_trial_p99_ns": {
+              "mean": 3033343.9166666665,
+              "min": 2866542,
+              "max": 3203042
+            }
+          },
+          "post_apply_owner": {
+            "mean_ns_across_equal_size_product_trials": 11088.403166666667,
+            "per_product_trial_p99_ns": {
+              "mean": 32479.083333333332,
+              "min": 24791,
+              "max": 44375
+            }
+          },
+          "input_to_applied": {
+            "mean_ns_across_equal_size_product_trials": 2006331.672,
+            "per_product_trial_p99_ns": {
+              "mean": 3953500.0833333335,
+              "min": 3550917,
+              "max": 4332125
+            }
+          },
+          "owner_update_cpu": {
+            "mean_ns_across_equal_size_product_trials": 1795828.3429999999,
+            "per_product_trial_p99_ns": {
+              "mean": 2301260.5833333335,
+              "min": 2228542,
+              "max": 2397209
+            }
+          },
+          "order_book_publication": {
+            "mean_ns_across_equal_size_product_trials": 3609.2943333333333,
+            "per_product_trial_p99_ns": {
+              "mean": 12909.75,
+              "min": 10333,
+              "max": 16167
+            }
+          },
+          "order_book_subscriber_wait_materialize": {
+            "mean_ns_across_equal_size_product_trials": 136090.90733333334,
+            "per_product_trial_p99_ns": {
+              "mean": 875763.8333333334,
+              "min": 593291,
+              "max": 1626958
+            }
+          },
+          "order_book_server_write": {
+            "mean_ns_across_equal_size_product_trials": 48864.14958333333,
+            "per_product_trial_p99_ns": {
+              "mean": 229895.83333333334,
+              "min": 202333,
+              "max": 252250
+            }
+          },
+          "order_book_input_to_write_completed": {
+            "mean_ns_across_equal_size_product_trials": 2194896.02325,
+            "per_product_trial_p99_ns": {
+              "mean": 4272771,
+              "min": 3714292,
+              "max": 5025584
+            }
+          },
+          "event_publication": {
+            "mean_ns_across_equal_size_product_trials": 3640.9678333333336,
+            "per_product_trial_p99_ns": {
+              "mean": 14086.833333333334,
+              "min": 7584,
+              "max": 20667
+            }
+          },
+          "event_subscriber_wait_materialize": {
+            "mean_ns_across_equal_size_product_trials": 504765.4815,
+            "per_product_trial_p99_ns": {
+              "mean": 2805031.25,
+              "min": 2437167,
+              "max": 3965041
+            }
+          },
+          "event_server_write": {
+            "mean_ns_across_equal_size_product_trials": 120700.45541666666,
+            "per_product_trial_p99_ns": {
+              "mean": 1391100.5833333333,
+              "min": 789958,
+              "max": 1980458
+            }
+          },
+          "event_input_to_write_completed": {
+            "mean_ns_across_equal_size_product_trials": 665415.8391666667,
+            "per_product_trial_p99_ns": {
+              "mean": 3089875,
+              "min": 2775833,
+              "max": 4064500
+            }
+          }
+        },
+        "ingress_max_occupancy": 7,
+        "book_max_occupancy": 7,
+        "event_max_occupancy": 8,
+        "checked_share_of_owner_wall": 0.9913943563354869
+      }
+    },
+    "batch_stress": {
+      "depth_per_side": 5000,
+      "batch_levels": 100,
+      "events_per_product": 1000,
+      "interval_us": 10000,
+      "off": {
+        "process_cpu_cores": {
+          "mean": 0.983401093786187,
+          "min": 0.9775269568665822,
+          "max": 0.9930014331605338
+        },
+        "peak_rss_process_bytes": {
+          "mean": 34881536,
+          "min": 34406400,
+          "max": 35651584
+        },
+        "worst_product_book_client_p99_ns": {
+          "mean": 4149847,
+          "min": 3918458,
+          "max": 4423875
+        },
+        "worst_product_event_client_p99_ns": {
+          "mean": 3207041.3333333335,
+          "min": 3033958,
+          "max": 3522583
+        },
+        "host_min_available_bytes": 7338934272,
+        "host_mean_busy_cores": {
+          "mean": 1.8104471866430627,
+          "min": 1.7684343434343432,
+          "max": 1.850381443298969
+        },
+        "binary_sha256": "c43f6a324153f9edbe7c26fde8970216063a37c00a0adbf741657ad6560c8bb1",
+        "swap_in_delta_bytes": 52740096,
+        "swap_out_delta_bytes": 0
+      },
+      "on": {
+        "process_cpu_cores": {
+          "mean": 0.9822368612134236,
+          "min": 0.9648914517150906,
+          "max": 0.9922922800533608
+        },
+        "peak_rss_process_bytes": {
+          "mean": 58288810.666666664,
+          "min": 57851904,
+          "max": 58654720
+        },
+        "worst_product_book_client_p99_ns": {
+          "mean": 4961680.666666667,
+          "min": 4040292,
+          "max": 6633500
+        },
+        "worst_product_event_client_p99_ns": {
+          "mean": 3461236,
+          "min": 2947000,
+          "max": 4129875
+        },
+        "host_min_available_bytes": 7264763904,
+        "host_mean_busy_cores": {
+          "mean": 1.8492273674893263,
+          "min": 1.7833030303030302,
+          "max": 1.9359690721649483
+        },
+        "binary_sha256": "88d771fa907571561310225124758ff343d43f08e8c378e364eaab8aa781dde2",
+        "swap_in_delta_bytes": 2768896,
+        "swap_out_delta_bytes": 0,
+        "four_owner_update_cpu_cores": {
+          "mean": 0.7142831659711164,
+          "min": 0.6979389295634605,
+          "max": 0.7270311216405476
+        },
+        "stage_metrics": {
+          "parse": {
+            "mean_ns_across_equal_size_product_trials": 97741.15925,
+            "per_product_trial_p99_ns": {
+              "mean": 209343.75,
+              "min": 191125,
+              "max": 239125
+            }
+          },
+          "event_publish_and_ingress_submit": {
+            "mean_ns_across_equal_size_product_trials": 17518.31525,
+            "per_product_trial_p99_ns": {
+              "mean": 44642.333333333336,
+              "min": 37791,
+              "max": 54042
+            }
+          },
+          "ingress_wait": {
+            "mean_ns_across_equal_size_product_trials": 104085.75316666666,
+            "per_product_trial_p99_ns": {
+              "mean": 1260621.6666666667,
+              "min": 442667,
+              "max": 2279375
+            }
+          },
+          "adapter_before_checked_call": {
+            "mean_ns_across_equal_size_product_trials": 10328.687750000001,
+            "per_product_trial_p99_ns": {
+              "mean": 42052.083333333336,
+              "min": 37583,
+              "max": 53750
+            }
+          },
+          "checked_apply": {
+            "mean_ns_across_equal_size_product_trials": 1826064.4613333333,
+            "per_product_trial_p99_ns": {
+              "mean": 2721382,
+              "min": 2383833,
+              "max": 3161750
+            }
+          },
+          "post_apply_owner": {
+            "mean_ns_across_equal_size_product_trials": 22302.901833333333,
+            "per_product_trial_p99_ns": {
+              "mean": 52940.916666666664,
+              "min": 43458,
+              "max": 67583
+            }
+          },
+          "input_to_applied": {
+            "mean_ns_across_equal_size_product_trials": 2055738.37675,
+            "per_product_trial_p99_ns": {
+              "mean": 3902128.4166666665,
+              "min": 2819083,
+              "max": 5760166
+            }
+          },
+          "owner_update_cpu": {
+            "mean_ns_across_equal_size_product_trials": 1784974.2935833333,
+            "per_product_trial_p99_ns": {
+              "mean": 2180243,
+              "min": 2123250,
+              "max": 2235833
+            }
+          },
+          "order_book_publication": {
+            "mean_ns_across_equal_size_product_trials": 13697.01475,
+            "per_product_trial_p99_ns": {
+              "mean": 39052,
+              "min": 32583,
+              "max": 47666
+            }
+          },
+          "order_book_subscriber_wait_materialize": {
+            "mean_ns_across_equal_size_product_trials": 87287.43975,
+            "per_product_trial_p99_ns": {
+              "mean": 601833.4166666666,
+              "min": 428250,
+              "max": 891958
+            }
+          },
+          "order_book_server_write": {
+            "mean_ns_across_equal_size_product_trials": 39202.467666666664,
+            "per_product_trial_p99_ns": {
+              "mean": 208045.08333333334,
+              "min": 170750,
+              "max": 254541
+            }
+          },
+          "order_book_input_to_write_completed": {
+            "mean_ns_across_equal_size_product_trials": 2195925.298916667,
+            "per_product_trial_p99_ns": {
+              "mean": 4308600.583333333,
+              "min": 3267958,
+              "max": 6561583
+            }
+          },
+          "event_publication": {
+            "mean_ns_across_equal_size_product_trials": 12146.660333333333,
+            "per_product_trial_p99_ns": {
+              "mean": 34319.583333333336,
+              "min": 27333,
+              "max": 41209
+            }
+          },
+          "event_subscriber_wait_materialize": {
+            "mean_ns_across_equal_size_product_trials": 337214.30816666665,
+            "per_product_trial_p99_ns": {
+              "mean": 2443569.3333333335,
+              "min": 2156042,
+              "max": 2837000
+            }
+          },
+          "event_server_write": {
+            "mean_ns_across_equal_size_product_trials": 92069.99358333333,
+            "per_product_trial_p99_ns": {
+              "mean": 493392.25,
+              "min": 392250,
+              "max": 932500
+            }
+          },
+          "event_input_to_write_completed": {
+            "mean_ns_across_equal_size_product_trials": 539172.1213333333,
+            "per_product_trial_p99_ns": {
+              "mean": 2791079.9166666665,
+              "min": 2497375,
+              "max": 3251834
+            }
+          }
+        },
+        "ingress_max_occupancy": 7,
+        "book_max_occupancy": 2,
+        "event_max_occupancy": 8,
+        "checked_share_of_owner_wall": 0.9824438269144435
+      }
+    }
+  },
+  "artifacts": {
+    "paired_campaign_sha256": "ecb8b5997dca8bc051a8c80eef8215859aef33f05925378507b4ea728d490252"
+  },
+  "representative_core": {
+    "M3/LiveApply/Accepted/Spot/D1000/B1": {
+      "repetitions": 5,
+      "real_time_ns": {
+        "mean": 73509.81617336714,
+        "min": 73199.44434868061,
+        "max": 73859.65126579186
+      }
+    },
+    "M3/LiveApply/Accepted/Spot/D1000/B10": {
+      "repetitions": 5,
+      "real_time_ns": {
+        "mean": 72780.78921923511,
+        "min": 72450.92113551342,
+        "max": 73363.11360919161
+      }
+    },
+    "M3/LiveApply/Accepted/Spot/D1000/B100": {
+      "repetitions": 5,
+      "real_time_ns": {
+        "mean": 74060.24551509242,
+        "min": 73502.27991609197,
+        "max": 74958.37702759002
+      }
+    },
+    "M3/LiveApply/Accepted/Spot/D5000/B1": {
+      "repetitions": 5,
+      "real_time_ns": {
+        "mean": 407422.64704450086,
+        "min": 404225.2473642721,
+        "max": 410751.7121797975
+      }
+    },
+    "M3/LiveApply/Accepted/Spot/D5000/B10": {
+      "repetitions": 5,
+      "real_time_ns": {
+        "mean": 408484.5374989716,
+        "min": 403259.87949493644,
+        "max": 412066.4738355517
+      }
+    },
+    "M3/LiveApply/Accepted/Spot/D5000/B100": {
+      "repetitions": 5,
+      "real_time_ns": {
+        "mean": 410495.9544295456,
+        "min": 407860.3801671525,
+        "max": 415750.97119468346
+      }
+    },
+    "M3/LiveApply/Accepted/UsdMPerpetual/D1000/B1": {
+      "repetitions": 5,
+      "real_time_ns": {
+        "mean": 72380.60434518648,
+        "min": 71891.04854331633,
+        "max": 72927.6518117786
+      }
+    },
+    "M3/LiveApply/Accepted/UsdMPerpetual/D1000/B10": {
+      "repetitions": 5,
+      "real_time_ns": {
+        "mean": 72993.50166440378,
+        "min": 72684.67054744501,
+        "max": 73288.88067952644
+      }
+    },
+    "M3/LiveApply/Accepted/UsdMPerpetual/D1000/B100": {
+      "repetitions": 5,
+      "real_time_ns": {
+        "mean": 73866.22267332413,
+        "min": 73261.32742000987,
+        "max": 74751.24421849179
+      }
+    },
+    "M3/LiveApply/Accepted/UsdMPerpetual/D5000/B1": {
+      "repetitions": 5,
+      "real_time_ns": {
+        "mean": 407109.6876137998,
+        "min": 404601.50109517365,
+        "max": 411150.19188890624
+      }
+    },
+    "M3/LiveApply/Accepted/UsdMPerpetual/D5000/B10": {
+      "repetitions": 5,
+      "real_time_ns": {
+        "mean": 406006.5574921976,
+        "min": 404674.30771323,
+        "max": 406822.97635316494
+      }
+    },
+    "M3/LiveApply/Accepted/UsdMPerpetual/D5000/B100": {
+      "repetitions": 5,
+      "real_time_ns": {
+        "mean": 407279.3642990291,
+        "min": 404435.268137604,
+        "max": 411203.868376712
+      }
+    }
+  },
+  "allocation": {
+    "m3": {
+      "record_count": 48,
+      "selected_records": [
+        {
+          "measurement_scope": "M3/LiveApply/Accepted/Spot/D1000/B10",
+          "allocation_count": 2023,
+          "total_allocated_bytes": 161560,
+          "peak_above_entry": 128824,
+          "persistent_live_delta": {
+            "sign": "zero",
+            "magnitude": 0
+          },
+          "repetitions": 3,
+          "determinism_confirmed": true,
+          "fixture_identity": {
+            "seed": "not_applicable",
+            "canonical_log_sha256": "not_applicable",
+            "event_count": null
+          }
+        },
+        {
+          "measurement_scope": "M3/LiveApply/Accepted/Spot/D5000/B10",
+          "allocation_count": 10029,
+          "total_allocated_bytes": 1004312,
+          "peak_above_entry": 742200,
+          "persistent_live_delta": {
+            "sign": "zero",
+            "magnitude": 0
+          },
+          "repetitions": 3,
+          "determinism_confirmed": true,
+          "fixture_identity": {
+            "seed": "not_applicable",
+            "canonical_log_sha256": "not_applicable",
+            "event_count": null
+          }
+        },
+        {
+          "measurement_scope": "M3/LiveApply/Accepted/UsdMPerpetual/D1000/B10",
+          "allocation_count": 2023,
+          "total_allocated_bytes": 161560,
+          "peak_above_entry": 128824,
+          "persistent_live_delta": {
+            "sign": "zero",
+            "magnitude": 0
+          },
+          "repetitions": 3,
+          "determinism_confirmed": true,
+          "fixture_identity": {
+            "seed": "not_applicable",
+            "canonical_log_sha256": "not_applicable",
+            "event_count": null
+          }
+        },
+        {
+          "measurement_scope": "M3/LiveApply/Accepted/UsdMPerpetual/D5000/B10",
+          "allocation_count": 10029,
+          "total_allocated_bytes": 1004312,
+          "peak_above_entry": 742200,
+          "persistent_live_delta": {
+            "sign": "zero",
+            "magnitude": 0
+          },
+          "repetitions": 3,
+          "determinism_confirmed": true,
+          "fixture_identity": {
+            "seed": "not_applicable",
+            "canonical_log_sha256": "not_applicable",
+            "event_count": null
+          }
+        }
+      ]
+    },
+    "m4": {
+      "record_count": 22,
+      "selected_records": [
+        {
+          "measurement_scope": "M4/AdaptDepthUpdate/Spot/10",
+          "allocation_count": 2,
+          "total_allocated_bytes": 480,
+          "peak_above_entry": 480,
+          "persistent_live_delta": {
+            "sign": "positive",
+            "magnitude": 240
+          },
+          "repetitions": 3,
+          "determinism_confirmed": true,
+          "fixture_identity": {
+            "seed": "not_applicable",
+            "canonical_log_sha256": "not_applicable",
+            "event_count": null
+          }
+        },
+        {
+          "measurement_scope": "M4/CheckedApply/1000",
+          "allocation_count": 2023,
+          "total_allocated_bytes": 161560,
+          "peak_above_entry": 128824,
+          "persistent_live_delta": {
+            "sign": "zero",
+            "magnitude": 0
+          },
+          "repetitions": 3,
+          "determinism_confirmed": true,
+          "fixture_identity": {
+            "seed": "not_applicable",
+            "canonical_log_sha256": "not_applicable",
+            "event_count": null
+          }
+        }
+      ]
+    },
+    "replay": {
+      "record_count": 4,
+      "selected_records": [
+        {
+          "measurement_scope": "CoreNormalizedReplay/Spot",
+          "allocation_count": 373959,
+          "total_allocated_bytes": 32605848,
+          "peak_above_entry": 42376,
+          "persistent_live_delta": {
+            "sign": "positive",
+            "magnitude": 10992
+          },
+          "repetitions": 3,
+          "determinism_confirmed": true,
+          "fixture_identity": {
+            "seed": "not_applicable",
+            "canonical_log_sha256": "14f44a6794af5c87fb3b359e16c1901a284e6da7946f02d6be3dc8cacb249227",
+            "event_count": 2048
+          }
+        },
+        {
+          "measurement_scope": "CoreNormalizedReplay/UsdMPerpetual",
+          "allocation_count": 375120,
+          "total_allocated_bytes": 32672896,
+          "peak_above_entry": 42280,
+          "persistent_live_delta": {
+            "sign": "positive",
+            "magnitude": 11568
+          },
+          "repetitions": 3,
+          "determinism_confirmed": true,
+          "fixture_identity": {
+            "seed": "not_applicable",
+            "canonical_log_sha256": "f3e60732c8e4452f86231548cd0c5918b914487063d3f4f22d6588f088141e03",
+            "event_count": 2048
+          }
+        },
+        {
+          "measurement_scope": "AdapterWireReplay/Spot",
+          "allocation_count": 381271,
+          "total_allocated_bytes": 32827507,
+          "peak_above_entry": 42400,
+          "persistent_live_delta": {
+            "sign": "positive",
+            "magnitude": 10992
+          },
+          "repetitions": 3,
+          "determinism_confirmed": true,
+          "fixture_identity": {
+            "seed": "not_applicable",
+            "canonical_log_sha256": "14f44a6794af5c87fb3b359e16c1901a284e6da7946f02d6be3dc8cacb249227",
+            "event_count": 2048
+          }
+        },
+        {
+          "measurement_scope": "AdapterWireReplay/UsdMPerpetual",
+          "allocation_count": 381710,
+          "total_allocated_bytes": 32861742,
+          "peak_above_entry": 42304,
+          "persistent_live_delta": {
+            "sign": "positive",
+            "magnitude": 11568
+          },
+          "repetitions": 3,
+          "determinism_confirmed": true,
+          "fixture_identity": {
+            "seed": "not_applicable",
+            "canonical_log_sha256": "f3e60732c8e4452f86231548cd0c5918b914487063d3f4f22d6588f088141e03",
+            "event_count": 2048
+          }
+        }
+      ]
+    }
+  },
+  "small_replay_latency": {
+    "spot": {
+      "workload": {
+        "workload_id": "m5-small-spot-v1",
+        "market": "Spot",
+        "symbol": "BTCUSDT",
+        "price_scale": 2,
+        "quantity_scale": 3,
+        "sequence_policy": "Spot",
+        "event_count": 2048,
+        "canonical_log_sha256": "14f44a6794af5c87fb3b359e16c1901a284e6da7946f02d6be3dc8cacb249227",
+        "workload_spec_schema": "M5_BENCHMARK_WORKLOAD_SPEC_V1",
+        "workload_spec_sha256": "001b9ddc486315bfd32dd5ba5f0ab0311442dbf982329ab2c7c4ddc89b81dbb6",
+        "workload_spec_text": "workload_id=m5-small-spot-v1\nmarket=Spot\nsymbol=BTCUSDT\nprice_scale=2\nquantity_scale=3\npolicy=Spot\nevent_count=2048\ncanonical_log_sha256=14f44a6794af5c87fb3b359e16c1901a284e6da7946f02d6be3dc8cacb249227\ngenerated_workload_sha256=14f44a6794af5c87fb3b359e16c1901a284e6da7946f02d6be3dc8cacb249227\ngenerator_schema=M5_PHASE6_REPLAY_V1\ngenerator_version=not_applicable\nseed=not_applicable\nlogical_items_per_iteration=2048\nprovenance_provenance_generator=m5-small-generator-v1\nprovenance_provenance_seed=548746690337\nprovenance_provenance_source=synthetic\n"
+      },
+      "passes": 5,
+      "sample_count": 10240,
+      "quantiles_ns": {
+        "p50": 6500,
+        "p90": 12458,
+        "p99": 16417,
+        "p99_9": null
+      }
+    },
+    "usdm": {
+      "workload": {
+        "workload_id": "m5-small-usdm-v1",
+        "market": "UsdMPerpetual",
+        "symbol": "BTCUSDT",
+        "price_scale": 2,
+        "quantity_scale": 3,
+        "sequence_policy": "UsdMPerpetual",
+        "event_count": 2048,
+        "canonical_log_sha256": "f3e60732c8e4452f86231548cd0c5918b914487063d3f4f22d6588f088141e03",
+        "workload_spec_schema": "M5_BENCHMARK_WORKLOAD_SPEC_V1",
+        "workload_spec_sha256": "326e02b826e82b5fcdf238018e816c717441970487bd56e10cf7ebd39613a1e7",
+        "workload_spec_text": "workload_id=m5-small-usdm-v1\nmarket=UsdMPerpetual\nsymbol=BTCUSDT\nprice_scale=2\nquantity_scale=3\npolicy=UsdMPerpetual\nevent_count=2048\ncanonical_log_sha256=f3e60732c8e4452f86231548cd0c5918b914487063d3f4f22d6588f088141e03\ngenerated_workload_sha256=f3e60732c8e4452f86231548cd0c5918b914487063d3f4f22d6588f088141e03\ngenerator_schema=M5_PHASE6_REPLAY_V1\ngenerator_version=not_applicable\nseed=not_applicable\nlogical_items_per_iteration=2048\nprovenance_provenance_generator=m5-small-generator-v1\nprovenance_provenance_seed=548746690337\nprovenance_provenance_source=synthetic\n"
+      },
+      "passes": 5,
+      "sample_count": 10240,
+      "quantiles_ns": {
+        "p50": 5833,
+        "p90": 11083,
+        "p99": 13250,
+        "p99_9": null
+      }
+    }
+  },
+  "recorded_medium_core_replay": {
+    "spot": {
+      "fixture_id": "M5-REC-SPOT-BTCUSDT-V1",
+      "event_count": 100002,
+      "canonical_log_sha256": "9e9831231192938ac1bd21c90b157ec17e8e2d4e8034131eb21ba57c99b2cc9d",
+      "repetitions": 3,
+      "wall_seconds": [
+        15.120852207997814,
+        15.219357582973316,
+        15.357132124947384
+      ],
+      "events_per_second": [
+        6613.516131525069,
+        6570.710981380543,
+        6511.762690219261
+      ],
+      "wrapper_sha256": "53fc1be4c523f4eb9f38488f3ded0202388d6158572810d88e252602842c9325",
+      "payload_sha256": "0bf790d8568ddd63ab5d6ed12c48751056261ad2247f8bad1f7ff097ebff99ab",
+      "binary_sha256": "daeb70c2faf95d0956f7bad835f5e688380f7123a8abe88dad33a1ec5e138287",
+      "source_sha": "95fc918186597841583a69b74b33ceefcc5cbcf0"
+    },
+    "usdm": {
+      "fixture_id": "M5-REC-USDM-BTCUSDT-V1",
+      "event_count": 100002,
+      "canonical_log_sha256": "d28ffe19e134e4d5d1c4d57a60762e8884dee676c858587224aebf8afed29afc",
+      "repetitions": 3,
+      "wall_seconds": [
+        86.84169150004165,
+        86.77516454202123,
+        86.68803212512285
+      ],
+      "events_per_second": [
+        1151.5436683997807,
+        1152.4265096792024,
+        1153.5848438185812
+      ],
+      "wrapper_sha256": "5624365fd6e76a14b297ef784a0106edf8d43dd431d26cb2f9885c6cf286cc3c",
+      "payload_sha256": "9818a5fd7f1e4a6e8492b18b45147836a1691c151ee21b039e9f78b7841cf876",
+      "binary_sha256": "daeb70c2faf95d0956f7bad835f5e688380f7123a8abe88dad33a1ec5e138287",
+      "source_sha": "95fc918186597841583a69b74b33ceefcc5cbcf0"
+    }
+  },
+  "validation": {
+    "normal_release": "24/24",
+    "instrumented_release": "25/25",
+    "asan_ubsan_production": "23/23 + final 2/2",
+    "tsan_affected": "5/5",
+    "python_trace_analyzer": "3 tests with adversarial subcases",
+    "phase7_allocation_records": [
+      48,
+      22,
+      4
+    ],
+    "phase6_wrapper_and_latency": "PASS",
+    "phase10_recorded_medium_exact_five_files": "PASS",
+    "independent_main_campaign_review": "APPROVED",
+    "gateway_ci_run": 39141119116,
+    "gateway_ci_head": "255eaeaa82ad576afedc929223f243638dfe8b88",
+    "gateway_linux_production": "22/22"
+  }
+}

@@ -59,6 +59,14 @@ closure identities are recorded in [the P0 result](PROJECTION_P0_RESULT.md).
 P1/P2, Gateway G1/G2, production VPS access, and Recorder qualification work
 are outside this change.
 
+## Projection P1 under the v0.3 plan
+
+The owner authorized four-product cost attribution on 2026-10-18. Offline measurement is
+complete using Gateway G2's existing production graph and M5 measurement tools.
+Eighteen paired process trials completed with full delivery and zero Full/Gap/
+overflow/clock errors. Core/Adapter production code and pins remain unchanged;
+P2 and target-VPS budget acceptance remain conditional. See [P1 results](PROJECTION_P1_RESULT.md).
+
 ## Repository role
 
 Projection owns deterministic market-state projection semantics, fixed-point interpretation, the
