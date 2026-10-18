@@ -96,6 +96,7 @@ set_target_properties(
 bmd_projection_apply_project_options(bmd_projection_m5_phase8_container_evidence)
 
 if(BMD_PROJECTION_BUILD_TESTS)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
     add_test(
         NAME m5_phase6_phase8_registration_separation
         COMMAND ${Python3_EXECUTABLE}

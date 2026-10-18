@@ -47,6 +47,15 @@ CURRENT_STATE is an orientation summary only. It does not override accepted ADRs
 milestone designs, implementation evidence, or current Git/GitHub state. When those sources
 disagree, verify the higher-authority source and update this file.
 
+## Projection P0 under the v0.3 plan
+
+The owner authorized Projection P0 on 2026-10-12: fixed-asset acquisition and the
+tests+benchmarks Python CTest repair. The candidate is implemented on
+`codex/projection-p0-ci-ctest` and awaits independent review. Scope, diagnosis,
+and validation are recorded in [the P0 result](PROJECTION_P0_RESULT.md).
+P1/P2, Gateway G1/G2, production VPS access, and Recorder qualification work
+are outside this change.
+
 ## Repository role
 
 Projection owns deterministic market-state projection semantics, fixed-point interpretation, the
