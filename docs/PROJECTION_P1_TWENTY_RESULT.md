@@ -20,7 +20,7 @@ the v0.4 twenty-key offline attribution increment. The existing
   counts, weighted stages, p99 and maximum-tail observations verified.
 - [x] Local raw evidence archive: 107 data-member SHA-256 checks and tar readback PASS.
 - [x] Reviewed tooling/results delivered through Projection PR #55 and Gateway PR #38;
-  current automatic CI state is visible in their checks.
+  Projection PR #55 merged on 2026-10-19 after exact-head CI passed 20/20.
 
 ## Workload and limits
 
@@ -248,13 +248,20 @@ order and rejects Full, missing correlation, invalid chronology and overflow.
 
 ## Delivery status
 
-Gateway [PR #38](https://github.com/tomohikoAmada/BinanceMarketDataGateway/pull/38)
-is ready for review; technical `7266c47` has all seven CI jobs green and Linux
-production 24/24. Documentation-only closure `9d92c96` changes no tested code.
 Projection [PR #55](https://github.com/tomohikoAmada/BinanceMarketDataProjection/pull/55)
-delivers the reviewed runner, four analyzer tests, reports and trial summaries.
-Its original four-product technical commit `248c622` passed all 20 automatic
-checks. The twenty-key Python-only increment passed its four focused tests and
-independent method/evidence review; Core/Adapter and toolchain are unchanged.
-The subsequent automatic C++ matrix is tracked by the PR checks and is not
-represented as passed while it is still running. Neither PR is merged here.
+is **COMPLETE / MERGED** at `f251e11bea5e8a3af2aea3819f9c5337ca4843f9`
+on 2026-10-19 (13:39:42 +08:00). Exact tested head
+`16490e3afd785e5ad50504f9e805c4444db58c73` passed
+[all 20 CI jobs](https://github.com/tomohikoAmada/BinanceMarketDataProjection/actions/runs/39146930093),
+including canonical Quality, ASan/UBSan, fuzz and M5. The merge commit and tested
+head have the same tree `69a606ad0e2e84c55cc9684ca58cd4a3f45c3938`.
+
+Gateway [PR #38](https://github.com/tomohikoAmada/BinanceMarketDataGateway/pull/38)
+also merged at `0c8d33dc42d9ac7cfac05187237d6c4032189223` on 2026-10-19.
+Its measured-source and validation identities above remain distinct and unchanged.
+
+This closeout updates documentation only. All four committed evidence JSON files,
+the raw archives and measured CPU/RSS/queue/gRPC/p99/maximum-tail results remain
+unchanged, including the 102.404 ms maximum and 29.901/40.471 ms p99 outliers.
+Core/Adapter/toolchain/pins are unchanged. P2 remains CONDITIONAL; this merge does
+not qualify shared-VPS/Recorder co-load or a production latency SLA.

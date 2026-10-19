@@ -4,8 +4,12 @@
 
 - Projection P0 under the v0.3 plan (CI/CTest repair): **COMPLETE / MERGED** through
   PR #54 on 2026-10-18; exact-head CI 20/20 PASS. See
-  [the P0 result](PROJECTION_P0_RESULT.md). Projection P1 four-product offline cost attribution is complete; the v0.4
-  20-key mixed-load increment is also complete offline; see
+  [the P0 result](PROJECTION_P0_RESULT.md). Projection P1 four-product and v0.4
+  20-key offline cost attribution is **COMPLETE / MERGED** through
+  [PR #55](https://github.com/tomohikoAmada/BinanceMarketDataProjection/pull/55)
+  on 2026-10-19 (`f251e11`); tested head `16490e3` passed all 20 jobs in
+  [CI run 39146930093](https://github.com/tomohikoAmada/BinanceMarketDataProjection/actions/runs/39146930093).
+  Merge/tested trees are identical; original CPU and tail-latency evidence is retained. See
   [the twenty-key result](PROJECTION_P1_TWENTY_RESULT.md). P2 and
   target-VPS budget conclusions remain conditional on Gateway G3. See
   [the P1 result](PROJECTION_P1_RESULT.md).

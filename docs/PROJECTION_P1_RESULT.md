@@ -276,6 +276,13 @@ Four-product technical commit `248c622699dc6838553a5d1cc087a598097cb8f1`
 passed [all 20 CI jobs](https://github.com/tomohikoAmada/BinanceMarketDataProjection/actions/runs/39142012653).
 The subsequent twenty-key increment is tracked separately.
 
+Final owner-authorized closure on 2026-10-19: PR #55 merged as
+`f251e11bea5e8a3af2aea3819f9c5337ca4843f9` after exact head
+`16490e3afd785e5ad50504f9e805c4444db58c73` passed
+[all 20 CI jobs](https://github.com/tomohikoAmada/BinanceMarketDataProjection/actions/runs/39146930093).
+The merge tree equals the tested head tree. The measured four-product source,
+CPU/latency tables, JSON summaries and raw archive hash above remain unchanged.
+
 ## Decision boundary
 
 There is no approved CPU/RSS/p99 or future-resource reservation budget. This P1

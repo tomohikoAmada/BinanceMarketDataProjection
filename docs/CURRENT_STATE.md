@@ -59,7 +59,7 @@ closure identities are recorded in [the P0 result](PROJECTION_P0_RESULT.md).
 P1/P2, Gateway G1/G2, production VPS access, and Recorder qualification work
 are outside this change.
 
-## Projection P1 under the v0.3 plan
+## Projection P1 under the v0.3/v0.4 plans — COMPLETE / MERGED
 
 The owner authorized four-product cost attribution on 2026-10-18. Offline measurement is
 complete using Gateway G2's existing production graph and M5 measurement tools.
@@ -70,6 +70,15 @@ plan adds 20-key mixed-load attribution, now also complete offline with a
 separate [twenty-key result](PROJECTION_P1_TWENTY_RESULT.md), verified raw archive
 and independent review. Its evidence is distinct from the original
 [four-product result](PROJECTION_P1_RESULT.md).
+
+Owner-authorized closure: [PR #55](https://github.com/tomohikoAmada/BinanceMarketDataProjection/pull/55)
+merged on 2026-10-19 as `f251e11bea5e8a3af2aea3819f9c5337ca4843f9`.
+Exact tested head `16490e3afd785e5ad50504f9e805c4444db58c73` passed all 20 jobs in
+[CI run 39146930093](https://github.com/tomohikoAmada/BinanceMarketDataProjection/actions/runs/39146930093).
+The merge commit tree exactly equals that tested head tree. Both four-/twenty-key
+raw archives and all CPU/latency/resource evidence are unchanged. Gateway support
+PR #38 is also merged; P2/shared-VPS acceptance remains conditional.
+
 
 ## Repository role
 
