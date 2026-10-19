@@ -1,0 +1,1864 @@
+{
+  "schema": "projection-p1-twenty-result.v1",
+  "gateway_source": {
+    "head": "8ce41bedf1d3da649d753b04af7a482172cf93c8",
+    "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "untracked": {}
+  },
+  "driver_sha256": "a4a9e069cc8c7e1d5c5d44a986af061a84e50e0249792bf4640b9b8b98809db1",
+  "profile_sha256": "0ef8128d30c413477841c2d7a7cd98bac88780c41ed346952a095b7d340ddbe5",
+  "platform": {
+    "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "logical_cpus": 8,
+    "physical_cpus": 8,
+    "host_memory_bytes": 25769803776,
+    "psutil_version": "7.2.2"
+  },
+  "scope": "offline local host, embedded loopback clients, no numeric acceptance gate",
+  "scenarios": {
+    "normal": {
+      "updates_per_process": 1640,
+      "modes": {
+        "off": {
+          "process_cpu_cores": {
+            "min": 0.10709278367788473,
+            "max": 0.12692103788212059,
+            "mean": 0.11544925560899606
+          },
+          "peak_rss_mib": {
+            "min": 26.828125,
+            "max": 26.875,
+            "mean": 26.848958333333332
+          },
+          "wall_seconds": {
+            "min": 19.906841625,
+            "max": 19.916897542,
+            "mean": 19.911356625
+          },
+          "update_throughput_per_second": {
+            "min": 82.34214171869037,
+            "max": 82.38373675211272,
+            "mean": 82.36505943692077
+          },
+          "worst_product_book_p99_ms": {
+            "min": 4.466042,
+            "max": 8.443042,
+            "mean": 5.921569666666667
+          },
+          "worst_product_book_max_ms": {
+            "min": 4.578333,
+            "max": 8.443042,
+            "mean": 6.1070693333333335
+          },
+          "worst_product_event_max_ms": {
+            "min": 4.148417,
+            "max": 7.673458,
+            "mean": 5.529736
+          },
+          "worst_product_event_p99_ms": {
+            "min": 3.654416,
+            "max": 7.6235,
+            "mean": 5.323472
+          },
+          "host_min_available_gib": 5.9381866455078125,
+          "host_mean_busy_cores": {
+            "min": 0.9201968085106382,
+            "max": 1.1590053191489362,
+            "mean": 1.0507340425531915
+          },
+          "swap_in_bytes": [
+            1884160,
+            5783552,
+            122814464
+          ],
+          "swap_out_bytes": [
+            0,
+            0,
+            0
+          ]
+        },
+        "on": {
+          "process_cpu_cores": {
+            "min": 0.10415474146963827,
+            "max": 0.11274402962487226,
+            "mean": 0.10964663540184165
+          },
+          "peak_rss_mib": {
+            "min": 137.5,
+            "max": 137.703125,
+            "mean": 137.63020833333334
+          },
+          "wall_seconds": {
+            "min": 19.902322167,
+            "max": 19.91188275,
+            "mean": 19.908499694666666
+          },
+          "update_throughput_per_second": {
+            "min": 82.36287952227923,
+            "max": 82.40244461117611,
+            "mean": 82.37687944124437
+          },
+          "worst_product_book_p99_ms": {
+            "min": 6.237375,
+            "max": 29.900625,
+            "mean": 14.135944333333335
+          },
+          "worst_product_book_max_ms": {
+            "min": 6.937042,
+            "max": 45.224042,
+            "mean": 27.353903
+          },
+          "worst_product_event_max_ms": {
+            "min": 6.923875,
+            "max": 45.123042,
+            "mean": 25.525624999999998
+          },
+          "worst_product_event_p99_ms": {
+            "min": 5.956458,
+            "max": 24.529958,
+            "mean": 12.211861
+          },
+          "host_min_available_gib": 5.811431884765625,
+          "host_mean_busy_cores": {
+            "min": 0.9310585106382978,
+            "max": 1.5577393617021278,
+            "mean": 1.2148617021276595
+          },
+          "swap_in_bytes": [
+            11747328,
+            573440,
+            117702656
+          ],
+          "swap_out_bytes": [
+            0,
+            0,
+            0
+          ],
+          "owner_update_cpu_cores": {
+            "min": 0.04449325395912147,
+            "max": 0.04940648652700508,
+            "mean": 0.047272301527980426
+          },
+          "weighted_stage_mean_ns": {
+            "parse": 82328.84837398374,
+            "event_publish_and_ingress_submit": 21801.032520325203,
+            "ingress_wait": 177430.42235772358,
+            "adapter_before_checked_call": 10195.918699186992,
+            "checked_apply": 592074.1827235773,
+            "post_apply_owner": 19624.696341463416,
+            "input_to_applied": 883830.4046747967,
+            "owner_update_cpu": 573849.8004065041,
+            "order_book_publication": 8820.886991869918,
+            "order_book_subscriber_wait_materialize": 342832.26280487806,
+            "order_book_server_write": 135281.86666666667,
+            "order_book_input_to_write_completed": 1370765.4211382114,
+            "event_publication": 11479.640447154472,
+            "event_subscriber_wait_materialize": 500221.0550813008,
+            "event_server_write": 227185.69268292683,
+            "event_input_to_write_completed": 821215.2365853658
+          },
+          "checked_call_share_owner_update_wall": 0.9520487787518751,
+          "queue_high_waters": {
+            "ingress_max_occupancy": 1,
+            "order_book_max_occupancy": 1,
+            "event_max_occupancy": 1
+          }
+        }
+      },
+      "on_products": {
+        "BINANCE/SPOT/ADAUSDT": {
+          "workload": {
+            "depth": 531,
+            "batch": 5,
+            "count": 40,
+            "interval_us": 500000
+          },
+          "book_p99_ms": {
+            "min": 3.908459,
+            "max": 29.900625,
+            "mean": 13.269278
+          },
+          "event_p99_ms": {
+            "min": 3.74975,
+            "max": 24.529958,
+            "mean": 11.411277666666667
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.0005832320903958718,
+            "max": 0.0006739226150323024,
+            "mean": 0.0006333367022070811
+          }
+        },
+        "BINANCE/SPOT/AVAXUSDT": {
+          "workload": {
+            "depth": 568,
+            "batch": 6,
+            "count": 40,
+            "interval_us": 500000
+          },
+          "book_p99_ms": {
+            "min": 4.163042,
+            "max": 23.806625,
+            "mean": 11.181875
+          },
+          "event_p99_ms": {
+            "min": 3.407833,
+            "max": 23.789583,
+            "mean": 10.859986
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.0005924980147846642,
+            "max": 0.0006807539786721411,
+            "mean": 0.0006410608583796064
+          }
+        },
+        "BINANCE/SPOT/BNBUSDT": {
+          "workload": {
+            "depth": 665,
+            "batch": 9,
+            "count": 60,
+            "interval_us": 333333
+          },
+          "book_p99_ms": {
+            "min": 5.378916,
+            "max": 6.10625,
+            "mean": 5.709277666666667
+          },
+          "event_p99_ms": {
+            "min": 5.174541,
+            "max": 6.019083,
+            "mean": 5.564319
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.0010928440707094864,
+            "max": 0.0012822793132308559,
+            "mean": 0.0011604013748712256
+          }
+        },
+        "BINANCE/SPOT/BTCUSDT": {
+          "workload": {
+            "depth": 1160,
+            "batch": 27,
+            "count": 140,
+            "interval_us": 142857
+          },
+          "book_p99_ms": {
+            "min": 3.889208,
+            "max": 4.714458,
+            "mean": 4.198194333333333
+          },
+          "event_p99_ms": {
+            "min": 3.134375,
+            "max": 4.124917,
+            "mean": 3.695736333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.004755440969036441,
+            "max": 0.005495105796856665,
+            "mean": 0.005042748807505767
+          }
+        },
+        "BINANCE/SPOT/DOGEUSDT": {
+          "workload": {
+            "depth": 642,
+            "batch": 9,
+            "count": 60,
+            "interval_us": 333333
+          },
+          "book_p99_ms": {
+            "min": 4.937666,
+            "max": 5.888542,
+            "mean": 5.35125
+          },
+          "event_p99_ms": {
+            "min": 4.831625,
+            "max": 5.806125,
+            "mean": 5.238625
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.001044089816167685,
+            "max": 0.0012048678942480713,
+            "mean": 0.0010994945547048852
+          }
+        },
+        "BINANCE/SPOT/ETHUSDT": {
+          "workload": {
+            "depth": 1500,
+            "batch": 40,
+            "count": 200,
+            "interval_us": 100000
+          },
+          "book_p99_ms": {
+            "min": 3.534667,
+            "max": 4.998625,
+            "mean": 4.395208333333333
+          },
+          "event_p99_ms": {
+            "min": 2.679,
+            "max": 4.854458,
+            "mean": 3.9858333333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.007969717579820523,
+            "max": 0.00892029872244606,
+            "mean": 0.008428806616938497
+          }
+        },
+        "BINANCE/SPOT/LINKUSDT": {
+          "workload": {
+            "depth": 575,
+            "batch": 6,
+            "count": 40,
+            "interval_us": 500000
+          },
+          "book_p99_ms": {
+            "min": 3.183458,
+            "max": 5.493583,
+            "mean": 4.6441246666666665
+          },
+          "event_p99_ms": {
+            "min": 3.059541,
+            "max": 5.288792,
+            "mean": 4.481680333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.0005754624082446448,
+            "max": 0.0007259999551187046,
+            "mean": 0.0006452320249493486
+          }
+        },
+        "BINANCE/SPOT/LTCUSDT": {
+          "workload": {
+            "depth": 557,
+            "batch": 6,
+            "count": 40,
+            "interval_us": 500000
+          },
+          "book_p99_ms": {
+            "min": 3.397333,
+            "max": 5.792333,
+            "mean": 4.931986
+          },
+          "event_p99_ms": {
+            "min": 3.113667,
+            "max": 5.525125,
+            "mean": 4.683
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.0005976246018222461,
+            "max": 0.0006669219244178664,
+            "mean": 0.0006400891465774851
+          }
+        },
+        "BINANCE/SPOT/SOLUSDT": {
+          "workload": {
+            "depth": 703,
+            "batch": 11,
+            "count": 60,
+            "interval_us": 333333
+          },
+          "book_p99_ms": {
+            "min": 5.505166,
+            "max": 6.269833,
+            "mean": 5.825763666666667
+          },
+          "event_p99_ms": {
+            "min": 5.333083,
+            "max": 5.956458,
+            "mean": 5.6321666666666665
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.001110649519066699,
+            "max": 0.0012535785920181764,
+            "mean": 0.0011662742396919442
+          }
+        },
+        "BINANCE/SPOT/XRPUSDT": {
+          "workload": {
+            "depth": 663,
+            "batch": 9,
+            "count": 60,
+            "interval_us": 333333
+          },
+          "book_p99_ms": {
+            "min": 4.153333,
+            "max": 6.215,
+            "mean": 5.380027666666667
+          },
+          "event_p99_ms": {
+            "min": 4.071833,
+            "max": 5.954333,
+            "mean": 5.2365553333333335
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.001059216484027148,
+            "max": 0.0012438244538642937,
+            "mean": 0.0011271243904805942
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/ADAUSDT": {
+          "workload": {
+            "depth": 639,
+            "batch": 9,
+            "count": 60,
+            "interval_us": 333333
+          },
+          "book_p99_ms": {
+            "min": 5.224708,
+            "max": 5.992166,
+            "mean": 5.723833
+          },
+          "event_p99_ms": {
+            "min": 5.163416,
+            "max": 5.943666,
+            "mean": 5.654166333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.0010600517422191028,
+            "max": 0.0012048362396504461,
+            "mean": 0.001116652276221806
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/AVAXUSDT": {
+          "workload": {
+            "depth": 656,
+            "batch": 9,
+            "count": 60,
+            "interval_us": 333333
+          },
+          "book_p99_ms": {
+            "min": 5.484625,
+            "max": 6.237375,
+            "mean": 5.788152666666667
+          },
+          "event_p99_ms": {
+            "min": 5.28575,
+            "max": 6.149167,
+            "mean": 5.596194333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.0011028987201122406,
+            "max": 0.0012020309891107592,
+            "mean": 0.001136944923569299
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/BNBUSDT": {
+          "workload": {
+            "depth": 749,
+            "batch": 12,
+            "count": 60,
+            "interval_us": 333333
+          },
+          "book_p99_ms": {
+            "min": 4.131042,
+            "max": 5.828916,
+            "mean": 5.165430333333333
+          },
+          "event_p99_ms": {
+            "min": 4.064084,
+            "max": 5.736166,
+            "mean": 5.109333333333334
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.001189492741463637,
+            "max": 0.0014164866674072868,
+            "mean": 0.0012689539576119931
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/BTCUSDT": {
+          "workload": {
+            "depth": 1198,
+            "batch": 29,
+            "count": 140,
+            "interval_us": 142857
+          },
+          "book_p99_ms": {
+            "min": 4.000042,
+            "max": 4.702791,
+            "mean": 4.455666666666667
+          },
+          "event_p99_ms": {
+            "min": 3.935209,
+            "max": 4.422125,
+            "mean": 4.133222333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.004966050535828914,
+            "max": 0.005800079293258729,
+            "mean": 0.005282818569336764
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/DOGEUSDT": {
+          "workload": {
+            "depth": 812,
+            "batch": 15,
+            "count": 80,
+            "interval_us": 250000
+          },
+          "book_p99_ms": {
+            "min": 4.06025,
+            "max": 29.751666,
+            "mean": 13.040291666666667
+          },
+          "event_p99_ms": {
+            "min": 3.937042,
+            "max": 24.384708,
+            "mean": 11.151153
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.001845480985468338,
+            "max": 0.0022785644980923754,
+            "mean": 0.002055725370725892
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/ETHUSDT": {
+          "workload": {
+            "depth": 1500,
+            "batch": 40,
+            "count": 200,
+            "interval_us": 100000
+          },
+          "book_p99_ms": {
+            "min": 3.447125,
+            "max": 4.773166,
+            "mean": 4.301513666666667
+          },
+          "event_p99_ms": {
+            "min": 3.129041,
+            "max": 4.474708,
+            "mean": 4.017124666666667
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.008085708118183852,
+            "max": 0.009096522530430405,
+            "mean": 0.00852705016924481
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/LINKUSDT": {
+          "workload": {
+            "depth": 625,
+            "batch": 8,
+            "count": 60,
+            "interval_us": 333333
+          },
+          "book_p99_ms": {
+            "min": 4.988625,
+            "max": 5.351833,
+            "mean": 5.136902666666667
+          },
+          "event_p99_ms": {
+            "min": 4.851542,
+            "max": 5.176875,
+            "mean": 5.008875
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.0010603426740246349,
+            "max": 0.0011567577294157667,
+            "mean": 0.001103193741501283
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/LTCUSDT": {
+          "workload": {
+            "depth": 591,
+            "batch": 7,
+            "count": 40,
+            "interval_us": 500000
+          },
+          "book_p99_ms": {
+            "min": 3.91625,
+            "max": 24.410375,
+            "mean": 11.190291666666667
+          },
+          "event_p99_ms": {
+            "min": 3.872875,
+            "max": 24.392125,
+            "mean": 11.120055666666667
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.0005777142294592911,
+            "max": 0.0007549621533568455,
+            "mean": 0.0006720742534522769
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/SOLUSDT": {
+          "workload": {
+            "depth": 994,
+            "batch": 21,
+            "count": 100,
+            "interval_us": 200000
+          },
+          "book_p99_ms": {
+            "min": 3.2615,
+            "max": 4.151292,
+            "mean": 3.6540556666666664
+          },
+          "event_p99_ms": {
+            "min": 3.061041,
+            "max": 4.057542,
+            "mean": 3.417791333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.0026142223542371954,
+            "max": 0.003064146308570807,
+            "mean": 0.002824100037880854
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/XRPUSDT": {
+          "workload": {
+            "depth": 942,
+            "batch": 19,
+            "count": 100,
+            "interval_us": 200000
+          },
+          "book_p99_ms": {
+            "min": 3.328417,
+            "max": 5.4955,
+            "mean": 4.414125
+          },
+          "event_p99_ms": {
+            "min": 3.210583,
+            "max": 5.065667,
+            "mean": 3.8615553333333335
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.002591400554525664,
+            "max": 0.0028551402958504825,
+            "mean": 0.002700219512129009
+          }
+        }
+      }
+    },
+    "deep": {
+      "updates_per_process": 9840,
+      "modes": {
+        "off": {
+          "process_cpu_cores": {
+            "min": 1.1755208660487202,
+            "max": 1.2164168921585972,
+            "mean": 1.1918192559605212
+          },
+          "peak_rss_mib": {
+            "min": 41.40625,
+            "max": 41.8125,
+            "mean": 41.598958333333336
+          },
+          "wall_seconds": {
+            "min": 11.996299208,
+            "max": 11.996800125,
+            "mean": 11.996540180333334
+          },
+          "update_throughput_per_second": {
+            "min": 820.2187164471076,
+            "max": 820.252965467715,
+            "mean": 820.2364894340903
+          },
+          "worst_product_book_p99_ms": {
+            "min": 3.444542,
+            "max": 7.611083,
+            "mean": 4.865986
+          },
+          "worst_product_book_max_ms": {
+            "min": 5.463833,
+            "max": 102.404083,
+            "mean": 37.966111
+          },
+          "worst_product_event_max_ms": {
+            "min": 5.008042,
+            "max": 95.799792,
+            "mean": 35.42968066666666
+          },
+          "worst_product_event_p99_ms": {
+            "min": 3.252417,
+            "max": 7.579375,
+            "mean": 4.766319666666666
+          },
+          "host_min_available_gib": 6.1475067138671875,
+          "host_mean_busy_cores": {
+            "min": 1.9778974358974357,
+            "max": 2.089982905982906,
+            "mean": 2.0394729344729345
+          },
+          "swap_in_bytes": [
+            524288,
+            13582336,
+            1179648
+          ],
+          "swap_out_bytes": [
+            0,
+            0,
+            0
+          ]
+        },
+        "on": {
+          "process_cpu_cores": {
+            "min": 1.1436002480120453,
+            "max": 1.231036625849511,
+            "mean": 1.1780247225640874
+          },
+          "peak_rss_mib": {
+            "min": 151.828125,
+            "max": 152.90625,
+            "mean": 152.22916666666666
+          },
+          "wall_seconds": {
+            "min": 11.991957875,
+            "max": 11.994639875,
+            "mean": 11.993381388666666
+          },
+          "update_throughput_per_second": {
+            "min": 820.3664388881871,
+            "max": 820.549913747925,
+            "mean": 820.452528278956
+          },
+          "worst_product_book_p99_ms": {
+            "min": 3.638208,
+            "max": 10.425541,
+            "mean": 6.162569
+          },
+          "worst_product_book_max_ms": {
+            "min": 6.199833,
+            "max": 97.29925,
+            "mean": 36.992
+          },
+          "worst_product_event_max_ms": {
+            "min": 5.729334,
+            "max": 91.016792,
+            "mean": 34.317222666666666
+          },
+          "worst_product_event_p99_ms": {
+            "min": 3.28025,
+            "max": 5.643167,
+            "mean": 4.436680666666667
+          },
+          "host_min_available_gib": 6.08294677734375,
+          "host_mean_busy_cores": {
+            "min": 1.9255084745762712,
+            "max": 1.9891271186440678,
+            "mean": 1.9606779661016949
+          },
+          "swap_in_bytes": [
+            655360,
+            3637248,
+            13238272
+          ],
+          "swap_out_bytes": [
+            0,
+            0,
+            0
+          ],
+          "owner_update_cpu_cores": {
+            "min": 0.7978492959807866,
+            "max": 0.8628564368632201,
+            "mean": 0.8236078156346015
+          },
+          "weighted_stage_mean_ns": {
+            "parse": 42556.96839430894,
+            "event_publish_and_ingress_submit": 10919.296443089432,
+            "ingress_wait": 126181.12618563685,
+            "adapter_before_checked_call": 6052.025067750677,
+            "checked_apply": 1017643.4399728997,
+            "post_apply_owner": 11252.436382113821,
+            "input_to_applied": 1203352.8560636856,
+            "owner_update_cpu": 1003848.6374661246,
+            "order_book_publication": 5144.992513550135,
+            "order_book_subscriber_wait_materialize": 173181.59048102982,
+            "order_book_server_write": 44833.54830623306,
+            "order_book_input_to_write_completed": 1426512.9873644987,
+            "event_publication": 5415.618495934959,
+            "event_subscriber_wait_materialize": 322584.4989159892,
+            "event_server_write": 81637.12313685637,
+            "event_input_to_write_completed": 452194.2089430894
+          },
+          "checked_call_share_owner_update_wall": 0.9832798719374417,
+          "queue_high_waters": {
+            "ingress_max_occupancy": 9,
+            "order_book_max_occupancy": 5,
+            "event_max_occupancy": 10
+          }
+        }
+      },
+      "on_products": {
+        "BINANCE/SPOT/ADAUSDT": {
+          "workload": {
+            "depth": 1593,
+            "batch": 5,
+            "count": 240,
+            "interval_us": 50000
+          },
+          "book_p99_ms": {
+            "min": 3.367167,
+            "max": 4.423958,
+            "mean": 3.7700416666666667
+          },
+          "event_p99_ms": {
+            "min": 2.967334,
+            "max": 4.386625,
+            "mean": 3.634819666666667
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.010961905714944289,
+            "max": 0.011678710529022866,
+            "mean": 0.011203059791204579
+          }
+        },
+        "BINANCE/SPOT/AVAXUSDT": {
+          "workload": {
+            "depth": 1704,
+            "batch": 6,
+            "count": 240,
+            "interval_us": 50000
+          },
+          "book_p99_ms": {
+            "min": 2.948625,
+            "max": 3.76225,
+            "mean": 3.3714026666666665
+          },
+          "event_p99_ms": {
+            "min": 2.413959,
+            "max": 3.433834,
+            "mean": 2.921819666666667
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.011491277076823547,
+            "max": 0.012763430298485723,
+            "mean": 0.011958433521297444
+          }
+        },
+        "BINANCE/SPOT/BNBUSDT": {
+          "workload": {
+            "depth": 1995,
+            "batch": 9,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.334042,
+            "max": 10.425541,
+            "mean": 5.773750000000001
+          },
+          "event_p99_ms": {
+            "min": 2.47275,
+            "max": 3.491042,
+            "mean": 3.024389
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.02034574683660653,
+            "max": 0.021968555850452324,
+            "mean": 0.02120051169964455
+          }
+        },
+        "BINANCE/SPOT/BTCUSDT": {
+          "workload": {
+            "depth": 3480,
+            "batch": 27,
+            "count": 840,
+            "interval_us": 14285
+          },
+          "book_p99_ms": {
+            "min": 3.315167,
+            "max": 3.841709,
+            "mean": 3.622292
+          },
+          "event_p99_ms": {
+            "min": 2.377792,
+            "max": 2.735459,
+            "mean": 2.6091393333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.07825639689382248,
+            "max": 0.08440900965357244,
+            "mean": 0.08066755192141357
+          }
+        },
+        "BINANCE/SPOT/DOGEUSDT": {
+          "workload": {
+            "depth": 1926,
+            "batch": 9,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.395833,
+            "max": 9.925417,
+            "mean": 5.731458333333333
+          },
+          "event_p99_ms": {
+            "min": 2.917,
+            "max": 5.643167,
+            "mean": 4.125514
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.01967579426641373,
+            "max": 0.021335155258256557,
+            "mean": 0.020493151208517024
+          }
+        },
+        "BINANCE/SPOT/ETHUSDT": {
+          "workload": {
+            "depth": 4500,
+            "batch": 40,
+            "count": 1200,
+            "interval_us": 10000
+          },
+          "book_p99_ms": {
+            "min": 3.470209,
+            "max": 4.524708,
+            "mean": 3.961805666666667
+          },
+          "event_p99_ms": {
+            "min": 2.606667,
+            "max": 3.59475,
+            "mean": 2.9918473333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.14461845914381183,
+            "max": 0.15651990660536608,
+            "mean": 0.14930044847798948
+          }
+        },
+        "BINANCE/SPOT/LINKUSDT": {
+          "workload": {
+            "depth": 1725,
+            "batch": 6,
+            "count": 240,
+            "interval_us": 50000
+          },
+          "book_p99_ms": {
+            "min": 3.371959,
+            "max": 3.697375,
+            "mean": 3.5740416666666666
+          },
+          "event_p99_ms": {
+            "min": 2.707959,
+            "max": 3.212416,
+            "mean": 2.8991806666666666
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.011749298340315024,
+            "max": 0.012666814142262858,
+            "mean": 0.012113755871643149
+          }
+        },
+        "BINANCE/SPOT/LTCUSDT": {
+          "workload": {
+            "depth": 1671,
+            "batch": 6,
+            "count": 240,
+            "interval_us": 50000
+          },
+          "book_p99_ms": {
+            "min": 3.473583,
+            "max": 3.964,
+            "mean": 3.725875
+          },
+          "event_p99_ms": {
+            "min": 2.692709,
+            "max": 3.541792,
+            "mean": 3.0283336666666667
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.01129780344562793,
+            "max": 0.012191362268806757,
+            "mean": 0.011647667607586587
+          }
+        },
+        "BINANCE/SPOT/SOLUSDT": {
+          "workload": {
+            "depth": 2109,
+            "batch": 11,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.431708,
+            "max": 6.089167,
+            "mean": 4.326930333333333
+          },
+          "event_p99_ms": {
+            "min": 2.378333,
+            "max": 3.595959,
+            "mean": 3.0848473333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.021685925743797695,
+            "max": 0.023832484758113674,
+            "mean": 0.022679248984787685
+          }
+        },
+        "BINANCE/SPOT/XRPUSDT": {
+          "workload": {
+            "depth": 1989,
+            "batch": 9,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.41325,
+            "max": 3.945334,
+            "mean": 3.756778
+          },
+          "event_p99_ms": {
+            "min": 2.646916,
+            "max": 3.519917,
+            "mean": 3.148430333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.020352933986603084,
+            "max": 0.021783361044843373,
+            "mean": 0.02107670052860655
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/ADAUSDT": {
+          "workload": {
+            "depth": 1917,
+            "batch": 9,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.417333,
+            "max": 3.730125,
+            "mean": 3.533138666666667
+          },
+          "event_p99_ms": {
+            "min": 3.128375,
+            "max": 3.638792,
+            "mean": 3.3031946666666667
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.019916080133828857,
+            "max": 0.02140738385444857,
+            "mean": 0.02062375349416721
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/AVAXUSDT": {
+          "workload": {
+            "depth": 1968,
+            "batch": 9,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.377333,
+            "max": 3.5715,
+            "mean": 3.488833
+          },
+          "event_p99_ms": {
+            "min": 2.588125,
+            "max": 3.149542,
+            "mean": 2.906042
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.020499752797872466,
+            "max": 0.02177014839305461,
+            "mean": 0.021161875409855074
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/BNBUSDT": {
+          "workload": {
+            "depth": 2247,
+            "batch": 12,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.478834,
+            "max": 4.403667,
+            "mean": 3.848958666666667
+          },
+          "event_p99_ms": {
+            "min": 2.525542,
+            "max": 3.558125,
+            "mean": 3.076264
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.02381975862302635,
+            "max": 0.025263840528601113,
+            "mean": 0.024469869576825874
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/BTCUSDT": {
+          "workload": {
+            "depth": 3594,
+            "batch": 29,
+            "count": 840,
+            "interval_us": 14285
+          },
+          "book_p99_ms": {
+            "min": 3.556875,
+            "max": 3.99825,
+            "mean": 3.84925
+          },
+          "event_p99_ms": {
+            "min": 2.302375,
+            "max": 3.510458,
+            "mean": 2.920805666666667
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.08046182183574423,
+            "max": 0.0877954413783515,
+            "mean": 0.08321855016385857
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/DOGEUSDT": {
+          "workload": {
+            "depth": 2436,
+            "batch": 15,
+            "count": 480,
+            "interval_us": 25000
+          },
+          "book_p99_ms": {
+            "min": 3.404125,
+            "max": 6.870542,
+            "mean": 4.579125333333334
+          },
+          "event_p99_ms": {
+            "min": 2.514375,
+            "max": 3.236667,
+            "mean": 2.837278
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.03218110537222771,
+            "max": 0.03482139408541434,
+            "mean": 0.033097137971607876
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/ETHUSDT": {
+          "workload": {
+            "depth": 4500,
+            "batch": 40,
+            "count": 1200,
+            "interval_us": 10000
+          },
+          "book_p99_ms": {
+            "min": 3.638208,
+            "max": 4.30125,
+            "mean": 3.953444333333333
+          },
+          "event_p99_ms": {
+            "min": 2.577875,
+            "max": 3.580916,
+            "mean": 2.9755693333333335
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.145485330684586,
+            "max": 0.157049768782658,
+            "mean": 0.14975336212874746
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/LINKUSDT": {
+          "workload": {
+            "depth": 1875,
+            "batch": 8,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.257333,
+            "max": 3.874417,
+            "mean": 3.6580416666666666
+          },
+          "event_p99_ms": {
+            "min": 2.837458,
+            "max": 3.576917,
+            "mean": 3.0945136666666664
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.01955884388895087,
+            "max": 0.020765275622749782,
+            "mean": 0.020166596764626583
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/LTCUSDT": {
+          "workload": {
+            "depth": 1773,
+            "batch": 7,
+            "count": 240,
+            "interval_us": 50000
+          },
+          "book_p99_ms": {
+            "min": 3.259084,
+            "max": 3.371167,
+            "mean": 3.3061393333333333
+          },
+          "event_p99_ms": {
+            "min": 2.560292,
+            "max": 2.965292,
+            "mean": 2.7973613333333334
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.012100975129551146,
+            "max": 0.013050242410883553,
+            "mean": 0.012470013161732721
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/SOLUSDT": {
+          "workload": {
+            "depth": 2982,
+            "batch": 21,
+            "count": 600,
+            "interval_us": 20000
+          },
+          "book_p99_ms": {
+            "min": 3.407042,
+            "max": 3.653125,
+            "mean": 3.4959443333333335
+          },
+          "event_p99_ms": {
+            "min": 2.420208,
+            "max": 2.843625,
+            "mean": 2.6578193333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.04765324186064154,
+            "max": 0.05223256283882387,
+            "mean": 0.04943265742732502
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/XRPUSDT": {
+          "workload": {
+            "depth": 2826,
+            "batch": 19,
+            "count": 600,
+            "interval_us": 20000
+          },
+          "book_p99_ms": {
+            "min": 3.121166,
+            "max": 3.777083,
+            "mean": 3.482749666666667
+          },
+          "event_p99_ms": {
+            "min": 2.330709,
+            "max": 2.773584,
+            "mean": 2.538695
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.04531720480213912,
+            "max": 0.04955158855905209,
+            "mean": 0.046873469923164476
+          }
+        }
+      }
+    },
+    "batch": {
+      "updates_per_process": 9840,
+      "modes": {
+        "off": {
+          "process_cpu_cores": {
+            "min": 1.1893984305725924,
+            "max": 1.276551523720889,
+            "mean": 1.2421599790879596
+          },
+          "peak_rss_mib": {
+            "min": 53.015625,
+            "max": 53.796875,
+            "mean": 53.359375
+          },
+          "wall_seconds": {
+            "min": 11.994313792,
+            "max": 11.996697583,
+            "mean": 11.995858444333333
+          },
+          "update_throughput_per_second": {
+            "min": 820.2257272821345,
+            "max": 820.3887417522051,
+            "mean": 820.2831108292435
+          },
+          "worst_product_book_p99_ms": {
+            "min": 3.600167,
+            "max": 40.470667,
+            "mean": 16.279833666666665
+          },
+          "worst_product_book_max_ms": {
+            "min": 6.604041,
+            "max": 95.52525,
+            "mean": 36.444277666666665
+          },
+          "worst_product_event_max_ms": {
+            "min": 5.99875,
+            "max": 94.100209,
+            "mean": 35.546014
+          },
+          "worst_product_event_p99_ms": {
+            "min": 3.44775,
+            "max": 37.240459,
+            "mean": 14.972486333333334
+          },
+          "host_min_available_gib": 5.9597015380859375,
+          "host_mean_busy_cores": {
+            "min": 1.922764705882353,
+            "max": 2.090728813559322,
+            "mean": 1.9830176138251911
+          },
+          "swap_in_bytes": [
+            704512,
+            802816,
+            63913984
+          ],
+          "swap_out_bytes": [
+            0,
+            0,
+            0
+          ]
+        },
+        "on": {
+          "process_cpu_cores": {
+            "min": 1.1991154475972414,
+            "max": 1.2671256511371176,
+            "mean": 1.2220941456009735
+          },
+          "peak_rss_mib": {
+            "min": 163.796875,
+            "max": 164.53125,
+            "mean": 164.25520833333334
+          },
+          "wall_seconds": {
+            "min": 11.992936917,
+            "max": 11.997415875,
+            "mean": 11.995812611333333
+          },
+          "update_throughput_per_second": {
+            "min": 820.1766199089935,
+            "max": 820.4829282518605,
+            "mean": 820.2862617849528
+          },
+          "worst_product_book_p99_ms": {
+            "min": 3.671584,
+            "max": 6.746375,
+            "mean": 5.361889333333333
+          },
+          "worst_product_book_max_ms": {
+            "min": 6.724917,
+            "max": 78.253292,
+            "mean": 30.825930666666668
+          },
+          "worst_product_event_max_ms": {
+            "min": 3.740167,
+            "max": 78.222333,
+            "mean": 30.041750000000004
+          },
+          "worst_product_event_p99_ms": {
+            "min": 3.031958,
+            "max": 6.5135,
+            "mean": 4.851930333333334
+          },
+          "host_min_available_gib": 5.9994354248046875,
+          "host_mean_busy_cores": {
+            "min": 1.8908739495798321,
+            "max": 2.0834453781512607,
+            "mean": 1.9819635854341737
+          },
+          "swap_in_bytes": [
+            2588672,
+            753664,
+            1228800
+          ],
+          "swap_out_bytes": [
+            0,
+            0,
+            0
+          ],
+          "owner_update_cpu_cores": {
+            "min": 0.7934207521807446,
+            "max": 0.8427096012382035,
+            "mean": 0.8115693439047306
+          },
+          "weighted_stage_mean_ns": {
+            "parse": 68816.60748644987,
+            "event_publish_and_ingress_submit": 13775.72039295393,
+            "ingress_wait": 115451.95982384824,
+            "adapter_before_checked_call": 9233.847730352303,
+            "checked_apply": 990916.8223238483,
+            "post_apply_owner": 15201.842581300813,
+            "input_to_applied": 1198194.9577574525,
+            "owner_update_cpu": 989368.8292682926,
+            "order_book_publication": 9446.317378048781,
+            "order_book_subscriber_wait_materialize": 210425.63197831978,
+            "order_book_server_write": 54957.989227642276,
+            "order_book_input_to_write_completed": 1473024.8963414633,
+            "event_publication": 8882.458333333334,
+            "event_subscriber_wait_materialize": 329650.07022357726,
+            "event_server_write": 89583.23302845529,
+            "event_input_to_write_completed": 496932.36907181574
+          },
+          "checked_call_share_owner_update_wall": 0.9759337865346622,
+          "queue_high_waters": {
+            "ingress_max_occupancy": 10,
+            "order_book_max_occupancy": 10,
+            "event_max_occupancy": 10
+          }
+        }
+      },
+      "on_products": {
+        "BINANCE/SPOT/ADAUSDT": {
+          "workload": {
+            "depth": 1593,
+            "batch": 15,
+            "count": 240,
+            "interval_us": 50000
+          },
+          "book_p99_ms": {
+            "min": 3.268916,
+            "max": 5.623125,
+            "mean": 4.644944333333333
+          },
+          "event_p99_ms": {
+            "min": 2.979125,
+            "max": 5.309708,
+            "mean": 4.367624999999999
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.010813074944774305,
+            "max": 0.011159109726517041,
+            "mean": 0.010950363822552597
+          }
+        },
+        "BINANCE/SPOT/AVAXUSDT": {
+          "workload": {
+            "depth": 1704,
+            "batch": 18,
+            "count": 240,
+            "interval_us": 50000
+          },
+          "book_p99_ms": {
+            "min": 3.308459,
+            "max": 5.667709,
+            "mean": 4.526153333333333
+          },
+          "event_p99_ms": {
+            "min": 3.015042,
+            "max": 4.936459,
+            "mean": 4.088667
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.011477562801125636,
+            "max": 0.011939854098375393,
+            "mean": 0.011760659647372242
+          }
+        },
+        "BINANCE/SPOT/BNBUSDT": {
+          "workload": {
+            "depth": 1995,
+            "batch": 27,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.205583,
+            "max": 4.833875,
+            "mean": 4.017305333333333
+          },
+          "event_p99_ms": {
+            "min": 2.859792,
+            "max": 4.596625,
+            "mean": 3.499527666666667
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.0203769163212705,
+            "max": 0.022039603962672957,
+            "mean": 0.021109201118329514
+          }
+        },
+        "BINANCE/SPOT/BTCUSDT": {
+          "workload": {
+            "depth": 3480,
+            "batch": 81,
+            "count": 840,
+            "interval_us": 14285
+          },
+          "book_p99_ms": {
+            "min": 3.418458,
+            "max": 5.907333,
+            "mean": 4.488541333333334
+          },
+          "event_p99_ms": {
+            "min": 2.918833,
+            "max": 6.498583,
+            "mean": 4.114388666666667
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.07741160321434021,
+            "max": 0.08223265325460395,
+            "mean": 0.07939113107591268
+          }
+        },
+        "BINANCE/SPOT/DOGEUSDT": {
+          "workload": {
+            "depth": 1926,
+            "batch": 27,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.226834,
+            "max": 6.731542,
+            "mean": 4.477819666666667
+          },
+          "event_p99_ms": {
+            "min": 2.604667,
+            "max": 5.723875,
+            "mean": 3.7311669999999997
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.019906800221676905,
+            "max": 0.021170699617380467,
+            "mean": 0.020331380034404434
+          }
+        },
+        "BINANCE/SPOT/ETHUSDT": {
+          "workload": {
+            "depth": 4500,
+            "batch": 120,
+            "count": 1200,
+            "interval_us": 10000
+          },
+          "book_p99_ms": {
+            "min": 3.671584,
+            "max": 6.746375,
+            "mean": 4.876444666666667
+          },
+          "event_p99_ms": {
+            "min": 2.74,
+            "max": 6.5135,
+            "mean": 4.069055666666666
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.14402509859277865,
+            "max": 0.1548085469680287,
+            "mean": 0.14767098675281337
+          }
+        },
+        "BINANCE/SPOT/LINKUSDT": {
+          "workload": {
+            "depth": 1725,
+            "batch": 18,
+            "count": 240,
+            "interval_us": 50000
+          },
+          "book_p99_ms": {
+            "min": 3.391209,
+            "max": 6.198667,
+            "mean": 4.401542
+          },
+          "event_p99_ms": {
+            "min": 2.913209,
+            "max": 5.935292,
+            "mean": 3.960153
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.01173162999986445,
+            "max": 0.01203209647467205,
+            "mean": 0.011836694384189097
+          }
+        },
+        "BINANCE/SPOT/LTCUSDT": {
+          "workload": {
+            "depth": 1671,
+            "batch": 18,
+            "count": 240,
+            "interval_us": 50000
+          },
+          "book_p99_ms": {
+            "min": 3.3895,
+            "max": 5.06225,
+            "mean": 4.165125
+          },
+          "event_p99_ms": {
+            "min": 2.86675,
+            "max": 4.497875,
+            "mean": 3.595875
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.011359503122875338,
+            "max": 0.01175757664497686,
+            "mean": 0.011574697727437945
+          }
+        },
+        "BINANCE/SPOT/SOLUSDT": {
+          "workload": {
+            "depth": 2109,
+            "batch": 33,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.388917,
+            "max": 5.614375,
+            "mean": 4.427791666666667
+          },
+          "event_p99_ms": {
+            "min": 2.923875,
+            "max": 5.433291,
+            "mean": 3.822416333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.021903603387425294,
+            "max": 0.02361212403265408,
+            "mean": 0.022678584415844402
+          }
+        },
+        "BINANCE/SPOT/XRPUSDT": {
+          "workload": {
+            "depth": 1989,
+            "batch": 27,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.275,
+            "max": 6.610959,
+            "mean": 4.565292
+          },
+          "event_p99_ms": {
+            "min": 2.836417,
+            "max": 6.287209,
+            "mean": 4.169000333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.020568172946689695,
+            "max": 0.021863962331721484,
+            "mean": 0.02104875411762668
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/ADAUSDT": {
+          "workload": {
+            "depth": 1917,
+            "batch": 27,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.228125,
+            "max": 6.322708,
+            "mean": 4.480819333333334
+          },
+          "event_p99_ms": {
+            "min": 2.761042,
+            "max": 6.091667,
+            "mean": 3.9652640000000003
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.01967287721756903,
+            "max": 0.020725822600439182,
+            "mean": 0.020145613746619453
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/AVAXUSDT": {
+          "workload": {
+            "depth": 1968,
+            "batch": 27,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.096041,
+            "max": 5.864333,
+            "mean": 4.225916333333333
+          },
+          "event_p99_ms": {
+            "min": 2.880584,
+            "max": 6.298291,
+            "mean": 4.038
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.02058050888395998,
+            "max": 0.021474600990765806,
+            "mean": 0.020945687028101206
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/BNBUSDT": {
+          "workload": {
+            "depth": 2247,
+            "batch": 36,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.515333,
+            "max": 6.597125,
+            "mean": 4.649736
+          },
+          "event_p99_ms": {
+            "min": 3.003125,
+            "max": 6.047209,
+            "mean": 4.147555666666666
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.0234864662552252,
+            "max": 0.024877023790318666,
+            "mean": 0.024002787940443672
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/BTCUSDT": {
+          "workload": {
+            "depth": 3594,
+            "batch": 87,
+            "count": 840,
+            "interval_us": 14285
+          },
+          "book_p99_ms": {
+            "min": 3.329083,
+            "max": 5.614,
+            "mean": 4.359361
+          },
+          "event_p99_ms": {
+            "min": 2.774,
+            "max": 4.490916,
+            "mean": 3.372485666666667
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.0797524119109266,
+            "max": 0.08437639537364708,
+            "mean": 0.08165376449064592
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/DOGEUSDT": {
+          "workload": {
+            "depth": 2436,
+            "batch": 45,
+            "count": 480,
+            "interval_us": 25000
+          },
+          "book_p99_ms": {
+            "min": 3.256333,
+            "max": 4.947042,
+            "mean": 4.040611
+          },
+          "event_p99_ms": {
+            "min": 2.713167,
+            "max": 4.500375,
+            "mean": 3.352430666666667
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.03165688462409084,
+            "max": 0.03313410349359215,
+            "mean": 0.03228533937382929
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/ETHUSDT": {
+          "workload": {
+            "depth": 4500,
+            "batch": 120,
+            "count": 1200,
+            "interval_us": 10000
+          },
+          "book_p99_ms": {
+            "min": 3.633167,
+            "max": 6.693041,
+            "mean": 4.851569333333334
+          },
+          "event_p99_ms": {
+            "min": 2.61525,
+            "max": 6.39225,
+            "mean": 3.9359166666666665
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.14352034523154128,
+            "max": 0.15411112197047505,
+            "mean": 0.14731337008323364
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/LINKUSDT": {
+          "workload": {
+            "depth": 1875,
+            "batch": 24,
+            "count": 360,
+            "interval_us": 33333
+          },
+          "book_p99_ms": {
+            "min": 3.279375,
+            "max": 5.495666,
+            "mean": 4.115833333333333
+          },
+          "event_p99_ms": {
+            "min": 2.840958,
+            "max": 4.543167,
+            "mean": 3.556403
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.01937316082917869,
+            "max": 0.02046699050439106,
+            "mean": 0.01974865855774052
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/LTCUSDT": {
+          "workload": {
+            "depth": 1773,
+            "batch": 21,
+            "count": 240,
+            "interval_us": 50000
+          },
+          "book_p99_ms": {
+            "min": 3.329416,
+            "max": 5.452,
+            "mean": 4.472541333333333
+          },
+          "event_p99_ms": {
+            "min": 2.949084,
+            "max": 5.010333,
+            "mean": 4.092819666666666
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.012083355289430647,
+            "max": 0.012510831836971964,
+            "mean": 0.012260099276393087
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/SOLUSDT": {
+          "workload": {
+            "depth": 2982,
+            "batch": 63,
+            "count": 600,
+            "interval_us": 20000
+          },
+          "book_p99_ms": {
+            "min": 3.319208,
+            "max": 6.350625,
+            "mean": 4.572513666666667
+          },
+          "event_p99_ms": {
+            "min": 2.878791,
+            "max": 5.4875,
+            "mean": 3.7729303333333335
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.04763230284685349,
+            "max": 0.05068084108225615,
+            "mean": 0.04874103679142655
+          }
+        },
+        "BINANCE/USD_M_PERPETUAL/XRPUSDT": {
+          "workload": {
+            "depth": 2826,
+            "batch": 57,
+            "count": 600,
+            "interval_us": 20000
+          },
+          "book_p99_ms": {
+            "min": 3.337958,
+            "max": 5.010834,
+            "mean": 4.075152666666667
+          },
+          "event_p99_ms": {
+            "min": 2.78375,
+            "max": 4.501625,
+            "mean": 3.492430333333333
+          },
+          "owner_update_cpu_cores": {
+            "min": 0.04518021020126399,
+            "max": 0.047735642483743415,
+            "mean": 0.0461205335198143
+          }
+        }
+      }
+    }
+  },
+  "counts": {
+    "process_trials": 18,
+    "measured_updates": 127920,
+    "client_deliveries": 255840,
+    "on_applied_traces": 63960,
+    "on_successful_t5": 127920
+  }
+}

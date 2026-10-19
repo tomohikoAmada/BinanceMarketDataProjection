@@ -4,7 +4,11 @@
 
 - Projection P0 under the v0.3 plan (CI/CTest repair): **COMPLETE / MERGED** through
   PR #54 on 2026-10-18; exact-head CI 20/20 PASS. See
-  [the P0 result](PROJECTION_P0_RESULT.md). Projection P1/P2 have not started.
+  [the P0 result](PROJECTION_P0_RESULT.md). Projection P1 four-product offline cost attribution is complete; the v0.4
+  20-key mixed-load increment is also complete offline; see
+  [the twenty-key result](PROJECTION_P1_TWENTY_RESULT.md). P2 and
+  target-VPS budget conclusions remain conditional on Gateway G3. See
+  [the P1 result](PROJECTION_P1_RESULT.md).
 - M0-M4: **COMPLETE**.
 - M5 Phase 1-11: **COMPLETE**.
 - M5: **COMPLETE**.
