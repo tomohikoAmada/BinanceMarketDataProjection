@@ -82,6 +82,9 @@ New tests:
 - Removed the `quality-toolchain-tests` CI job.
 - Removed the deleted suite from `scripts/verify.sh`, `AGENTS.md`,
   `docs/QUALITY_TOOLCHAIN.md`, and P0 reproduction instructions.
+- Changed the remaining macOS `m4-static`/`m4-shared` runners from `macos-14` to the proven
+  `macos-latest` label after GitHub rejected `macos-14` as the unsupported
+  `macos-14-arm64-us-default` configuration.
 - `scripts/quality.sh` remains the single canonical Quality entrypoint.
 
 ### Validation

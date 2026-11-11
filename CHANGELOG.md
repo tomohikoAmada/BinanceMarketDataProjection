@@ -16,8 +16,9 @@ All notable changes will be recorded here.
   `AdaptDepthUpdate/Spot/10` allocation count is 2 -> 1 and Release benchmark mean is
   0.2743 -> 0.2572 us.
 - M-P2.C: removed duplicate Ubuntu GCC/Clang Release jobs from the M4 static matrix and deleted
-  the 1,248-line fake-environment `scripts/test-quality-toolchain.sh` plus its CI job. The
-  canonical `scripts/quality.sh` job remains the single Quality entrypoint.
+  the 1,248-line fake-environment `scripts/test-quality-toolchain.sh` plus its CI job. Remaining
+  macOS M4 jobs now use the supported `macos-latest` runner label. The canonical
+  `scripts/quality.sh` job remains the single Quality entrypoint.
 
 ### Removed
 
