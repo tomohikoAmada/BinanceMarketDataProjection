@@ -1,7 +1,6 @@
 #include <binance_market_data/projection/v1/projection_state/book_projection.hpp>
 
 #include <limits>
-#include <utility>
 
 namespace binance_market_data::projection::v1 {
 
@@ -196,12 +195,10 @@ class BookProjection::Impl final {
     }
 
     void apply_transaction(std::span<const LevelUpdate> levels) {
-        const auto bids = book_.all_levels(BookSide::Bid);
-        const auto asks = book_.all_levels(BookSide::Ask);
-        OrderBook candidate{numeric_spec_};
-        candidate.replace_all(bids, asks);
-        candidate.apply_updates(levels);
-        book_ = std::move(candidate);
+        if (levels.empty()) {
+            return;
+        }
+        book_.apply_updates(levels);
     }
 
     [[nodiscard]] ApplyResult record_gap(DepthBatch batch, GapReason reason) noexcept {

@@ -92,8 +92,14 @@ representative benchmarks. No third-party container is added in M2.
 
 ## Query Allocation
 
-`top_levels` and `all_levels` return `std::vector<BookLevel>` by value. Each call allocates.
-Callers should not call these in hot paths when best bid/ask or quantity-at-price suffices.
+`top_levels` and `all_levels` return `std::vector<BookLevel>` by value. A non-empty call performs
+one reserved buffer allocation sized to the requested output; it does not grow incrementally.
+Callers should still avoid these in hot paths when best bid/ask or quantity-at-price suffices.
+
+## Insert/Update Lookup
+
+A non-zero insert or update uses one map lookup. Existing-price updates write the mapped quantity in
+place; only a new price level allocates a node.
 
 ## No Sequence
 

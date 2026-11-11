@@ -23,6 +23,14 @@ Binance 2025-11-12 correction of the Spot local-order-book instructions. ADR-000
 `ACCEPTED`; this ADR's historical contains-`L` decision remains
 recorded exactly as accepted. All USD-M decisions in this ADR are unaffected.
 
+## Amendment note (2026-11-11)
+
+The **accepted-apply exception-safety transaction** below is superseded by
+[ADR-0010](ADR-0010-in-place-accepted-apply.md). Accepted batches now mutate the live order book
+in place and retain only the basic exception guarantee; baseline installation remains
+transactional. The sequence-policy decisions in this ADR are unchanged. The original
+copy-on-apply decision remains recorded exactly as accepted history.
+
 ## Context
 
 M2 owns deterministic absolute-quantity order-book mutation but has no Binance update IDs,
@@ -152,6 +160,9 @@ Baseline and bridge are separate strongly exception-safe calls. Normal visibilit
 between them, so no ordinary caller observes an unbridged book as synchronized.
 
 ## Exception-safety decision
+
+> Superseded by [ADR-0010](ADR-0010-in-place-accepted-apply.md) on 2026-11-11. The text below is
+> the original accepted decision and is retained as history.
 
 M3 selects logical copy-on-apply as its correctness baseline for every accepted batch that applies
 levels, including a USD-M bridge with `u == L`:

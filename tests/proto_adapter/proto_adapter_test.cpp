@@ -517,6 +517,63 @@ TEST(BindingLifetimeTest, MoveConstructionAssignmentAndOppositePolicyRemainCheck
               adapter::AdapterErrorCode::ProjectionPolicyMismatch);
 }
 
+TEST(TrustedAdapterTest, SkipsRepeatedFixedMetadataValidation) {
+    auto update = update_wire();
+    auto* metadata = update.mutable_metadata();
+    metadata->set_symbol(std::string{"\xFF", 1});
+    metadata->set_producer("");
+    metadata->set_producer_version("");
+    metadata->set_connection_id("");
+    metadata->set_schema_version("not-the-approved-schema");
+    metadata->set_stream(common_wire::STREAM_AGG_TRADE);
+
+    EXPECT_TRUE(std::holds_alternative<adapter::AdapterError>(
+        adapter::adapt_depth_update(update, spec(), spot_identity())));
+
+    auto baseline = baseline_wire();
+    baseline.set_symbol(std::string{"\xFF", 1});
+    baseline.set_producer("");
+    baseline.set_producer_version("");
+    baseline.set_schema_version("not-the-approved-schema");
+    EXPECT_TRUE(std::holds_alternative<adapter::AdapterError>(
+        adapter::adapt_exchange_depth_snapshot(baseline, spec(), spot_identity())));
+
+    core::BookProjection projection{spec(), core::SequencePolicyKind::Spot};
+    auto trusted_baseline =
+        adapter::adapt_trusted_exchange_depth_snapshot(baseline, spec(), spot_identity());
+    ASSERT_TRUE(std::holds_alternative<adapter::AdaptedBookBaseline>(trusted_baseline));
+    EXPECT_EQ(std::get<core::InstallResult>(std::get<adapter::AdaptedBookBaseline>(trusted_baseline)
+                                                .install_into_trusted(projection))
+                  .disposition,
+              core::InstallDisposition::Installed);
+
+    auto trusted_update = adapter::adapt_trusted_depth_update(update, spec(), spot_identity());
+    ASSERT_TRUE(std::holds_alternative<adapter::AdaptedDepthBatch>(trusted_update));
+    EXPECT_EQ(std::get<core::ApplyResult>(
+                  std::get<adapter::AdaptedDepthBatch>(trusted_update).apply_to_trusted(projection))
+                  .disposition,
+              core::ApplyDisposition::Applied);
+    ASSERT_EQ(projection.status(), core::ProjectionStatus::Synchronized);
+    EXPECT_EQ(projection.last_update_id(), core::UpdateId{101});
+}
+
+TEST(TrustedAdapterTest, SkipsRepeatedTargetBindingCheck) {
+    auto baseline =
+        adapter::adapt_exchange_depth_snapshot(baseline_wire(), spec(), spot_identity());
+    auto baseline_owner = std::move(std::get<adapter::AdaptedBookBaseline>(baseline));
+    core::BookProjection mismatched{spec(3, 4), core::SequencePolicyKind::Spot};
+
+    const auto checked = baseline_owner.install_into(mismatched);
+    ASSERT_TRUE(std::holds_alternative<adapter::AdapterError>(checked));
+    EXPECT_EQ(std::get<adapter::AdapterError>(checked).code,
+              adapter::AdapterErrorCode::ProjectionNumericSpecMismatch);
+
+    const auto trusted = baseline_owner.install_into_trusted(mismatched);
+    ASSERT_TRUE(std::holds_alternative<core::InstallResult>(trusted));
+    EXPECT_EQ(std::get<core::InstallResult>(trusted).disposition,
+              core::InstallDisposition::Installed);
+}
+
 TEST(M3ResultPropagationTest, PreservesEveryNormalSequencingDisposition) {
     auto update_result = adapter::adapt_depth_update(update_wire(), spec(), spot_identity());
     auto update_owner = std::move(std::get<adapter::AdaptedDepthBatch>(update_result));

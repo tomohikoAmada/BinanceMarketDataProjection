@@ -803,9 +803,9 @@ TEST(AllocationInstrumentationAdversarial, M2ClearResolvesPreBracketNodes) {
     EXPECT_TRUE(r.live_metrics_eligible);
 }
 
-// Case 30: real M3 old-book destruction during accepted apply resolves
-// through valid provenance (OD-M5-P7-020 case 30).
-TEST(AllocationInstrumentationAdversarial, M3OldBookDestructionResolvesProvenance) {
+// Case 30: an accepted M3 apply mutates the live book in place. Only a new
+// price level allocates; no old-book copy is destroyed in the bracket.
+TEST(AllocationInstrumentationAdversarial, M3AcceptedApplyMutatesInPlace) {
     using bmd_projection_test::apply, bmd_projection_test::install, bmd_projection_test::price,
         bmd_projection_test::quantity, bmd_projection_test::spec;
     bmd::BookProjection projection{spec(), bmd::SequencePolicyKind::Spot};
@@ -828,10 +828,27 @@ TEST(AllocationInstrumentationAdversarial, M3OldBookDestructionResolvesProvenanc
     scope.finish();
     const MeasurementResult& r = scope.result();
     EXPECT_EQ(result.disposition, bmd::ApplyDisposition::Applied);
-    EXPECT_GT(r.allocation_count, 0);
-    EXPECT_GT(r.deallocation_count, 0);
-    EXPECT_GT(r.deallocated_bytes, 0);
+    EXPECT_EQ(r.allocation_count, 1);
+    EXPECT_EQ(r.deallocation_count, 0);
+    EXPECT_EQ(r.deallocated_bytes, 0);
     EXPECT_TRUE(r.live_metrics_eligible);
+}
+
+// An accepted batch with no levels advances sequence state without touching the book.
+TEST(AllocationInstrumentationAdversarial, M3EmptyAcceptedBatchDoesNoBookWork) {
+    using bmd_projection_test::apply, bmd_projection_test::install, bmd_projection_test::spec;
+    bmd::BookProjection projection{spec(), bmd::SequencePolicyKind::Spot};
+    static_cast<void>(install(projection, 500));
+    static_cast<void>(apply(projection, 499, 501));
+    MeasurementScope scope;
+    const auto result = apply(projection, 502, 502);
+    scope.finish();
+    const MeasurementResult& r = scope.result();
+    EXPECT_EQ(result.disposition, bmd::ApplyDisposition::Applied);
+    EXPECT_EQ(result.last_update_id_after, bmd::UpdateId{502});
+    EXPECT_EQ(r.allocation_count, 0);
+    EXPECT_EQ(r.deallocation_count, 0);
+    EXPECT_EQ(r.persistent_live_delta, (PersistentLiveDelta{PersistentLiveDeltaSign::zero, 0}));
 }
 
 // OD-M5-P7-020 independence rule: container-driven profile cross-checked

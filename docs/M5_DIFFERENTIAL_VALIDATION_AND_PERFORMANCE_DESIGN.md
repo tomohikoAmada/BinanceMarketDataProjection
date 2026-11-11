@@ -3,7 +3,7 @@
 ## Status
 
 - Design status: **APPROVED / MERGED**
-- Implementation status: **IN PROGRESS**
+- Implementation status: **COMPLETE**
 - Phase 1 status: **COMPLETE / MERGED** (PR #11, merge
   `5e8629a7ff825f8ea941304d9b09be1670643e8a`, post-merge main CI `31264500905` — PASS 16/16)
 - Phase 2 status: **COMPLETE / MERGED** (PR #12, merge
@@ -56,6 +56,14 @@
 - M4 post-merge CI: `31242162782` — completed / success, 16/16
 - Contracts baseline: `01d76a41929f36d89573159f5f458f9f1e378ada`
 - Pre-implementation decisions: **CLOSED** (OD-M5-001, OD-M5-002). OD-M5-003: **SPIKE-RESOLVABLE**. See `docs/M5_PREIMPLEMENTATION_DECISIONS.md`.
+
+## Post-M5 implementation amendment (2026-11-11)
+
+M5 measured the M3 logical copy-on-apply transaction. M-P2.A later replaced it with in-place
+accepted apply under [ADR-0010](adr/ADR-0010-in-place-accepted-apply.md). M5 timing/allocation
+evidence remains valid as pre-optimization history; the current accepted-apply allocation count is
+one map node per newly inserted price level. The M2/M4 semantic requirements and the
+`KEEP_STD_MAP` decision are unchanged.
 
 ## Architecture approval record
 
@@ -154,12 +162,11 @@ Facts established by the merged M1-M4 implementation on `main`:
   batch `apply_updates`, atomic `replace_all` (strong exception guarantee), best/top-N/full-level
   queries returning vectors by value, locked/crossed acceptance, `noexcept` move, copy deleted.
 - M3: `BookProjection` lifecycle (`AwaitingBaseline`, `AwaitingBridge`, `Synchronized`,
-  `NeedsResync`), `UpdateId`/`UpdateRange`/`GapInfo`/`ApplyResult`/`InstallResult`, closed
-  Spot/USD-M policies, and a **logical copy-on-apply** incremental transaction: every accepted
-  batch copies both complete sides with `all_levels`, builds a candidate `OrderBook`, applies to the
-  candidate, and commits by `noexcept` move assignment. This is O(book) copying per accepted batch
-  and is the dominant documented correctness-baseline cost. ADR-0005 explicitly says: "A
-  benchmark-backed later optimization must preserve the same observable transaction semantics."
+  `NeedsResync`), `UpdateId`/`UpdateRange`/`GapInfo`/`ApplyResult`/`InstallResult`, and closed
+  Spot/USD-M policies. At M5 design time the accepted batch used a **logical copy-on-apply**
+  transaction: both complete sides were copied with `all_levels`, a candidate `OrderBook` was built
+  and committed by `noexcept` move assignment. M5/P1 measured that O(book) cost; ADR-0010 later
+  replaced it with in-place accepted apply.
 - M4: optional `ProtoAdapter` target outside Core with owning `AdaptedBookBaseline`/`AdaptedDepthBatch`
   checked invocation, disjoint Host/Core/inbound quality domains, state-specific
   `LocalOrderBookSnapshot` eligibility, `DepthLimit`, fixed-scale decimal output, and canonical
@@ -175,8 +182,10 @@ Validation infrastructure that M5 builds on:
   `SCOPED_TRACE` context printing (no `<random>` ambient state).
 - `ProjectionCheckpoint` in `tests/projection_state/test_helpers.hpp` is the canonical state-equality
   utility (status, last ID, gap, synchronized visibility, full bid/ask vectors).
-- The allocation-failure sweep pattern (global `operator new` fail-after-counter in dedicated
-  single-threaded executables, no production failpoint API) is fully established and reusable.
+- The counting/live-bytes instrumentation pattern (global `operator new` override in dedicated
+  single-threaded executables, no production hooks) is established and remains reusable. The
+  synthetic M3/M4 allocation-failure sweeps were later removed with the copy-on-apply transaction
+  (ADR-0010).
 - Four libFuzzer harnesses exist (`decimal_parser`, `order_book`, `book_projection`,
   `proto_adapter`) with checked-in seed corpora and a blocking Ubuntu Clang smoke job (10,000
   inputs per harness).
@@ -195,8 +204,8 @@ Validation infrastructure that M5 builds on:
 - The implemented M1-M4 public API and production sources on `main` (read-only inputs; M5 consumes
   them, it does not modify them).
 - The fixed Contracts baseline and pinned C++ package identities recorded in M4 documentation.
-- Existing reference models, deterministic generators, corpus seeds, and the allocation-failure
-  sweep pattern.
+- Existing reference models, deterministic generators, corpus seeds, and the counting allocation
+  instrumentation pattern.
 - O-P003 (container decision) and the M4 deferred P2 findings.
 - Externally recorded Binance-style transcripts (provenance-verified, converted offline into the
   canonical M5 fixture format; no live access in CI).
@@ -1020,10 +1029,9 @@ Separate benchmarks per milestone boundary:
 M1: decimal parse, exact rescale, fixed format
 M2: single insert (apply_level), replace, delete, batch update (apply_updates),
     replace_all, best bid/ask, quantity_at, top-N, full level copy (all_levels)
-M3: baseline install, incremental apply (copy-on-apply cost: book depth x batch size),
-    decomposed into full-side vector copy (all_levels both sides), candidate OrderBook
-    construction from vectors, move-assignment commit; stale/duplicate/gap classification,
-    state transitions, reset
+M3: baseline install, incremental apply (M5 measured copy-on-apply: book depth x batch size,
+    with full-side vector copy, candidate rebuild, and move commit); current M-P2.A apply mutates
+    in place. Also stale/duplicate/gap classification, state transitions, reset
 M4: adapt_exchange_depth_snapshot, adapt_depth_update, checked install/apply,
     make_local_order_book_snapshot (with/without depth limit), output serialization
 End-to-end: canonical replay events per second (production pipeline vs replay driver)
@@ -1043,14 +1051,15 @@ Nothing is optimized in M5 before evidence exists; M5 measures the current imple
 
 ## Allocation metrics
 
-- A **counting/live-bytes allocator** (global `operator new` override in benchmark executables only,
-  following the established allocation-failure pattern but counting instead of failing) measures:
+- A **counting/live-bytes allocator** (global `operator new` override in benchmark executables only)
+  measures:
   allocation count and total allocated bytes. Peak live bytes is a documented best-effort metric:
   it requires tracking allocation sizes on deallocation (via C++14 sized `operator delete` where
   supported) and is reported with explicit platform-dependence caveats. Allocation count and
   total allocated bytes are the mandatory metrics.
-- Allocation metrics are captured for: accepted M3 apply (the copy-on-apply path), baseline install,
-  M4 adaptation, snapshot output, and replay of a small workload.
+- Allocation metrics are captured for: accepted M3 apply, baseline install, M4 adaptation, snapshot
+  output, and replay of a small workload. M5 records the pre-M-P2.A copy-on-apply path; current
+  accepted apply allocates only new price-level nodes.
 - Production APIs receive no benchmark-only hooks. Instrumentation lives in test/benchmark-only
   executables and the replay driver, never in production code.
 

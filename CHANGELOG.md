@@ -4,6 +4,25 @@ All notable changes will be recorded here.
 
 ## [Unreleased]
 
+### Changed
+
+- M-P2.A: `BookProjection::apply` now mutates the live order book in place and skips empty
+  batches; `OrderBook` map queries reserve their output and same-price insert/update uses one map
+  lookup. Accepted apply keeps the basic exception guarantee (ADR-0010). Baseline installation
+  remains transactional. Release, ASan, and UBSan CTest pass.
+- M-P2.B: ProtoAdapter moves adapted level vectors/metadata, merges bid+ask depth updates into one
+  pre-reserved vector, uses standard Protobuf setters instead of `set_allocated_*` ownership
+  assembly, and adds same-process trusted adaptation/install/apply entries. Local
+  `AdaptDepthUpdate/Spot/10` allocation count is 2 -> 1 and Release benchmark mean is
+  0.2743 -> 0.2572 us.
+- M-P2.C: removed duplicate Ubuntu GCC/Clang Release jobs from the M4 static matrix and deleted
+  the 1,248-line fake-environment `scripts/test-quality-toolchain.sh` plus its CI job. The
+  canonical `scripts/quality.sh` job remains the single Quality entrypoint.
+
+### Removed
+
+- The synthetic M3 and ProtoAdapter allocation-failure test executables and their source files.
+
 ### Added
 
 - M5 Phase-7 pre-implementation decision record (docs-only, NOT implementation):

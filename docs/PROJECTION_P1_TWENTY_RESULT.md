@@ -3,6 +3,9 @@
 2026-10-19. The owner explicitly extended the original four-product request to
 the v0.4 twenty-key offline attribution increment. The existing
 [four-product results](PROJECTION_P1_RESULT.md) and raw archive remain intact.
+This record describes pre-optimization behavior; M-P2.A later removed the
+full-book accepted-apply copy under
+[ADR-0010](adr/ADR-0010-in-place-accepted-apply.md).
 
 - [x] Reuse Gateway's existing production configuration, metadata, private owners,
   Projection and Book/Event/Status handlers; finite product bound 20, reject 21.
@@ -52,11 +55,12 @@ binary hashes, normal/instrumented alternating order and three repetitions
 are retained. CPU/RSS and trace boundaries follow the four-product report:
 whole-process CPU includes embedded producers/parsers and loopback clients;
 RSS is the high-water through load completion including setup/warmup, excluding
-later shutdown/export. Core/Adapter production code and package pins are unchanged.
+later shutdown/export. Core/Adapter production code and package pins were unchanged
+at measurement time.
 
-P2 remains conditional on a measured shared-host budget. This offline increment
-does not complete Gateway G3's BMD-RL-01, shared-VPS/Recorder co-load, deployment
-or production SLA acceptance.
+At closure P2 remained conditional on a measured shared-host budget. M-P2.A later
+removed the copy-on-apply hotspot. This offline increment does not complete Gateway
+G3's BMD-RL-01, shared-VPS/Recorder co-load, deployment or production SLA acceptance.
 
 ## Measured results
 
@@ -166,10 +170,10 @@ batch. All per-key count/interval fields are retained in the profile and JSON.
 
 ### Allocation, host headroom and disposition
 
-The unchanged pinned Core's separate M5 allocation evidence remains applicable
-as algorithmic attribution: existing-price accepted B1/B10/B100 all used
-2023 allocations / 161,560 requested bytes at D1000 and
-10,029 / 1,004,312 at D5000, with zero persistent live delta. See the
+The pinned Core used at measurement time had the former copy-on-apply accepted
+apply: existing-price accepted B1/B10/B100 all used 2023 allocations /
+161,560 requested bytes at D1000 and 10,029 / 1,004,312 at D5000, with zero
+persistent live delta. This is pre-M-P2.A history. See the
 [four-product Core/allocation record](PROJECTION_P1_RESULT.md#core-and-allocation-attribution).
 This increment does not relabel those as a direct allocation count for every
 heterogeneous depth or a concurrent process-wide malloc/RSS decomposition.
@@ -181,10 +185,12 @@ Swap-in activity was present, with zero sampled swap-out delta. Other apps
 are included. This is not proof of no benchmark faults or four-core VPS reserves.
 
 **Twenty isolated products sustained every finite tested workload with complete
-delivery. Full-book checked apply remains the dominant owner-update hotspot.**
-The observed tail variability and missing approved target/shared-host budgets
-prevent a production SLA or P2 OUT/NOT_NEEDED decision. **P2 stays CONDITIONAL**;
-keep Core/Adapter and `std::map` unchanged. G3/R3/BMD-4 still own actual
+delivery. Full-book checked apply was the dominant owner-update hotspot at
+measurement time.** M-P2.A later removed it under
+[ADR-0010](adr/ADR-0010-in-place-accepted-apply.md). The observed tail variability
+and missing approved target/shared-host budgets prevent a production SLA claim.
+**P2 remained conditional at closure**; the later M-P2.A change kept the
+Core/Adapter public API and `std::map`. G3/R3/BMD-4 still own actual
 Recorder/Archive co-load, target symbol approval, shared API budgets and VPS acceptance.
 
 ## Evidence and validation
@@ -263,5 +269,5 @@ Its measured-source and validation identities above remain distinct and unchange
 This closeout updates documentation only. All four committed evidence JSON files,
 the raw archives and measured CPU/RSS/queue/gRPC/p99/maximum-tail results remain
 unchanged, including the 102.404 ms maximum and 29.901/40.471 ms p99 outliers.
-Core/Adapter/toolchain/pins are unchanged. P2 remains CONDITIONAL; this merge does
-not qualify shared-VPS/Recorder co-load or a production latency SLA.
+Core/Adapter/toolchain/pins were unchanged at this closeout. P2 remained conditional;
+this merge does not qualify shared-VPS/Recorder co-load or a production latency SLA.

@@ -42,7 +42,7 @@ code changes rely on them.
   `.toolchain/quality.env` (exact pinned clang/clang-tidy/clang-format; see
   `docs/QUALITY_TOOLCHAIN.md`). CI's quality job only invokes that entrypoint; never redefine
   Quality semantics in the workflow, and never treat an arbitrary local clang-tidy pass as
-  canonical acceptance. Deterministic contract tests: `scripts/test-quality-toolchain.sh`.
+  canonical acceptance.
 - For C++/C++ test or toolchain-sensitive changes, use the pre-push order: focused validation,
   broad supplemental `scripts/verify.sh` as applicable, canonical `bash scripts/quality.sh`, then
   push and allow automatic GitHub CI. `quality.sh` is the canonical local acceptance gate and the

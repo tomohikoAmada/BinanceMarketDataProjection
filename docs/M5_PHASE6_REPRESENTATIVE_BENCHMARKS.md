@@ -6,8 +6,12 @@
 - Decision authority: OD-M5-P6-001 through OD-M5-P6-030
   (`docs/M5_PHASE6_PREIMPLEMENTATION_DECISIONS.md`, APPROVED / MERGED)
 - Phase-6 implementation authorization: **YES / CONSUMED FOR THIS IMPLEMENTATION**
-- Production `src/**` and public `include/**`: **UNCHANGED**
+- Production `src/**` and public `include/**`: **UNCHANGED at Phase-6 acceptance**
 - Later M5 phases: COMPLETE; their detailed records remain separate historical authorities.
+- Post-M-P2.A/B note: Phase-6 measurements predate the in-place accepted-apply change
+  ([ADR-0010](adr/ADR-0010-in-place-accepted-apply.md)) and the M-P2.B adapter move/trusted-path
+  work; public API is additive but the recorded M4 adapter timing/allocation evidence is
+  historical.
 
 ## Completion and Acceptance
 
@@ -124,9 +128,11 @@ benchmark closed via `SkipWithError`.
 
 Every accepted cell begins Synchronized and every intended accepted operation must return
 `Applied` (enforced in-loop). D>0 cells use existing-price quantity updates (fixed depth, real
-mutation); `B=0` is the mandatory advancing empty-level batch that traverses the real accepted
-production transaction and returns `Applied`; D=0/B>0 is the labelled empty-book insertion edge
-on a prepared pool. Stale/duplicate use stable non-mutating state; gap/reset/baseline-install are
+mutation); `B=0` is the mandatory advancing empty-level batch that returns `Applied`. These
+measurements predate ADR-0010: Phase-6 `B=0` traversed the former copy-on-apply transaction, while
+current accepted apply skips book work for an empty batch. D=0/B>0 is the labelled empty-book
+insertion edge on a prepared pool. Stale/duplicate use stable non-mutating state; gap/reset/
+baseline-install are
 one-shot against freshly prepared pools (never "first change + subsequent RejectedWrongState"
 under one label). The locked PR-CI smoke subset is D{8,1000} x B{0,10} x {Spot,UsdMPerpetual}
 (8 cells); all 48 cells are inventory-validated in every run.

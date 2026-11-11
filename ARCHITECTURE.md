@@ -42,7 +42,8 @@ the exact Contracts package metadata is validated only when the optional compone
 
 M5 is COMPLETE, including Phase 11 independent final implementation review approval. The weekly
 M5 performance operation remains active as exploratory, nonblocking reporting; it does not change
-the production `std::map` / `KEEP_STD_MAP` decision.
+the production `std::map` / `KEEP_STD_MAP` decision. The later M-P2.A change applies accepted depth
+batches in place (ADR-0010) without changing the public Core/Adapter API or container choice.
 
 BinanceMarketDataGateway is the implemented real runtime module and Host. It may embed Projection, but
 Projection does not embed or own Gateway. Gateway owns transport and runtime concerns such as

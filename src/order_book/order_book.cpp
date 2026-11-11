@@ -1,5 +1,6 @@
 #include <binance_market_data/projection/v1/order_book/order_book.hpp>
 
+#include <algorithm>
 #include <functional>
 #include <limits>
 #include <map>
@@ -149,10 +150,12 @@ class OrderBook::Impl final {
 
     [[nodiscard]] LevelChange apply_insert_or_update(BookSide side, PriceUnits price,
                                                      QuantityUnits quantity) {
+        // One lookup handles both insertion and update. insert_or_assign discards the previous
+        // value, so try_emplace is used to keep the Unchanged/Updated distinction without a
+        // second tree traversal.
         if (side == BookSide::Bid) {
-            const auto it = bids_.find(price);
-            if (it == bids_.end()) {
-                bids_.insert_or_assign(price, quantity);
+            const auto [it, inserted] = bids_.try_emplace(price, quantity);
+            if (inserted) {
                 return LevelChange::Inserted;
             }
             if (it->second == quantity) {
@@ -161,9 +164,8 @@ class OrderBook::Impl final {
             it->second = quantity;
             return LevelChange::Updated;
         }
-        const auto it = asks_.find(price);
-        if (it == asks_.end()) {
-            asks_.insert_or_assign(price, quantity);
+        const auto [it, inserted] = asks_.try_emplace(price, quantity);
+        if (inserted) {
             return LevelChange::Inserted;
         }
         if (it->second == quantity) {
@@ -176,6 +178,7 @@ class OrderBook::Impl final {
     template <typename Map>
     [[nodiscard]] std::vector<BookLevel> copy_from_map(const Map& map, std::size_t limit) const {
         std::vector<BookLevel> result;
+        result.reserve(std::min(map.size(), limit));
         for (const auto& [price, quantity] : map) {
             if (result.size() >= limit) {
                 break;

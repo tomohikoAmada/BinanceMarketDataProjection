@@ -8,9 +8,12 @@
 - Design date: 2026-08-06
 - Projection base: `413e3cd9236d0c5de15d4e838149111718260303`
 - Contracts baseline: `01d76a41929f36d89573159f5f458f9f1e378ada`
+- Accepted-apply amendment: [ADR-0010](adr/ADR-0010-in-place-accepted-apply.md) (2026-11-11)
 
 The accepted API and semantics in this document are implemented on `main` through merged PR #6.
-M3 is complete on main; M4 and later milestones remain separate future work.
+M3 is complete on main; M4 and later milestones remain separate future work. ADR-0010 supersedes
+only the original copy-on-apply exception-safety transaction; sequence policy and lifecycle
+semantics are unchanged.
 
 ## Semantic correction record (2026-08-10)
 
@@ -21,8 +24,8 @@ an exact-next range beginning at `L + 1` is a valid bootstrap bridge, and a true
 `U > L + 1`. The original M3 proposal (`1ebe809c`) selected successor coverage; the review
 correction (`58dfcb82`) changed bootstrap to contains-`L`; the corrected upstream evidence now
 supersedes that decision for Spot bootstrap via
-[ADR-0008](adr/ADR-0008-spot-bootstrap-successor-coverage.md) (`PROPOSED / PENDING INDEPENDENT
-REVIEW`). USD-M semantics are unchanged. Sections below that describe Spot bootstrap behavior are
+[ADR-0008](adr/ADR-0008-spot-bootstrap-successor-coverage.md) (`ACCEPTED`). USD-M semantics are
+unchanged. Sections below that describe Spot bootstrap behavior are
 updated to the corrected rule; historical contains-`L` wording remains recorded in the ADR-0005
 decision history and is not silently rewritten.
 
@@ -42,9 +45,9 @@ decision history and is not silently rewritten.
 - Public header:
   `include/binance_market_data/projection/v1/projection_state/book_projection.hpp`
 - Production source: `src/projection_state/book_projection.cpp`
-- Tests: direct policy/lifecycle and transition tests, public-header self-containment, an independent
-  primitive/vector property model, curated Spot and USD-M replay, and the dedicated
-  `bmd_projection_m3_allocation_failure_tests` executable.
+- Tests: direct policy/lifecycle and transition tests, public-header self-containment, an
+  independent primitive/vector property model, curated Spot and USD-M replay, and the shared M5
+  allocation instrumentation tests.
 - Fuzz: `bmd_projection_book_projection_fuzz` with the independent vector model and checked-in
   `fuzz/corpus/book_projection/` seeds.
 - Packaging: the staged downstream consumer includes and links the installed M3 API only through
@@ -167,7 +170,7 @@ official pages; it does not copy their text as a substitute for the sources.
 |---|---|---|---|
 | Spot bootstrap uses `u <= L` as stale, while Spot live handling says ignore only `u < current`. | Current official Spot instructions. | During `AwaitingBridge`, `u < L` is `IgnoredStale` and `u == L` is `IgnoredDuplicate`; both remain unsynchronized. During live operation the same two outcomes remain distinct and equality is not reapplied. | The split preserves the official bootstrap discard set, avoids allowing same-ID/different-content input to rewrite accepted state while identity is TBD, and gives stable observability for equality. Tests lock both branches. |
 | Spot bootstrap requires the first surviving interval to contain `L`, while Spot live continuity permits an event beginning exactly at `current + 1`. | Current official Spot instructions. The fixed Contracts handoff fixture records only one `update_id` field after snapshot 500 and cannot establish the original `U/u` interval; it is not evidence for an exact-next bootstrap bridge. | Superseded by the 2025-11-12 official correction (commit `114929f2bff403e8f62067f6993aa9c2c957e5d3`) and the official example predicate `U <= last_update_id + 1 <= u`: bootstrap and live share successor coverage. A Spot bridge requires `u > L` and `U <= L + 1`; an advancing bootstrap candidate with `U > L + 1` is `SpotBootstrapForwardGap`. | The corrected rule treats the normal successor (exact-next) as continuous; only a start later than the successor is a gap. Tests accept `[501,501]` and `[501,502]` against `L=500` during bootstrap and reject `[502,502]`. Historical contains-`L` decision recorded in ADR-0005 and superseded by ADR-0008. |
-| A USD-M bridge may end exactly at `L`, and Binance snapshots have a finite depth limit. | Official USD-M bootstrap and absolute-quantity rules; the official pages warn that snapshot depth is limited. | A relevant USD-M event satisfying `U <= L == u` applies every absolute-quantity level transactionally, keeps the accepted ID at `L`, and enters `Synchronized` only after commit. | A bridge can carry a changed price outside the retained snapshot depth. Skipping its levels could omit valid state. Focused book-content and allocation-failure tests lock the equality case. |
+| A USD-M bridge may end exactly at `L`, and Binance snapshots have a finite depth limit. | Official USD-M bootstrap and absolute-quantity rules; the official pages warn that snapshot depth is limited. | A relevant USD-M event satisfying `U <= L == u` applies every absolute-quantity level, keeps the accepted ID at `L`, and enters `Synchronized` after the update. | A bridge can carry a changed price outside the retained snapshot depth. Skipping its levels could omit valid state. Focused book-content tests lock the equality case. |
 | Spot live continuity uses an interval; USD-M live continuity uses `pu`. | Official product pages. | Spot uses successor coverage. USD-M requires a present `previous_final_update_id` equal to the last accepted `u`; no additional Spot interval-continuity rule is imposed on USD-M live events. | `pu` is the product-specific continuity anchor for batched Futures intervals. Cross-policy tests ensure the rules cannot be accidentally unified. |
 
 The reviewed COIN-M documentation currently uses the same previous-final continuity pattern as
@@ -374,17 +377,17 @@ Historical contains-`L` decision: ADR-0005, superseded by ADR-0008.
 2. The first relevant candidate must contain `L`: `U <= L <= u`.
 3. The candidate must carry `previous_final_update_id`; it is not compared to `L` for the first
    bridge because it refers to the prior WebSocket event, not to the REST snapshot.
-4. For both `u == L` and `u > L`, run the same logical copy-on-apply transaction and apply every
-   absolute-quantity level. A REST snapshot has a finite depth limit, so an equality bridge can add
-   or update a price that the baseline did not retain.
-5. If `u == L`, commit the candidate book, keep the accepted ID at `L`, and then enter
-   `Synchronized`. Future live input must have `pu == L`.
-6. If `u > L`, commit the candidate book, advance to `u`, and enter `Synchronized`.
+4. For both `u == L` and `u > L`, apply every absolute-quantity level in place. A REST snapshot has
+   a finite depth limit, so an equality bridge can add or update a price that the baseline did not
+   retain.
+5. If `u == L`, keep the accepted ID at `L` and then enter `Synchronized`. Future live input must
+   have `pu == L`.
+6. If `u > L`, advance to `u` and enter `Synchronized`.
 7. A missing relevant `pu` or a first relevant range that does not contain `L` records a Futures
    bootstrap gap and enters `NeedsResync`.
 
-If candidate construction or level application throws for an equality bridge, the live baseline
-book, accepted ID `L`, status `AwaitingBridge`, gap, and visibility are all unchanged. COIN-M uses a
+Accepted apply keeps the basic exception guarantee (ADR-0010): a new-price-node allocation failure
+may leave the in-place book partially updated, and sequence state is not advanced. COIN-M uses a
 similar rule in the reviewed official documentation but has no M3 runtime policy because the frozen
 Contracts baseline cannot identify it.
 
@@ -398,7 +401,7 @@ The following order is stable across policies:
 2. Reject calls in `AwaitingBaseline` or `NeedsResync` as wrong-state input.
 3. If `final < current`, return `IgnoredStale`.
 4. If `final == current`, return `IgnoredDuplicate`, except that a relevant USD-M candidate in
-   `AwaitingBridge` is the equality-bridge transaction defined above.
+   `AwaitingBridge` follows the equality-bridge apply path defined above.
 5. Only an advancing batch (`final > current`) reaches market-specific live-continuity validation.
 
 This ordering prevents a replay/network duplicate from becoming a false Futures `pu` gap merely
@@ -540,60 +543,35 @@ Core.
 - On allocation failure, `replace_all` leaves the old book unchanged; M3 changes `L` and status only
   after it succeeds. Baseline installation therefore has the strong exception guarantee.
 
-## Atomicity and exception safety
+## Apply atomicity and exception safety
 
-M2 facts at the reviewed base are:
+Current implementation semantics are recorded in
+[ADR-0010](adr/ADR-0010-in-place-accepted-apply.md). Accepted apply mutates the live book directly:
 
-- `OrderBook` is non-copyable, owns a PIMPL, and is `noexcept` move-constructible and move-assignable.
-- `replace_all` builds temporary maps and has the strong exception guarantee.
-- `apply_updates` applies levels in input order and is not transactional if allocation fails.
-- `all_levels` returns ordered vectors by value and may allocate.
+1. Empty `batch.levels`: no book work.
+2. Non-empty `batch.levels`: `book_.apply_updates(batch.levels)` in input order.
+3. After the update returns, commit status and advance the accepted ID when the final ID is greater.
 
-An advancing sequence ID must never be committed against a partially applied live book, and an
-equality bridge must never expose `Synchronized` before all of its levels commit.
+Baseline installation keeps the strong exception guarantee because `replace_all` builds temporary
+maps and commits only after success. Accepted apply keeps the basic exception guarantee: a
+new-price-node allocation failure can leave the live book partially updated; the accepted ID,
+status, gap, and visibility are not advanced.
 
-### Alternatives matrix
+The original M3 design selected a logical copy-on-apply transaction to obtain a strong guarantee.
+P1 measured that transaction at 10,029 allocations and about 1 MB per D5000 apply. ADR-0010
+explicitly supersedes that decision; the original ADR-0005 rationale remains historical evidence.
 
-| Alternative | Correctness | Complexity / cost | Decision |
-|---|---|---|---|
-| A: temporary complete `OrderBook` | Strong if the candidate can be populated and committed by `noexcept` move | Requires reconstructing the current complete state because public copy is deleted | This is the mechanism used by selected option B |
-| B: logical copy-on-apply | Read current sides with `all_levels`, construct a candidate with the same spec, `replace_all`, apply the batch to the candidate, then move-assign on success | O(full book) copying and allocations per accepted batch; simple and testable with current M2 API | **Selected M3 correctness baseline** |
-| C: undo log | Could be strong only if rollback can never allocate and every change is captured | Reinsertion may allocate; node-handle/allocator design would substantially expand M2 and failure tests | Rejected for M3 |
-| D: accept M2 basic guarantee and mark `NeedsResync` after failure | Fail-closed visibility, but leaves a partially changed diagnostic book and makes allocation failure a resync event | Smallest code, weaker recoverability and evidence semantics | Rejected as the baseline; retained only as a future explicitly reviewed fallback if strong commit proves impossible |
-
-### Selected incremental transaction
-
-For every accepted batch that applies levels, including a USD-M equality bridge:
-
-1. Copy current bids and asks into ordered vectors using `all_levels`.
-2. Construct a candidate `OrderBook` with the same `NumericSpec`.
-3. Populate it with `replace_all`.
-4. Call `candidate.apply_updates(batch.levels)`.
-5. If any allocation throws, destroy the candidate and propagate the exception. The live projection
-   is unchanged.
-6. Move-assign the fully updated candidate into the live `OrderBook`; current M2 move assignment is
-   `noexcept`.
-7. Commit status using non-throwing scalar assignment and set the accepted ID to `u` only when it
-   advances. A USD-M equality bridge keeps `L` but still commits the candidate book before entering
-   `Synchronized`.
-
-This needs no M2 Public API extension. It prioritizes a verifiable strong guarantee over unmeasured
-performance. M5 benchmarks may justify an internal transactional clone/swap or allocator-aware
-optimization without changing M3 semantics.
-
-### Exception guarantee matrix
-
-| Operation | Proposed guarantee | Failure state |
+| Operation | Current guarantee | Failure state |
 |---|---|---|
 | Projection construction | Strong construction | No object on failure |
 | Baseline installation | Strong | Prior book, status, ID, and gap unchanged |
-| Stale/duplicate/wrong-state/gap classification | Non-allocating, expected `noexcept` internally | Deterministic result; gap transition is fully committed |
-| Accepted bridge or live apply, including USD-M `u == L` | Strong | Prior book, status, ID, gap, and visibility unchanged; `std::bad_alloc` propagates. Equality-bridge failure remains exactly `AwaitingBridge` with ID `L` |
+| Stale/duplicate/wrong-state/gap classification | Non-allocating | Deterministic result; gap transition is committed |
+| Accepted bridge or live apply, including USD-M `u == L` | Basic | Book may be partially updated; ID/status/gap/visibility unchanged |
 | Result construction | Non-allocating value construction | No failure expected |
 | Reset | `noexcept` | Empty book, no ID/gap, `AwaitingBaseline` |
-| Queries returning M2 vectors | Existing allocation behavior | Projection unchanged if allocation throws |
+| Queries returning M2 vectors | One reserved owning allocation | Projection unchanged if allocation throws |
 
-No path advances `last_update_id` before the book commit.
+No path advances `last_update_id` before the book update returns.
 
 ## Approved public API
 
@@ -753,7 +731,7 @@ Design choices embodied by the draft:
 
 | Disposition | Book changes | ID advances | Status changes | Carries `GapInfo` | Classification |
 |---|---:|---:|---:|---:|---|
-| `Applied` | May change for every accepted transaction. A USD-M equality bridge applies all levels; an empty/no-op batch may leave content equal | To `u` only when greater; equality bridge remains `L` | `AwaitingBridge` may become `Synchronized` only after book commit | No | Normal market input |
+| `Applied` | May change for every accepted batch. A USD-M equality bridge applies all levels; an empty batch leaves content unchanged | To `u` only when greater; equality bridge remains `L` | `AwaitingBridge` may become `Synchronized` after the update returns | No | Normal market input |
 | `IgnoredStale` | No | No | No | No | Normal replay/network condition |
 | `IgnoredDuplicate` | No | No | No | No | Normal sequence condition; not content identity proof |
 | `GapDetected` | No | No | To `NeedsResync` | Yes | Normal adverse market/input continuity condition |
@@ -805,7 +783,7 @@ path.
 | Update ID/range | IDs zero and max; ranges `[0,0]`, `[0,max]`, `[max,max]`, and `first < final` construct successfully; `try_create(first > final)` returns `nullopt`; range accessors/equality; guarded live successor at max |
 | Spot bootstrap | `L=500`: `[499,501]`, `[500,501]`, `[501,501]`, and `[501,502]` apply; `[502,502]` and `[502,503]` detect `SpotBootstrapForwardGap`; `u=500` is duplicate; `u=499` is stale; empty-level successor-coverage bridge; `L=max` cannot advance |
 | Spot live | exact-next, overlap, stale, equality duplicate, forward gap, max final, previous-final present but ignored |
-| USD-M bootstrap | contains-`L` bridge with `u > L`; `U <= L == u` applies every level; equality bridge adds a deeper price absent from the limited baseline; ID remains `L`; missing `pu`; range miss; exact-next range miss; allocation failure preserves the exact pending baseline |
+| USD-M bootstrap | contains-`L` bridge with `u > L`; `U <= L == u` applies every level; equality bridge adds a deeper price absent from the limited baseline; ID remains `L`; missing `pu`; range miss; exact-next range miss |
 | USD-M live | present `pu == current`; missing `pu`; mismatched `pu`; stale and duplicate classified before `pu`; empty advancing update |
 | API scope | `SequencePolicyKind` has only `Spot` and `UsdMPerpetual`; no COIN-M M3 public value; public-header self-containment includes `std::optional` support |
 | Adapter boundary documentation | Malformed Contracts/wire `first_update_id > final_update_id` fails range construction before domain apply; no fail-open projection result exists. M4 adapter implementation is not part of M3 |
@@ -879,21 +857,13 @@ levels change the book while its ID remains `L`. The complete result sequence an
 listed in the determinism invariants must compare equal. A second test resets and replays into the
 same projection and compares with a fresh instance.
 
-### Executable allocation-failure tests
+### Allocation behavior
 
-Exception tests will live in a dedicated test executable that overrides allocation with a
-deterministic fail-after counter; production code receives no failpoint API. Separate scenarios
-cover baseline installation, a Spot accepted bridge, a Spot accepted live batch, a USD-M `u > L`
-bridge, a USD-M `u == L` equality bridge, and a USD-M accepted live batch. Each scenario first
-counts successful transaction allocations, then sweeps every failure position through
-`all_levels`, candidate construction, `replace_all`, and candidate `apply_updates`.
-
-After each caught `std::bad_alloc`, the test compares status, ID, gap, bids, asks, synchronized-view
-availability, and diagnostic-view contents with an exact pre-call checkpoint. Equality-bridge
-failures must remain `AwaitingBridge` with ID `L` and the unchanged baseline book. A final
-no-failure run must apply successfully and prove that the equality bridge can change book content
-without advancing the ID. The test only claims a failure point when the counter actually fires, so
-it cannot pass without exercising allocation failure. Sanitizer runs execute these tests as normal.
+The M5 allocation instrumentation verifies that an accepted apply with one new price level performs
+exactly one map-node allocation and no old-book deallocation, and that an empty accepted batch does
+no book work. Synthetic global-`operator new` failure sweeps were removed with the copy-on-apply
+transaction (ADR-0010); baseline installation still relies on `replace_all` for its strong
+guarantee.
 
 ### Test deliverable matrix
 
@@ -904,7 +874,7 @@ it cannot pass without exercising allocation failure. Sanitizer runs execute the
 | Property tests | Independent primitive/vector model | Composed sequence/book divergence |
 | Model fuzz | Independent decoded model plus separate range-factory input | Unexpected operation sequences and domain-construction boundaries |
 | Replay determinism | Full transcript/checkpoint equality | Ambient or unstable behavior |
-| Allocation-failure sweep | Exact pre-call checkpoint | Book/sequence partial commit |
+| Allocation instrumentation | Exact live-book allocation counts | Accidental full-book copy or extra lookup |
 
 ## Acceptance gates
 
@@ -922,7 +892,7 @@ The completed M3 implementation passed the following acceptance gates:
 - independent property tests;
 - model-based fuzz and seed corpus;
 - deterministic replay tests;
-- executable allocation-failure tests; and
+- M5 allocation instrumentation; and
 - independent external code review.
 
 Local gates passed subject to the explicit AppleClang skips recorded above. The full pull-request
@@ -938,13 +908,13 @@ reviewable steps:
 2. Implement independent pure Spot and USD-M classification functions and table tests.
 3. Add projection lifecycle/value results without book mutation.
 4. Add baseline installation and strong-guarantee tests.
-5. Add copy-on-apply incremental transaction and sequence commit.
+5. Add the accepted-apply path and sequence commit; ADR-0010 later moved it in place.
 6. Add gap storage, visibility gating, reset, and recovery transitions.
 7. Complete const query views and move behavior.
 8. Complete unit and full transition-matrix tests.
 9. Implement the independent property/reference model.
 10. Add model-based fuzz harness and seed corpus.
-11. Add deterministic transcript replay and allocation-failure sweep.
+11. Add deterministic transcript replay and allocation instrumentation.
 12. Update implementation documentation, run all acceptance gates, and obtain external review.
 
 Steps 1 through 11 and the documentation/local-validation portions of step 12 are represented in

@@ -10,9 +10,19 @@
   on 2026-10-19 (`f251e11`); tested head `16490e3` passed all 20 jobs in
   [CI run 39146930093](https://github.com/tomohikoAmada/BinanceMarketDataProjection/actions/runs/39146930093).
   Merge/tested trees are identical; original CPU and tail-latency evidence is retained. See
-  [the twenty-key result](PROJECTION_P1_TWENTY_RESULT.md). P2 and
-  target-VPS budget conclusions remain conditional on Gateway G3. See
+  [the twenty-key result](PROJECTION_P1_TWENTY_RESULT.md). The P2 optimization was later
+  delivered as M-P2.A; target-VPS budget conclusions remain conditional on Gateway G3. See
   [the P1 result](PROJECTION_P1_RESULT.md).
+- Projection M-P2.A (in-place accepted apply and removal of synthetic OOM tests): **COMPLETE**.
+  D5000 existing-price accepted apply now performs 0 allocations; only new price levels allocate.
+  See [ADR-0010](adr/ADR-0010-in-place-accepted-apply.md).
+- Projection M-P2.B (ProtoAdapter moves, standard Protobuf setters, trusted same-process entries):
+  **COMPLETE**. `AdaptDepthUpdate/Spot/10` is 1 allocation / 240 bytes (2 / 480 before); Release
+  mean latency is 0.2743 -> 0.2572 us.
+- Projection M-P2.C (CI deduplication and quality-script removal): **COMPLETE**. Duplicate Ubuntu
+  GCC/Clang Release jobs and the fake-environment `test-quality-toolchain.sh` suite are removed;
+  `scripts/quality.sh` remains the single canonical Quality entrypoint. The consolidated
+  implementation/evidence record is [Projection M-P2.A-C Result](PROJECTION_M_P2_RESULT.md).
 - M0-M4: **COMPLETE**.
 - M5 Phase 1-11: **COMPLETE**.
 - M5: **COMPLETE**.
@@ -118,7 +128,8 @@ updates, and atomic full-book replacement.
 - `BookSide`, `BookLevel`, `LevelUpdate`, `LevelChange`, and `OrderBook` public API.
 - PIMPL-isolated `std::map` storage with bid descending / ask ascending ordering.
 - Absolute quantity replacement, zero-quantity deletion, missing-delete no-op.
-- Batch update with ordered application and same-price last-write-wins.
+- In-place batch update with ordered application and same-price last-write-wins; only a new price
+  level allocates.
 - Atomic `replace_all` with last-write-wins per side and strong exception guarantee.
 - Best bid/ask, quantity-at-price, top-N, and full-level-copy queries.
 - Crossed and locked book acceptance without rejection or auto-resolution.
@@ -157,11 +168,12 @@ the M2 order book.
 - Domain-only baseline and depth-batch views with no wire or runtime dependency.
 - `AwaitingBaseline`, `AwaitingBridge`, `Synchronized`, and `NeedsResync` lifecycle states.
 - Stable apply results, deterministic gap evidence, reset, and synchronization-aware const queries.
-- Strong exception safety for baseline installation and incremental sequence/book commit.
+- Strong exception safety for baseline installation; accepted apply mutates the live book in place
+  with the basic exception guarantee (ADR-0010).
 - Complete transition/unit matrices, an independent property model, deterministic replay tests,
-  allocation-failure tests, and a model-based M3 fuzz harness.
+  allocation instrumentation, and a model-based M3 fuzz harness.
 - M3 architecture design and ACCEPTED ADR-0005, with the independent external review result
-  recorded in the design documents.
+  recorded in the design documents. ADR-0010 supersedes only the original copy-on-apply transaction.
 
 COIN-M was reviewed as future-compatibility evidence but is not in the current M3 public surface
 because the frozen Contracts baseline does not identify a COIN-M market.
@@ -172,9 +184,10 @@ Architecture review: **APPROVED**.
 
 Implementation review: **APPROVED**. Blocking findings: **0**.
 
-ADR-0005 is **ACCEPTED**.
+ADR-0005 is **ACCEPTED**; its copy-on-apply transaction decision is superseded by **ADR-0010**
+(ACCEPTED).
 
-The M3 public API, production source, unit/state/property/replay/allocation-failure validation,
+The M3 public API, production source, unit/state/property/replay/allocation validation,
 model-based fuzz harness, seed corpus, and staged-install consumer are implemented on `main`.
 External implementation code review approved head
 `7606a60bbb2d2a192f6c0259942174fbd49847ba` with no blocking findings, and CI run `31083008166`

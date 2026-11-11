@@ -146,8 +146,7 @@ canonical work.
   canonical entrypoint**: if any is present in the environment, `quality.sh` aborts before
   container image construction. The container execution mode is **not** ambient-selectable,
   and the canonical source/work roots are **fixed** (`/src`, `/work`) — they cannot be
-  substituted by the environment. The test hooks exist only for the deterministic tests,
-  which invoke the checker directly.
+  substituted by the environment. The canonical path never relies on those test-only hooks.
 - The working tree is mounted read-only; Quality runs from the fresh scratch copy inside the
   container, so the host tree is never polluted.
 - The image is rebuilt whenever the contract fingerprint changes; a cache hit is never trusted
@@ -201,9 +200,8 @@ The `quality` job in `.github/workflows/ci.yml` is orchestration only: it checks
 prints the contract, and runs `bash scripts/quality.sh`. All Quality semantics live in the
 repository entrypoint, not in the workflow. The runner label is the concrete `ubuntu-24.04`
 (the acceptance toolchain cannot drift with it, because the toolchain is container-owned).
-
-The `quality-toolchain-tests` job runs the deterministic contract tests
-(`scripts/test-quality-toolchain.sh`) on every PR/push.
+There is no separate fake-environment toolchain test job; the canonical container run itself
+exercises the real pinned toolchain contract.
 
 ## Fail-closed guarantees
 
@@ -247,18 +245,10 @@ The `quality-toolchain-tests` job runs the deterministic contract tests
 - No package-resolution operation ever touches a mutable live archive: the only apt sources are
   the historical snapshot URIs (both pockets), archive signatures verified via `Signed-By`.
 
-Deterministic offline tests: `scripts/test-quality-toolchain.sh` (100 cases, no network; fake
-shims generated from the repository's own contract files) — including adversarial stale-object
-reuse against the production work-preparation mechanism, source deletion/rollback, base-ref
-mutation, base-binding assertion semantics (C0/C0 pass; C0 arg with C1/C2/C3 contract fails;
-duplicate/malformed fail), Dockerfile base-binding plumbing/order, exact argv-grammar
-rejection, snapshot temporal/calendar plumbing, duplicate-key fail-closed (including arbitrary
-keys and conflicting values), cache-namespace key changes, payload tamper, entrypoint-level
-test-hook isolation proofs, canonical-image-boundary proofs, Docker-Engine-backend identity
-proofs (Podman/libpod and unknown backends rejected via fake `docker` shims), and
-internal-orchestration-variable adversarial proofs (fake docker shim, no image-build command
-reached). Live integration proof comes from the canonical image build itself (CI quality job)
-and the documented local failure proofs.
+Contract proof comes from the real canonical image build and entrypoint run in the CI `quality`
+job. The repository intentionally does not maintain a second fake-shim test harness for the
+toolchain; the production helpers fail closed on the conditions listed above during the real
+containerized run.
 
 ## Intentional upgrade procedure
 
@@ -318,5 +308,5 @@ decision would be a separate task.
 - `scripts/quality.sh` — canonical Quality entrypoint (CI and local).
 - `scripts/quality-toolchain-check.sh` — deterministic fail-closed identity/provenance/payload/
   snapshot-temporal validation.
-- `scripts/test-quality-toolchain.sh` — deterministic contract/negative/adversarial tests.
-- `.github/workflows/ci.yml` — CI orchestration (quality job, quality-toolchain-tests job).
+- `.github/workflows/ci.yml` — CI orchestration (single canonical `quality` job plus the build,
+  sanitizer, package, benchmark, fuzz, and replay jobs).

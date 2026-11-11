@@ -1,43 +1,23 @@
 # Current State
 
 ```text
-REVIEWED_BASE_MAIN=59a7bca6a22e39a31323b221d18cfd4d5ac24b90
-REVIEWED_BASE_TREE=d18e4e66c3eb5972c3a96e6557f28fbf487468fd
-DOC_FREEZE_PR=44
-FULL_CI_RUN=NO
-CURRENT_TECHNICAL_CANDIDATE=4b01082fc31dfb3a24ec65542a7931eab8520f26
-TECHNICAL_REVIEW=APPROVED_FOR_DOCUMENTATION_ALIGNMENT
-TECHNICAL_REVIEW_FINDINGS=P0=0 P1=0 P2=0 P3=0
-TECHNICAL_CI_RUN=33059838857 SUCCESS
-CONTRACTS_MAIN=518880bdfa60948c3b65b6b3525d024526995166
-CONTRACTS_MESSAGE_RREV=53713fb82c27cf6ea0395f6b8a853006
+REPOSITORY=BinanceMarketDataProjection
 M0-M4=COMPLETE
 M5_PHASE1_11=COMPLETE
 M5=COMPLETE
-PR42_CORRECTIVE_CLOSURE=COMPLETE
-KEEP_STD_MAP
-
-M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
-M6_DESIGN=COMPLETE_CONTRACT_ONLY
-M6_IMPLEMENTATION=COMPLETE_THROUGH_REAL_GATEWAY_INTEGRATION
-GATEWAY_G0_FOUNDATION=COMPLETE
-GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED
-GATEWAY_RUNTIME_PIPELINE=IMPLEMENTED_THROUGH_G11
-GATEWAY_G8=COMPLETE
-GATEWAY_G9=COMPLETE
-GATEWAY_G10=COMPLETE
-GATEWAY_G11=COMPLETE
+M6=COMPLETE_THROUGH_REAL_GATEWAY_INTEGRATION
+GATEWAY_G0_G11=COMPLETE
 POST_G11_RUNTIME_PRODUCTIZATION=COMPLETE
 RECOVERY_OBSERVABILITY=COMPLETE
 PERFORMANCE_INSTRUMENTATION=COMPLETE
 POST_G11_PERFORMANCE_BASELINE=COMPLETE
-RECOVERY_OBSERVATION_CAMPAIGN=COMPLETE
-GATEWAY_NEXT=NOT_FROZEN
-M6_REAL_GATEWAY_INTEGRATION_ACCEPTANCE=COMPLETE
-M6=COMPLETE
-PROJECTION_PRODUCTION_CODE_CHANGED_BY_M6=NO
-M6_P1_001=RESOLVED_IN_CONTRACTS_MAIN
-M6_P1_003=RESOLVED_IN_CONTRACTS_MAIN
+PROJECTION_P0=COMPLETE
+PROJECTION_P1=COMPLETE
+PROJECTION_M_P2_A=COMPLETE
+PROJECTION_M_P2_B=COMPLETE
+PROJECTION_M_P2_C=COMPLETE
+KEEP_STD_MAP
+
 M6_CONTRACTS_PACKAGE_PUBLICATION=SEPARATE_FUTURE_RELEASE_CONCERN_NOT_STAGE_BLOCKER
 PROJECTION_ISSUE_46=CLOSED_COMPLETED_2026-08-27
 PROJECTION_ISSUE_47=CLOSED_COMPLETED_2026-08-27
@@ -47,38 +27,58 @@ CURRENT_STATE is an orientation summary only. It does not override accepted ADRs
 milestone designs, implementation evidence, or current Git/GitHub state. When those sources
 disagree, verify the higher-authority source and update this file.
 
-## Projection P0 under the v0.3 plan
+## M-P2.A in-place accepted apply (2026-11-11)
 
-Projection P0 (fixed-asset acquisition and the tests+benchmarks Python CTest repair)
-is **COMPLETE / MERGED** following owner-authorized closure on 2026-10-18.
-[PR #54](https://github.com/tomohikoAmada/BinanceMarketDataProjection/pull/54)
-merged at `c8a880d80fc5c7a932413fe42533b81fca49136c`; tested head `b458c7e`
-passed all 20 jobs in CI run `38224252026`. Main had no divergent commits and
-the merged tree equals the tested head tree. Scope, diagnosis, validation, and
-closure identities are recorded in [the P0 result](PROJECTION_P0_RESULT.md).
-P1/P2, Gateway G1/G2, production VPS access, and Recorder qualification work
-are outside this change.
+Detailed record: [Projection M-P2.A-C Result](PROJECTION_M_P2_RESULT.md).
 
-## Projection P1 under the v0.3/v0.4 plans — COMPLETE / MERGED
+P1 measured full-book copy-on-apply as the dominant accepted-update hotspot. M-P2.A removed it:
 
-The owner authorized four-product cost attribution on 2026-10-18. Offline measurement is
-complete using Gateway G2's existing production graph and M5 measurement tools.
-Eighteen paired process trials completed with full delivery and zero Full/Gap/
-overflow/clock errors. Core/Adapter production code and pins remain unchanged;
-P2 and target-VPS budget acceptance remain conditional. The subsequently revised v0.4
-plan adds 20-key mixed-load attribution, now also complete offline with a
-separate [twenty-key result](PROJECTION_P1_TWENTY_RESULT.md), verified raw archive
-and independent review. Its evidence is distinct from the original
-[four-product result](PROJECTION_P1_RESULT.md).
+- `BookProjection::apply` skips book work for an empty batch and otherwise calls
+  `OrderBook::apply_updates` directly on the live book.
+- `OrderBook::copy_from_map` reserves the expected output size; same-price insert/update uses one
+  map lookup.
+- The two synthetic global-`operator new` allocation-failure test targets and their source files
+  were deleted.
+- Accepted apply now keeps the basic exception guarantee. Baseline installation remains
+  transactional. [ADR-0010](adr/ADR-0010-in-place-accepted-apply.md) supersedes only ADR-0005's
+  copy-on-apply transaction decision; sequence policy is unchanged.
+- Regression coverage: `M3AcceptedApplyMutatesInPlace` (one new level -> one allocation, no old-book
+  deallocation) and `M3EmptyAcceptedBatchDoesNoBookWork` (zero allocations).
+- Measured after the change: D5000 existing-price B10/B100 accepted apply = 0 allocations and
+  0 bytes; D0/B10 empty-book insertion = 10 allocations / 480 requested bytes (one node per new
+  price level). The former D5000 measurement was 10,029 allocations / 1,004,312 requested bytes.
 
-Owner-authorized closure: [PR #55](https://github.com/tomohikoAmada/BinanceMarketDataProjection/pull/55)
-merged on 2026-10-19 as `f251e11bea5e8a3af2aea3819f9c5337ca4843f9`.
-Exact tested head `16490e3afd785e5ad50504f9e805c4444db58c73` passed all 20 jobs in
-[CI run 39146930093](https://github.com/tomohikoAmada/BinanceMarketDataProjection/actions/runs/39146930093).
-The merge commit tree exactly equals that tested head tree. Both four-/twenty-key
-raw archives and all CPU/latency/resource evidence are unchanged. Gateway support
-PR #38 is also merged; P2/shared-VPS acceptance remains conditional.
+P1's measurements remain valid as pre-optimization evidence:
+[four-product result](PROJECTION_P1_RESULT.md) and
+[twenty-key result](PROJECTION_P1_TWENTY_RESULT.md). Target-VPS/Recorder budgets remain a Gateway
+G3 concern.
 
+## M-P2.B adapter fast path (2026-11-11)
+
+- `adapt_depth_update` now appends bids and asks into one pre-reserved owning vector; the
+  `AdaptDepthUpdate/Spot/10` allocation count is 1 allocation / 240 bytes (formerly 2 / 480).
+- Adapted owners move their level vectors and metadata instead of copying them.
+- Snapshot output uses standard Protobuf `set_*`, `mutable_*`, and `Add()` APIs; the manual
+  `set_allocated_*` + `unique_ptr` + `bad_alloc` rollback assembly is removed.
+- `adapt_trusted_depth_update`, `adapt_trusted_exchange_depth_snapshot`,
+  `install_into_trusted`, and `apply_to_trusted` provide an in-process path that skips repeated
+  fixed-metadata UTF-8/identity checks and target `NumericSpec`/policy checks. Level decimals,
+  range, and quality enums remain validated. A local exploratory loop measured the same 10-level
+  update at ~256 ns/op checked vs ~232 ns/op trusted.
+- Local Release `AdaptDepthUpdate/Spot/10` mean: 0.2743 -> 0.2572 us; allocation count
+  2 / 480 bytes -> 1 / 240 bytes. Snapshot timing remains dominated by per-level decimal
+  formatting/string allocation; its allocation count is reduced but the timing change is small.
+
+## M-P2.C CI deduplication (2026-11-11)
+
+- The M4 static matrix no longer repeats Ubuntu GCC and Ubuntu Clang Release builds already
+  produced by the Release build matrix. Its remaining matrix is Ubuntu GCC/Clang Debug and
+  macOS AppleClang Debug/Release.
+- Deleted the 1,248-line `scripts/test-quality-toolchain.sh` fake-environment suite and its
+  `quality-toolchain-tests` CI job.
+- `scripts/verify.sh` and contributor documentation no longer invoke the removed suite. The
+  containerized `quality` job and `scripts/quality.sh` remain the single canonical Quality
+  acceptance path.
 
 ## Repository role
 
@@ -87,7 +87,7 @@ single-writer order book, Spot/USD-M sequence policy, projection lifecycle, the 
 adapter boundary, and M5 validation infrastructure. It does not own Binance network acquisition,
 Recorder persistence/archive, or Gateway runtime.
 
-## Current accepted evidence
+## Accepted evidence
 
 ```text
 M4_LIMITED_IDENTITY=depth_limit=20
@@ -106,41 +106,18 @@ PHASE7_M4=22/22
 PHASE7_DETERMINISM=PASS
 
 PHASE8_MODEL_SEMANTICS=UNCHANGED
-PHASE8_TARGET_WIRING=SEPARATED_FROM_PHASE6_FORMAL_EXECUTABLE
 PHASE9_DECISION=KEEP_STD_MAP
 PHASE10=COMPLETE
 PRODUCTION_CORE_CHANGED_BY_PR42=NO
 ```
 
-The corrected Phase-6 inventory is truthful for the post-PR42 formal executable. The original
-PR #21 acceptance remains recorded as historical `169/169` in
-[`docs/M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md`](M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md); it was
-not erased or rewritten.
-
-Phase-8 target wiring is separated from the Phase-6 formal executable; Phase-8 model semantics
-remain unchanged.
-
-PR #42 corrected benchmark evidence provenance only. It did **not** change Production Core
-semantics. The corrected evidence record explains the inventory and identity changes and links to
-the detailed Phase-6, Phase-7, Phase-8, Phase-9, Phase-10, and Phase-11 records.
-
-## M5 final state
-
-M5 Phase 1 through Phase 11 are complete. At a high level, M5 provides:
-
-- deterministic replay;
-- independent differential/reference validation;
-- cross-compiler semantic manifests;
-- differential fuzzing;
-- representative benchmark evidence;
-- allocation/memory evidence;
-- Phase-8 container experiments with the `KEEP_STD_MAP` decision;
-- recorded replay and a weekly exploratory performance canary; and
-- a final independent repository audit.
+The corrected Phase-6 inventory is truthful for the post-PR42 formal executable. The original PR #21
+acceptance remains historical `169/169` in
+[M5 Phase 6](M5_PHASE6_REPRESENTATIVE_BENCHMARKS.md); it was not erased or rewritten. Phase-6/7
+timing and allocation evidence predates M-P2.A and describes the former full-book transaction.
 
 M5 remains validation-only: it introduced no Production Core semantic change, no production
-container migration, and no Gateway runtime. Detailed historical evidence remains in the
-phase-specific documents:
+container migration, and no Gateway runtime. Detailed history remains in the phase documents:
 
 - [Phase 1](M5_PHASE1_CANONICAL_REPLAY.md) through
   [Phase 5](M5_PHASE5_DIFFERENTIAL_FUZZING.md);
@@ -151,46 +128,25 @@ phase-specific documents:
 - [Phase 10](M5_PHASE10_CI_REPORTING_INTEGRATION.md); and
 - [Phase 11](M5_PHASE11_FINAL_IMPLEMENTATION_REVIEW.md).
 
-The accepted semantic correction for Spot successor coverage is [ADR-0008](adr/ADR-0008-spot-bootstrap-successor-coverage.md);
-the historical superseded decision remains in [ADR-0005](adr/ADR-0005-market-specific-sequence-policy.md).
+The accepted semantic correction for Spot successor coverage is
+[ADR-0008](adr/ADR-0008-spot-bootstrap-successor-coverage.md); the historical superseded decision
+remains in [ADR-0005](adr/ADR-0005-market-specific-sequence-policy.md).
 
-## M6 and Gateway integration closure
-
-```text
-M6_CROSS_REPOSITORY_CONTRACT_DESIGN=COMPLETE
-M6_DESIGN_STARTED=YES_CONTRACT_ONLY
-M6_IMPLEMENTATION_STARTED=YES_IN_GATEWAY_G8
-GATEWAY_G0_FOUNDATION=COMPLETE
-GATEWAY_G1_EXACT_CANDIDATE_DEPENDENCY_INTEGRATION=MERGED_AT_04e7cc37622a5feb0e416bf75ba000f13aa7f62a
-GATEWAY_RUNTIME_PIPELINE_STARTED=YES_THROUGH_G11
-M6_PLANNING_AUTHORIZED=YES
-GATEWAY_G8=COMPLETE
-GATEWAY_G9=COMPLETE
-GATEWAY_G10=COMPLETE
-GATEWAY_G11=COMPLETE
-GATEWAY_NEXT=NOT_FROZEN
-M6_REAL_GATEWAY_INTEGRATION_ACCEPTANCE=COMPLETE
-PROJECTION_PRODUCTION_CODE_CHANGED_BY_M6=NO
-```
+## M6 and Gateway closure
 
 M6 planning and the approved sequence are recorded in
-[`M6_GATEWAY_INTEGRATION_SEQUENCE.md`](M6_GATEWAY_INTEGRATION_SEQUENCE.md) and the completed
-[`M6 cross-repository integration contract`](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md).
-The contract design is complete. Gateway G0 through G8 are complete, and Gateway G8 is the
-accepted real-Gateway Projection M6 order-book integration boundary. Gateway later progressed
-through G9, G10, and G11, then completed post-G11 runtime productization, recovery observability,
-performance instrumentation, and the accepted post-G11 performance baseline. Gateway implementation
-and runtime pipeline are in `BinanceMarketDataGateway`; live Gateway repository authority must be
-verified in that repository. No Projection production code change was required.
+[M6 Gateway Integration Sequence](M6_GATEWAY_INTEGRATION_SEQUENCE.md) and the completed
+[M6 cross-repository integration contract](M6_CROSS_REPOSITORY_INTEGRATION_CONTRACT.md). Gateway G8
+is the accepted real-Gateway Projection order-book integration boundary; Gateway later completed
+G9-G11, post-G11 runtime productization, recovery observability, performance instrumentation, and
+its accepted performance baseline. Gateway implementation and runtime authority live in
+`BinanceMarketDataGateway`; no Projection production change was required.
+
 The current Projection package integration consumes the message-only
 `binance-market-data-contracts-cpp/0.1.0` artifact from Contracts main
 `518880bdfa60948c3b65b6b3525d024526995166`, with message RREV
 `53713fb82c27cf6ea0395f6b8a853006`. The separate Contracts gRPC artifact is not a Projection
-dependency. Formal package publication/release is a separate future release concern, not a blocker
-for closing this repository-level Projection stage. Issues #46 and #47 were closed as completed
-on 2026-08-27. Gateway runtime belongs in `BinanceMarketDataGateway`, not this repository. G9 and
-G10 were not prerequisites for the historical M6 acceptance; both, plus G11, are now complete. No
-further numbered Gateway milestone is frozen.
+dependency. Formal package publication/release remains a future release concern.
 
 ## Authority model
 
@@ -209,7 +165,7 @@ The repository keeps one documentation authority model:
 - docs/QUALITY_TOOLCHAIN.md: canonical Quality/toolchain authority;
 - docs/MILESTONES.md: milestone ledger and definitions;
 - accepted ADRs: semantic decisions; and
-- phase-specific M*/Phase documents: detailed historical design, acceptance, and evidence.
+- phase-specific M*/Phase documents: historical design, acceptance, and evidence.
 
 No additional status/index layer is needed.
 
@@ -232,5 +188,3 @@ broad supplemental verification.
 7. relevant accepted ADRs and phase-specific documents
 8. code/tests/build configuration
 9. active PR and exact-head CI, if one exists
-
-The orientation summary is deliberately not a substitute for those authorities.

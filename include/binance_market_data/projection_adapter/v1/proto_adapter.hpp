@@ -128,6 +128,15 @@ class AdaptedBookBaseline final {
     AdapterResult<projection::v1::InstallResult>
     install_into(projection::v1::BookProjection&& target) const& = delete;
 
+    // Same-process fast path: the caller guarantees that target already has this owner's
+    // NumericSpec and sequence policy. No binding check is performed.
+    [[nodiscard]] AdapterResult<projection::v1::InstallResult>
+    install_into_trusted(projection::v1::BookProjection& target) const&;
+    AdapterResult<projection::v1::InstallResult>
+    install_into_trusted(projection::v1::BookProjection& target) const&& = delete;
+    AdapterResult<projection::v1::InstallResult>
+    install_into_trusted(projection::v1::BookProjection&& target) const& = delete;
+
     [[nodiscard]] const AdaptedMetadata& metadata() const& noexcept;
     [[nodiscard]] const AdaptedMetadata& metadata() const&& = delete;
 
@@ -163,6 +172,15 @@ class AdaptedDepthBatch final {
     apply_to(projection::v1::BookProjection& target) const&& = delete;
     AdapterResult<projection::v1::ApplyResult>
     apply_to(projection::v1::BookProjection&& target) const& = delete;
+
+    // Same-process fast path: the caller guarantees that target already has this owner's
+    // NumericSpec and sequence policy. No binding check is performed.
+    [[nodiscard]] AdapterResult<projection::v1::ApplyResult>
+    apply_to_trusted(projection::v1::BookProjection& target) const&;
+    AdapterResult<projection::v1::ApplyResult>
+    apply_to_trusted(projection::v1::BookProjection& target) const&& = delete;
+    AdapterResult<projection::v1::ApplyResult>
+    apply_to_trusted(projection::v1::BookProjection&& target) const& = delete;
 
     [[nodiscard]] const AdaptedMetadata& metadata() const& noexcept;
     [[nodiscard]] const AdaptedMetadata& metadata() const&& = delete;
@@ -238,6 +256,19 @@ adapt_exchange_depth_snapshot(const ::binance_market_data::market::v1::ExchangeD
 [[nodiscard]] AdapterResult<AdaptedDepthBatch>
 adapt_depth_update(const ::binance_market_data::market::v1::DepthUpdate& wire,
                    projection::v1::NumericSpec numeric_spec, const ExpectedIdentity& expected);
+
+// Same-process trusted entries. Callers already own and have validated the fixed wire metadata
+// (venue/market/symbol, schema/stream, producer/version/connection identity). These entries skip
+// those repeated metadata checks and use expected.policy; level decimals, sequence ranges, and
+// quality flags are still validated.
+[[nodiscard]] AdapterResult<AdaptedBookBaseline> adapt_trusted_exchange_depth_snapshot(
+    const ::binance_market_data::market::v1::ExchangeDepthSnapshot& wire,
+    projection::v1::NumericSpec numeric_spec, const ExpectedIdentity& expected);
+
+[[nodiscard]] AdapterResult<AdaptedDepthBatch>
+adapt_trusted_depth_update(const ::binance_market_data::market::v1::DepthUpdate& wire,
+                           projection::v1::NumericSpec numeric_spec,
+                           const ExpectedIdentity& expected);
 
 [[nodiscard]] AdapterResult<::binance_market_data::projection::v1::LocalOrderBookSnapshot>
 make_local_order_book_snapshot(const projection::v1::BookProjection& projection,

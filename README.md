@@ -4,9 +4,10 @@
 market-data projection core. M0-M4 are COMPLETE, M5 is COMPLETE, and M6 real-Gateway integration
 acceptance is COMPLETE. The separate Gateway repository later completed G0-G11, post-G11 runtime
 productization, recovery observability, performance instrumentation, and the accepted post-G11
-performance baseline. Its configured `bmd-gatewayd` now exercises four products through Gateway v0.3 G2; Gateway runtime
-remains outside this repository and Projection production code was not changed by M6 or later
-Gateway work.
+performance baseline. Its configured `bmd-gatewayd` now exercises four products through Gateway
+v0.3 G2; Gateway runtime remains outside this repository and Projection production code was not
+changed by M6 or later Gateway work. The separate M-P2.A Projection change now applies accepted
+depth batches in place instead of copying the full book.
 
 ## For AI agents and independent reviewers
 
@@ -82,8 +83,8 @@ bash scripts/test.sh release
 ```
 
 Configured targets include `bmd_projection_core`, `bmd_projection_tests`,
-`bmd_projection_benchmarks`, the M3 allocation-failure tests, and the decimal/order-book/
-projection fuzz targets. The optional M4 build also provides
+`bmd_projection_benchmarks`, and the decimal/order-book/projection fuzz targets. The optional M4
+build also provides
 `bmd_projection_proto_adapter` and `bmd_projection_proto_adapter_fuzz`. Build-tree and installed
 consumers link the alias `BinanceMarketDataProjection::Core`.
 
@@ -100,8 +101,9 @@ and [ADR-0002](docs/adr/ADR-0002-fixed-point-internal-representation.md).
 The order book is deterministic and single-writer, and implements L2 market-by-price semantics.
 Bids are ordered descending and asks ascending. Quantities are absolute values; zero quantity
 deletes a level. Single-level, batch, and `replace_all` updates are supported, along with best,
-quantity-at-price, top-N, and full ordered-level queries. Crossed and locked books are accepted;
-the core does not match orders. Each `OrderBook` is bound to one `NumericSpec`.
+quantity-at-price, top-N, and full ordered-level queries. Single-level and batch updates mutate the
+live book in place; only a newly inserted price level allocates. Crossed and locked books are
+accepted; the core does not match orders. Each `OrderBook` is bound to one `NumericSpec`.
 
 Sequence validation and gap detection enter through the M3 `BookProjection` mutation surface.
 Snapshot contracts and networking remain outside Core. See [M2 semantics](docs/M2_ORDER_BOOK_SEMANTICS.md),
@@ -112,10 +114,12 @@ Snapshot contracts and networking remain outside Core. See [M2 semantics](docs/M
 
 The M3 API provides strongly typed `UpdateId` and valid-by-construction `UpdateRange` values plus a
 `BookProjection` that selects the approved Spot interval policy or USD-M previous-final policy. Its
-lifecycle is `AwaitingBaseline`, `AwaitingBridge`, `Synchronized`, or `NeedsResync`. Baselines and
-accepted batches commit with the strong exception guarantee. Core owns no snapshot download,
-network buffer, wire type, clock, or recovery runtime. See [ADR-0005](docs/adr/ADR-0005-market-specific-sequence-policy.md)
-and [ADR-0008](docs/adr/ADR-0008-spot-bootstrap-successor-coverage.md).
+lifecycle is `AwaitingBaseline`, `AwaitingBridge`, `Synchronized`, or `NeedsResync`. Baseline
+installation is transactional; accepted batches mutate the synchronized book in place and keep the
+basic exception guarantee. Core owns no snapshot download, network buffer, wire type, clock, or
+recovery runtime. See [ADR-0005](docs/adr/ADR-0005-market-specific-sequence-policy.md),
+[ADR-0008](docs/adr/ADR-0008-spot-bootstrap-successor-coverage.md), and
+[ADR-0010](docs/adr/ADR-0010-in-place-accepted-apply.md).
 
 ## Optional snapshots and Protobuf adapter
 
@@ -131,8 +135,10 @@ bash scripts/test.sh debug
 The public `BinanceMarketDataProjection::ProtoAdapter` target converts strict Contracts
 `ExchangeDepthSnapshot` and `DepthUpdate` messages to lifetime-safe owning values with checked M3
 invocation. It also builds deterministic `LocalOrderBookSnapshot` values from Core plus explicit
-Host identity, time, recovery, depth, and quality context. The adapter does not own clocks,
-networking, buffering, persistence, recovery orchestration, or gRPC. See [ADR-0006](docs/adr/ADR-0006-protobuf-adapter-boundary.md).
+Host identity, time, recovery, depth, and quality context. A same-process Host may use the trusted
+adaptation/install/apply entries after validating fixed connection metadata once; checked entries
+remain the default. The adapter does not own clocks, networking, buffering, persistence, recovery
+orchestration, or gRPC. See [ADR-0006](docs/adr/ADR-0006-protobuf-adapter-boundary.md).
 
 The current repository-level package integration consumes the message-only artifact
 `binance-market-data-contracts-cpp/0.1.0` from Contracts main
@@ -229,8 +235,10 @@ Normal/instrumented Release trials measure owner/checked-apply/publication/queue
 Write costs, CPU and RSS; existing M5 tools provide separate Core/allocation/
 replay evidence. See [four-product P1 results and reproduction](docs/PROJECTION_P1_RESULT.md)
 and the owner-authorized [twenty-key increment](docs/PROJECTION_P1_TWENTY_RESULT.md).
-Core/Adapter and `std::map` remain unchanged. Target-VPS/Recorder resource budgets
-are a Gateway G3 decision; P2 optimization remains conditional.
+The P1 evidence identified the full-book accepted-apply copy as the dominant hotspot. M-P2.A now
+applies accepted batches in place ([ADR-0010](docs/adr/ADR-0010-in-place-accepted-apply.md));
+Core/Adapter API and `std::map` remain unchanged. Target-VPS/Recorder resource budgets remain a
+Gateway G3 decision.
 
 ## Canonical Quality acceptance
 

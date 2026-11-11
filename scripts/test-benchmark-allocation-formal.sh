@@ -42,8 +42,7 @@ bash_bin="$(command -v bash)"
 make_fake_docker() {
     # A fake `docker` command: `docker version --format` prints the given
     # server JSON (real Docker Engine shape), everything else records the
-    # invocation in $BMD_FAKE_DOCKER_MARKER. Mirrors the accepted
-    # test-quality-toolchain.sh harness.
+    # invocation in $BMD_FAKE_DOCKER_MARKER.
     local dir="$1"
     mkdir -p "$dir"
     printf '%s\n' \

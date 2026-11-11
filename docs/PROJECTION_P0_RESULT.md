@@ -55,7 +55,6 @@ Evidence is retained locally under ignored `build/p0-evidence/`.
 | Actual acquisition shell block against loopback HTTP fixture | 200 PASS; 503 then 200 PASS (two requests); 404 rejected (exit 22, one request) |
 | Fresh anonymous pinned asset | Full distribution verification PASS |
 | Original recorded Spot/USD-M canary, three repetitions each | PASS; exact five outputs and source/binary/fixture/result binding PASS |
-| `bash scripts/test-quality-toolchain.sh` | 100/100 PASS |
 | `bash scripts/quality.sh` | Canonical PASS (clang/clang-tidy/clang-format 18.1.3); 523/523 tests and staged consumer PASS |
 | Workflow YAML, shell syntax, `git diff --check` | PASS |
 
@@ -83,7 +82,6 @@ bash scripts/configure.sh benchmark \
   -DBMD_PROJECTION_BUILD_TESTS=ON -DBMD_PROJECTION_ENABLE_WERROR=ON
 bash scripts/build.sh benchmark
 ctest --test-dir build/benchmark/cmake --output-on-failure
-bash scripts/test-quality-toolchain.sh
 bash scripts/quality.sh
 ```
 

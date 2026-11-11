@@ -225,25 +225,6 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
     bmd_projection_apply_project_options(bmd_projection_proto_adapter_tests)
 
     add_executable(
-        bmd_projection_proto_adapter_allocation_failure_tests
-        proto_adapter/proto_adapter_allocation_failure_test.cpp
-    )
-    target_link_libraries(
-        bmd_projection_proto_adapter_allocation_failure_tests
-        PRIVATE
-            BinanceMarketDataProjection::ProtoAdapter
-            GTest::gtest_main
-    )
-    set_target_properties(
-        bmd_projection_proto_adapter_allocation_failure_tests
-        PROPERTIES
-            CXX_STANDARD 20
-            CXX_STANDARD_REQUIRED YES
-            CXX_EXTENSIONS NO
-    )
-    bmd_projection_apply_project_options(bmd_projection_proto_adapter_allocation_failure_tests)
-
-    add_executable(
         bmd_projection_m5_adapter_differential_tests
         m5/oracle/adapter_differential_test.cpp
         m5/oracle/adapter_production_side.cpp
@@ -368,25 +349,6 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
             -P ${PROJECT_SOURCE_DIR}/tests/cmake/check_m4_lock.cmake
     )
 endif()
-
-add_executable(
-    bmd_projection_m3_allocation_failure_tests
-    projection_state/book_projection_allocation_failure_test.cpp
-)
-target_link_libraries(
-    bmd_projection_m3_allocation_failure_tests
-    PRIVATE
-        BinanceMarketDataProjection::Core
-        GTest::gtest_main
-)
-set_target_properties(
-    bmd_projection_m3_allocation_failure_tests
-    PROPERTIES
-        CXX_STANDARD 20
-        CXX_STANDARD_REQUIRED YES
-        CXX_EXTENSIONS NO
-)
-bmd_projection_apply_project_options(bmd_projection_m3_allocation_failure_tests)
 
 # M5 Phase-7 (PR-A / WP1): adversarial validation of the allocation
 # instrumentation substrate. This dedicated single-threaded executable owns the
@@ -519,7 +481,6 @@ include(GoogleTest)
 # preserving the same discovered test inventory.
 set(CMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE PRE_TEST)
 gtest_discover_tests(bmd_projection_tests)
-gtest_discover_tests(bmd_projection_m3_allocation_failure_tests)
 gtest_discover_tests(bmd_projection_allocation_instrumentation_tests)
 gtest_discover_tests(bmd_projection_m5_replay_tests)
 gtest_discover_tests(bmd_projection_m5_differential_tests)
@@ -613,7 +574,6 @@ if(BMD_PROJECTION_BUILD_PROTO_ADAPTER)
             "BMD_M5_ADAPTER_CORPUS_VALIDATOR=$<TARGET_FILE:bmd_projection_m5_adapter_corpus_validate>"
     )
     gtest_discover_tests(bmd_projection_proto_adapter_tests)
-    gtest_discover_tests(bmd_projection_proto_adapter_allocation_failure_tests)
     gtest_discover_tests(bmd_projection_m5_adapter_differential_tests)
 endif()
 

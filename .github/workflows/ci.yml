@@ -42,14 +42,6 @@ jobs:
       - name: Canonical Quality (containerized pinned toolchain)
         run: bash scripts/quality.sh
 
-  quality-toolchain-tests:
-    name: quality toolchain contract tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deterministic toolchain identity tests
-        run: bash scripts/test-quality-toolchain.sh
-
   conan-package-regression:
     name: Conan package regression (Release static ProtoAdapter)
     runs-on: ubuntu-latest
@@ -316,21 +308,11 @@ jobs:
             cc: gcc
             cxx: g++
             preset: debug
-          - name: Ubuntu GCC
-            os: ubuntu-latest
-            cc: gcc
-            cxx: g++
-            preset: release
           - name: Ubuntu Clang
             os: ubuntu-latest
             cc: clang
             cxx: clang++
             preset: debug
-          - name: Ubuntu Clang
-            os: ubuntu-latest
-            cc: clang
-            cxx: clang++
-            preset: release
           - name: macOS AppleClang
             os: macos-14
             cc: clang

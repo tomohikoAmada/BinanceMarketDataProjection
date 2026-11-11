@@ -16,6 +16,13 @@ Binance Host orchestration and Core continuity are identical. ADR-0005's histori
 ACCEPTED` remains true for its contains-`L` decision; this ADR records why that decision no longer
 matches verified upstream protocol facts.
 
+## Amendment note (2026-11-11)
+
+INV-012 above records the state of the code when this Spot correction was accepted. The M3
+accepted-apply transaction was later moved in place under
+[ADR-0010](ADR-0010-in-place-accepted-apply.md). That change is independent of the Spot successor
+coverage decision; diagnostic-state preservation and deterministic behavior are unchanged.
+
 ## Acceptance record
 
 Independent focused re-review: **APPROVED**

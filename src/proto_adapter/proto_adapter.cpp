@@ -10,8 +10,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <memory>
-#include <new>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -258,6 +256,7 @@ adapt_quality(const google::protobuf::RepeatedField<int>& quality_flags) {
     }
 
     AdaptedMetadata metadata;
+    metadata.observed_quality.reserve(static_cast<std::size_t>(quality_flags.size()));
     for (std::size_t index = 0; index < present.size(); ++index) {
         if (present.at(index)) {
             metadata.observed_quality.push_back(static_cast<HostQualityFact>(index));
@@ -334,12 +333,11 @@ adapt_baseline_side(const RepeatedLevels& wire_levels, core::NumericSpec spec, b
 }
 
 template <typename RepeatedLevels>
-[[nodiscard]] AdapterResult<std::vector<core::LevelUpdate>>
-adapt_updates(const RepeatedLevels& wire_levels, core::NumericSpec spec, core::BookSide side) {
-    std::vector<core::LevelUpdate> updates;
-    updates.reserve(static_cast<std::size_t>(wire_levels.size()));
+[[nodiscard]] std::optional<AdapterError>
+append_updates(std::vector<core::LevelUpdate>& updates, const RepeatedLevels& wire_levels,
+               core::NumericSpec spec, core::BookSide side) {
+    const bool bids = side == core::BookSide::Bid;
     for (const auto& wire_level : wire_levels) {
-        const bool bids = side == core::BookSide::Bid;
         const auto adapted =
             adapt_book_level(wire_level, spec,
                              {bids ? AdapterField::BidPrice : AdapterField::AskPrice,
@@ -349,6 +347,20 @@ adapt_updates(const RepeatedLevels& wire_levels, core::NumericSpec spec, core::B
         }
         const auto level = std::get<core::BookLevel>(adapted);
         updates.push_back({side, level.price, level.quantity});
+    }
+    return std::nullopt;
+}
+
+template <typename RepeatedBids, typename RepeatedAsks>
+[[nodiscard]] AdapterResult<std::vector<core::LevelUpdate>>
+adapt_depth_levels(const RepeatedBids& bids, const RepeatedAsks& asks, core::NumericSpec spec) {
+    std::vector<core::LevelUpdate> updates;
+    updates.reserve(static_cast<std::size_t>(bids.size()) + static_cast<std::size_t>(asks.size()));
+    if (const auto failure = append_updates(updates, bids, spec, core::BookSide::Bid)) {
+        return *failure;
+    }
+    if (const auto failure = append_updates(updates, asks, spec, core::BookSide::Ask)) {
+        return *failure;
     }
     return updates;
 }
@@ -626,6 +638,7 @@ make_quality_flags(const core::OrderBook& book, core::ProjectionStatus status,
 [[nodiscard]] std::optional<AdapterError>
 append_levels(::google::protobuf::RepeatedPtrField<common_wire::PriceLevel>* output,
               const std::vector<core::BookLevel>& levels, core::NumericSpec spec) {
+    output->Reserve(output->size() + static_cast<int>(levels.size()));
     for (const auto& level : levels) {
         auto price = format_price(level, spec);
         if (const auto* failure = std::get_if<AdapterError>(&price)) {
@@ -635,23 +648,9 @@ append_levels(::google::protobuf::RepeatedPtrField<common_wire::PriceLevel>* out
         if (const auto* failure = std::get_if<AdapterError>(&quantity)) {
             return *failure;
         }
-        auto wire_level = std::make_unique<common_wire::PriceLevel>();
-        try {
-            auto owned_price =
-                std::make_unique<std::string>(std::get<std::string>(std::move(price)));
-            wire_level->set_allocated_price(owned_price.get());
-            [[maybe_unused]] auto* transferred_price = owned_price.release();
-            auto owned_quantity =
-                std::make_unique<std::string>(std::get<std::string>(std::move(quantity)));
-            wire_level->set_allocated_quantity(owned_quantity.get());
-            [[maybe_unused]] auto* transferred_quantity = owned_quantity.release();
-            output->AddAllocated(wire_level.get());
-            [[maybe_unused]] auto* transferred_level = wire_level.release();
-        } catch (const std::bad_alloc&) {
-            wire_level->set_allocated_price(nullptr);
-            wire_level->set_allocated_quantity(nullptr);
-            throw;
-        }
+        auto* wire_level = output->Add();
+        wire_level->set_price(std::get<std::string>(std::move(price)));
+        wire_level->set_quantity(std::get<std::string>(std::move(quantity)));
     }
     return std::nullopt;
 }
@@ -742,15 +741,13 @@ append_current_gap(core::LocalOrderBookSnapshot& candidate, const core::BookProj
     if (const auto* failure = std::get_if<AdapterError>(&reason)) {
         return *failure;
     }
-    auto wire_gap = std::make_unique<core::GapDescriptor>();
+    auto* wire_gap = candidate.mutable_last_gap();
     wire_gap->set_stream(common_wire::STREAM_DIFF_DEPTH);
     wire_gap->set_detected_at_utc_ns(context.current_gap->detected_at_utc_ns);
     wire_gap->set_previous_sequence(gap->last_accepted_final.value());
     wire_gap->set_next_sequence(gap->incoming_range.first().value());
     wire_gap->set_reason_code(*std::get_if<common_wire::ReasonCode>(&reason));
     wire_gap->set_recovery_state(*std::get_if<common_wire::ResyncState>(&recovery));
-    candidate.set_allocated_last_gap(wire_gap.get());
-    [[maybe_unused]] auto* transferred_gap = wire_gap.release();
     return std::nullopt;
 }
 
@@ -800,6 +797,11 @@ AdaptedBookBaseline::install_into(core::BookProjection& target) const& {
     return target.install_baseline(view_unchecked());
 }
 
+AdapterResult<core::InstallResult>
+AdaptedBookBaseline::install_into_trusted(core::BookProjection& target) const& {
+    return target.install_baseline(view_unchecked());
+}
+
 const AdaptedMetadata& AdaptedBookBaseline::metadata() const& noexcept { return metadata_; }
 
 AdaptedDepthBatch::AdaptedDepthBatch(core::NumericSpec numeric_spec,
@@ -821,6 +823,11 @@ AdapterResult<core::ApplyResult> AdaptedDepthBatch::apply_to(core::BookProjectio
     if (const auto binding_error = validate_binding(numeric_spec_, policy_, target)) {
         return *binding_error;
     }
+    return target.apply(view_unchecked());
+}
+
+AdapterResult<core::ApplyResult>
+AdaptedDepthBatch::apply_to_trusted(core::BookProjection& target) const& {
     return target.apply(view_unchecked());
 }
 
@@ -851,22 +858,23 @@ adapt_exchange_depth_snapshot(const ::binance_market_data::market::v1::ExchangeD
             wire.producer(), wire.producer_version(), wire.request_id(), AdapterField::RequestId)) {
         return *text_error;
     }
-    const auto quality = adapt_quality(wire.quality_flags());
+    auto quality = adapt_quality(wire.quality_flags());
     if (const auto* failure = std::get_if<AdapterError>(&quality)) {
         return *failure;
     }
-    const auto bids = adapt_baseline_side(wire.bids(), numeric_spec, true);
+    auto bids = adapt_baseline_side(wire.bids(), numeric_spec, true);
     if (const auto* failure = std::get_if<AdapterError>(&bids)) {
         return *failure;
     }
-    const auto asks = adapt_baseline_side(wire.asks(), numeric_spec, false);
+    auto asks = adapt_baseline_side(wire.asks(), numeric_spec, false);
     if (const auto* failure = std::get_if<AdapterError>(&asks)) {
         return *failure;
     }
-    return detail::AdapterFactory::baseline(
-        numeric_spec, policy, core::UpdateId{wire.last_update_id()},
-        std::get<std::vector<core::BookLevel>>(bids), std::get<std::vector<core::BookLevel>>(asks),
-        std::get<AdaptedMetadata>(quality));
+    return detail::AdapterFactory::baseline(numeric_spec, policy,
+                                            core::UpdateId{wire.last_update_id()},
+                                            std::move(std::get<std::vector<core::BookLevel>>(bids)),
+                                            std::move(std::get<std::vector<core::BookLevel>>(asks)),
+                                            std::move(std::get<AdaptedMetadata>(quality)));
 }
 
 AdapterResult<AdaptedDepthBatch>
@@ -898,28 +906,74 @@ adapt_depth_update(const ::binance_market_data::market::v1::DepthUpdate& wire,
     if (!range.has_value()) {
         return error(AdapterErrorCode::InvalidUpdateRange, AdapterField::FinalUpdateId);
     }
-    const auto quality = adapt_quality(metadata.quality_flags());
+    auto quality = adapt_quality(metadata.quality_flags());
     if (const auto* failure = std::get_if<AdapterError>(&quality)) {
         return *failure;
     }
-    const auto bids = adapt_updates(wire.bids(), numeric_spec, core::BookSide::Bid);
-    if (const auto* failure = std::get_if<AdapterError>(&bids)) {
+    auto levels = adapt_depth_levels(wire.bids(), wire.asks(), numeric_spec);
+    if (const auto* failure = std::get_if<AdapterError>(&levels)) {
         return *failure;
     }
-    const auto asks = adapt_updates(wire.asks(), numeric_spec, core::BookSide::Ask);
-    if (const auto* failure = std::get_if<AdapterError>(&asks)) {
-        return *failure;
-    }
-    auto levels = std::get<std::vector<core::LevelUpdate>>(bids);
-    auto ask_levels = std::get<std::vector<core::LevelUpdate>>(asks);
-    levels.reserve(levels.size() + ask_levels.size());
-    levels.insert(levels.end(), ask_levels.begin(), ask_levels.end());
     std::optional<core::UpdateId> previous_final;
     if (wire.has_previous_final_update_id()) {
         previous_final = core::UpdateId{wire.previous_final_update_id()};
     }
-    return detail::AdapterFactory::batch(numeric_spec, policy, *range, previous_final,
-                                         std::move(levels), std::get<AdaptedMetadata>(quality));
+    return detail::AdapterFactory::batch(
+        numeric_spec, policy, *range, previous_final,
+        std::move(std::get<std::vector<core::LevelUpdate>>(levels)),
+        std::move(std::get<AdaptedMetadata>(quality)));
+}
+
+AdapterResult<AdaptedBookBaseline> adapt_trusted_exchange_depth_snapshot(
+    const ::binance_market_data::market::v1::ExchangeDepthSnapshot& wire,
+    core::NumericSpec numeric_spec, const ExpectedIdentity& expected) {
+    auto quality = adapt_quality(wire.quality_flags());
+    if (const auto* failure = std::get_if<AdapterError>(&quality)) {
+        return *failure;
+    }
+    auto bids = adapt_baseline_side(wire.bids(), numeric_spec, true);
+    if (const auto* failure = std::get_if<AdapterError>(&bids)) {
+        return *failure;
+    }
+    auto asks = adapt_baseline_side(wire.asks(), numeric_spec, false);
+    if (const auto* failure = std::get_if<AdapterError>(&asks)) {
+        return *failure;
+    }
+    return detail::AdapterFactory::baseline(numeric_spec, expected.policy,
+                                            core::UpdateId{wire.last_update_id()},
+                                            std::move(std::get<std::vector<core::BookLevel>>(bids)),
+                                            std::move(std::get<std::vector<core::BookLevel>>(asks)),
+                                            std::move(std::get<AdaptedMetadata>(quality)));
+}
+
+AdapterResult<AdaptedDepthBatch>
+adapt_trusted_depth_update(const ::binance_market_data::market::v1::DepthUpdate& wire,
+                           core::NumericSpec numeric_spec, const ExpectedIdentity& expected) {
+    if (!wire.has_metadata()) {
+        return error(AdapterErrorCode::MissingRequiredField, AdapterField::None);
+    }
+    const auto& metadata = wire.metadata();
+    const auto range = core::UpdateRange::try_create(core::UpdateId{wire.first_update_id()},
+                                                     core::UpdateId{wire.final_update_id()});
+    if (!range.has_value()) {
+        return error(AdapterErrorCode::InvalidUpdateRange, AdapterField::FinalUpdateId);
+    }
+    auto quality = adapt_quality(metadata.quality_flags());
+    if (const auto* failure = std::get_if<AdapterError>(&quality)) {
+        return *failure;
+    }
+    auto levels = adapt_depth_levels(wire.bids(), wire.asks(), numeric_spec);
+    if (const auto* failure = std::get_if<AdapterError>(&levels)) {
+        return *failure;
+    }
+    std::optional<core::UpdateId> previous_final;
+    if (wire.has_previous_final_update_id()) {
+        previous_final = core::UpdateId{wire.previous_final_update_id()};
+    }
+    return detail::AdapterFactory::batch(
+        numeric_spec, expected.policy, *range, previous_final,
+        std::move(std::get<std::vector<core::LevelUpdate>>(levels)),
+        std::move(std::get<AdaptedMetadata>(quality)));
 }
 
 AdapterResult<::binance_market_data::projection::v1::LocalOrderBookSnapshot>
@@ -943,7 +997,7 @@ make_local_order_book_snapshot(const core::BookProjection& projection,
     }
     const auto selection = *std::get_if<SnapshotBookSelection>(&selection_result);
 
-    const auto quality = make_quality_flags(*selection.book, status, options);
+    auto quality = make_quality_flags(*selection.book, status, options);
     if (const auto* failure = std::get_if<AdapterError>(&quality)) {
         return *failure;
     }
@@ -952,60 +1006,39 @@ make_local_order_book_snapshot(const core::BookProjection& projection,
     const auto levels = select_snapshot_levels(*selection.book, options);
 
     ::binance_market_data::projection::v1::LocalOrderBookSnapshot candidate;
-    try {
-        candidate.set_venue(common_wire::VENUE_BINANCE);
-        candidate.set_market(market_for_policy(projection.policy()));
-        auto symbol = std::make_unique<std::string>(context.identity.symbol);
-        candidate.set_allocated_symbol(symbol.get());
-        [[maybe_unused]] auto* transferred_symbol = symbol.release();
-        auto schema_version = std::make_unique<std::string>(kLocalSnapshotSchema);
-        candidate.set_allocated_schema_version(schema_version.get());
-        [[maybe_unused]] auto* transferred_schema_version = schema_version.release();
-        auto producer = std::make_unique<std::string>(context.producer);
-        candidate.set_allocated_producer(producer.get());
-        [[maybe_unused]] auto* transferred_producer = producer.release();
-        auto producer_version = std::make_unique<std::string>(context.producer_version);
-        candidate.set_allocated_producer_version(producer_version.get());
-        [[maybe_unused]] auto* transferred_producer_version = producer_version.release();
-        candidate.set_source(*std::get_if<common_wire::SnapshotSource>(&source));
-        candidate.set_last_update_id(last_update_id->value());
-        if (const auto append_error =
-                append_levels(candidate.mutable_bids(), levels.bids, numeric_spec)) {
-            return *append_error;
-        }
-        if (const auto append_error =
-                append_levels(candidate.mutable_asks(), levels.asks, numeric_spec)) {
-            return *append_error;
-        }
-        if (options.depth_limit.has_value()) {
-            candidate.set_depth_limit(options.depth_limit->value());
-        }
-        candidate.set_generated_time_utc_ns(context.generated_time_utc_ns);
-        if (context.generated_monotonic_ns.has_value()) {
-            candidate.set_generated_monotonic_ns(*context.generated_monotonic_ns);
-        }
-        candidate.set_synchronized(selection.synchronized);
-
-        if (const auto gap_error = append_current_gap(candidate, projection, context, status)) {
-            return *gap_error;
-        }
-
-        for (const auto flag : std::get<std::vector<common_wire::QualityFlag>>(quality)) {
-            candidate.add_quality_flags(flag);
-        }
-        return candidate;
-    } catch (const std::bad_alloc&) {
-        // Protobuf sets required-field presence bits before allocating string storage. Clear the
-        // local candidate before stack unwinding so an injected allocation failure cannot leave a
-        // partially initialized generated message for its debug destructor to inspect.
-        candidate.set_allocated_symbol(nullptr);
-        candidate.set_allocated_schema_version(nullptr);
-        candidate.set_allocated_producer(nullptr);
-        candidate.set_allocated_producer_version(nullptr);
-        candidate.set_allocated_last_gap(nullptr);
-        candidate.Clear();
-        throw;
+    candidate.set_venue(common_wire::VENUE_BINANCE);
+    candidate.set_market(market_for_policy(projection.policy()));
+    candidate.set_symbol(context.identity.symbol);
+    candidate.set_schema_version(std::string{kLocalSnapshotSchema});
+    candidate.set_producer(context.producer);
+    candidate.set_producer_version(context.producer_version);
+    candidate.set_source(*std::get_if<common_wire::SnapshotSource>(&source));
+    candidate.set_last_update_id(last_update_id->value());
+    if (const auto append_error =
+            append_levels(candidate.mutable_bids(), levels.bids, numeric_spec)) {
+        return *append_error;
     }
+    if (const auto append_error =
+            append_levels(candidate.mutable_asks(), levels.asks, numeric_spec)) {
+        return *append_error;
+    }
+    if (options.depth_limit.has_value()) {
+        candidate.set_depth_limit(options.depth_limit->value());
+    }
+    candidate.set_generated_time_utc_ns(context.generated_time_utc_ns);
+    if (context.generated_monotonic_ns.has_value()) {
+        candidate.set_generated_monotonic_ns(*context.generated_monotonic_ns);
+    }
+    candidate.set_synchronized(selection.synchronized);
+
+    if (const auto gap_error = append_current_gap(candidate, projection, context, status)) {
+        return *gap_error;
+    }
+
+    for (const auto flag : std::get<std::vector<common_wire::QualityFlag>>(quality)) {
+        candidate.add_quality_flags(flag);
+    }
+    return candidate;
 }
 
 } // namespace binance_market_data::projection_adapter::v1

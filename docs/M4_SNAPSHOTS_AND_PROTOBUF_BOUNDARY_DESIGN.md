@@ -542,6 +542,29 @@ methods are lvalue-qualified; rvalue owner and rvalue projection overloads are d
 owner supports only destruction or assignment, while the move destination retains vectors,
 `NumericSpec`, policy, and metadata and can be invoked safely.
 
+### Same-process trusted fast path
+
+A Gateway Host that owns both the wire producer and the target projection may use the trusted entry
+points after validating the fixed connection metadata once:
+
+```cpp
+adapt_trusted_exchange_depth_snapshot(wire, spec, expected);
+adapt_trusted_depth_update(wire, spec, expected);
+owner.install_into_trusted(projection);
+owner.apply_to_trusted(projection);
+```
+
+The trusted adaptation entries skip repeated venue/market/symbol, schema/stream, and
+producer/version/connection identity checks and use `expected.policy` directly. Level decimals,
+sequence ranges, and inbound quality enums are still validated. The trusted owner methods skip the
+target `NumericSpec`/policy binding comparison; the caller guarantees that the target is the same
+product projection used to construct `expected`. They are intended only for an in-process Host that
+already validated the fixed metadata boundary; external/untrusted callers must use the checked
+entries.
+
+The normal entries remain fully checked and are the default public contract. Both paths return
+owning values and perform no Core mutation during adaptation.
+
 | Alternative | Decision |
 |---|---|
 | Return public `BookBaseline`/`DepthBatch` | Rejected: permits dangling storage and bypasses binding checks |
@@ -955,13 +978,18 @@ filesystem, or mutable global configuration. It has no plugin callbacks.
 | Inbound allocation failure | `std::bad_alloc` propagates; local vectors die; no Core mutation |
 | Numeric-spec or policy binding mismatch | Returns typed error before M3; book, ID, status, gap, and visibility unchanged |
 | Private `view_unchecked()` | Non-allocating and `noexcept`; exists only during checked synchronous call |
-| Checked M3 install/apply | Returns the unmodified M3 result and retains existing M3 strong guarantees |
+| Checked M3 install/apply | Returns the unmodified M3 result and retains current M3 guarantees (ADR-0010 for accepted apply) |
 | Output validation failure | Returns `AdapterError`; projection unchanged |
 | Output allocation/Protobuf construction failure | Exception propagates; local candidate destroyed; projection unchanged |
 | Successful output | Fully constructed message returned by value/move; no partial caller-visible message |
 
 Builders never mutate a caller-supplied output parameter. They create a local candidate message and
-return it only after all fields, levels, flags, and optional gap content succeed.
+return it only after all fields, levels, flags, and optional gap content succeed. Output messages use
+the standard generated `set_*`, `mutable_*`, and repeated-field `Add()` APIs; there is no manual
+`set_allocated_*` ownership assembly or `std::bad_alloc` catch/clear branch.
+
+The same-process trusted entries only skip repeated fixed-metadata and target-binding validation.
+They retain typed level/range/quality errors and the same owning-value construction rules.
 
 ## Thread model and ownership
 
@@ -1124,6 +1152,13 @@ class AdaptedBookBaseline final {
     AdapterResult<projection::v1::InstallResult>
     install_into(projection::v1::BookProjection&& projection) const & = delete;
 
+    [[nodiscard]] AdapterResult<projection::v1::InstallResult>
+    install_into_trusted(projection::v1::BookProjection& projection) const &;
+    AdapterResult<projection::v1::InstallResult>
+    install_into_trusted(projection::v1::BookProjection& projection) const && = delete;
+    AdapterResult<projection::v1::InstallResult>
+    install_into_trusted(projection::v1::BookProjection&& projection) const & = delete;
+
     [[nodiscard]] const AdaptedMetadata& metadata() const & noexcept;
     const AdaptedMetadata& metadata() const && = delete;
 
@@ -1159,6 +1194,13 @@ class AdaptedDepthBatch final {
     apply_to(projection::v1::BookProjection& projection) const && = delete;
     AdapterResult<projection::v1::ApplyResult>
     apply_to(projection::v1::BookProjection&& projection) const & = delete;
+
+    [[nodiscard]] AdapterResult<projection::v1::ApplyResult>
+    apply_to_trusted(projection::v1::BookProjection& projection) const &;
+    AdapterResult<projection::v1::ApplyResult>
+    apply_to_trusted(projection::v1::BookProjection& projection) const && = delete;
+    AdapterResult<projection::v1::ApplyResult>
+    apply_to_trusted(projection::v1::BookProjection&& projection) const & = delete;
 
     [[nodiscard]] const AdaptedMetadata& metadata() const & noexcept;
     const AdaptedMetadata& metadata() const && = delete;
@@ -1223,6 +1265,18 @@ adapt_exchange_depth_snapshot(
 
 [[nodiscard]] AdapterResult<AdaptedDepthBatch>
 adapt_depth_update(
+    const ::binance_market_data::market::v1::DepthUpdate& wire,
+    projection::v1::NumericSpec numeric_spec,
+    const ExpectedIdentity& expected);
+
+[[nodiscard]] AdapterResult<AdaptedBookBaseline>
+adapt_trusted_exchange_depth_snapshot(
+    const ::binance_market_data::market::v1::ExchangeDepthSnapshot& wire,
+    projection::v1::NumericSpec numeric_spec,
+    const ExpectedIdentity& expected);
+
+[[nodiscard]] AdapterResult<AdaptedDepthBatch>
+adapt_trusted_depth_update(
     const ::binance_market_data::market::v1::DepthUpdate& wire,
     projection::v1::NumericSpec numeric_spec,
     const ExpectedIdentity& expected);
@@ -1320,6 +1374,8 @@ linkage is necessary depend on prerequisite C-M4-001 and must be verified rather
 - Price-scale mismatch, quantity-scale mismatch, both-scale mismatch with price-first precedence,
   Spot-owner/UsdM-target, and UsdM-owner/Spot-target all fail before M3.
 - Matching spec/policy checked install and apply invoke M3 normally.
+- Trusted adaptation accepts already-validated fixed metadata and skips repeated identity/text
+  scans; trusted install/apply skip the target binding comparison but still preserve M3 results.
 - M3 `RejectedWrongState`, `GapDetected`, `IgnoredDuplicate`, and `IgnoredStale` remain M3 results,
   not adapter errors.
 - A full projection checkpoint proves every binding failure leaves book, ID, status, gap, and
@@ -1366,20 +1422,12 @@ fixed Contracts wire fixture
 It does not promise byte reproduction of the inbound message, source decimal spelling, unknown
 fields, request metadata, or quality flag history.
 
-### Allocation-failure plan
+### Allocation behavior
 
-A dedicated executable uses the repository's deterministic global allocation-failure sweep pattern
-without production failpoint APIs. It exercises decimal/string/vector construction, owner return,
-Core ordered-vector queries, output strings, repeated-field insertion, gap construction, and quality
-flags. At every fired failure point:
-
-- no partially adapted owner/message is returned;
-- the Protobuf input remains caller-owned;
-- projection status, ID, gap, and complete diagnostic book equal a pre-call checkpoint; and
-- a final non-failing attempt proves the scenario actually succeeds.
-
-Allocation sweeps include owning sidecar construction and checked invocation. Binding errors are
-tested separately as non-allocating pre-M3 outcomes with the same checkpoint invariant.
+The optional adapter returns owning values and does not mutate Core during conversion. Binding
+checks and checked invocation are tested with ordinary semantic tests. The former synthetic global
+allocation-failure sweep was removed with the M3 copy-on-apply transaction
+([ADR-0010](adr/ADR-0010-in-place-accepted-apply.md)); no production failpoint API exists.
 
 ### State and determinism tests
 
@@ -1517,7 +1565,7 @@ reviewable steps:
 7. Add inbound depth conversion and matrix tests.
 8. Add depth limit, context, gap, disjoint Host/Core quality domains, and output builder value types.
 9. Add state-specific Local snapshot generation and deterministic formatting.
-10. Add semantic round trip, replay determinism, and allocation-failure sweeps.
+10. Add semantic round trip, replay determinism, and the accepted allocation/ownership tests.
 11. Add independent property model, fuzzer, seeds, and sanitizer coverage.
 12. Add Core-only and Adapter staged-install consumers for static/shared builds.
 13. Update implementation documentation, run full acceptance gates, and obtain external code review.
@@ -1584,7 +1632,7 @@ addressed later as test hardening, maintenance, M5 preparation, or future qualit
 | Fixed Decimal Formatting | PASS |
 | Determinism | PASS |
 | Contracts Fixture Roundtrip | PASS |
-| Allocation-Failure Sweep | PASS |
+| Allocation-Failure Sweep | PASS (historical; target removed 2026-11-11) |
 | Independent Property Model | PASS |
 | Adapter Fuzz | PASS |
 
@@ -1633,7 +1681,6 @@ Future M4 implementation must pass:
 - complete inbound/output/state/error/enum/presence/binding/lifetime/quality-domain test matrices;
 - independent property and deterministic replay tests;
 - model-based adapter fuzz and blocking smoke run;
-- executable allocation-failure sweeps;
 - static/shared and duplicate-generated-symbol packaging tests;
 - Contracts fixed-fixture semantic compatibility;
 - no Core dependency regression; and

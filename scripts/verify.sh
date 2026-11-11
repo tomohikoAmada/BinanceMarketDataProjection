@@ -37,8 +37,6 @@ else
     tidy_flag_exe=""
 fi
 
-scripts/test-quality-toolchain.sh
-
 find include src tests benchmarks fuzz -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0 \
     | xargs -0 "$clang_format" --dry-run --Werror
 

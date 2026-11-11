@@ -6,7 +6,9 @@ are recorded below. The subsequently revised v0.4 plan adds representative 20-ke
 mixed-load attribution; the owner authorized that increment on 2026-10-19. Its
 [separate twenty-key record](PROJECTION_P1_TWENTY_RESULT.md) preserves this four-product campaign. Target-VPS budget acceptance remains with Gateway G3.
 Core, ProtoAdapter, sequence policy, public APIs, dependencies and `KEEP_STD_MAP`
-are unchanged. P2 optimization is not implemented.
+were unchanged by P1. The subsequent M-P2.A change applies accepted batches in place
+([ADR-0010](adr/ADR-0010-in-place-accepted-apply.md)); this record remains valid as
+pre-optimization measurement.
 
 - [x] Read all six Milestone Plan documents and relevant repository authorities.
 - [x] Reuse Gateway G2 JSON/metadata/configured owners/Projection/Book+Event RPC
@@ -23,8 +25,8 @@ are unchanged. P2 optimization is not implemented.
 - [x] Fresh independent agent approved the final 18-trial result, raw hashes,
   trace reanalysis, units, quantile aggregation and conditional decision.
 - [x] Technical commit `248c622` exact-head GitHub CI delivery: 20/20 PASS.
-- [x] Optimization disposition: hotspot confirmed; P2 stays CONDITIONAL pending
-  approved target/shared-host budgets. No production optimization or OUT claim.
+- [x] Optimization disposition: hotspot confirmed; at closure P2 stayed CONDITIONAL
+  pending approved target/shared-host budgets. M-P2.A later implemented in-place apply.
 
 ## Measurement boundaries
 
@@ -180,15 +182,15 @@ swap-in activity was present; no swap-out was observed. Those counters include
 other applications, and do not prove this benchmark had zero swap faults or
 that the target four-core VPS has equivalent headroom.
 
-**Full-book copying is the dominant accepted-update hotspot and a plausible
+**Full-book copying was the dominant accepted-update hotspot and the P2
 optimization target.** Four products sustained every tested finite load with
-complete delivery. The result does not establish that copying prevents the
-actual four-product production load or consumes approved future reserves:
+complete delivery. The result did not establish that copying prevented the
+actual four-product production load or consumed approved future reserves:
 target hardware, Recorder/Archive co-load, live input distribution and budgets
-were not measured here. **P2 remains CONDITIONAL, not triggered and not OUT.**
-Keep Core/Adapter and `std::map` unchanged. Gateway G3 can use these workload
-identities/metrics for its shared-host budget decision; optimize only if that
-evidence requires it.
+were not measured here. **At P1 closure P2 remained CONDITIONAL.** M-P2.A later
+removed the copy in place ([ADR-0010](adr/ADR-0010-in-place-accepted-apply.md));
+the Core/Adapter public API and `std::map` remain unchanged. Gateway G3 can use
+these workload identities/metrics for its shared-host budget decision.
 
 ### Evidence and validation
 
@@ -290,6 +292,6 @@ can establish costs and identify the full-book-copy hotspot; it cannot declare
 that a four-core VPS with Recorder/Archive meets its budget. Gateway G3 owns
 that separately authorized shared-host/network qualification. No VPS was
 accessed, no Recorder service/configuration changed, and no API-limit acceptance
-was attempted. Until the combined measured budget exists, P2 is conditional;
-neither a required optimization nor an OUT decision is justified by a local
-microbenchmark alone.
+was attempted. At P1 closure P2 was conditional; neither a required optimization
+nor an OUT decision was justified by a local microbenchmark alone. M-P2.A later
+removed the measured copy-on-apply hotspot.

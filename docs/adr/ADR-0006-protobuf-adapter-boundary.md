@@ -241,6 +241,23 @@ updated. Core ABI and Core-only source compatibility are unaffected by the optio
   tests pass before implementation acceptance.
 - Independent external code review approves the implementation.
 
+## Amendment note (2026-11-11)
+
+The allocation-failure sentence above describes the original M3 copy-on-apply transaction. Under
+[ADR-0010](ADR-0010-in-place-accepted-apply.md), checked M3 apply has the basic exception guarantee:
+a new-price-node allocation failure can leave the live book partially updated. Adapter conversion
+itself still returns owning values and does not create partial outputs. The synthetic adapter
+allocation-failure test target was removed with the transaction.
+
+## Fast-path note (2026-11-11)
+
+The checked adapter entries remain the default external boundary. A same-process Host that produced
+the wire message and owns the target projection may use `adapt_trusted_depth_update`,
+`adapt_trusted_exchange_depth_snapshot`, `install_into_trusted`, and `apply_to_trusted` after it has
+validated fixed connection metadata and product binding once. These entries skip repeated metadata
+UTF-8/identity scans and target `NumericSpec`/policy comparisons. They still validate level decimals,
+sequence ranges, and quality enums, and they return owning values.
+
 ## Superseded by
 
 None.
