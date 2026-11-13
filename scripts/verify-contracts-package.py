@@ -8,16 +8,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-EXPECTED_RREV = "53713fb82c27cf6ea0395f6b8a853006"
+EXPECTED_RREV = "e79d88e75cb72b2bb7dae75e6d0b5646"
 EXPECTED = {
     "01d76a41929f36d89573159f5f458f9f1e378ada",
-    "33286fb1d624f4dd0c827010e93113f523c7f37dc4f6ae526361d2b0c61626c0",
+    "a2a93ca5cf4e17c9a64ca0939ad208f1202c1746628eed5260bd0edb81666c86",
     "NOT_FORMALLY_ASSIGNED",
     "libprotoc 33.5",
     "6.33.5",
     "ca5ff466767b31a1b496ec60247e105c",
     "full",
-    "518880bdfa60948c3b65b6b3525d024526995166",
+    "0ecd024833c8b93ff95287e5fd7593060784b173",
 }
 
 

@@ -22,7 +22,7 @@ function(bmd_projection_validate_contracts_metadata)
 
     set(_expected_pairs
         SCHEMA_BASELINE "01d76a41929f36d89573159f5f458f9f1e378ada"
-        SCHEMA_FINGERPRINT "33286fb1d624f4dd0c827010e93113f523c7f37dc4f6ae526361d2b0c61626c0"
+        SCHEMA_FINGERPRINT "a2a93ca5cf4e17c9a64ca0939ad208f1202c1746628eed5260bd0edb81666c86"
         SCHEMA_FINGERPRINT_ALGORITHM_VERSION "1"
         PACKAGE_VERSION "0.1.0"
         PACKAGE_REVISION "NOT_FORMALLY_ASSIGNED"
@@ -32,7 +32,7 @@ function(bmd_projection_validate_contracts_metadata)
         PROTOBUF_RUNTIME_RREV "ca5ff466767b31a1b496ec60247e105c"
         PROTOBUF_RUNTIME_COMPATIBILITY "exactly 6.33.5 for this implementation candidate"
         PROTOBUF_RUNTIME_FLAVOR "full"
-        CONTRACTS_SOURCE_REVISION "518880bdfa60948c3b65b6b3525d024526995166")
+        CONTRACTS_SOURCE_REVISION "0ecd024833c8b93ff95287e5fd7593060784b173")
     list(LENGTH _expected_pairs _pair_length)
     math(EXPR _pair_last "${_pair_length} - 1")
     foreach(_index RANGE 0 ${_pair_last} 2)
