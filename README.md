@@ -142,8 +142,9 @@ orchestration, or gRPC. See [ADR-0006](docs/adr/ADR-0006-protobuf-adapter-bounda
 
 The current repository-level package integration consumes the message-only artifact
 `binance-market-data-contracts-cpp/0.1.0` from Contracts main
-`518880bdfa60948c3b65b6b3525d024526995166`, with message RREV
-`53713fb82c27cf6ea0395f6b8a853006`. Projection does not depend on the separate Contracts gRPC
+`0ecd024833c8b93ff95287e5fd7593060784b173` (C2), with message RREV
+`e79d88e75cb72b2bb7dae75e6d0b5646` and descriptor fingerprint
+`a2a93ca5cf4e17c9a64ca0939ad208f1202c1746628eed5260bd0edb81666c86`. Projection does not depend on the separate Contracts gRPC
 artifact. Formal package publication/release is a later release concern, not a blocker for this
 Projection stage.
 
