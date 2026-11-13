@@ -9,7 +9,7 @@ import unittest
 REPO_ROOT = Path(__file__).parents[1]
 BOOTSTRAP_SCRIPT = REPO_ROOT / "scripts" / "bootstrap-contracts.sh"
 CONFIGURE_SCRIPT = REPO_ROOT / "scripts" / "configure.sh"
-CONTRACTS_REVISION = "fd104a08fc4dbdb195ae20f685942e445342e66f"
+CONTRACTS_REVISION = "24a209b1a415c4f4dd56d864eee9132135bc7237"
 
 
 class ContractsProvenanceTest(unittest.TestCase):

@@ -418,13 +418,26 @@ TEST(InboundMatrixTest, RejectsAllIdentityEnumSchemaAndNumericDomains) {
     wire.mutable_bids(0)->set_price("9223372036854775808");
     expect_baseline_error(wire, adapter::AdapterErrorCode::NumericOverflow);
 
-    auto update = update_wire();
-    update.mutable_metadata()->set_stream(common_wire::STREAM_BOOK_TICKER);
-    expect_update_error(update, adapter::AdapterErrorCode::UnexpectedStream);
+    for (const auto unexpected_stream : {
+             common_wire::STREAM_AGG_TRADE,
+             common_wire::STREAM_BOOK_TICKER,
+             common_wire::STREAM_DEPTH_SNAPSHOT,
+             common_wire::STREAM_MARK_PRICE,
+             common_wire::STREAM_LIQUIDATION,
+             common_wire::STREAM_REFERENCE_DATA,
+         }) {
+        auto update = update_wire();
+        update.mutable_metadata()->set_stream(unexpected_stream);
+        expect_update_error(update, adapter::AdapterErrorCode::UnexpectedStream);
+    }
 
-    update = update_wire();
+    auto update = update_wire();
     update.mutable_metadata()->set_stream(common_wire::STREAM_UNSPECIFIED);
     expect_update_error(update, adapter::AdapterErrorCode::UnspecifiedEnum);
+
+    update = update_wire();
+    update.mutable_metadata()->set_stream(static_cast<common_wire::Stream>(999));
+    expect_update_error(update, adapter::AdapterErrorCode::UnknownEnumValue);
 
     wire = baseline_wire();
     wire.add_quality_flags(common_wire::QUALITY_FLAG_UNSPECIFIED);

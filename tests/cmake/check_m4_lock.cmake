@@ -1,6 +1,6 @@
 file(READ "${LOCKFILE}" _lock)
 foreach(_identity IN ITEMS
-        "binance-market-data-contracts-cpp/0.1.0#b8ed9e62988716feaeb973cc65e4a279"
+        "binance-market-data-contracts-cpp/0.1.0#9739b82137e9d6437ef66bbbf81a9ddd"
         "protobuf/6.33.5#ca5ff466767b31a1b496ec60247e105c")
     string(FIND "${_lock}" "${_identity}" _position)
     if(_position EQUAL -1)

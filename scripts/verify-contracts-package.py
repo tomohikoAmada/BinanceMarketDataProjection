@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-EXPECTED_RREV = "b8ed9e62988716feaeb973cc65e4a279"
+EXPECTED_RREV = "9739b82137e9d6437ef66bbbf81a9ddd"
 EXPECTED = {
     "01d76a41929f36d89573159f5f458f9f1e378ada",
     "a2a93ca5cf4e17c9a64ca0939ad208f1202c1746628eed5260bd0edb81666c86",
@@ -17,7 +17,7 @@ EXPECTED = {
     "6.33.5",
     "ca5ff466767b31a1b496ec60247e105c",
     "full",
-    "fd104a08fc4dbdb195ae20f685942e445342e66f",
+    "24a209b1a415c4f4dd56d864eee9132135bc7237",
 }
 
 

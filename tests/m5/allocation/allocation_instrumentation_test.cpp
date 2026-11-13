@@ -354,11 +354,14 @@ TEST(AllocationInstrumentationAdversarial, OutsideBracketAllocDeleteCountersStay
 // Case 15: pointer reuse observes fresh provenance (OD-M5-P7-020 case 15).
 TEST(AllocationInstrumentationAdversarial, PointerReuseObservesFreshProvenance) {
     void* first = ::operator new(48);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    const auto first_addr = reinterpret_cast<std::uintptr_t>(first);
     seams::capture_next_freed_backing_for_test();
     ::operator delete(first);
     EXPECT_TRUE(seams::has_captured_backing_for_test());
     void* second = ::operator new(48);
-    EXPECT_EQ(second, first);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    EXPECT_EQ(reinterpret_cast<std::uintptr_t>(second), first_addr);
     EXPECT_TRUE(seams::has_provenance_for_test(second));
     EXPECT_EQ(seams::recorded_size_for_test(second), 48);
     EXPECT_FALSE(seams::stale_entry_collision_for_test());

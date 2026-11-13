@@ -186,6 +186,9 @@ map_market(common_wire::Market market) noexcept {
     case common_wire::STREAM_AGG_TRADE:
     case common_wire::STREAM_BOOK_TICKER:
     case common_wire::STREAM_DEPTH_SNAPSHOT:
+    case common_wire::STREAM_MARK_PRICE:
+    case common_wire::STREAM_LIQUIDATION:
+    case common_wire::STREAM_REFERENCE_DATA:
         return enum_error(AdapterErrorCode::UnexpectedStream, AdapterField::Stream,
                           static_cast<std::int32_t>(stream));
     default:
